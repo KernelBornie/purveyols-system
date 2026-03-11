@@ -2,6 +2,7 @@ const express = require('express');
 const { body, validationResult } = require('express-validator');
 const FundingRequest = require('../models/FundingRequest');
 const { authenticate, authorize } = require('../middleware/auth');
+const { generalLimiter } = require('../middleware/rateLimiter');
 
 const router = express.Router();
 
@@ -9,6 +10,7 @@ const router = express.Router();
 router.post(
   '/',
   authenticate,
+  generalLimiter,
   authorize('engineer', 'foreman', 'accountant'),
   [
     body('title').trim().notEmpty().withMessage('Title is required'),
@@ -39,7 +41,7 @@ router.post(
 );
 
 // GET /api/funding-requests
-router.get('/', authenticate, async (req, res) => {
+router.get('/', generalLimiter, authenticate, async (req, res) => {
   try {
     const { status, site } = req.query;
     const filter = {};
@@ -74,6 +76,7 @@ router.get('/', authenticate, async (req, res) => {
 // PUT /api/funding-requests/:id/approve
 router.put(
   '/:id/approve',
+  generalLimiter,
   authenticate,
   authorize('accountant', 'director'),
   async (req, res) => {
@@ -117,6 +120,7 @@ router.put(
 // PUT /api/funding-requests/:id/reject
 router.put(
   '/:id/reject',
+  generalLimiter,
   authenticate,
   authorize('accountant', 'director'),
   async (req, res) => {
@@ -146,7 +150,7 @@ router.put(
 );
 
 // PUT /api/funding-requests/:id/disburse
-router.put('/:id/disburse', authenticate, authorize('director'), async (req, res) => {
+router.put('/:id/disburse', generalLimiter, authenticate, authorize('director'), async (req, res) => {
   try {
     const request = await FundingRequest.findById(req.params.id);
     if (!request) return res.status(404).json({ message: 'Funding request not found' });

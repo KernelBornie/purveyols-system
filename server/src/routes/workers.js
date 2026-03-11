@@ -2,12 +2,14 @@ const express = require('express');
 const { body, query, validationResult } = require('express-validator');
 const Worker = require('../models/Worker');
 const { authenticate, authorize } = require('../middleware/auth');
+const { generalLimiter } = require('../middleware/rateLimiter');
 
 const router = express.Router();
 
 // POST /api/workers - enroll a worker (foreman, engineer, accountant, director)
 router.post(
   '/',
+  generalLimiter,
   authenticate,
   authorize('foreman', 'engineer', 'accountant', 'director'),
   [
@@ -46,6 +48,7 @@ router.post(
 // GET /api/workers - list workers (accountant, director, engineer, foreman)
 router.get(
   '/',
+  generalLimiter,
   authenticate,
   authorize('accountant', 'director', 'engineer', 'foreman'),
   async (req, res) => {
@@ -72,6 +75,7 @@ router.get(
 // GET /api/workers/search - search by NRC
 router.get(
   '/search',
+  generalLimiter,
   authenticate,
   authorize('accountant', 'director', 'engineer', 'foreman'),
   [query('nrc').trim().notEmpty().withMessage('NRC query is required')],
@@ -95,6 +99,7 @@ router.get(
 // GET /api/workers/:id
 router.get(
   '/:id',
+  generalLimiter,
   authenticate,
   authorize('accountant', 'director', 'engineer', 'foreman'),
   async (req, res) => {
@@ -111,6 +116,7 @@ router.get(
 // PUT /api/workers/:id
 router.put(
   '/:id',
+  generalLimiter,
   authenticate,
   authorize('foreman', 'engineer', 'accountant', 'director'),
   async (req, res) => {

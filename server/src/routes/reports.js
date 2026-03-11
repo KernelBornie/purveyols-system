@@ -5,6 +5,7 @@ const FundingRequest = require('../models/FundingRequest');
 const MaterialRequest = require('../models/MaterialRequest');
 const DriverLogbook = require('../models/DriverLogbook');
 const { authenticate, authorize } = require('../middleware/auth');
+const { generalLimiter } = require('../middleware/rateLimiter');
 
 const router = express.Router();
 
@@ -28,7 +29,7 @@ const getDateRange = (period, year, week, month) => {
 };
 
 // GET /api/reports/summary
-router.get('/summary', authenticate, authorize('director', 'accountant'), async (req, res) => {
+router.get('/summary', generalLimiter, authenticate, authorize('director', 'accountant'), async (req, res) => {
   try {
     const { period = 'monthly', year, week, month } = req.query;
     const y = parseInt(year) || new Date().getFullYear();
@@ -80,7 +81,7 @@ router.get('/summary', authenticate, authorize('director', 'accountant'), async 
 });
 
 // GET /api/reports/payments
-router.get('/payments', authenticate, authorize('director', 'accountant'), async (req, res) => {
+router.get('/payments', generalLimiter, authenticate, authorize('director', 'accountant'), async (req, res) => {
   try {
     const { period = 'monthly', year, week, month, site } = req.query;
     const y = parseInt(year) || new Date().getFullYear();
@@ -114,7 +115,7 @@ router.get('/payments', authenticate, authorize('director', 'accountant'), async
 });
 
 // GET /api/reports/workers
-router.get('/workers', authenticate, authorize('director', 'accountant'), async (req, res) => {
+router.get('/workers', generalLimiter, authenticate, authorize('director', 'accountant'), async (req, res) => {
   try {
     const { site } = req.query;
     const filter = { isActive: true };
@@ -138,6 +139,7 @@ router.get('/workers', authenticate, authorize('director', 'accountant'), async 
 // GET /api/reports/logbooks
 router.get(
   '/logbooks',
+  generalLimiter,
   authenticate,
   authorize('director', 'accountant'),
   async (req, res) => {

@@ -2,6 +2,7 @@ const express = require('express');
 const { body, validationResult } = require('express-validator');
 const MaterialRequest = require('../models/MaterialRequest');
 const { authenticate, authorize } = require('../middleware/auth');
+const { generalLimiter } = require('../middleware/rateLimiter');
 
 const router = express.Router();
 
@@ -9,6 +10,7 @@ const router = express.Router();
 router.post(
   '/',
   authenticate,
+  generalLimiter,
   authorize('engineer', 'foreman', 'procurement'),
   [
     body('itemName').trim().notEmpty().withMessage('Item name is required'),
@@ -44,6 +46,7 @@ router.post(
 router.get(
   '/',
   authenticate,
+  generalLimiter,
   authorize('engineer', 'foreman', 'procurement', 'accountant', 'director'),
   async (req, res) => {
     try {
@@ -69,6 +72,7 @@ router.get(
 // PUT /api/material-requests/:id/status
 router.put(
   '/:id/status',
+  generalLimiter,
   authenticate,
   authorize('procurement', 'director'),
   async (req, res) => {

@@ -3,6 +3,7 @@ const { body, validationResult } = require('express-validator');
 const Payment = require('../models/Payment');
 const Worker = require('../models/Worker');
 const { authenticate, authorize } = require('../middleware/auth');
+const { generalLimiter } = require('../middleware/rateLimiter');
 
 const router = express.Router();
 
@@ -19,6 +20,7 @@ const simulateMobileMoney = async (network, phone, amount) => {
 // POST /api/payments - process wage payment
 router.post(
   '/',
+  generalLimiter,
   authenticate,
   authorize('accountant', 'director'),
   [
@@ -75,7 +77,7 @@ router.post(
 );
 
 // GET /api/payments - list payments
-router.get('/', authenticate, authorize('accountant', 'director'), async (req, res) => {
+router.get('/', generalLimiter, authenticate, authorize('accountant', 'director'), async (req, res) => {
   try {
     const { workerId, status, startDate, endDate, site } = req.query;
     const filter = {};
@@ -100,7 +102,7 @@ router.get('/', authenticate, authorize('accountant', 'director'), async (req, r
 });
 
 // GET /api/payments/:id
-router.get('/:id', authenticate, authorize('accountant', 'director'), async (req, res) => {
+router.get('/:id', generalLimiter, authenticate, authorize('accountant', 'director'), async (req, res) => {
   try {
     const payment = await Payment.findById(req.params.id)
       .populate('worker', 'name nrc phone site')

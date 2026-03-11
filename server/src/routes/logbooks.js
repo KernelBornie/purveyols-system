@@ -2,6 +2,7 @@ const express = require('express');
 const { body, validationResult } = require('express-validator');
 const DriverLogbook = require('../models/DriverLogbook');
 const { authenticate, authorize } = require('../middleware/auth');
+const { generalLimiter } = require('../middleware/rateLimiter');
 
 const router = express.Router();
 
@@ -9,6 +10,7 @@ const router = express.Router();
 router.post(
   '/',
   authenticate,
+  generalLimiter,
   authorize('driver'),
   [
     body('vehicleNumber').trim().notEmpty().withMessage('Vehicle number is required'),
@@ -52,6 +54,7 @@ router.post(
 router.get(
   '/',
   authenticate,
+  generalLimiter,
   authorize('driver', 'director', 'accountant'),
   async (req, res) => {
     try {

@@ -2,6 +2,7 @@ const express = require('express');
 const { body, validationResult } = require('express-validator');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
+const { authLimiter, generalLimiter } = require('../middleware/rateLimiter');
 
 const router = express.Router();
 
@@ -11,6 +12,7 @@ const signToken = (id) =>
 // POST /api/auth/register
 router.post(
   '/register',
+  authLimiter,
   [
     body('name').trim().notEmpty().withMessage('Name is required'),
     body('email').isEmail().withMessage('Valid email is required'),
@@ -38,6 +40,7 @@ router.post(
 // POST /api/auth/login
 router.post(
   '/login',
+  authLimiter,
   [
     body('email').isEmail().withMessage('Valid email is required'),
     body('password').notEmpty().withMessage('Password is required'),
@@ -65,7 +68,7 @@ router.post(
 );
 
 // GET /api/auth/me
-router.get('/me', require('../middleware/auth').authenticate, async (req, res) => {
+router.get('/me', generalLimiter, require('../middleware/auth').authenticate, async (req, res) => {
   res.json({ user: req.user });
 });
 

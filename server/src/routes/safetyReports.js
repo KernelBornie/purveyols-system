@@ -2,6 +2,7 @@ const express = require('express');
 const { body, validationResult } = require('express-validator');
 const SafetyReport = require('../models/SafetyReport');
 const { authenticate, authorize } = require('../middleware/auth');
+const { generalLimiter } = require('../middleware/rateLimiter');
 
 const router = express.Router();
 
@@ -9,6 +10,7 @@ const router = express.Router();
 router.post(
   '/',
   authenticate,
+  generalLimiter,
   authorize('safety', 'foreman', 'engineer', 'director'),
   [
     body('site').trim().notEmpty().withMessage('Site is required'),
@@ -43,6 +45,7 @@ router.post(
 router.get(
   '/',
   authenticate,
+  generalLimiter,
   authorize('safety', 'director', 'engineer'),
   async (req, res) => {
     try {
@@ -64,7 +67,7 @@ router.get(
 );
 
 // PUT /api/safety-reports/:id/status
-router.put('/:id/status', authenticate, authorize('safety', 'director'), async (req, res) => {
+router.put('/:id/status', generalLimiter, authenticate, authorize('safety', 'director'), async (req, res) => {
   try {
     const report = await SafetyReport.findByIdAndUpdate(
       req.params.id,
