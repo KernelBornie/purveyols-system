@@ -9,8 +9,8 @@ const router = express.Router();
 // POST /api/logbooks
 router.post(
   '/',
-  authenticate,
   generalLimiter,
+  authenticate,
   authorize('driver'),
   [
     body('vehicleNumber').trim().notEmpty().withMessage('Vehicle number is required'),
@@ -53,8 +53,8 @@ router.post(
 // GET /api/logbooks
 router.get(
   '/',
-  authenticate,
   generalLimiter,
+  authenticate,
   authorize('driver', 'director', 'accountant'),
   async (req, res) => {
     try {

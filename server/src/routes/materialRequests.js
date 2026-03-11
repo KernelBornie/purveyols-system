@@ -9,8 +9,8 @@ const router = express.Router();
 // POST /api/material-requests
 router.post(
   '/',
-  authenticate,
   generalLimiter,
+  authenticate,
   authorize('engineer', 'foreman', 'procurement'),
   [
     body('itemName').trim().notEmpty().withMessage('Item name is required'),
@@ -45,8 +45,8 @@ router.post(
 // GET /api/material-requests
 router.get(
   '/',
-  authenticate,
   generalLimiter,
+  authenticate,
   authorize('engineer', 'foreman', 'procurement', 'accountant', 'director'),
   async (req, res) => {
     try {

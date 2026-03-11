@@ -9,8 +9,8 @@ const router = express.Router();
 // POST /api/funding-requests
 router.post(
   '/',
-  authenticate,
   generalLimiter,
+  authenticate,
   authorize('engineer', 'foreman', 'accountant'),
   [
     body('title').trim().notEmpty().withMessage('Title is required'),

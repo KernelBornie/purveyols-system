@@ -9,8 +9,8 @@ const router = express.Router();
 // POST /api/safety-reports
 router.post(
   '/',
-  authenticate,
   generalLimiter,
+  authenticate,
   authorize('safety', 'foreman', 'engineer', 'director'),
   [
     body('site').trim().notEmpty().withMessage('Site is required'),
@@ -44,8 +44,8 @@ router.post(
 // GET /api/safety-reports
 router.get(
   '/',
-  authenticate,
   generalLimiter,
+  authenticate,
   authorize('safety', 'director', 'engineer'),
   async (req, res) => {
     try {
