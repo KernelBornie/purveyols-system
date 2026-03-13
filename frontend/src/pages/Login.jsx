@@ -1,70 +1,112 @@
-import { useState, useContext } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { AuthContext } from '../context/AuthContext';
+import { useState, useContext } from "react";
+import { useNavigate } from "react-router-dom";
+import { AuthContext } from "../context/AuthContext";
+import { login } from "../api/auth";
 
 const Login = () => {
-  const { login } = useContext(AuthContext);
+
   const navigate = useNavigate();
-  const [form, setForm] = useState({ email: '', password: '' });
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
+  const { setUser } = useContext(AuthContext);
 
-  const handleChange = e => setForm({ ...form, [e.target.name]: e.target.value });
+  const [email,setEmail] = useState("");
+  const [password,setPassword] = useState("");
+  const [loading,setLoading] = useState(false);
+  const [error,setError] = useState("");
 
-  const handleSubmit = async e => {
+  const handleSubmit = async (e) => {
+
     e.preventDefault();
-    setError('');
+
     setLoading(true);
+    setError("");
+
     try {
-      await login(form.email, form.password);
-      navigate('/dashboard');
-    } catch (err) {
-      setError(err.response?.data?.message || 'Login failed. Please check your credentials.');
-    } finally {
-      setLoading(false);
+
+      const data = await login(email,password);
+
+      console.log("LOGIN SUCCESS:", data);
+
+      localStorage.setItem("token",data.token);
+
+      setUser(data.user);
+
+      navigate("/dashboard");
+
+    } catch(err) {
+
+      console.error(err);
+
+      setError(err.message);
+
     }
+
+    setLoading(false);
+
   };
 
   return (
+
     <div className="login-wrapper">
+
       <div className="login-card">
+
         <h2>PURVEYOLS CMS</h2>
-        <p className="subtitle">Construction Management System – Sign in to your account</p>
-        {error && <div className="alert alert-error">{error}</div>}
+
+        <p className="subtitle">
+          Construction Management System – Sign in to your account
+        </p>
+
+        {error && (
+          <div className="alert alert-error">
+            {error}
+          </div>
+        )}
+
         <form onSubmit={handleSubmit}>
+
           <div className="form-group">
-            <label htmlFor="email">Email Address</label>
+
+            <label>Email Address</label>
+
             <input
-              id="email"
+              className="form-control"
               type="email"
-              name="email"
-              className="form-control"
-              value={form.email}
-              onChange={handleChange}
-              placeholder="you@example.com"
+              value={email}
+              onChange={(e)=>setEmail(e.target.value)}
               required
             />
+
           </div>
+
           <div className="form-group">
-            <label htmlFor="password">Password</label>
+
+            <label>Password</label>
+
             <input
-              id="password"
-              type="password"
-              name="password"
               className="form-control"
-              value={form.password}
-              onChange={handleChange}
-              placeholder="••••••••"
+              type="password"
+              value={password}
+              onChange={(e)=>setPassword(e.target.value)}
               required
             />
+
           </div>
-          <button type="submit" className="btn btn-primary" style={{ width: '100%' }} disabled={loading}>
-            {loading ? 'Signing in...' : 'Sign In'}
+
+          <button
+            className="btn btn-primary"
+            disabled={loading}
+          >
+            {loading ? "Signing in..." : "Sign In"}
           </button>
+
         </form>
+
       </div>
+
     </div>
+
   );
+
 };
 
 export default Login;

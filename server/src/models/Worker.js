@@ -1,20 +1,20 @@
-const mongoose = require('mongoose');
+const mongoose = require("mongoose");
 
-const workerSchema = new mongoose.Schema(
-  {
-    name: { type: String, required: true, trim: true },
-    nrc: { type: String, required: true, unique: true, trim: true },
-    phone: { type: String, required: true, trim: true },
-    dailyRate: { type: Number, required: true, min: 0 },
-    site: { type: String, required: true, trim: true },
-    enrolledBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-    role: { type: String, default: 'worker', trim: true },
-    isActive: { type: Boolean, default: true },
-  },
-  { timestamps: true }
-);
+const WorkerSchema = new mongoose.Schema({
 
-workerSchema.index({ nrc: 1 });
-workerSchema.index({ site: 1 });
+name:String,
 
-module.exports = mongoose.model('Worker', workerSchema);
+role:String,
+
+phone:String,
+
+project:{
+type:mongoose.Schema.Types.ObjectId,
+ref:"Project"
+}
+
+},{timestamps:true});
+
+module.exports =
+mongoose.models.Worker ||
+mongoose.model("Worker",WorkerSchema);

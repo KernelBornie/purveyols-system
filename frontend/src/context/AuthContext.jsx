@@ -1,53 +1,44 @@
-import { createContext, useState, useEffect } from 'react';
-import API from '../api/axios';
+import { createContext,useState,useEffect } from "react";
 
-export const AuthContext = createContext(null);
+export const AuthContext = createContext();
 
-export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
-  const [token, setToken] = useState(null);
-  const [loading, setLoading] = useState(true);
+export const AuthProvider = ({children}) => {
 
-  useEffect(() => {
-    const storedToken = localStorage.getItem('token');
-    const storedUser = localStorage.getItem('user');
-    if (storedToken && storedUser) {
-      setToken(storedToken);
-      setUser(JSON.parse(storedUser));
+  const [user,setUser] = useState(null);
+
+  useEffect(()=>{
+
+    const token = localStorage.getItem("token");
+
+    if(token){
+
+      fetch("https://purveyols-api.onrender.com/api/auth/me",{
+
+        headers:{
+          Authorization:`Bearer ${token}`
+        }
+
+      })
+      .then(res=>res.json())
+      .then(data=>{
+        if(data.user){
+          setUser(data.user);
+        }
+      })
+      .catch(()=>{});
+
     }
-    setLoading(false);
-  }, []);
 
-  const login = async (email, password) => {
-    const res = await API.post('/auth/login', { email, password });
-    const { token: newToken, user: newUser } = res.data;
-    localStorage.setItem('token', newToken);
-    localStorage.setItem('user', JSON.stringify(newUser));
-    setToken(newToken);
-    setUser(newUser);
-    return newUser;
-  };
+  },[]);
 
-  const register = async (name, email, password, role) => {
-    const res = await API.post('/auth/register', { name, email, password, role });
-    const { token: newToken, user: newUser } = res.data;
-    localStorage.setItem('token', newToken);
-    localStorage.setItem('user', JSON.stringify(newUser));
-    setToken(newToken);
-    setUser(newUser);
-    return newUser;
-  };
+  return(
 
-  const logout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    setToken(null);
-    setUser(null);
-  };
+    <AuthContext.Provider value={{user,setUser}}>
 
-  return (
-    <AuthContext.Provider value={{ user, token, loading, login, register, logout }}>
       {children}
+
     </AuthContext.Provider>
+
   );
+
 };
