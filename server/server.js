@@ -6,6 +6,13 @@ require("dotenv").config();
 
 const authRoutes = require("./src/routes/auth");
 const projectRoutes = require("./src/routes/projects");
+const workerRoutes = require("./src/routes/workers");
+const fundingRequestRoutes = require("./src/routes/fundingRequests");
+const materialRequestRoutes = require("./src/routes/materialRequests");
+const paymentRoutes = require("./src/routes/payments");
+const logbookRoutes = require("./src/routes/logbooks");
+const safetyReportRoutes = require("./src/routes/safetyReports");
+const reportRoutes = require("./src/routes/reports");
 
 const app = express();
 
@@ -21,6 +28,13 @@ app.get("/", (req, res) => {
 /* API routes */
 app.use("/api/auth", authRoutes);
 app.use("/api/projects", projectRoutes);
+app.use("/api/workers", workerRoutes);
+app.use("/api/funding-requests", fundingRequestRoutes);
+app.use("/api/material-requests", materialRequestRoutes);
+app.use("/api/payments", paymentRoutes);
+app.use("/api/logbooks", logbookRoutes);
+app.use("/api/safety-reports", safetyReportRoutes);
+app.use("/api/reports", reportRoutes);
 
 /* MongoDB connection */
 mongoose

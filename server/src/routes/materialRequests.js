@@ -11,7 +11,7 @@ router.post(
   '/',
   generalLimiter,
   authenticate,
-  authorize('engineer', 'foreman', 'procurement'),
+  authorize('engineer', 'foreman', 'procurement', 'driver'),
   [
     body('itemName').trim().notEmpty().withMessage('Item name is required'),
     body('quantity').isInt({ min: 1 }).withMessage('Quantity must be at least 1'),
@@ -47,12 +47,12 @@ router.get(
   '/',
   generalLimiter,
   authenticate,
-  authorize('engineer', 'foreman', 'procurement', 'accountant', 'director'),
+  authorize('engineer', 'foreman', 'procurement', 'accountant', 'director', 'driver'),
   async (req, res) => {
     try {
       const { status, site } = req.query;
       const filter = {};
-      if (req.user.role === 'engineer' || req.user.role === 'foreman') {
+      if (['engineer', 'foreman', 'driver'].includes(req.user.role)) {
         filter.requestedBy = req.user._id;
       }
       if (status) filter.status = status;

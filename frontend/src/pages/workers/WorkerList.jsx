@@ -8,11 +8,11 @@ const WorkerList = () => {
   const [workers, setWorkers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [statusFilter, setStatusFilter] = useState('');
+  const [searchNrc, setSearchNrc] = useState('');
 
   useEffect(() => {
     API.get('/workers')
-      .then(r => setWorkers(r.data))
+      .then(r => setWorkers(r.data.workers || []))
       .catch(err => setError(err.response?.data?.message || 'Failed to load workers'))
       .finally(() => setLoading(false));
   }, []);
@@ -21,48 +21,57 @@ const WorkerList = () => {
     if (!window.confirm('Deactivate this worker?')) return;
     try {
       await API.delete(`/workers/${id}`);
-      setWorkers(workers.map(w => w._id === id ? { ...w, status: 'inactive' } : w));
+      setWorkers(workers.map(w => w._id === id ? { ...w, isActive: false } : w));
     } catch {
       alert('Failed to deactivate worker');
     }
   };
 
-  const filtered = statusFilter ? workers.filter(w => w.status === statusFilter) : workers;
+  const filtered = searchNrc
+    ? workers.filter((w) =>
+        w.nrc?.toLowerCase().includes(searchNrc.toLowerCase()) ||
+        w.name?.toLowerCase().includes(searchNrc.toLowerCase())
+      )
+    : workers;
 
   return (
     <div>
       <div className="page-header">
-        <h1>Workers</h1>
+        <h1>👷 General Workers</h1>
         <Link to="/workers/new" className="btn btn-primary">+ Enroll Worker</Link>
       </div>
 
       {error && <div className="alert alert-error">{error}</div>}
 
       <div className="card">
-        <div className="filter-bar">
-          <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
-            <option value="">All Statuses</option>
-            <option value="active">Active</option>
-            <option value="inactive">Inactive</option>
-          </select>
+        <div style={{ marginBottom: '12px' }}>
+          <input
+            className="form-control"
+            placeholder="Search by name or NRC..."
+            value={searchNrc}
+            onChange={e => setSearchNrc(e.target.value)}
+            style={{ maxWidth: '300px' }}
+          />
         </div>
 
         {loading ? (
           <div className="loading">Loading workers...</div>
         ) : filtered.length === 0 ? (
-          <div className="empty-state">No workers found.</div>
+          <div className="empty-state">No workers found. <Link to="/workers/new">Enroll a worker</Link></div>
         ) : (
           <div className="table-wrapper">
             <table className="table">
               <thead>
                 <tr>
-                  <th>Name</th>
-                  <th>National ID</th>
-                  <th>Role</th>
+                  <th>Full Name</th>
+                  <th>NRC</th>
                   <th>Phone</th>
-                  <th>Project</th>
+                  <th>Daily Rate (ZMW)</th>
+                  <th>Site</th>
+                  <th>Network</th>
+                  <th>Enrolled By</th>
+                  <th>Date Enrolled</th>
                   <th>Status</th>
-                  <th>Enrolled At</th>
                   <th>Actions</th>
                 </tr>
               </thead>
@@ -70,18 +79,21 @@ const WorkerList = () => {
                 {filtered.map(worker => (
                   <tr key={worker._id}>
                     <td>{worker.name}</td>
-                    <td>{worker.nationalId}</td>
-                    <td>{worker.role}</td>
-                    <td>{worker.phone || '—'}</td>
-                    <td>{worker.project?.name || '—'}</td>
+                    <td>{worker.nrc}</td>
+                    <td>{worker.phone}</td>
+                    <td>K{worker.dailyRate}</td>
+                    <td>{worker.site}</td>
+                    <td style={{ textTransform: 'capitalize' }}>{worker.mobileNetwork}</td>
+                    <td>{worker.enrolledBy?.name} ({worker.enrolledBy?.role})</td>
+                    <td>{worker.createdAt ? new Date(worker.createdAt).toLocaleDateString() : '—'}</td>
                     <td>
-                      <span className={`badge badge-${worker.status}`}>{worker.status}</span>
+                      <span className={`badge badge-${worker.isActive ? 'active' : 'inactive'}`}>
+                        {worker.isActive ? 'Active' : 'Inactive'}
+                      </span>
                     </td>
-                    <td>{new Date(worker.enrolledAt).toLocaleDateString()}</td>
                     <td>
                       <div className="actions">
-                        <Link to={`/workers/${worker._id}/edit`} className="btn btn-secondary btn-sm">Edit</Link>
-                        {['director', 'engineer'].includes(user?.role) && worker.status === 'active' && (
+                        {['director', 'engineer'].includes(user?.role) && worker.isActive && (
                           <button
                             className="btn btn-danger btn-sm"
                             onClick={() => handleDeactivate(worker._id)}
@@ -97,6 +109,10 @@ const WorkerList = () => {
             </table>
           </div>
         )}
+
+        <div style={{ marginTop: '12px', color: '#666', fontSize: '0.9rem' }}>
+          Total: {filtered.length} worker{filtered.length !== 1 ? 's' : ''}
+        </div>
       </div>
     </div>
   );

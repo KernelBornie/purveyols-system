@@ -24,7 +24,7 @@ router.post(
     if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
 
     try {
-      const { name, nrc, phone, dailyRate, site, role } = req.body;
+      const { name, nrc, phone, dailyRate, site, mobileNetwork } = req.body;
       const existing = await Worker.findOne({ nrc });
       if (existing) return res.status(400).json({ message: 'Worker with this NRC already exists' });
 
@@ -34,7 +34,7 @@ router.post(
         phone,
         dailyRate,
         site,
-        role,
+        mobileNetwork: mobileNetwork || 'airtel',
         enrolledBy: req.user._id,
       });
       await worker.populate('enrolledBy', 'name email role');
@@ -45,12 +45,12 @@ router.post(
   }
 );
 
-// GET /api/workers - list workers (accountant, director, engineer, foreman)
+// GET /api/workers - list workers
 router.get(
   '/',
   generalLimiter,
   authenticate,
-  authorize('accountant', 'director', 'engineer', 'foreman'),
+  authorize('accountant', 'director', 'engineer', 'foreman', 'procurement'),
   async (req, res) => {
     try {
       const { site, search } = req.query;
@@ -121,14 +121,35 @@ router.put(
   authorize('foreman', 'engineer', 'accountant', 'director'),
   async (req, res) => {
     try {
-      const { name, phone, dailyRate, site, role, isActive } = req.body;
+      const { name, phone, dailyRate, site, mobileNetwork, isActive } = req.body;
       const worker = await Worker.findByIdAndUpdate(
         req.params.id,
-        { name, phone, dailyRate, site, role, isActive },
+        { name, phone, dailyRate, site, mobileNetwork, isActive },
         { new: true, runValidators: true }
       ).populate('enrolledBy', 'name email role');
       if (!worker) return res.status(404).json({ message: 'Worker not found' });
       res.json({ worker });
+    } catch (err) {
+      res.status(500).json({ message: err.message });
+    }
+  }
+);
+
+// DELETE /api/workers/:id - deactivate worker
+router.delete(
+  '/:id',
+  generalLimiter,
+  authenticate,
+  authorize('engineer', 'accountant', 'director'),
+  async (req, res) => {
+    try {
+      const worker = await Worker.findByIdAndUpdate(
+        req.params.id,
+        { isActive: false },
+        { new: true }
+      );
+      if (!worker) return res.status(404).json({ message: 'Worker not found' });
+      res.json({ message: 'Worker deactivated', worker });
     } catch (err) {
       res.status(500).json({ message: err.message });
     }

@@ -1,39 +1,17 @@
-import { useState, useEffect } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useState, useContext } from 'react';
+import { useNavigate } from 'react-router-dom';
 import API from '../../api/axios';
+import { AuthContext } from '../../context/AuthContext';
 
 const WorkerForm = () => {
-  const { id } = useParams();
   const navigate = useNavigate();
-  const isEdit = Boolean(id);
+  const { user } = useContext(AuthContext);
 
   const [form, setForm] = useState({
-    name: '', nationalId: '', phone: '', role: 'worker', project: '', status: 'active'
+    name: '', nrc: '', phone: '', dailyRate: '', site: '', mobileNetwork: 'airtel'
   });
-  const [projects, setProjects] = useState([]);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [fetching, setFetching] = useState(isEdit);
-
-  useEffect(() => {
-    API.get('/projects').then(r => setProjects(r.data)).catch(() => {});
-    if (isEdit) {
-      API.get(`/workers/${id}`)
-        .then(r => {
-          const w = r.data;
-          setForm({
-            name: w.name || '',
-            nationalId: w.nationalId || '',
-            phone: w.phone || '',
-            role: w.role || 'worker',
-            project: w.project?._id || '',
-            status: w.status || 'active'
-          });
-        })
-        .catch(() => setError('Failed to load worker'))
-        .finally(() => setFetching(false));
-    }
-  }, [id, isEdit]);
 
   const handleChange = e => setForm({ ...form, [e.target.name]: e.target.value });
 
@@ -42,27 +20,20 @@ const WorkerForm = () => {
     setError('');
     setLoading(true);
     try {
-      const payload = { ...form };
-      if (!payload.project) delete payload.project;
-      if (isEdit) {
-        await API.put(`/workers/${id}`, payload);
-      } else {
-        await API.post('/workers', payload);
-      }
+      await API.post('/workers', { ...form, dailyRate: Number(form.dailyRate) });
       navigate('/workers');
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to save worker');
+      setError(err.response?.data?.message || err.response?.data?.errors?.[0]?.msg || 'Failed to enroll worker');
     } finally {
       setLoading(false);
     }
   };
 
-  if (fetching) return <div className="loading">Loading...</div>;
-
   return (
     <div>
       <div className="page-header">
-        <h1>{isEdit ? 'Edit Worker' : 'Enroll New Worker'}</h1>
+        <h1>👷 Enroll New General Worker</h1>
+        <span style={{ color: '#666' }}>Enrolling as: {user?.name} ({user?.role})</span>
       </div>
       <div className="card">
         {error && <div className="alert alert-error">{error}</div>}
@@ -70,48 +41,39 @@ const WorkerForm = () => {
           <div className="form-row">
             <div className="form-group">
               <label>Full Name *</label>
-              <input name="name" className="form-control" value={form.name} onChange={handleChange} required />
+              <input name="name" className="form-control" value={form.name} onChange={handleChange} required placeholder="e.g. John Banda" />
             </div>
             <div className="form-group">
-              <label>National ID *</label>
-              <input name="nationalId" className="form-control" value={form.nationalId} onChange={handleChange} required />
-            </div>
-          </div>
-          <div className="form-row">
-            <div className="form-group">
-              <label>Phone</label>
-              <input name="phone" className="form-control" value={form.phone} onChange={handleChange} />
-            </div>
-            <div className="form-group">
-              <label>Role</label>
-              <select name="role" className="form-control" value={form.role} onChange={handleChange}>
-                <option value="worker">Worker</option>
-                <option value="driver">Driver</option>
-                <option value="foreman">Foreman</option>
-                <option value="engineer">Engineer</option>
-                <option value="other">Other</option>
-              </select>
+              <label>NRC (National Registration Card) *</label>
+              <input name="nrc" className="form-control" value={form.nrc} onChange={handleChange} required placeholder="e.g. 123456/78/1" />
             </div>
           </div>
           <div className="form-row">
             <div className="form-group">
-              <label>Project</label>
-              <select name="project" className="form-control" value={form.project} onChange={handleChange}>
-                <option value="">— Select Project —</option>
-                {projects.map(p => <option key={p._id} value={p._id}>{p.name}</option>)}
-              </select>
+              <label>Phone Number *</label>
+              <input name="phone" className="form-control" value={form.phone} onChange={handleChange} required placeholder="e.g. 0971234567" />
             </div>
             <div className="form-group">
-              <label>Status</label>
-              <select name="status" className="form-control" value={form.status} onChange={handleChange}>
-                <option value="active">Active</option>
-                <option value="inactive">Inactive</option>
+              <label>Daily Rate (ZMW) *</label>
+              <input type="number" name="dailyRate" className="form-control" value={form.dailyRate} onChange={handleChange} required min="0" placeholder="e.g. 150" />
+            </div>
+          </div>
+          <div className="form-row">
+            <div className="form-group">
+              <label>Site Name *</label>
+              <input name="site" className="form-control" value={form.site} onChange={handleChange} required placeholder="e.g. Chipata Mall, UTH, ABSA" />
+            </div>
+            <div className="form-group">
+              <label>Mobile Money Network</label>
+              <select name="mobileNetwork" className="form-control" value={form.mobileNetwork} onChange={handleChange}>
+                <option value="airtel">Airtel Money</option>
+                <option value="mtn">MTN Money</option>
               </select>
             </div>
           </div>
           <div className="form-actions">
             <button type="submit" className="btn btn-primary" disabled={loading}>
-              {loading ? 'Saving...' : isEdit ? 'Update Worker' : 'Enroll Worker'}
+              {loading ? 'Enrolling...' : 'Enroll Worker'}
             </button>
             <button type="button" className="btn btn-secondary" onClick={() => navigate('/workers')}>
               Cancel

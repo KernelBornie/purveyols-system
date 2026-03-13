@@ -28,6 +28,7 @@ import ProcurementForm from "./pages/procurement/ProcurementForm";
 import PaymentList from "./pages/payments/PaymentList";
 import PaymentForm from "./pages/payments/PaymentForm";
 
+const ALL_ROLES = ["director", "accountant", "engineer", "foreman", "driver", "procurement", "safety", "admin"];
 
 const Layout = ({ children }) => (
   <div className="layout">
@@ -122,7 +123,7 @@ const AppRoutes = () => {
       <Route
         path="/workers"
         element={
-          <ProtectedRoute roles={["director", "engineer", "foreman"]}>
+          <ProtectedRoute roles={["director", "engineer", "foreman", "accountant"]}>
             <Layout>
               <WorkerList />
             </Layout>
@@ -158,7 +159,7 @@ const AppRoutes = () => {
       <Route
         path="/logbooks"
         element={
-          <ProtectedRoute roles={["director", "engineer", "foreman", "driver"]}>
+          <ProtectedRoute roles={["director", "accountant", "driver"]}>
             <Layout>
               <LogbookList />
             </Layout>
@@ -169,7 +170,7 @@ const AppRoutes = () => {
       <Route
         path="/logbooks/new"
         element={
-          <ProtectedRoute roles={["director", "engineer", "foreman", "driver"]}>
+          <ProtectedRoute roles={["driver"]}>
             <Layout>
               <LogbookForm />
             </Layout>
@@ -183,7 +184,7 @@ const AppRoutes = () => {
       <Route
         path="/funding-requests"
         element={
-          <ProtectedRoute roles={["director", "engineer", "accountant"]}>
+          <ProtectedRoute roles={["director", "engineer", "accountant", "foreman", "driver", "procurement"]}>
             <Layout>
               <FundingRequestList />
             </Layout>
@@ -194,7 +195,7 @@ const AppRoutes = () => {
       <Route
         path="/funding-requests/new"
         element={
-          <ProtectedRoute roles={["director", "engineer", "accountant"]}>
+          <ProtectedRoute roles={["director", "engineer", "accountant", "foreman", "driver", "procurement"]}>
             <Layout>
               <FundingRequestForm />
             </Layout>
@@ -203,12 +204,12 @@ const AppRoutes = () => {
       />
 
 
-      {/* PROCUREMENT */}
+      {/* PROCUREMENT / MATERIAL REQUESTS */}
 
       <Route
         path="/procurement"
         element={
-          <ProtectedRoute roles={["director", "procurement", "engineer"]}>
+          <ProtectedRoute roles={["director", "procurement", "engineer", "foreman", "driver", "safety"]}>
             <Layout>
               <ProcurementList />
             </Layout>
@@ -219,7 +220,18 @@ const AppRoutes = () => {
       <Route
         path="/procurement/new"
         element={
-          <ProtectedRoute roles={["director", "procurement", "engineer"]}>
+          <ProtectedRoute roles={["director", "procurement", "engineer", "foreman", "driver", "safety"]}>
+            <Layout>
+              <ProcurementForm />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/procurement/:id/edit"
+        element={
+          <ProtectedRoute roles={["director", "procurement"]}>
             <Layout>
               <ProcurementForm />
             </Layout>

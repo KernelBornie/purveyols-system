@@ -3,13 +3,15 @@ import { NavLink } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 
 const navItems = [
-  { to: '/dashboard', label: '🏠 Dashboard', roles: ['director', 'engineer', 'foreman', 'procurement', 'driver', 'accountant', 'worker'] },
+  { to: '/dashboard', label: '🏠 Dashboard', roles: ['director', 'engineer', 'foreman', 'procurement', 'driver', 'accountant', 'worker', 'safety', 'admin'] },
   { to: '/projects', label: '🏗️ Projects', roles: ['director', 'engineer', 'foreman'] },
-  { to: '/workers', label: '👷 Workers', roles: ['director', 'engineer', 'foreman'] },
-  { to: '/logbooks', label: '📋 Logbooks', roles: ['director', 'engineer', 'foreman', 'driver'] },
-  { to: '/funding-requests', label: '💰 Funding Requests', roles: ['director', 'engineer', 'accountant'] },
-  { to: '/procurement', label: '🛒 Procurement', roles: ['director', 'procurement', 'engineer'] },
+  { to: '/workers', label: '👷 Workers', roles: ['director', 'engineer', 'foreman', 'accountant'] },
+  { to: '/logbooks', label: '📋 Logbooks', roles: ['director', 'accountant', 'driver'] },
+  { to: '/funding-requests', label: '💰 Funding Requests', roles: ['director', 'engineer', 'accountant', 'foreman', 'driver', 'procurement'] },
+  { to: '/procurement', label: '🛒 Materials / Procurement', roles: ['director', 'procurement', 'engineer', 'foreman', 'driver', 'safety'] },
   { to: '/payments', label: '💳 Payments', roles: ['director', 'accountant'] },
+  { to: '/safety', label: '⚠️ Safety Reports', roles: ['director', 'safety', 'engineer'] },
+  { to: '/reports', label: '📊 Reports', roles: ['director', 'accountant', 'engineer'] },
 ];
 
 const Sidebar = () => {
