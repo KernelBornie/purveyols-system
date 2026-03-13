@@ -26,7 +26,16 @@ const Login = () => {
 
       console.log("LOGIN SUCCESS:", data);
 
-      localStorage.setItem("token",data.token);
+      // Store only essential user fields to minimize local exposure
+      const essentialUser = {
+        _id: data.user._id,
+        name: data.user.name,
+        email: data.user.email,
+        role: data.user.role,
+      };
+
+      localStorage.setItem("token", data.token);
+      localStorage.setItem("user", JSON.stringify(essentialUser));
 
       setUser(data.user);
 

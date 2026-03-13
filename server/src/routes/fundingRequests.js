@@ -11,7 +11,7 @@ router.post(
   '/',
   generalLimiter,
   authenticate,
-  authorize('engineer', 'foreman', 'accountant'),
+  authorize('engineer', 'foreman', 'accountant', 'driver', 'procurement'),
   [
     body('title').trim().notEmpty().withMessage('Title is required'),
     body('description').trim().notEmpty().withMessage('Description is required'),
@@ -46,15 +46,16 @@ router.get('/', generalLimiter, authenticate, async (req, res) => {
     const { status, site } = req.query;
     const filter = {};
 
-    // Engineers & foremen see their own requests; accountant sees engineer requests + their own;
+    // Engineers, foremen, drivers & procurement see their own requests;
+    // accountant sees engineer/foreman/driver/procurement requests + their own;
     // director sees all
-    if (req.user.role === 'engineer' || req.user.role === 'foreman') {
+    if (['engineer', 'foreman', 'driver', 'procurement'].includes(req.user.role)) {
       filter.requestedBy = req.user._id;
     } else if (req.user.role === 'accountant') {
-      // accountant sees engineer/foreman requests and their own
+      // accountant sees all non-director requests and their own
       filter.$or = [
         { requestedBy: req.user._id },
-        { requestedByRole: { $in: ['engineer', 'foreman'] } },
+        { requestedByRole: { $in: ['engineer', 'foreman', 'driver', 'procurement'] } },
       ];
     }
     // director sees all
@@ -88,12 +89,12 @@ router.put(
         return res.status(400).json({ message: 'Request is not in pending status' });
       }
 
-      // Accountant can approve engineer/foreman requests; director can approve accountant requests
+      // Accountant can approve engineer/foreman/driver/procurement requests; director can approve accountant requests
       if (
         req.user.role === 'accountant' &&
-        !['engineer', 'foreman'].includes(request.requestedByRole)
+        !['engineer', 'foreman', 'driver', 'procurement'].includes(request.requestedByRole)
       ) {
-        return res.status(403).json({ message: 'Accountant can only approve engineer/foreman requests' });
+        return res.status(403).json({ message: 'Accountant can only approve engineer/foreman/driver/procurement requests' });
       }
 
       if (req.user.role === 'director' && request.requestedByRole !== 'accountant') {

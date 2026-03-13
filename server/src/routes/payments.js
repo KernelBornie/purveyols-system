@@ -76,7 +76,74 @@ router.post(
   }
 );
 
-// GET /api/payments - list payments
+// POST /api/payments/bulk - pay all active workers for given days
+router.post(
+  '/bulk',
+  generalLimiter,
+  authenticate,
+  authorize('accountant', 'director'),
+  [
+    body('days').isInt({ min: 1 }).withMessage('Days must be a positive integer'),
+    body('mobileNetwork')
+      .isIn(['airtel', 'mtn'])
+      .withMessage('Mobile network must be airtel or mtn'),
+  ],
+  async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
+
+    try {
+      const { days, mobileNetwork, notes } = req.body;
+      const workers = await Worker.find({ isActive: true });
+
+      if (workers.length === 0) {
+        return res.status(400).json({ message: 'No active workers found' });
+      }
+
+      const results = [];
+
+      for (const worker of workers) {
+        const amount = worker.dailyRate * days;
+
+        const payment = await Payment.create({
+          worker: worker._id,
+          amount,
+          days,
+          mobileNetwork,
+          phoneNumber: worker.phone,
+          status: 'processing',
+          processedBy: req.user._id,
+          site: worker.site,
+          notes,
+        });
+
+        const result = await simulateMobileMoney(mobileNetwork, worker.phone, amount);
+        payment.status = result.success ? 'completed' : 'failed';
+        payment.transactionRef = result.transactionRef;
+        await payment.save();
+
+        await payment.populate([
+          { path: 'worker', select: 'name nrc phone site' },
+          { path: 'processedBy', select: 'name email role' },
+        ]);
+
+        results.push({ payment, success: result.success });
+      }
+
+      const successful = results.filter((r) => r.success).length;
+      const failed = results.length - successful;
+
+      res.status(201).json({
+        message: `Bulk payment processed: ${successful} successful, ${failed} failed`,
+        results,
+        summary: { total: results.length, successful, failed },
+      });
+    } catch (err) {
+      res.status(500).json({ message: err.message });
+    }
+  }
+);
+
 router.get('/', generalLimiter, authenticate, authorize('accountant', 'director'), async (req, res) => {
   try {
     const { workerId, status, startDate, endDate, site } = req.query;

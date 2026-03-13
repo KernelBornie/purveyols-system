@@ -11,7 +11,7 @@ const FundingRequestList = () => {
 
   useEffect(() => {
     API.get('/funding-requests')
-      .then(r => setRequests(r.data))
+      .then(r => setRequests(r.data.requests || []))
       .catch(() => setError('Failed to load funding requests'))
       .finally(() => setLoading(false));
   }, []);
@@ -19,7 +19,7 @@ const FundingRequestList = () => {
   const handleApprove = async (id) => {
     try {
       const res = await API.put(`/funding-requests/${id}/approve`);
-      setRequests(requests.map(r => r._id === id ? res.data : r));
+      setRequests(requests.map(r => r._id === id ? (res.data.request || res.data) : r));
     } catch {
       alert('Failed to approve request');
     }
@@ -30,7 +30,7 @@ const FundingRequestList = () => {
     if (reason === null) return;
     try {
       const res = await API.put(`/funding-requests/${id}/reject`, { rejectionReason: reason });
-      setRequests(requests.map(r => r._id === id ? res.data : r));
+      setRequests(requests.map(r => r._id === id ? (res.data.request || res.data) : r));
     } catch {
       alert('Failed to reject request');
     }

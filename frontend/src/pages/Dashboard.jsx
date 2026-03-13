@@ -1,42 +1,39 @@
-import {
-BarChart,
-Bar,
-XAxis,
-YAxis,
-Tooltip,
-CartesianGrid
-} from "recharts";
+import { useContext } from 'react';
+import { AuthContext } from '../context/AuthContext';
+import DirectorDashboard from './dashboards/DirectorDashboard';
+import AccountantDashboard from './dashboards/AccountantDashboard';
+import EngineerDashboard from './dashboards/EngineerDashboard';
+import ForemanDashboard from './dashboards/ForemanDashboard';
+import DriverDashboard from './dashboards/DriverDashboard';
+import ProcurementDashboard from './dashboards/ProcurementDashboard';
+import SafetyDashboard from './dashboards/SafetyDashboard';
 
-const data=[
-{name:"Projects",value:12},
-{name:"Workers",value:50},
-{name:"Budget",value:8}
-];
+export default function Dashboard() {
+  const { user } = useContext(AuthContext);
 
-export default function Dashboard(){
-
-return(
-
-<div>
-
-<h1>Construction Dashboard</h1>
-
-<BarChart width={600} height={300} data={data}>
-
-<CartesianGrid strokeDasharray="3 3"/>
-
-<XAxis dataKey="name"/>
-
-<YAxis/>
-
-<Tooltip/>
-
-<Bar dataKey="value" fill="#1976d2"/>
-
-</BarChart>
-
-</div>
-
-);
-
+  switch (user?.role) {
+    case 'director':
+      return <DirectorDashboard />;
+    case 'accountant':
+      return <AccountantDashboard />;
+    case 'engineer':
+      return <EngineerDashboard />;
+    case 'foreman':
+      return <ForemanDashboard />;
+    case 'driver':
+      return <DriverDashboard />;
+    case 'procurement':
+      return <ProcurementDashboard />;
+    case 'safety':
+      return <SafetyDashboard />;
+    default:
+      return (
+        <div className="card">
+          <h2>Welcome to PURVEYOLS CMS</h2>
+          <p style={{ color: '#666', marginTop: '8px' }}>
+            Your role: <strong>{user?.role || 'unknown'}</strong>. Contact your administrator if you need access.
+          </p>
+        </div>
+      );
+  }
 }
