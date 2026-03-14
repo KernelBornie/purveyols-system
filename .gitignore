@@ -143,3 +143,4 @@ client/build/
 
 # Local env files
 server/.env
+backend/tests/.mongo-test-state.json

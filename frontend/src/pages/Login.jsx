@@ -75,9 +75,10 @@ const Login = () => {
 
           <div className="form-group">
 
-            <label>Email Address</label>
+            <label htmlFor="email">Email Address</label>
 
             <input
+              id="email"
               className="form-control"
               type="email"
               value={email}
@@ -89,9 +90,10 @@ const Login = () => {
 
           <div className="form-group">
 
-            <label>Password</label>
+            <label htmlFor="password">Password</label>
 
             <input
+              id="password"
               className="form-control"
               type="password"
               value={password}
