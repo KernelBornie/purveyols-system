@@ -7,6 +7,7 @@ import ForemanDashboard from './dashboards/ForemanDashboard';
 import DriverDashboard from './dashboards/DriverDashboard';
 import ProcurementDashboard from './dashboards/ProcurementDashboard';
 import SafetyDashboard from './dashboards/SafetyDashboard';
+import AdminDashboard from './dashboards/AdminDashboard';
 
 export default function Dashboard() {
   const { user } = useContext(AuthContext);
@@ -26,6 +27,8 @@ export default function Dashboard() {
       return <ProcurementDashboard />;
     case 'safety':
       return <SafetyDashboard />;
+    case 'admin':
+      return <AdminDashboard />;
     default:
       return (
         <div className="card">
