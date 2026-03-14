@@ -13,7 +13,7 @@ router.get('/', auth, async (req, res) => {
     const entries = await Logbook.find(filter)
       .populate('project', 'name')
       .populate('worker', 'name email')
-      .populate('workerEnrolled', 'name nationalId')
+      .populate('workerEnrolled', 'name nrc')
       .populate('createdBy', 'name email')
       .populate('verifiedBy', 'name email');
     res.json({ entries });
@@ -41,7 +41,7 @@ router.get('/:id', auth, async (req, res) => {
     const logbook = await Logbook.findById(req.params.id)
       .populate('project', 'name')
       .populate('worker', 'name email')
-      .populate('workerEnrolled', 'name nationalId')
+      .populate('workerEnrolled', 'name nrc')
       .populate('createdBy', 'name email')
       .populate('verifiedBy', 'name email');
     if (!logbook) return res.status(404).json({ message: 'Logbook entry not found' });
