@@ -4,7 +4,7 @@ A MERN stack web application for managing construction operations with role-base
 
 ## Features
 
-- **Role-Based Dashboards** for 7 roles:
+- **Role-Based Dashboards** for 8 roles:
   - Director – Overview, disbursements, all reports
   - Accountant – Payments, funding approvals, worker payroll
   - Engineer – Funding requests, material requests, worker enrollment
@@ -12,6 +12,7 @@ A MERN stack web application for managing construction operations with role-base
   - Driver – Logbook submissions
   - Procurement Officer – Material request management
   - Safety Officer – Incident reporting
+  - Admin – BOQ and subcontract management
 
 - **Worker Enrollment** with NRC, phone, daily rate, site, enrolledBy
 - **Worker Search** by NRC number
@@ -59,8 +60,10 @@ Copy `backend/.env.example` to `backend/.env` and set:
 ```
 PORT=5000
 MONGO_URI=mongodb://localhost:27017/purveyols
-JWT_SECRET=your_secure_secret_here
+JWT_SECRET=replace_with_a_long_random_secret_string
 ```
+
+> **Important:** Replace `JWT_SECRET` with a long, random string (e.g. run `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`).
 
 ## Demo Accounts
 
@@ -94,9 +97,11 @@ purveyols-system/
 │   │   ├── FundingRequest.js
 │   │   ├── Logbook.js
 │   │   ├── ProcurementOrder.js
+│   │   ├── MaterialRequest.js
 │   │   ├── Project.js
 │   │   ├── BOQ.js
-│   │   └── Subcontract.js
+│   │   ├── Subcontract.js
+│   │   └── SafetyReport.js
 │   ├── routes/                # Express routes
 │   │   ├── auth.js
 │   │   ├── users.js
@@ -106,8 +111,11 @@ purveyols-system/
 │   │   ├── fundingRequests.js
 │   │   ├── logbooks.js
 │   │   ├── procurement.js
+│   │   ├── materialRequests.js
 │   │   ├── boq.js
-│   │   └── subcontracts.js
+│   │   ├── subcontracts.js
+│   │   ├── safetyReports.js
+│   │   └── reports.js
 │   ├── server.js              # Express app entry point
 │   └── seed.js                # Demo data seeder
 │
@@ -125,7 +133,7 @@ purveyols-system/
     │   └── pages/             # Route pages
     │       ├── Login.jsx
     │       ├── Dashboard.jsx
-    │       ├── dashboards/    # Role-specific dashboards
+    │       ├── dashboards/    # Role-specific dashboards (Director, Accountant, Engineer, Foreman, Driver, Procurement, Safety, Admin)
     │       ├── workers/
     │       ├── projects/
     │       ├── funding/
@@ -133,7 +141,9 @@ purveyols-system/
     │       ├── procurement/
     │       ├── payments/
     │       ├── boq/
-    │       └── subcontracts/
+    │       ├── subcontracts/
+    │       ├── safety/
+    │       └── reports/
     └── vite.config.js         # Vite config (proxy → backend :5000)
 ```
 
@@ -157,4 +167,8 @@ purveyols-system/
 | PUT | /api/procurement/:id | Update procurement order |
 | GET/POST | /api/boq | List / Create BOQ item |
 | GET/POST | /api/subcontracts | List / Create subcontract |
+| GET/POST | /api/safety-reports | List / Submit safety report |
+| PUT | /api/safety-reports/:id/status | Update safety report status |
+| GET/POST | /api/material-requests | List / Submit material request |
+| GET | /api/reports/summary | Aggregated system summary |
 | GET | /api/users | List users (director only) |
