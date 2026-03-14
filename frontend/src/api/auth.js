@@ -1,8 +1,6 @@
-const API_URL = "http://localhost:5000/api";
-
 export async function login(email, password) {
 
-  const res = await fetch(`${API_URL}/auth/login`, {
+  const res = await fetch("/api/auth/login", {
     method: "POST",
     headers: {
       "Content-Type": "application/json"
