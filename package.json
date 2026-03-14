@@ -9,7 +9,10 @@
     "install:all": "cd backend && npm install && cd ../frontend && npm install",
     "build": "cd frontend && npm run build",
     "start": "cd backend && npm start",
-    "seed": "cd backend && node seed.js"
+    "seed": "cd backend && node seed.js",
+    "test": "npm run test:backend && npm run test:frontend",
+    "test:backend": "cd backend && npm test",
+    "test:frontend": "cd frontend && npm test"
   },
   "devDependencies": {
     "concurrently": "^9.2.1"
