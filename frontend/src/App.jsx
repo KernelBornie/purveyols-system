@@ -28,6 +28,12 @@ import ProcurementForm from "./pages/procurement/ProcurementForm";
 import PaymentList from "./pages/payments/PaymentList";
 import PaymentForm from "./pages/payments/PaymentForm";
 
+import BOQList from "./pages/boq/BOQList";
+import BOQForm from "./pages/boq/BOQForm";
+
+import SubcontractList from "./pages/subcontracts/SubcontractList";
+import SubcontractForm from "./pages/subcontracts/SubcontractForm";
+
 const ALL_ROLES = ["director", "accountant", "engineer", "foreman", "driver", "procurement", "safety", "admin"];
 
 const Layout = ({ children }) => (
@@ -259,6 +265,78 @@ const AppRoutes = () => {
           <ProtectedRoute roles={["accountant"]}>
             <Layout>
               <PaymentForm />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+
+
+      {/* BOQ */}
+
+      <Route
+        path="/boq"
+        element={
+          <ProtectedRoute roles={["director", "engineer", "admin"]}>
+            <Layout>
+              <BOQList />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/boq/new"
+        element={
+          <ProtectedRoute roles={["director", "engineer", "admin"]}>
+            <Layout>
+              <BOQForm />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/boq/:id/edit"
+        element={
+          <ProtectedRoute roles={["director", "engineer", "admin"]}>
+            <Layout>
+              <BOQForm />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+
+
+      {/* SUBCONTRACTS */}
+
+      <Route
+        path="/subcontracts"
+        element={
+          <ProtectedRoute roles={["director", "engineer", "admin"]}>
+            <Layout>
+              <SubcontractList />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/subcontracts/new"
+        element={
+          <ProtectedRoute roles={["director", "engineer", "admin"]}>
+            <Layout>
+              <SubcontractForm />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/subcontracts/:id/edit"
+        element={
+          <ProtectedRoute roles={["director", "engineer", "admin"]}>
+            <Layout>
+              <SubcontractForm />
             </Layout>
           </ProtectedRoute>
         }
