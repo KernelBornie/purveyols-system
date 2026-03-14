@@ -1,23 +1,26 @@
 import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 
 const ROLES = ['director', 'accountant', 'engineer', 'foreman', 'driver', 'procurement', 'safety'];
 
 const Register = () => {
   const { register } = useAuth();
-  const navigate = useNavigate();
   const [form, setForm] = useState({ name: '', email: '', password: '', role: '', phone: '' });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
+  const [success, setSuccess] = useState('');
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    setSuccess('');
     setLoading(true);
     try {
-      await register(form);
-      navigate('/dashboard');
+      const newUser = await register(form);
+      setSuccess(`User ${newUser.name} (${newUser.role}) created successfully.`);
+      setForm({ name: '', email: '', password: '', role: '', phone: '' });
     } catch (err) {
       const msg = err.response?.data?.message || err.response?.data?.errors?.[0]?.msg || 'Registration failed.';
       setError(msg);
@@ -40,6 +43,11 @@ const Register = () => {
         {error && (
           <div style={{ background: '#ffebee', color: '#c62828', padding: '10px 14px', borderRadius: '6px', marginBottom: '1rem', fontSize: '0.9rem' }}>
             {error}
+          </div>
+        )}
+        {success && (
+          <div style={{ background: '#e8f5e9', color: '#2e7d32', padding: '10px 14px', borderRadius: '6px', marginBottom: '1rem', fontSize: '0.9rem' }}>
+            {success}
           </div>
         )}
 
@@ -88,7 +96,7 @@ const Register = () => {
         </form>
 
         <p style={{ textAlign: 'center', marginTop: '1.5rem', fontSize: '0.85rem', color: '#666' }}>
-          Already have an account? <Link to="/login" style={{ color: '#1a237e', fontWeight: '600' }}>Sign in</Link>
+          <Link to="/dashboard" style={{ color: '#1a237e', fontWeight: '600' }}>← Back to Dashboard</Link>
         </p>
       </div>
     </div>

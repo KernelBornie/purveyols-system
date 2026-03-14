@@ -9,7 +9,7 @@ const SITES = ['Site A', 'Site B', 'Site C', 'Site D', 'Main Office'];
 const WorkerEnrollment = () => {
   const navigate = useNavigate();
   const [form, setForm] = useState({
-    name: '', nrc: '', phone: '', dailyRate: '', site: '', role: '',
+    name: '', nrc: '', phone: '', dailyRate: '', site: '', jobRole: '',
   });
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -40,12 +40,12 @@ const WorkerEnrollment = () => {
         // Save for later sync
         await saveForSync({ type: 'CREATE_WORKER', data: form });
         setSuccess('Worker saved offline. Will sync when online.');
-        setForm({ name: '', nrc: '', phone: '', dailyRate: '', site: '', role: '' });
+        setForm({ name: '', nrc: '', phone: '', dailyRate: '', site: '', jobRole: '' });
       } else {
         const res = await api.post('/workers', { ...form, dailyRate: Number(form.dailyRate) });
         await saveToStore(STORES.workers, res.data.worker);
         setSuccess(`Worker ${res.data.worker.name} enrolled successfully!`);
-        setForm({ name: '', nrc: '', phone: '', dailyRate: '', site: '', role: '' });
+        setForm({ name: '', nrc: '', phone: '', dailyRate: '', site: '', jobRole: '' });
         setTimeout(() => navigate('/workers'), 1500);
       }
     } catch (err) {
@@ -87,7 +87,7 @@ const WorkerEnrollment = () => {
             </Select>
           </FormField>
           <FormField label="Job Role">
-            <Input name="role" value={form.role} onChange={handleChange} placeholder="e.g. Mason, Carpenter, Helper" />
+            <Input name="jobRole" value={form.jobRole} onChange={handleChange} placeholder="e.g. Mason, Carpenter, Helper" />
           </FormField>
           <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
             <Button type="submit" disabled={loading} variant="primary">

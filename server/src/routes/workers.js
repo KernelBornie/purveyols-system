@@ -24,7 +24,7 @@ router.post(
     if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
 
     try {
-      const { name, nrc, phone, dailyRate, site, mobileNetwork } = req.body;
+      const { name, nrc, phone, dailyRate, site, mobileNetwork, jobRole } = req.body;
       const existing = await Worker.findOne({ nrc });
       if (existing) return res.status(400).json({ message: 'Worker with this NRC already exists' });
 
@@ -34,6 +34,7 @@ router.post(
         phone,
         dailyRate,
         site,
+        jobRole: jobRole || '',
         mobileNetwork: mobileNetwork || 'airtel',
         enrolledBy: req.user._id,
       });
@@ -121,10 +122,10 @@ router.put(
   authorize('foreman', 'engineer', 'accountant', 'director'),
   async (req, res) => {
     try {
-      const { name, phone, dailyRate, site, mobileNetwork, isActive } = req.body;
+      const { name, phone, dailyRate, site, mobileNetwork, jobRole, isActive } = req.body;
       const worker = await Worker.findByIdAndUpdate(
         req.params.id,
-        { name, phone, dailyRate, site, mobileNetwork, isActive },
+        { name, phone, dailyRate, site, mobileNetwork, jobRole, isActive },
         { new: true, runValidators: true }
       ).populate('enrolledBy', 'name email role');
       if (!worker) return res.status(404).json({ message: 'Worker not found' });

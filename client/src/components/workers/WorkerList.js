@@ -118,7 +118,7 @@ const WorkerList = () => {
                     <td style={{ padding: '10px 12px' }}>{w.phone}</td>
                     <td style={{ padding: '10px 12px' }}>K{w.dailyRate?.toLocaleString()}</td>
                     <td style={{ padding: '10px 12px' }}>{w.site}</td>
-                    <td style={{ padding: '10px 12px' }}>{w.role || '—'}</td>
+                    <td style={{ padding: '10px 12px' }}>{w.jobRole || '—'}</td>
                     <td style={{ padding: '10px 12px' }}>{w.enrolledBy?.name || '—'}</td>
                     <td style={{ padding: '10px 12px' }}>{new Date(w.createdAt).toLocaleDateString()}</td>
                   </tr>

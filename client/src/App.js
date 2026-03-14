@@ -43,7 +43,7 @@ function AppRoutes() {
   return (
     <Routes>
       <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
-      <Route path="/register" element={<PublicRoute><Register /></PublicRoute>} />
+      <Route path="/register" element={<ProtectedRoute><AppLayout><Register /></AppLayout></ProtectedRoute>} />
       <Route path="/dashboard" element={<ProtectedRoute><AppLayout><Dashboard /></AppLayout></ProtectedRoute>} />
       <Route path="/workers" element={<ProtectedRoute><AppLayout><WorkerList /></AppLayout></ProtectedRoute>} />
       <Route path="/workers/new" element={<ProtectedRoute><AppLayout><WorkerEnrollment /></AppLayout></ProtectedRoute>} />
