@@ -17,117 +17,124 @@ A MERN stack web application for managing construction operations with role-base
 - **Worker Search** by NRC number
 - **Daily Wage Payments** via mobile money simulation (Airtel / MTN)
 - **Funding Request Workflow** – Engineer/Foreman → Accountant → Director
-- **Material Requests** – Procurement management
+- **Material / Procurement Requests** – Procurement management
 - **Driver Logbooks** – Time in/out, distance, fuel usage
-- **Weekly & Monthly Reports** – Wages, workers, logistics
-- **Offline-First PWA** – Service worker + IndexedDB for offline functionality
+- **Bill of Quantities (BOQ)** – Track project cost items
+- **Subcontracts** – Manage subcontractor agreements
 - **Persistent Login** – JWT stored in localStorage
 
 ## Tech Stack
 
-- **Frontend**: React.js, React Router v7, Axios
-- **Backend**: Node.js, Express.js
+- **Frontend**: React 18, React Router v6, Axios, Vite, Recharts
+- **Backend**: Node.js, Express 4, express-rate-limit, express-validator
 - **Database**: MongoDB + Mongoose
 - **Authentication**: JWT (persistent sessions)
-- **Offline**: PWA Service Worker + IndexedDB
 
 ## Quick Start
 
 ### Prerequisites
 - Node.js v18+
-- MongoDB running locally
+- MongoDB running locally (default: `mongodb://localhost:27017/purveyols`)
 
 ### Installation
 
 ```bash
-# Install all dependencies
+# Install all dependencies (backend + frontend)
 npm run install:all
 
 # Seed demo users
 npm run seed
 
-# Start development (both server + client)
+# Start development (backend + frontend concurrently)
 npm run dev
 ```
 
 The app runs at:
 - Frontend: http://localhost:3000
-- Backend: http://localhost:5000
+- Backend API: http://localhost:5000
 
 ### Environment Variables
 
-Copy `server/.env.example` to `server/.env` and set:
+Copy `backend/.env.example` to `backend/.env` and set:
 ```
 PORT=5000
-MONGODB_URI=mongodb://localhost:27017/purveyols
+MONGO_URI=mongodb://localhost:27017/purveyols
 JWT_SECRET=your_secure_secret_here
-JWT_EXPIRES_IN=7d
-NODE_ENV=development
 ```
 
 ## Demo Accounts
 
-After running `npm run seed`, use these credentials (password: `password123`):
+After running `npm run seed`, use these credentials (password: `purveyols123`):
 
 | Role | Email |
 |------|-------|
-| Director | director@purveyols.com |
-| Accountant | accountant@purveyols.com |
-| Engineer | engineer@purveyols.com |
-| Foreman | foreman@purveyols.com |
-| Driver | driver@purveyols.com |
-| Procurement | procurement@purveyols.com |
-| Safety Officer | safety@purveyols.com |
+| Director | brian.director@purveyols.com |
+| Accountant | micheal.accountant@purveyols.com |
+| Engineer | rodney.engineer@purveyols.com |
+| Foreman | mobrey.foreman@purveyols.com |
+| Driver | boyd.driver@purveyols.com |
+| Procurement | gilbert.procurement@purveyols.com |
+| Safety Officer | royd.safety@purveyols.com |
+| Admin | admin@purveyols.com |
 
 ## Project Structure
 
 ```
 purveyols-system/
-├── server/                    # Node.js + Express backend
-│   ├── src/
-│   │   ├── models/            # Mongoose schemas
-│   │   │   ├── User.js
-│   │   │   ├── Worker.js
-│   │   │   ├── Payment.js
-│   │   │   ├── FundingRequest.js
-│   │   │   ├── MaterialRequest.js
-│   │   │   ├── DriverLogbook.js
-│   │   │   └── SafetyReport.js
-│   │   ├── routes/            # Express routes
-│   │   │   ├── auth.js
-│   │   │   ├── workers.js
-│   │   │   ├── payments.js
-│   │   │   ├── fundingRequests.js
-│   │   │   ├── materialRequests.js
-│   │   │   ├── logbooks.js
-│   │   │   ├── safetyReports.js
-│   │   │   └── reports.js
-│   │   └── middleware/
-│   │       └── auth.js        # JWT authentication middleware
+├── backend/                   # Node.js + Express API
+│   ├── config/
+│   │   └── db.js              # MongoDB connection
+│   ├── middleware/
+│   │   ├── auth.js            # JWT authentication middleware
+│   │   └── roleCheck.js       # Role-based access control
+│   ├── models/                # Mongoose schemas
+│   │   ├── User.js
+│   │   ├── Worker.js
+│   │   ├── Payment.js
+│   │   ├── FundingRequest.js
+│   │   ├── Logbook.js
+│   │   ├── ProcurementOrder.js
+│   │   ├── Project.js
+│   │   ├── BOQ.js
+│   │   └── Subcontract.js
+│   ├── routes/                # Express routes
+│   │   ├── auth.js
+│   │   ├── users.js
+│   │   ├── workers.js
+│   │   ├── projects.js
+│   │   ├── payments.js
+│   │   ├── fundingRequests.js
+│   │   ├── logbooks.js
+│   │   ├── procurement.js
+│   │   ├── boq.js
+│   │   └── subcontracts.js
 │   ├── server.js              # Express app entry point
 │   └── seed.js                # Demo data seeder
 │
-└── client/                    # React frontend
-    ├── public/
-    │   ├── manifest.json      # PWA manifest
-    │   └── service-worker.js  # Offline service worker
-    └── src/
-        ├── contexts/
-        │   └── AuthContext.js # Authentication state
-        ├── utils/
-        │   ├── api.js         # Axios instance with auth
-        │   └── indexedDB.js   # Offline storage utilities
-        └── components/
-            ├── auth/          # Login & Register
-            ├── dashboards/    # Role-specific dashboards
-            ├── workers/       # Worker enrollment & list
-            ├── payments/      # Mobile money payments
-            ├── funding/       # Funding request workflow
-            ├── materials/     # Material requests
-            ├── logbooks/      # Driver logbooks
-            ├── safety/        # Safety incident reports
-            ├── reports/       # Weekly/monthly reports
-            └── shared/        # Navbar, UI components
+└── frontend/                  # React + Vite frontend
+    ├── src/
+    │   ├── api/
+    │   │   ├── auth.js        # Login helper
+    │   │   └── axios.js       # Axios instance with JWT header
+    │   ├── context/
+    │   │   └── AuthContext.jsx # Authentication state
+    │   ├── components/
+    │   │   ├── Navbar.jsx
+    │   │   ├── Sidebar.jsx
+    │   │   └── ProtectedRoute.jsx
+    │   └── pages/             # Route pages
+    │       ├── Login.jsx
+    │       ├── Dashboard.jsx
+    │       ├── dashboards/    # Role-specific dashboards
+    │       ├── workers/
+    │       ├── projects/
+    │       ├── funding/
+    │       ├── logbooks/
+    │       ├── procurement/
+    │       ├── payments/
+    │       ├── boq/
+    │       └── subcontracts/
+    └── vite.config.js         # Vite config (proxy → backend :5000)
 ```
 
 ## API Endpoints
@@ -136,19 +143,18 @@ purveyols-system/
 |--------|----------|-------------|
 | POST | /api/auth/register | Register new user |
 | POST | /api/auth/login | Login |
-| GET | /api/auth/me | Get current user |
+| GET | /api/auth/me | Get current user (requires JWT) |
 | GET/POST | /api/workers | List / Enroll worker |
-| GET | /api/workers/search?nrc=... | Search by NRC |
+| GET/POST | /api/projects | List / Create project |
+| PUT | /api/projects/:id | Update project |
+| DELETE | /api/projects/:id | Delete project |
 | GET/POST | /api/payments | List / Process payment |
 | GET/POST | /api/funding-requests | List / Create request |
 | PUT | /api/funding-requests/:id/approve | Approve request |
 | PUT | /api/funding-requests/:id/reject | Reject request |
-| PUT | /api/funding-requests/:id/disburse | Disburse funds |
-| GET/POST | /api/material-requests | List / Create request |
-| PUT | /api/material-requests/:id/status | Update status |
 | GET/POST | /api/logbooks | List / Submit logbook |
-| GET/POST | /api/safety-reports | List / Report incident |
-| GET | /api/reports/summary | Dashboard summary |
-| GET | /api/reports/payments | Payment reports |
-| GET | /api/reports/workers | Worker reports |
-| GET | /api/reports/logbooks | Logbook reports |
+| GET/POST | /api/procurement | List / Create procurement order |
+| PUT | /api/procurement/:id | Update procurement order |
+| GET/POST | /api/boq | List / Create BOQ item |
+| GET/POST | /api/subcontracts | List / Create subcontract |
+| GET | /api/users | List users (director only) |

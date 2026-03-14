@@ -3,13 +3,13 @@
   "version": "1.0.0",
   "description": "PURVEYOLS Construction Management System - MERN Stack",
   "scripts": {
-    "server": "cd server && npm run dev",
-    "client": "cd client && npm start",
+    "server": "cd backend && npm run dev",
+    "client": "cd frontend && npm run dev",
     "dev": "concurrently \"npm run server\" \"npm run client\"",
-    "install:all": "cd server && npm install && cd ../client && npm install",
-    "build": "cd client && npm run build",
-    "start": "cd server && npm start",
-    "seed": "cd server && node seed.js"
+    "install:all": "cd backend && npm install && cd ../frontend && npm install",
+    "build": "cd frontend && npm run build",
+    "start": "cd backend && npm start",
+    "seed": "cd backend && node seed.js"
   },
   "devDependencies": {
     "concurrently": "^9.2.1"
