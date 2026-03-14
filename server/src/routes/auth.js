@@ -18,7 +18,7 @@ function createToken(id) {
 }
 
 /* login */
-router.post("/login", async (req, res) => {
+router.post("/login", authLimiter, async (req, res) => {
 
   try {
 

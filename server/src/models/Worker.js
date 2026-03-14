@@ -7,6 +7,7 @@ const workerSchema = new mongoose.Schema(
     phone: { type: String, required: true, trim: true },
     dailyRate: { type: Number, required: true, min: 0 },
     site: { type: String, required: true, trim: true },
+    jobRole: { type: String, trim: true, default: '' },
     enrolledBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     isActive: { type: Boolean, default: true },
     mobileNetwork: { type: String, enum: ['airtel', 'mtn'], default: 'airtel' },

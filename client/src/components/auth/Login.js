@@ -71,13 +71,21 @@ const Login = () => {
         </form>
 
         <div style={{ marginTop: '1.5rem', textAlign: 'center', fontSize: '0.85rem', color: '#666' }}>
-          <p>Demo accounts (password: <strong>password123</strong>):</p>
+          <p>Demo accounts (password: <strong>purveyols123</strong>):</p>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px', marginTop: '0.5rem', textAlign: 'left' }}>
-            {['director', 'accountant', 'engineer', 'foreman', 'driver', 'procurement', 'safety'].map(role => (
+            {[
+              { role: 'director', email: 'brian.director@purveyols.com' },
+              { role: 'accountant', email: 'micheal.accountant@purveyols.com' },
+              { role: 'engineer', email: 'rodney.engineer@purveyols.com' },
+              { role: 'foreman', email: 'mobrey.foreman@purveyols.com' },
+              { role: 'driver', email: 'boyd.driver@purveyols.com' },
+              { role: 'procurement', email: 'gilbert.procurement@purveyols.com' },
+              { role: 'safety', email: 'royd.safety@purveyols.com' },
+            ].map(({ role, email }) => (
               <button
                 key={role}
                 type="button"
-                onClick={() => setForm({ email: `${role}@purveyols.com`, password: 'password123' })}
+                onClick={() => setForm({ email, password: 'purveyols123' })}
                 style={{ background: '#f5f5f5', border: '1px solid #ddd', padding: '4px 8px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.78rem', textTransform: 'capitalize' }}
               >
                 {role}
