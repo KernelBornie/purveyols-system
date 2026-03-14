@@ -17,8 +17,8 @@ router.get('/', auth, async (req, res) => {
   }
 });
 
-// POST /api/procurement – procurement/engineer/director
-router.post('/', auth, roleCheck('procurement', 'engineer', 'director'), async (req, res) => {
+// POST /api/procurement – procurement/engineer/director/foreman/driver/safety
+router.post('/', auth, roleCheck('procurement', 'engineer', 'director', 'foreman', 'driver', 'safety'), async (req, res) => {
   try {
     const order = new ProcurementOrder({ ...req.body, requestedBy: req.user._id });
     await order.save();

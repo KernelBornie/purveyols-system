@@ -4,13 +4,28 @@ const auth = require('../middleware/auth');
 const roleCheck = require('../middleware/roleCheck');
 const Worker = require('../models/Worker');
 
+// GET /api/workers/search?nrc=
+router.get('/search', auth, async (req, res) => {
+  try {
+    const { nrc } = req.query;
+    if (!nrc) return res.status(400).json({ message: 'NRC query parameter is required' });
+    const worker = await Worker.findOne({ nrc: new RegExp(`^${nrc.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') })
+      .populate('project', 'name')
+      .populate('enrolledBy', 'name email role');
+    if (!worker) return res.status(404).json({ message: 'Worker not found' });
+    res.json({ worker });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+});
+
 // GET /api/workers
 router.get('/', auth, async (req, res) => {
   try {
     const workers = await Worker.find()
       .populate('project', 'name')
-      .populate('enrolledBy', 'name email');
-    res.json(workers);
+      .populate('enrolledBy', 'name email role');
+    res.json({ workers });
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });
   }
@@ -22,7 +37,7 @@ router.post('/', auth, async (req, res) => {
     const worker = new Worker({ ...req.body, enrolledBy: req.user._id });
     await worker.save();
     await worker.populate('project', 'name');
-    await worker.populate('enrolledBy', 'name email');
+    await worker.populate('enrolledBy', 'name email role');
     res.status(201).json(worker);
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });
@@ -34,7 +49,7 @@ router.get('/:id', auth, async (req, res) => {
   try {
     const worker = await Worker.findById(req.params.id)
       .populate('project', 'name')
-      .populate('enrolledBy', 'name email');
+      .populate('enrolledBy', 'name email role');
     if (!worker) return res.status(404).json({ message: 'Worker not found' });
     res.json(worker);
   } catch (err) {
@@ -47,7 +62,7 @@ router.put('/:id', auth, async (req, res) => {
   try {
     const worker = await Worker.findByIdAndUpdate(req.params.id, req.body, { new: true })
       .populate('project', 'name')
-      .populate('enrolledBy', 'name email');
+      .populate('enrolledBy', 'name email role');
     if (!worker) return res.status(404).json({ message: 'Worker not found' });
     res.json(worker);
   } catch (err) {

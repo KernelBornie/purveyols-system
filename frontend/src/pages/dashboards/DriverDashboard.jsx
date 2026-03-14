@@ -71,7 +71,7 @@ const DriverDashboard = () => {
   const handleLogSubmit = async (e) => {
     e.preventDefault();
     try {
-      await API.post('/logbooks', { ...logForm, distanceKm: Number(logForm.distanceKm), fuelLitres: Number(logForm.fuelLitres) });
+      await API.post('/logbooks', { type: 'vehicle', ...logForm, distanceKm: Number(logForm.distanceKm), fuelLitres: Number(logForm.fuelLitres) });
       setMsg('Logbook entry saved and sent to accountant');
       setShowLogForm(false);
       const res = await API.get('/logbooks');

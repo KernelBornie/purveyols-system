@@ -30,7 +30,7 @@ const AccountantDashboard = () => {
         API.get('/funding-requests?status=pending'),
       ]);
       setWorkers(workersRes.data.workers || []);
-      setPayments(paymentsRes.data.payments || []);
+      setPayments(paymentsRes.data || []);
       setFundingRequests(fundingRes.data.requests || []);
     } catch (err) {
       setError('Failed to load dashboard data');
@@ -327,7 +327,7 @@ const AccountantDashboard = () => {
                   <tr key={req._id}>
                     <td>{new Date(req.createdAt).toLocaleString()}</td>
                     <td>{req.requestedBy?.name}</td>
-                    <td>{req.requestedByRole}</td>
+                    <td>{req.requestedBy?.role}</td>
                     <td>{req.title}</td>
                     <td>K{req.amount?.toLocaleString()}</td>
                     <td>{req.site || '—'}</td>

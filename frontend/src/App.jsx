@@ -34,6 +34,9 @@ import BOQForm from "./pages/boq/BOQForm";
 import SubcontractList from "./pages/subcontracts/SubcontractList";
 import SubcontractForm from "./pages/subcontracts/SubcontractForm";
 
+import SafetyReportList from "./pages/safety/SafetyReportList";
+import Reports from "./pages/reports/Reports";
+
 const ALL_ROLES = ["director", "accountant", "engineer", "foreman", "driver", "procurement", "safety", "admin"];
 
 const Layout = ({ children }) => (
@@ -337,6 +340,34 @@ const AppRoutes = () => {
           <ProtectedRoute roles={["director", "engineer", "admin"]}>
             <Layout>
               <SubcontractForm />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+
+
+      {/* SAFETY REPORTS */}
+
+      <Route
+        path="/safety"
+        element={
+          <ProtectedRoute roles={["director", "safety", "engineer"]}>
+            <Layout>
+              <SafetyReportList />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+
+
+      {/* REPORTS */}
+
+      <Route
+        path="/reports"
+        element={
+          <ProtectedRoute roles={["director", "accountant", "engineer"]}>
+            <Layout>
+              <Reports />
             </Layout>
           </ProtectedRoute>
         }

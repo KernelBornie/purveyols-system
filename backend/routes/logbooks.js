@@ -10,13 +10,13 @@ router.get('/', auth, async (req, res) => {
     if (['foreman', 'driver'].includes(req.user.role)) {
       filter = { createdBy: req.user._id };
     }
-    const logbooks = await Logbook.find(filter)
+    const entries = await Logbook.find(filter)
       .populate('project', 'name')
       .populate('worker', 'name email')
       .populate('workerEnrolled', 'name nationalId')
       .populate('createdBy', 'name email')
       .populate('verifiedBy', 'name email');
-    res.json(logbooks);
+    res.json({ entries });
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });
   }

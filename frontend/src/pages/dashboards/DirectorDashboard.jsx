@@ -120,7 +120,7 @@ const DirectorDashboard = () => {
                   <tr key={req._id}>
                     <td>{new Date(req.createdAt).toLocaleString()}</td>
                     <td>{req.requestedBy?.name}</td>
-                    <td>{req.requestedByRole}</td>
+                    <td>{req.requestedBy?.role}</td>
                     <td>{req.title}</td>
                     <td>K{req.amount?.toLocaleString()}</td>
                     <td>{req.site || '—'}</td>

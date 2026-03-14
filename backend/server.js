@@ -42,6 +42,9 @@ app.use('/api/procurement', require('./routes/procurement'));
 app.use('/api/payments', require('./routes/payments'));
 app.use('/api/boq', require('./routes/boq'));
 app.use('/api/subcontracts', require('./routes/subcontracts'));
+app.use('/api/material-requests', require('./routes/materialRequests'));
+app.use('/api/safety-reports', require('./routes/safetyReports'));
+app.use('/api/reports', require('./routes/reports'));
 
 app.use((err, req, res, next) => {
   console.error(err.stack);
