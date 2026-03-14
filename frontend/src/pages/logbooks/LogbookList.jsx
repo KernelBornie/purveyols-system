@@ -10,7 +10,7 @@ const LogbookList = () => {
 
   useEffect(() => {
     API.get('/logbooks')
-      .then(r => setLogbooks(r.data))
+      .then(r => setLogbooks(r.data.entries || []))
       .catch(() => setError('Failed to load logbooks'))
       .finally(() => setLoading(false));
   }, []);

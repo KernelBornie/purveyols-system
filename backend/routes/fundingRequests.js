@@ -7,12 +7,15 @@ const FundingRequest = require('../models/FundingRequest');
 // GET /api/funding-requests
 router.get('/', auth, async (req, res) => {
   try {
-    const filter = req.user.role === 'director' ? {} : { requestedBy: req.user._id };
+    const filter = req.user.role === 'director' || req.user.role === 'accountant'
+      ? {}
+      : { requestedBy: req.user._id };
+    if (req.query.status) filter.status = req.query.status;
     const requests = await FundingRequest.find(filter)
       .populate('requestedBy', 'name email role')
       .populate('project', 'name')
       .populate('approvedBy', 'name email');
-    res.json(requests);
+    res.json({ requests });
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });
   }
