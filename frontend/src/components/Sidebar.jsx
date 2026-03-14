@@ -9,6 +9,8 @@ const navItems = [
   { to: '/logbooks', label: '📋 Logbooks', roles: ['director', 'accountant', 'driver'] },
   { to: '/funding-requests', label: '💰 Funding Requests', roles: ['director', 'engineer', 'accountant', 'foreman', 'driver', 'procurement'] },
   { to: '/procurement', label: '🛒 Materials / Procurement', roles: ['director', 'procurement', 'engineer', 'foreman', 'driver', 'safety'] },
+  { to: '/boq', label: '📋 Bills of Quantities', roles: ['director', 'engineer', 'admin'] },
+  { to: '/subcontracts', label: '🏗️ Subcontracts', roles: ['director', 'engineer', 'admin'] },
   { to: '/payments', label: '💳 Payments', roles: ['director', 'accountant'] },
   { to: '/safety', label: '⚠️ Safety Reports', roles: ['director', 'safety', 'engineer'] },
   { to: '/reports', label: '📊 Reports', roles: ['director', 'accountant', 'engineer'] },
