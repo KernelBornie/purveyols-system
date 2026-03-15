@@ -65,20 +65,6 @@ JWT_SECRET=replace_with_a_long_random_secret_string
 
 > **Important:** Replace `JWT_SECRET` with a long, random string (e.g. run `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`).
 
-## Demo Accounts
-
-After running `npm run seed`, use these credentials (password: `purveyols123`):
-
-| Role | Email |
-|------|-------|
-| Director | brian.director@purveyols.com |
-| Accountant | micheal.accountant@purveyols.com |
-| Engineer | rodney.engineer@purveyols.com |
-| Foreman | mobrey.foreman@purveyols.com |
-| Driver | boyd.driver@purveyols.com |
-| Procurement | gilbert.procurement@purveyols.com |
-| Safety Officer | royd.safety@purveyols.com |
-| Admin | admin@purveyols.com |
 
 ## Project Structure
 
