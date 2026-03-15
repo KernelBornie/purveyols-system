@@ -279,7 +279,7 @@ const AppRoutes = () => {
       <Route
         path="/boq"
         element={
-          <ProtectedRoute roles={["director", "engineer", "admin"]}>
+          <ProtectedRoute roles={["director", "engineer"]}>
             <Layout>
               <BOQList />
             </Layout>
@@ -290,7 +290,7 @@ const AppRoutes = () => {
       <Route
         path="/boq/new"
         element={
-          <ProtectedRoute roles={["director", "engineer", "admin"]}>
+          <ProtectedRoute roles={["director", "engineer"]}>
             <Layout>
               <BOQForm />
             </Layout>
@@ -301,7 +301,7 @@ const AppRoutes = () => {
       <Route
         path="/boq/:id/edit"
         element={
-          <ProtectedRoute roles={["director", "engineer", "admin"]}>
+          <ProtectedRoute roles={["director", "engineer"]}>
             <Layout>
               <BOQForm />
             </Layout>
@@ -315,7 +315,7 @@ const AppRoutes = () => {
       <Route
         path="/subcontracts"
         element={
-          <ProtectedRoute roles={["director", "engineer", "admin"]}>
+          <ProtectedRoute roles={["director", "engineer"]}>
             <Layout>
               <SubcontractList />
             </Layout>
@@ -326,7 +326,7 @@ const AppRoutes = () => {
       <Route
         path="/subcontracts/new"
         element={
-          <ProtectedRoute roles={["director", "engineer", "admin"]}>
+          <ProtectedRoute roles={["director", "engineer"]}>
             <Layout>
               <SubcontractForm />
             </Layout>
@@ -337,7 +337,7 @@ const AppRoutes = () => {
       <Route
         path="/subcontracts/:id/edit"
         element={
-          <ProtectedRoute roles={["director", "engineer", "admin"]}>
+          <ProtectedRoute roles={["director", "engineer"]}>
             <Layout>
               <SubcontractForm />
             </Layout>

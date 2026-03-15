@@ -4,10 +4,10 @@ const auth = require('../middleware/auth');
 const roleCheck = require('../middleware/roleCheck');
 const Subcontract = require('../models/Subcontract');
 
-// GET /api/subcontracts – engineer sees own; director/admin see all
+// GET /api/subcontracts – engineer sees own; director sees all
 router.get('/', auth, async (req, res) => {
   try {
-    const filter = ['director', 'admin'].includes(req.user.role)
+    const filter = req.user.role === 'director'
       ? {}
       : { hiredBy: req.user._id };
     const subcontracts = await Subcontract.find(filter)
@@ -21,7 +21,7 @@ router.get('/', auth, async (req, res) => {
 });
 
 // POST /api/subcontracts – create a subcontract entry
-router.post('/', auth, roleCheck('engineer', 'director', 'admin'), async (req, res) => {
+router.post('/', auth, roleCheck('engineer', 'director'), async (req, res) => {
   try {
     const subcontract = new Subcontract({ ...req.body, hiredBy: req.user._id });
     await subcontract.save();
@@ -47,7 +47,7 @@ router.get('/:id', auth, async (req, res) => {
 });
 
 // PUT /api/subcontracts/:id – update
-router.put('/:id', auth, roleCheck('engineer', 'director', 'admin'), async (req, res) => {
+router.put('/:id', auth, roleCheck('engineer', 'director'), async (req, res) => {
   try {
     const subcontract = await Subcontract.findByIdAndUpdate(
       req.params.id,
@@ -64,7 +64,7 @@ router.put('/:id', auth, roleCheck('engineer', 'director', 'admin'), async (req,
 });
 
 // DELETE /api/subcontracts/:id
-router.delete('/:id', auth, roleCheck('engineer', 'director', 'admin'), async (req, res) => {
+router.delete('/:id', auth, roleCheck('engineer', 'director'), async (req, res) => {
   try {
     const subcontract = await Subcontract.findByIdAndDelete(req.params.id);
     if (!subcontract) return res.status(404).json({ message: 'Subcontract not found' });
