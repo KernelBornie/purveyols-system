@@ -7,7 +7,7 @@ const BOQ = require('../models/BOQ');
 // GET /api/boq – list BOQs (engineer sees own; director/procurement see all)
 router.get('/', auth, async (req, res) => {
   try {
-    const filter = ['director', 'procurement', 'admin'].includes(req.user.role)
+    const filter = ['director', 'procurement'].includes(req.user.role)
       ? {}
       : { createdBy: req.user._id };
     const boqs = await BOQ.find(filter)
@@ -22,7 +22,7 @@ router.get('/', auth, async (req, res) => {
 });
 
 // POST /api/boq – create a BOQ
-router.post('/', auth, roleCheck('engineer', 'director', 'admin'), async (req, res) => {
+router.post('/', auth, roleCheck('engineer', 'director'), async (req, res) => {
   try {
     const boq = new BOQ({ ...req.body, createdBy: req.user._id });
     await boq.save();
@@ -50,7 +50,7 @@ router.get('/:id', auth, async (req, res) => {
 });
 
 // PUT /api/boq/:id – update a BOQ
-router.put('/:id', auth, roleCheck('engineer', 'director', 'admin'), async (req, res) => {
+router.put('/:id', auth, roleCheck('engineer', 'director'), async (req, res) => {
   try {
     const boq = await BOQ.findById(req.params.id);
     if (!boq) return res.status(404).json({ message: 'BOQ not found' });
@@ -65,7 +65,7 @@ router.put('/:id', auth, roleCheck('engineer', 'director', 'admin'), async (req,
 });
 
 // PUT /api/boq/:id/submit – change status to submitted
-router.put('/:id/submit', auth, roleCheck('engineer', 'director', 'admin'), async (req, res) => {
+router.put('/:id/submit', auth, roleCheck('engineer', 'director'), async (req, res) => {
   try {
     const boq = await BOQ.findByIdAndUpdate(
       req.params.id,
@@ -82,7 +82,7 @@ router.put('/:id/submit', auth, roleCheck('engineer', 'director', 'admin'), asyn
 });
 
 // PUT /api/boq/:id/share – mark as shared
-router.put('/:id/share', auth, roleCheck('engineer', 'director', 'admin'), async (req, res) => {
+router.put('/:id/share', auth, roleCheck('engineer', 'director'), async (req, res) => {
   try {
     const { sharedWith } = req.body;
     const boq = await BOQ.findByIdAndUpdate(
@@ -101,7 +101,7 @@ router.put('/:id/share', auth, roleCheck('engineer', 'director', 'admin'), async
 });
 
 // PUT /api/boq/:id/approve – director approves
-router.put('/:id/approve', auth, roleCheck('director', 'admin'), async (req, res) => {
+router.put('/:id/approve', auth, roleCheck('director'), async (req, res) => {
   try {
     const boq = await BOQ.findByIdAndUpdate(
       req.params.id,
@@ -119,7 +119,7 @@ router.put('/:id/approve', auth, roleCheck('director', 'admin'), async (req, res
 });
 
 // DELETE /api/boq/:id
-router.delete('/:id', auth, roleCheck('engineer', 'director', 'admin'), async (req, res) => {
+router.delete('/:id', auth, roleCheck('engineer', 'director'), async (req, res) => {
   try {
     const boq = await BOQ.findByIdAndDelete(req.params.id);
     if (!boq) return res.status(404).json({ message: 'BOQ not found' });

@@ -4,12 +4,12 @@ const auth = require('../middleware/auth');
 const roleCheck = require('../middleware/roleCheck');
 const User = require('../models/User');
 
-// GET /api/users – director sees all; others may filter by role for dropdowns
+// GET /api/users – director/admin see all; others may filter by role for dropdowns
 router.get('/', auth, async (req, res) => {
   try {
     const { role } = req.query;
-    // Non-directors may only query by role (for populating dropdowns)
-    if (req.user.role !== 'director' && !role) {
+    // Non-directors/non-admins may only query by role (for populating dropdowns)
+    if (req.user.role !== 'director' && req.user.role !== 'admin' && !role) {
       return res.status(403).json({ message: 'Access denied: insufficient permissions' });
     }
     const filter = role ? { role } : {};
