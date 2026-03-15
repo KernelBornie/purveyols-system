@@ -7,12 +7,12 @@ A MERN stack web application for managing construction operations with role-base
 - **Role-Based Dashboards** for 8 roles:
   - Director – Overview, disbursements, all reports
   - Accountant – Payments, funding approvals, worker payroll
-  - Engineer – Funding requests, material requests, worker enrollment
+  - Engineer – Funding requests, material requests, worker enrollment, BOQ management, subcontract management
   - Foreman – Worker enrollment, funding requests, material requests
-  - Driver – Logbook submissions
-  - Procurement Officer – Material request management
-  - Safety Officer – Incident reporting
-  - Admin – BOQ and subcontract management
+  - Driver – Logbook submissions, funding requests, material requests
+  - Procurement Officer – Material request management, funding requests
+  - Safety Officer – Incident reporting, funding requests, material requests
+  - Admin – System maintenance, user management, project overview
 
 - **Worker Enrollment** with NRC, phone, daily rate, site, enrolledBy
 - **Worker Search** by NRC number
@@ -166,7 +166,14 @@ purveyols-system/
 | GET/POST | /api/procurement | List / Create procurement order |
 | PUT | /api/procurement/:id | Update procurement order |
 | GET/POST | /api/boq | List / Create BOQ item |
+| PUT | /api/boq/:id | Update BOQ item |
+| PUT | /api/boq/:id/submit | Submit BOQ for review |
+| PUT | /api/boq/:id/share | Share BOQ |
+| PUT | /api/boq/:id/approve | Approve BOQ (director only) |
+| DELETE | /api/boq/:id | Delete BOQ item |
 | GET/POST | /api/subcontracts | List / Create subcontract |
+| PUT | /api/subcontracts/:id | Update subcontract |
+| DELETE | /api/subcontracts/:id | Delete subcontract |
 | GET/POST | /api/safety-reports | List / Submit safety report |
 | PUT | /api/safety-reports/:id/status | Update safety report status |
 | GET/POST | /api/material-requests | List / Submit material request |
