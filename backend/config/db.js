@@ -6,7 +6,8 @@ const connectDB = async () => {
     console.log(`MongoDB Connected: ${conn.connection.host}`);
   } catch (err) {
     console.error(`MongoDB connection error: ${err.message}`);
-    process.exit(1);
+    console.error('Server will continue running. Retrying connection in the background...');
+    // Allow mongoose to keep retrying in the background rather than exiting
   }
 };
 
