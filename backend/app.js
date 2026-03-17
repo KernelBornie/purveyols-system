@@ -1,12 +1,21 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
+const mongoose = require('mongoose');
 const rateLimit = require('express-rate-limit');
 
 const app = express();
 
 app.use(cors());
 app.use(express.json());
+
+// Return a clear JSON 503 response for any API request when MongoDB is not ready
+app.use('/api', (req, res, next) => {
+  if (mongoose.connection.readyState !== 1) {
+    return res.status(503).json({ message: 'Database unavailable. Please try again later.' });
+  }
+  next();
+});
 
 // General rate limiter for all API routes
 const apiLimiter = rateLimit({
