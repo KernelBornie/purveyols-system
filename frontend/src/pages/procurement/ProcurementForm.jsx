@@ -1,15 +1,19 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useContext } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import API from '../../api/axios';
+import { AuthContext } from '../../context/AuthContext';
 
 const ProcurementForm = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { user } = useContext(AuthContext);
   const isEdit = Boolean(id);
+  const isProcurement = user?.role === 'procurement';
 
   const [form, setForm] = useState({
-    itemName: '', description: '', quantity: '', unitPrice: '',
-    project: '', supplier: '', deliveryDate: ''
+    itemName: '', description: '', quantity: '',
+    unitPrice: '', supplier: '',
+    project: '', deliveryDate: ''
   });
   const [projects, setProjects] = useState([]);
   const [totalPrice, setTotalPrice] = useState(0);
@@ -28,8 +32,8 @@ const ProcurementForm = () => {
             description: o.description || '',
             quantity: o.quantity ?? '',
             unitPrice: o.unitPrice ?? '',
-            project: o.project?._id || '',
             supplier: o.supplier || '',
+            project: o.project?._id || '',
             deliveryDate: o.deliveryDate ? o.deliveryDate.substring(0, 10) : ''
           });
           setTotalPrice(o.totalPrice || 0);
@@ -42,9 +46,11 @@ const ProcurementForm = () => {
   const handleChange = e => {
     const updated = { ...form, [e.target.name]: e.target.value };
     setForm(updated);
-    const qty = parseFloat(updated.quantity) || 0;
-    const price = parseFloat(updated.unitPrice) || 0;
-    setTotalPrice(qty * price);
+    if (isProcurement) {
+      const qty = parseFloat(updated.quantity) || 0;
+      const price = parseFloat(updated.unitPrice) || 0;
+      setTotalPrice(qty * price);
+    }
   };
 
   const handleSubmit = async e => {
@@ -52,9 +58,13 @@ const ProcurementForm = () => {
     setError('');
     setLoading(true);
     try {
-      const payload = { ...form };
-      if (!payload.project) delete payload.project;
-      if (!payload.deliveryDate) delete payload.deliveryDate;
+      const payload = {
+        itemName: form.itemName,
+        description: form.description,
+        quantity: form.quantity,
+        project: form.project || undefined,
+        deliveryDate: form.deliveryDate || undefined
+      };
       if (isEdit) {
         await API.put(`/procurement/${id}`, payload);
       } else {
@@ -83,10 +93,6 @@ const ProcurementForm = () => {
               <label>Item Name *</label>
               <input name="itemName" className="form-control" value={form.itemName} onChange={handleChange} required />
             </div>
-            <div className="form-group">
-              <label>Supplier</label>
-              <input name="supplier" className="form-control" value={form.supplier} onChange={handleChange} />
-            </div>
           </div>
           <div className="form-group">
             <label>Description</label>
@@ -97,14 +103,6 @@ const ProcurementForm = () => {
               <label>Quantity *</label>
               <input type="number" name="quantity" className="form-control" value={form.quantity} onChange={handleChange} required min="1" />
             </div>
-            <div className="form-group">
-              <label>Unit Price (ZMW) *</label>
-              <input type="number" name="unitPrice" className="form-control" value={form.unitPrice} onChange={handleChange} required min="0" />
-            </div>
-          </div>
-          <div className="form-group">
-            <label>Total Price (ZMW)</label>
-            <input className="form-control" value={totalPrice.toLocaleString()} readOnly style={{ backgroundColor: '#f8f9fa' }} />
           </div>
           <div className="form-row">
             <div className="form-group">
@@ -121,7 +119,7 @@ const ProcurementForm = () => {
           </div>
           <div className="form-actions">
             <button type="submit" className="btn btn-primary" disabled={loading}>
-              {loading ? 'Saving...' : isEdit ? 'Update Order' : 'Submit Order'}
+              {loading ? 'Saving...' : isEdit ? 'Update Order' : 'Submit Request'}
             </button>
             <button type="button" className="btn btn-secondary" onClick={() => navigate('/procurement')}>
               Cancel
