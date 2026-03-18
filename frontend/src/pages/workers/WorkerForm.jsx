@@ -7,8 +7,10 @@ const WorkerForm = () => {
   const navigate = useNavigate();
   const { user } = useContext(AuthContext);
 
+  const today = new Date().toISOString().split('T')[0];
+
   const [form, setForm] = useState({
-    name: '', nrc: '', phone: '', dailyRate: '', site: '', mobileNetwork: 'airtel'
+    name: '', nrc: '', phone: '', dailyRate: '', site: '', mobileNetwork: 'airtel', enrollmentDate: today
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -69,6 +71,12 @@ const WorkerForm = () => {
                 <option value="airtel">Airtel Money</option>
                 <option value="mtn">MTN Money</option>
               </select>
+            </div>
+          </div>
+          <div className="form-row">
+            <div className="form-group">
+              <label>Enrollment Date *</label>
+              <input type="date" name="enrollmentDate" className="form-control" value={form.enrollmentDate} onChange={handleChange} required />
             </div>
           </div>
           <div className="form-actions">

@@ -1,13 +1,18 @@
 import { useContext } from 'react';
 import { AuthContext } from '../context/AuthContext';
 
-const Navbar = () => {
+const Navbar = ({ onMenuClick }) => {
   const { user, logout } = useContext(AuthContext);
 
   return (
     <div className="navbar">
-      <div className="navbar-brand">
-        PURVEYOLS <span>CMS</span>
+      <div className="navbar-left">
+        <button className="menu-toggle" onClick={onMenuClick} aria-label="Toggle menu">
+          ☰
+        </button>
+        <div className="navbar-brand">
+          PURVEYOLS <span>CMS</span>
+        </div>
       </div>
       <div className="navbar-right">
         {user && (

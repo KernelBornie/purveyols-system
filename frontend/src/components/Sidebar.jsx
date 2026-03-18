@@ -16,7 +16,7 @@ const navItems = [
   { to: '/reports', label: '📊 Reports', roles: ['director', 'accountant', 'engineer'] },
 ];
 
-const Sidebar = () => {
+const Sidebar = ({ isOpen, onClose }) => {
   const { user } = useContext(AuthContext);
 
   if (!user) return null;
@@ -24,7 +24,7 @@ const Sidebar = () => {
   const visibleItems = navItems.filter(item => item.roles.includes(user.role));
 
   return (
-    <div className="sidebar">
+    <div className={`sidebar${isOpen ? ' open' : ''}`}>
       <div className="sidebar-header">
         PURVEYOLS <span>CMS</span>
       </div>
@@ -34,6 +34,7 @@ const Sidebar = () => {
             key={item.to}
             to={item.to}
             className={({ isActive }) => isActive ? 'active' : ''}
+            onClick={onClose}
           >
             {item.label}
           </NavLink>
