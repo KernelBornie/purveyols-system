@@ -1,5 +1,6 @@
 import { useContext } from 'react';
 import { AuthContext } from '../context/AuthContext';
+import NotificationBell from './NotificationBell';
 
 const Navbar = ({ onMenuClick }) => {
   const { user, logout } = useContext(AuthContext);
@@ -23,6 +24,7 @@ const Navbar = ({ onMenuClick }) => {
             </span>
           </div>
         )}
+        {user && <NotificationBell />}
         <button className="btn btn-secondary btn-sm" onClick={logout}>
           Logout
         </button>

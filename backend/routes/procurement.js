@@ -3,6 +3,7 @@ const router = express.Router();
 const auth = require('../middleware/auth');
 const roleCheck = require('../middleware/roleCheck');
 const ProcurementOrder = require('../models/ProcurementOrder');
+const { createNotification } = require('../utils/notifications');
 
 // GET /api/procurement
 router.get('/', auth, async (req, res) => {
@@ -33,6 +34,11 @@ router.post('/', auth, roleCheck('engineer', 'foreman', 'driver', 'safety'), asy
     await order.save();
     await order.populate('requestedBy', 'name email');
     await order.populate('project', 'name');
+    createNotification(
+      req.user._id,
+      `Your procurement request for "${order.itemName}" has been submitted and is pending review.`,
+      'procurement_request'
+    );
     res.status(201).json(order);
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });
@@ -88,6 +94,7 @@ router.put('/:id/approve', auth, roleCheck('director'), async (req, res) => {
     if (order.status !== 'priced') {
       return res.status(400).json({ message: 'Only priced orders can be approved by the director' });
     }
+    const requestedById = order.requestedBy;
     order.status = 'approved';
     order.approvedBy = req.user._id;
     order.approvedByDirector = true;
@@ -95,6 +102,11 @@ router.put('/:id/approve', auth, roleCheck('director'), async (req, res) => {
     await order.populate('requestedBy', 'name email');
     await order.populate('project', 'name');
     await order.populate('approvedBy', 'name email');
+    createNotification(
+      requestedById,
+      `Your procurement request for "${order.itemName}" has been approved.`,
+      'approval'
+    );
     res.json(order);
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });
@@ -130,11 +142,17 @@ router.put('/:id/reject', auth, roleCheck('director'), async (req, res) => {
     if (order.status !== 'priced') {
       return res.status(400).json({ message: 'Only priced orders can be rejected by the director' });
     }
+    const requestedById = order.requestedBy;
     order.status = 'rejected';
     order.rejectionReason = rejectionReason;
     await order.save();
     await order.populate('requestedBy', 'name email');
     await order.populate('project', 'name');
+    createNotification(
+      requestedById,
+      `Your procurement request for "${order.itemName}" has been rejected.`,
+      'rejection'
+    );
     res.json(order);
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });
