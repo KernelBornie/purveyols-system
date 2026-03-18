@@ -31,6 +31,9 @@ import PaymentForm from "./pages/payments/PaymentForm";
 import BOQList from "./pages/boq/BOQList";
 import BOQForm from "./pages/boq/BOQForm";
 
+import MaterialListPage from "./pages/materialList/MaterialListPage";
+import MaterialListForm from "./pages/materialList/MaterialListForm";
+
 import SubcontractList from "./pages/subcontracts/SubcontractList";
 import SubcontractForm from "./pages/subcontracts/SubcontractForm";
 
@@ -308,6 +311,42 @@ const AppRoutes = () => {
           <ProtectedRoute roles={["director", "engineer"]}>
             <Layout>
               <BOQForm />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+
+
+      {/* MATERIAL LIST */}
+
+      <Route
+        path="/material-list"
+        element={
+          <ProtectedRoute roles={["director", "engineer"]}>
+            <Layout>
+              <MaterialListPage />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/material-list/new"
+        element={
+          <ProtectedRoute roles={["director", "engineer"]}>
+            <Layout>
+              <MaterialListForm />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/material-list/:id/edit"
+        element={
+          <ProtectedRoute roles={["director", "engineer"]}>
+            <Layout>
+              <MaterialListForm />
             </Layout>
           </ProtectedRoute>
         }
