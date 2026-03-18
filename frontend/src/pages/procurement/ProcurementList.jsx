@@ -9,7 +9,7 @@ const ProcurementList = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [priceModal, setPriceModal] = useState(null);
-  const [priceForm, setPriceForm] = useState({ supplier: '', unitPrice: '' });
+  const [priceForm, setPriceForm] = useState({ supplier: '', items: [] });
 
   useEffect(() => {
     API.get('/procurement')
@@ -19,18 +19,37 @@ const ProcurementList = () => {
   }, []);
 
   const handleSetPrice = (order) => {
-    setPriceForm({ supplier: order.supplier || '', unitPrice: order.unitPrice ?? '' });
+    setPriceForm({
+      supplier: order.supplier || '',
+      items: (order.items || []).map(item => ({
+        name: item.name,
+        quantity: item.quantity,
+        unitPrice: item.unitPrice ?? ''
+      }))
+    });
     setPriceModal(order._id);
   };
 
+  const handlePriceItemChange = (index, value) => {
+    const updated = priceForm.items.map((item, i) =>
+      i === index ? { ...item, unitPrice: value } : item
+    );
+    setPriceForm({ ...priceForm, items: updated });
+  };
+
   const handleSubmitPrice = async () => {
-    const { supplier, unitPrice } = priceForm;
-    const parsedPrice = parseFloat(unitPrice);
-    if (!unitPrice || isNaN(parsedPrice) || parsedPrice <= 0) {
-      return alert('Unit price must be a number greater than 0');
+    const { supplier, items } = priceForm;
+    for (const item of items) {
+      const parsed = parseFloat(item.unitPrice);
+      if (!item.unitPrice || isNaN(parsed) || parsed <= 0) {
+        return alert(`Unit price for "${item.name}" must be a number greater than 0`);
+      }
     }
     try {
-      const res = await API.put(`/procurement/${priceModal}/price`, { supplier, unitPrice: parsedPrice });
+      const res = await API.put(`/procurement/${priceModal}/price`, {
+        supplier,
+        items: items.map(i => ({ unitPrice: parseFloat(i.unitPrice) }))
+      });
       setOrders(orders.map(o => o._id === priceModal ? res.data : o));
       setPriceModal(null);
     } catch (err) {
@@ -80,7 +99,7 @@ const ProcurementList = () => {
 
       {priceModal && (
         <div className="modal-overlay">
-          <div className="card" style={{ maxWidth: 400, margin: 'auto', padding: '1.5rem' }}>
+          <div className="card" style={{ maxWidth: 520, margin: 'auto', padding: '1.5rem' }}>
             <h2>Set Price</h2>
             <div className="form-group">
               <label>Supplier</label>
@@ -90,16 +109,35 @@ const ProcurementList = () => {
                 onChange={e => setPriceForm({ ...priceForm, supplier: e.target.value })}
               />
             </div>
-            <div className="form-group">
-              <label>Unit Price (ZMW) *</label>
-              <input
-                type="number"
-                className="form-control"
-                value={priceForm.unitPrice}
-                onChange={e => setPriceForm({ ...priceForm, unitPrice: e.target.value })}
-                min="0"
-                required
-              />
+            <div className="table-wrapper" style={{ marginBottom: '12px' }}>
+              <table className="table">
+                <thead>
+                  <tr>
+                    <th>Item</th>
+                    <th>Qty</th>
+                    <th>Unit Price (ZMW) *</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {priceForm.items.map((item, i) => (
+                    <tr key={i}>
+                      <td>{item.name}</td>
+                      <td>{item.quantity}</td>
+                      <td>
+                        <input
+                          type="number"
+                          className="form-control"
+                          value={item.unitPrice}
+                          onChange={e => handlePriceItemChange(i, e.target.value)}
+                          min="0.01"
+                          step="0.01"
+                          required
+                        />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
             <div className="form-actions">
               <button className="btn btn-primary" onClick={handleSubmitPrice}>Save Price</button>
@@ -119,10 +157,8 @@ const ProcurementList = () => {
             <table className="table">
               <thead>
                 <tr>
-                  <th>Item</th>
-                  <th>Qty</th>
-                  <th>Unit Price</th>
-                  <th>Total</th>
+                  <th>Items</th>
+                  <th>Total (ZMW)</th>
                   <th>Project</th>
                   <th>Supplier</th>
                   <th>Status</th>
@@ -132,10 +168,17 @@ const ProcurementList = () => {
               <tbody>
                 {orders.map(order => (
                   <tr key={order._id}>
-                    <td><strong>{order.itemName}</strong></td>
-                    <td>{order.quantity}</td>
-                    <td>{order.unitPrice != null ? order.unitPrice.toLocaleString() : '—'}</td>
-                    <td>{order.totalPrice != null ? order.totalPrice.toLocaleString() : '—'}</td>
+                    <td>
+                      {(order.items || []).map((item, i) => (
+                        <div key={i}>
+                          <strong>{item.name}</strong> &times;{item.quantity}
+                          {item.unitPrice != null && (
+                            <span style={{ color: '#666', fontSize: '0.85em' }}> @ K{item.unitPrice.toLocaleString()} = K{(item.totalPrice || 0).toLocaleString()}</span>
+                          )}
+                        </div>
+                      ))}
+                    </td>
+                    <td>{order.totalPrice != null ? `K${order.totalPrice.toLocaleString()}` : '—'}</td>
                     <td>{order.project?.name || '—'}</td>
                     <td>{order.supplier || '—'}</td>
                     <td><span className={`badge badge-${order.status}`}>{order.status}</span></td>

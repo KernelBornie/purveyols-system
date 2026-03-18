@@ -22,11 +22,12 @@ router.get('/', auth, async (req, res) => {
 // POST /api/procurement – engineer submits a material request WITHOUT price
 router.post('/', auth, roleCheck('engineer', 'foreman', 'driver', 'safety'), async (req, res) => {
   try {
-    const { itemName, description, quantity, project, deliveryDate } = req.body;
+    const { items, project, deliveryDate } = req.body;
+    if (!items || !Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({ message: 'At least one item is required' });
+    }
     const order = new ProcurementOrder({
-      itemName,
-      description,
-      quantity,
+      items,
       project: project || undefined,
       deliveryDate: deliveryDate || undefined,
       requestedBy: req.user._id
@@ -34,9 +35,12 @@ router.post('/', auth, roleCheck('engineer', 'foreman', 'driver', 'safety'), asy
     await order.save();
     await order.populate('requestedBy', 'name email');
     await order.populate('project', 'name');
+    const itemSummary = order.items.length === 1
+      ? `"${order.items[0].name}"`
+      : `${order.items.length} items`;
     createNotification(
       req.user._id,
-      `Your procurement request for "${order.itemName}" has been submitted and is pending review.`,
+      `Your procurement request for ${itemSummary} has been submitted and is pending review.`,
       'procurement_request'
     );
     res.status(201).json(order);
@@ -60,20 +64,33 @@ router.get('/:id', auth, async (req, res) => {
   }
 });
 
-// PUT /api/procurement/:id/price – procurement officer sets supplier, unit price, total price
+// PUT /api/procurement/:id/price – procurement officer sets supplier and unit prices per item
 router.put('/:id/price', auth, roleCheck('procurement'), async (req, res) => {
   try {
-    const { supplier, unitPrice } = req.body;
-    if (unitPrice == null || unitPrice <= 0) {
-      return res.status(400).json({ message: 'Unit price is required and must be greater than 0' });
+    const { supplier, items } = req.body;
+    if (!items || !Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({ message: 'Items with prices are required' });
+    }
+    for (const item of items) {
+      if (item.unitPrice == null || item.unitPrice <= 0) {
+        return res.status(400).json({ message: 'Unit price is required and must be greater than 0 for all items' });
+      }
     }
     const order = await ProcurementOrder.findById(req.params.id);
     if (!order) return res.status(404).json({ message: 'Procurement order not found' });
     if (order.status !== 'pending') {
       return res.status(400).json({ message: 'Price can only be set on pending orders' });
     }
+    if (items.length !== order.items.length) {
+      return res.status(400).json({ message: 'Items count does not match order' });
+    }
     order.supplier = supplier;
-    order.unitPrice = unitPrice;
+    order.items = order.items.map((item, i) => ({
+      name: item.name,
+      description: item.description,
+      quantity: item.quantity,
+      unitPrice: items[i].unitPrice
+    }));
     order.priceSetBy = req.user._id;
     order.status = 'priced';
     await order.save();
@@ -105,7 +122,7 @@ router.put('/:id/approve', auth, roleCheck('director'), async (req, res) => {
     await order.populate('approvedBy', 'name email');
     createNotification(
       requestedById,
-      `Your procurement request for "${order.itemName}" has been approved.`,
+      `Your procurement request for ${order.items.length === 1 ? `"${order.items[0].name}"` : `${order.items.length} items`} has been approved.`,
       'approval'
     );
     res.json(order);
@@ -152,7 +169,7 @@ router.put('/:id/reject', auth, roleCheck('director'), async (req, res) => {
     await order.populate('project', 'name');
     createNotification(
       requestedById,
-      `Your procurement request for "${order.itemName}" has been rejected.`,
+      `Your procurement request for ${order.items.length === 1 ? `"${order.items[0].name}"` : `${order.items.length} items`} has been rejected.`,
       'rejection'
     );
     res.json(order);
@@ -166,10 +183,8 @@ router.put('/:id', auth, roleCheck('procurement', 'director', 'admin'), async (r
   try {
     const order = await ProcurementOrder.findById(req.params.id);
     if (!order) return res.status(404).json({ message: 'Procurement order not found' });
-    const { itemName, description, quantity, project, deliveryDate } = req.body;
-    if (itemName !== undefined) order.itemName = itemName;
-    if (description !== undefined) order.description = description;
-    if (quantity !== undefined) order.quantity = quantity;
+    const { items, project, deliveryDate } = req.body;
+    if (items !== undefined) order.items = items;
     if (project !== undefined) order.project = project || undefined;
     if (deliveryDate !== undefined) order.deliveryDate = deliveryDate || undefined;
     await order.save();
