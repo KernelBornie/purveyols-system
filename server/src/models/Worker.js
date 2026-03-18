@@ -11,6 +11,7 @@ const workerSchema = new mongoose.Schema(
     enrolledBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     isActive: { type: Boolean, default: true },
     mobileNetwork: { type: String, enum: ['airtel', 'mtn'], default: 'airtel' },
+    enrollmentDate: { type: Date, default: Date.now },
   },
   { timestamps: true }
 );

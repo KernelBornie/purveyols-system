@@ -68,6 +68,33 @@ padding:0 24px;
 box-shadow:0 1px 4px rgba(0,0,0,0.1);
 }
 
+.navbar-left{
+display:flex;
+align-items:center;
+gap:12px;
+}
+
+.menu-toggle{
+display:none;
+background:none;
+border:none;
+font-size:22px;
+cursor:pointer;
+padding:4px 8px;
+color:#2c3e50;
+line-height:1;
+}
+
+.navbar-right{
+display:flex;
+align-items:center;
+gap:12px;
+}
+
+.navbar-user{
+font-size:14px;
+}
+
 /* Cards */
 
 .card{
@@ -96,6 +123,22 @@ color:white;
 
 .form-group{
 margin-bottom:16px;
+}
+
+.form-row{
+display:flex;
+gap:16px;
+}
+
+.form-row .form-group{
+flex:1;
+}
+
+.form-actions{
+display:flex;
+gap:12px;
+margin-top:8px;
+flex-wrap:wrap;
 }
 
 .form-control{
@@ -142,6 +185,16 @@ background:#f8d7da;
 color:#721c24;
 }
 
+/* Sidebar overlay for mobile */
+
+.sidebar-overlay{
+display:none;
+position:fixed;
+inset:0;
+background:rgba(0,0,0,0.4);
+z-index:99;
+}
+
 /* Responsive */
 
 @media(max-width:768px){
@@ -157,12 +210,35 @@ height:100%;
 z-index:100;
 }
 
+@media(prefers-reduced-motion:no-preference){
+.sidebar{
+transition:left 0.25s ease;
+}
+}
+
 .sidebar.open{
 left:0;
 }
 
+.sidebar-overlay{
+display:block;
+}
+
+.menu-toggle{
+display:block;
+}
+
 .page-content{
 padding:16px;
+}
+
+.form-row{
+flex-direction:column;
+gap:0;
+}
+
+.navbar-user{
+display:none;
 }
 
 }

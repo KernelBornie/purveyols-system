@@ -1,4 +1,4 @@
-import { useContext } from "react";
+import { useContext, useState } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 
 import { AuthProvider, AuthContext } from "./context/AuthContext";
@@ -39,23 +39,24 @@ import Reports from "./pages/reports/Reports";
 
 const ALL_ROLES = ["director", "accountant", "engineer", "foreman", "driver", "procurement", "safety", "admin"];
 
-const Layout = ({ children }) => (
-  <div className="layout">
+const Layout = ({ children }) => {
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
-    <Sidebar />
-
-    <div className="main-content">
-
-      <Navbar />
-
-      <div className="page-content">
-        {children}
+  return (
+    <div className="layout">
+      {sidebarOpen && (
+        <div className="sidebar-overlay" onClick={() => setSidebarOpen(false)} />
+      )}
+      <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      <div className="main-content">
+        <Navbar onMenuClick={() => setSidebarOpen((prev) => !prev)} />
+        <div className="page-content">
+          {children}
+        </div>
       </div>
-
     </div>
-
-  </div>
-);
+  );
+};
 
 
 const AppRoutes = () => {
