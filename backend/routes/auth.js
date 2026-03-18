@@ -68,4 +68,34 @@ router.get('/me', auth, async (req, res) => {
   res.json({ user: { id: req.user._id, name: req.user.name, email: req.user.email, role: req.user.role } });
 });
 
+// PUT /api/auth/change-password
+router.put(
+  '/change-password',
+  auth,
+  [
+    body('oldPassword').notEmpty().withMessage('Old password is required'),
+    body('newPassword').isLength({ min: 6 }).withMessage('New password must be at least 6 characters')
+  ],
+  async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
+
+    const { oldPassword, newPassword } = req.body;
+    try {
+      const user = await User.findById(req.user._id);
+      if (!user) return res.status(404).json({ message: 'User not found' });
+
+      const isMatch = await user.comparePassword(oldPassword);
+      if (!isMatch) return res.status(400).json({ message: 'Old password is incorrect' });
+
+      user.password = newPassword;
+      await user.save();
+
+      res.json({ message: 'Password changed successfully' });
+    } catch (err) {
+      res.status(500).json({ message: 'Server error', error: err.message });
+    }
+  }
+);
+
 module.exports = router;

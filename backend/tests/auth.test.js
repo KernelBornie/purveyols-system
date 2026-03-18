@@ -103,6 +103,68 @@ describe('POST /api/auth/login', () => {
   });
 });
 
+describe('PUT /api/auth/change-password', () => {
+  let token;
+
+  beforeEach(async () => {
+    const res = await request(app)
+      .post('/api/auth/register')
+      .send({ name: 'Change Pass', email: 'changepass@example.com', password: 'oldpassword123' });
+    token = res.body.token;
+  });
+
+  it('changes password with correct old password', async () => {
+    const res = await request(app)
+      .put('/api/auth/change-password')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ oldPassword: 'oldpassword123', newPassword: 'newpassword456' });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.body.message).toMatch(/password changed/i);
+  });
+
+  it('returns 400 for incorrect old password', async () => {
+    const res = await request(app)
+      .put('/api/auth/change-password')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ oldPassword: 'wrongpassword', newPassword: 'newpassword456' });
+
+    expect(res.statusCode).toBe(400);
+    expect(res.body.message).toMatch(/old password is incorrect/i);
+  });
+
+  it('returns 400 if new password is too short', async () => {
+    const res = await request(app)
+      .put('/api/auth/change-password')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ oldPassword: 'oldpassword123', newPassword: '123' });
+
+    expect(res.statusCode).toBe(400);
+  });
+
+  it('returns 401 without a token', async () => {
+    const res = await request(app)
+      .put('/api/auth/change-password')
+      .send({ oldPassword: 'oldpassword123', newPassword: 'newpassword456' });
+
+    expect(res.statusCode).toBe(401);
+  });
+
+  it('allows login with new password after change', async () => {
+    await request(app)
+      .put('/api/auth/change-password')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ oldPassword: 'oldpassword123', newPassword: 'newpassword456' });
+
+    const res = await request(app)
+      .post('/api/auth/login')
+      .send({ email: 'changepass@example.com', password: 'newpassword456' });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.body).toHaveProperty('token');
+  });
+});
+
 describe('GET /api/auth/me', () => {
   let token;
 

@@ -15,6 +15,8 @@ const navItems = [
   { to: '/payments', label: '💳 Payments', roles: ['director', 'accountant'] },
   { to: '/safety', label: '⚠️ Safety Reports', roles: ['director', 'safety', 'engineer'] },
   { to: '/reports', label: '📊 Reports', roles: ['director', 'accountant', 'engineer'] },
+  { to: '/admin/users', label: '👥 User Management', roles: ['admin', 'director'] },
+  { to: '/change-password', label: '🔑 Change Password', roles: ['director', 'engineer', 'foreman', 'procurement', 'driver', 'accountant', 'worker', 'safety', 'admin'] },
 ];
 
 const Sidebar = ({ isOpen, onClose }) => {
