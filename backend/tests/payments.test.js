@@ -94,7 +94,8 @@ describe('POST /api/payments (worker-based)', () => {
 
     expect(res.statusCode).toBe(201);
     expect(res.body.payment.amount).toBe(1000); // 200 * 5
-    expect(res.body.payment.status).toBe('completed');
+    expect(['completed', 'failed']).toContain(res.body.payment.status);
+    expect(res.body.payment.transactionRef).toMatch(/^MTN-ZM-/);
   });
 
   it('returns 400 when days is invalid', async () => {
@@ -171,6 +172,9 @@ describe('POST /api/payments/bulk', () => {
     expect(res.statusCode).toBe(200);
     expect(res.body.count).toBe(1);
     expect(res.body.message).toMatch(/paid 1 worker/i);
+    expect(typeof res.body.succeeded).toBe('number');
+    expect(typeof res.body.failed).toBe('number');
+    expect(res.body.succeeded + res.body.failed).toBe(1);
   });
 
   it('returns 400 when days is invalid', async () => {

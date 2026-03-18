@@ -55,6 +55,12 @@ app.use('/api/material-requests', require('./routes/materialRequests'));
 app.use('/api/safety-reports', require('./routes/safetyReports'));
 app.use('/api/reports', require('./routes/reports'));
 
+// Health check endpoint (used by Render and other hosting platforms)
+app.get('/api/health', (req, res) => {
+  const dbState = mongoose.connection.readyState === 1 ? 'connected' : 'disconnected';
+  res.json({ status: 'ok', db: dbState });
+});
+
 app.use((err, req, res, next) => {
   console.error(err.stack);
   res.status(500).json({ message: 'Internal server error', error: err.message });

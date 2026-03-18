@@ -5,6 +5,28 @@ const roleCheck = require('../middleware/roleCheck');
 const Payment = require('../models/Payment');
 const Worker = require('../models/Worker');
 
+/**
+ * Simulate a mobile money disbursement (Airtel Money / MTN Mobile Money Zambia).
+ * Returns a network-prefixed transaction reference and a success flag.
+ *
+ * NOTE: The `phone` and `amount` parameters are intentionally kept here as
+ * placeholders matching the real Airtel/MTN API signatures so they can be
+ * wired up without changing all call-sites when live integration is added.
+ * In production, replace this function body with calls to the actual APIs:
+ *   – Airtel Money: https://developers.airtel.africa/
+ *   – MTN MoMo:     https://momodeveloper.mtn.com/
+ */
+// eslint-disable-next-line no-unused-vars
+async function simulateMobileMoney(network, phone, amount) {
+  // Simulate network latency (200–500 ms)
+  await new Promise(resolve => setTimeout(resolve, 200 + Math.floor(Math.random() * 300)));
+  const prefix = (network || 'airtel').toUpperCase() === 'MTN' ? 'MTN' : 'AIR';
+  const ref = `${prefix}-ZM-${Date.now()}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+  // 95% success rate
+  const success = Math.random() > 0.05;
+  return { success, transactionRef: ref };
+}
+
 // GET /api/payments – accountant/director only
 router.get('/', auth, roleCheck('accountant', 'director'), async (req, res) => {
   try {
@@ -32,6 +54,8 @@ router.post('/', auth, roleCheck('accountant'), async (req, res) => {
       const days = parseInt(req.body.days);
       if (!days || days <= 0) return res.status(400).json({ message: 'Invalid days value - must be a positive integer' });
       const amount = worker.dailyRate * days;
+      const mobileNetwork = req.body.mobileNetwork || worker.mobileNetwork || 'airtel';
+      const { success, transactionRef } = await simulateMobileMoney(mobileNetwork, worker.phone, amount);
       paymentData = {
         ...paymentData,
         paymentType: 'mobile_money',
@@ -40,9 +64,10 @@ router.post('/', auth, roleCheck('accountant'), async (req, res) => {
         amount,
         worker: worker._id,
         days,
-        mobileNetwork: req.body.mobileNetwork || worker.mobileNetwork || 'airtel',
+        mobileNetwork,
         description: `Payment for ${days} day(s) work`,
-        status: 'completed'
+        status: success ? 'completed' : 'failed',
+        transactionRef
       };
     } else {
       paymentData = { ...paymentData, ...req.body };
@@ -72,6 +97,8 @@ router.post('/bulk', auth, roleCheck('accountant'), async (req, res) => {
     const payments = [];
     for (const worker of workers) {
       const amount = worker.dailyRate * days;
+      const net = mobileNetwork || worker.mobileNetwork || 'airtel';
+      const { success, transactionRef } = await simulateMobileMoney(net, worker.phone, amount);
       const payment = new Payment({
         paymentType: 'mobile_money',
         recipientName: worker.name,
@@ -79,16 +106,24 @@ router.post('/bulk', auth, roleCheck('accountant'), async (req, res) => {
         amount,
         worker: worker._id,
         days,
-        mobileNetwork: mobileNetwork || worker.mobileNetwork || 'airtel',
+        mobileNetwork: net,
         description: `Bulk payment for ${days} day(s) work`,
         processedBy: req.user._id,
-        status: 'completed'
+        status: success ? 'completed' : 'failed',
+        transactionRef
       });
       await payment.save();
       payments.push(payment);
     }
 
-    res.json({ message: `Paid ${payments.length} workers for ${days} day(s)`, count: payments.length });
+    const succeeded = payments.filter(p => p.status === 'completed').length;
+    const failed = payments.length - succeeded;
+    res.json({
+      message: `Paid ${payments.length} workers for ${days} day(s)`,
+      count: payments.length,
+      succeeded,
+      failed
+    });
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });
   }
