@@ -3,6 +3,7 @@ const router = express.Router();
 const auth = require('../middleware/auth');
 const roleCheck = require('../middleware/roleCheck');
 const Worker = require('../models/Worker');
+const { createNotification } = require('../utils/notifications');
 
 // GET /api/workers/search?nrc=
 router.get('/search', auth, async (req, res) => {
@@ -38,6 +39,11 @@ router.post('/', auth, async (req, res) => {
     await worker.save();
     await worker.populate('project', 'name');
     await worker.populate('enrolledBy', 'name email role');
+    createNotification(
+      req.user._id,
+      `Worker "${worker.name}" has been enrolled successfully.`,
+      'worker_enrollment'
+    );
     res.status(201).json(worker);
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });

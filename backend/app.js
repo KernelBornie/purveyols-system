@@ -77,6 +77,7 @@ app.use('/api/material-requests', require('./routes/materialRequests'));
 app.use('/api/safety-reports', require('./routes/safetyReports'));
 app.use('/api/reports', require('./routes/reports'));
 app.use('/api/attendance', require('./routes/attendance'));
+app.use('/api/notifications', require('./routes/notifications'));
 
 // Health check endpoint (used by Render and other hosting platforms)
 app.get('/api/health', (req, res) => {

@@ -4,6 +4,7 @@ const auth = require('../middleware/auth');
 const roleCheck = require('../middleware/roleCheck');
 const Payment = require('../models/Payment');
 const Worker = require('../models/Worker');
+const { createNotification } = require('../utils/notifications');
 
 /**
  * Simulate a mobile money disbursement (Airtel Money / MTN Mobile Money Zambia).
@@ -78,6 +79,13 @@ router.post('/', auth, roleCheck('accountant'), async (req, res) => {
     await payment.populate('project', 'name');
     await payment.populate('worker', 'name nrc');
     await payment.populate('processedBy', 'name email');
+    const recipient = payment.recipientName || 'Unknown Recipient';
+    const amountVal = payment.amount != null ? `ZMW ${payment.amount.toLocaleString()}` : '';
+    createNotification(
+      req.user._id,
+      `Payment of ${amountVal} to ${recipient} has been processed successfully.`,
+      'payment'
+    );
     res.status(201).json({ payment, message: 'Payment processed successfully' });
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });
