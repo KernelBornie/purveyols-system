@@ -37,8 +37,8 @@ import SubcontractForm from "./pages/subcontracts/SubcontractForm";
 import SafetyReportList from "./pages/safety/SafetyReportList";
 import Reports from "./pages/reports/Reports";
 
-import AttendanceList from "./pages/attendance/AttendanceList";
-import AttendanceHistory from "./pages/attendance/AttendanceHistory";
+import ChangePassword from "./pages/ChangePassword";
+import UserManagement from "./pages/admin/UserManagement";
 
 const ALL_ROLES = ["director", "accountant", "engineer", "foreman", "driver", "procurement", "safety", "admin"];
 
@@ -397,6 +397,34 @@ const AppRoutes = () => {
           <ProtectedRoute roles={["director", "accountant", "engineer"]}>
             <Layout>
               <Reports />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+
+
+      {/* CHANGE PASSWORD */}
+
+      <Route
+        path="/change-password"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <ChangePassword />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+
+
+      {/* ADMIN: USER MANAGEMENT */}
+
+      <Route
+        path="/admin/users"
+        element={
+          <ProtectedRoute roles={["admin", "director"]}>
+            <Layout>
+              <UserManagement />
             </Layout>
           </ProtectedRoute>
         }
