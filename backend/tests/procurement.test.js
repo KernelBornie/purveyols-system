@@ -46,9 +46,9 @@ beforeEach(async () => {
 });
 
 const orderPayload = {
-  itemName: 'Cement Bags',
-  description: '50kg bags',
-  quantity: 100
+  items: [
+    { name: 'Cement Bags', description: '50kg bags', quantity: 100 }
+  ]
 };
 
 // Helper: engineer creates an order
@@ -65,7 +65,7 @@ const setPrice = async (id) => {
   const res = await request(app)
     .put(`/api/procurement/${id}/price`)
     .set('Authorization', `Bearer ${procurementToken}`)
-    .send({ supplier: 'BuildMart', unitPrice: 50 });
+    .send({ supplier: 'BuildMart', items: [{ unitPrice: 50 }] });
   return res.body;
 };
 
@@ -77,9 +77,13 @@ describe('POST /api/procurement', () => {
       .send(orderPayload);
 
     expect(res.statusCode).toBe(201);
-    expect(res.body).toMatchObject({ itemName: 'Cement Bags', quantity: 100, status: 'pending' });
-    expect(res.body.unitPrice).toBeUndefined();
-    expect(res.body.totalPrice).toBeUndefined();
+    expect(res.body.status).toBe('pending');
+    expect(Array.isArray(res.body.items)).toBe(true);
+    expect(res.body.items.length).toBe(1);
+    expect(res.body.items[0].name).toBe('Cement Bags');
+    expect(res.body.items[0].quantity).toBe(100);
+    expect(res.body.items[0].unitPrice).toBeUndefined();
+    expect(res.body.items[0].totalPrice).toBeUndefined();
   });
 
   it('returns 401 without authentication', async () => {
@@ -118,19 +122,18 @@ describe('PUT /api/procurement/:id/price', () => {
     const res = await request(app)
       .put(`/api/procurement/${order._id}/price`)
       .set('Authorization', `Bearer ${procurementToken}`)
-      .send({ supplier: 'BuildMart', unitPrice: 50 });
+      .send({ supplier: 'BuildMart', items: [{ unitPrice: 50 }] });
 
     expect(res.statusCode).toBe(200);
-    expect(res.body).toMatchObject({
-      status: 'priced',
-      supplier: 'BuildMart',
-      unitPrice: 50,
-      totalPrice: 5000
-    });
+    expect(res.body.status).toBe('priced');
+    expect(res.body.supplier).toBe('BuildMart');
+    expect(res.body.items[0].unitPrice).toBe(50);
+    expect(res.body.items[0].totalPrice).toBe(5000);
+    expect(res.body.totalPrice).toBe(5000);
     expect(res.body.priceSetBy).toBeDefined();
   });
 
-  it('returns 400 if unit price is missing', async () => {
+  it('returns 400 if items prices are missing', async () => {
     const order = await createOrder();
     const res = await request(app)
       .put(`/api/procurement/${order._id}/price`)
@@ -145,7 +148,7 @@ describe('PUT /api/procurement/:id/price', () => {
     const res = await request(app)
       .put(`/api/procurement/${order._id}/price`)
       .set('Authorization', `Bearer ${procurementToken}`)
-      .send({ supplier: 'BuildMart', unitPrice: 0 });
+      .send({ supplier: 'BuildMart', items: [{ unitPrice: 0 }] });
 
     expect(res.statusCode).toBe(400);
   });
@@ -166,7 +169,7 @@ describe('PUT /api/procurement/:id/price', () => {
     const res = await request(app)
       .put(`/api/procurement/${order._id}/price`)
       .set('Authorization', `Bearer ${engineerToken}`)
-      .send({ supplier: 'BuildMart', unitPrice: 50 });
+      .send({ supplier: 'BuildMart', items: [{ unitPrice: 50 }] });
 
     expect(res.statusCode).toBe(403);
   });
@@ -176,7 +179,7 @@ describe('PUT /api/procurement/:id/price', () => {
     const res = await request(app)
       .put(`/api/procurement/${order._id}/price`)
       .set('Authorization', `Bearer ${directorToken}`)
-      .send({ supplier: 'BuildMart', unitPrice: 50 });
+      .send({ supplier: 'BuildMart', items: [{ unitPrice: 50 }] });
 
     expect(res.statusCode).toBe(403);
   });
