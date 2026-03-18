@@ -6,6 +6,7 @@ const navItems = [
   { to: '/dashboard', label: '🏠 Dashboard', roles: ['director', 'engineer', 'foreman', 'procurement', 'driver', 'accountant', 'worker', 'safety', 'admin'] },
   { to: '/projects', label: '🏗️ Projects', roles: ['director', 'engineer', 'foreman'] },
   { to: '/workers', label: '👷 Workers', roles: ['director', 'engineer', 'foreman', 'accountant'] },
+  { to: '/attendance', label: '📅 Attendance', roles: ['director', 'engineer', 'foreman', 'accountant'] },
   { to: '/logbooks', label: '📋 Logbooks', roles: ['director', 'accountant', 'driver'] },
   { to: '/funding-requests', label: '💰 Funding Requests', roles: ['director', 'engineer', 'accountant', 'foreman', 'driver', 'procurement'] },
   { to: '/procurement', label: '🛒 Materials / Procurement', roles: ['director', 'procurement', 'engineer', 'foreman', 'driver', 'safety'] },
