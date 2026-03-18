@@ -67,6 +67,7 @@ const WorkerList = () => {
                   <th>NRC</th>
                   <th>Phone</th>
                   <th>Daily Rate (ZMW)</th>
+                  <th>Overtime Rate (ZMW/hr)</th>
                   <th>Site</th>
                   <th>Network</th>
                   <th>Enrolled By</th>
@@ -82,6 +83,7 @@ const WorkerList = () => {
                     <td>{worker.nrc}</td>
                     <td>{worker.phone}</td>
                     <td>K{worker.dailyRate}</td>
+                    <td>K{worker.overtimeRate ?? 0}</td>
                     <td>{worker.site}</td>
                     <td style={{ textTransform: 'capitalize' }}>{worker.mobileNetwork}</td>
                     <td>{worker.enrolledBy?.name} ({worker.enrolledBy?.role})</td>

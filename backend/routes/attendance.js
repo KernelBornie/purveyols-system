@@ -7,7 +7,7 @@ const Worker = require('../models/Worker');
 // POST /api/attendance/mark – mark or update a worker's attendance for a given date
 router.post('/mark', auth, async (req, res) => {
   try {
-    const { workerId, date, status, overtimeHours, overtimeRate } = req.body;
+    const { workerId, date, status, overtimeHours } = req.body;
 
     if (!workerId || !date || !status) {
       return res.status(400).json({ message: 'workerId, date, and status are required' });
@@ -31,7 +31,7 @@ router.post('/mark', auth, async (req, res) => {
         date: attendanceDate,
         status,
         overtimeHours: overtimeHours || 0,
-        overtimeRate: overtimeRate || 0,
+        overtimeRate: worker.overtimeRate || 0,
         markedBy: req.user._id
       },
       { upsert: true, new: true, setDefaultsOnInsert: true }
