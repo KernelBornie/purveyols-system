@@ -37,6 +37,9 @@ import SubcontractForm from "./pages/subcontracts/SubcontractForm";
 import SafetyReportList from "./pages/safety/SafetyReportList";
 import Reports from "./pages/reports/Reports";
 
+import AttendanceList from "./pages/attendance/AttendanceList";
+import AttendanceHistory from "./pages/attendance/AttendanceHistory";
+
 const ALL_ROLES = ["director", "accountant", "engineer", "foreman", "driver", "procurement", "safety", "admin"];
 
 const Layout = ({ children }) => {
@@ -355,6 +358,31 @@ const AppRoutes = () => {
           <ProtectedRoute roles={["director", "safety", "engineer"]}>
             <Layout>
               <SafetyReportList />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+
+
+      {/* ATTENDANCE */}
+
+      <Route
+        path="/attendance"
+        element={
+          <ProtectedRoute roles={["director", "engineer", "foreman", "accountant"]}>
+            <Layout>
+              <AttendanceList />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/attendance/worker/:id"
+        element={
+          <ProtectedRoute roles={["director", "engineer", "foreman", "accountant"]}>
+            <Layout>
+              <AttendanceHistory />
             </Layout>
           </ProtectedRoute>
         }
