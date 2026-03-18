@@ -178,8 +178,8 @@ router.put('/:id/reject', auth, roleCheck('director'), async (req, res) => {
   }
 });
 
-// PUT /api/procurement/:id – general update (procurement officer only, for pending/priced orders)
-router.put('/:id', auth, roleCheck('procurement', 'director', 'admin'), async (req, res) => {
+// PUT /api/procurement/:id – general update (procurement officer, engineer, director, admin only)
+router.put('/:id', auth, roleCheck('procurement', 'director', 'admin', 'engineer'), async (req, res) => {
   try {
     const order = await ProcurementOrder.findById(req.params.id);
     if (!order) return res.status(404).json({ message: 'Procurement order not found' });
@@ -191,6 +191,23 @@ router.put('/:id', auth, roleCheck('procurement', 'director', 'admin'), async (r
     await order.populate('requestedBy', 'name email');
     await order.populate('project', 'name');
     res.json(order);
+  } catch (err) {
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+});
+
+// PUT /api/procurement/:id/deactivate – engineer/director only
+router.put('/:id/deactivate', auth, roleCheck('engineer', 'director'), async (req, res) => {
+  try {
+    const order = await ProcurementOrder.findByIdAndUpdate(
+      req.params.id,
+      { isActive: false },
+      { new: true }
+    )
+      .populate('requestedBy', 'name email')
+      .populate('project', 'name');
+    if (!order) return res.status(404).json({ message: 'Procurement order not found' });
+    res.json({ message: 'Procurement order deactivated', order });
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });
   }

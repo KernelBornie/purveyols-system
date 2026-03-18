@@ -219,6 +219,17 @@ const AppRoutes = () => {
         }
       />
 
+      <Route
+        path="/funding-requests/:id/edit"
+        element={
+          <ProtectedRoute roles={["director", "engineer"]}>
+            <Layout>
+              <FundingRequestForm />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+
 
       {/* PROCUREMENT / MATERIAL REQUESTS */}
 
@@ -247,7 +258,7 @@ const AppRoutes = () => {
       <Route
         path="/procurement/:id/edit"
         element={
-          <ProtectedRoute roles={["director", "procurement"]}>
+          <ProtectedRoute roles={["director", "procurement", "engineer"]}>
             <Layout>
               <ProcurementForm />
             </Layout>

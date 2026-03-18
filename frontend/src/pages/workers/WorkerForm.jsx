@@ -1,11 +1,13 @@
-import { useState, useContext } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useContext, useEffect } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import API from '../../api/axios';
 import { AuthContext } from '../../context/AuthContext';
 
 const WorkerForm = () => {
+  const { id } = useParams();
   const navigate = useNavigate();
   const { user } = useContext(AuthContext);
+  const isEdit = Boolean(id);
 
   const today = new Date().toISOString().split('T')[0];
 
@@ -14,6 +16,28 @@ const WorkerForm = () => {
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [fetching, setFetching] = useState(isEdit);
+
+  useEffect(() => {
+    if (isEdit) {
+      API.get(`/workers/${id}`)
+        .then(r => {
+          const w = r.data;
+          setForm({
+            name: w.name || '',
+            nrc: w.nrc || '',
+            phone: w.phone || '',
+            dailyRate: w.dailyRate ?? '',
+            overtimeRate: w.overtimeRate ?? '',
+            site: w.site || '',
+            mobileNetwork: w.mobileNetwork || 'airtel',
+            enrollmentDate: w.enrolledAt ? w.enrolledAt.substring(0, 10) : today
+          });
+        })
+        .catch(() => setError('Failed to load worker'))
+        .finally(() => setFetching(false));
+    }
+  }, [id, isEdit]);
 
   const handleChange = e => setForm({ ...form, [e.target.name]: e.target.value });
 
@@ -22,23 +46,30 @@ const WorkerForm = () => {
     setError('');
     setLoading(true);
     try {
-      await API.post('/workers', {
+      const payload = {
         ...form,
         dailyRate: Number(form.dailyRate),
         overtimeRate: form.overtimeRate !== '' ? Number(form.overtimeRate) : 0,
-      });
+      };
+      if (isEdit) {
+        await API.put(`/workers/${id}`, payload);
+      } else {
+        await API.post('/workers', payload);
+      }
       navigate('/workers');
     } catch (err) {
-      setError(err.response?.data?.message || err.response?.data?.errors?.[0]?.msg || 'Failed to enroll worker');
+      setError(err.response?.data?.message || err.response?.data?.errors?.[0]?.msg || 'Failed to save worker');
     } finally {
       setLoading(false);
     }
   };
 
+  if (fetching) return <div className="loading">Loading...</div>;
+
   return (
     <div>
       <div className="page-header">
-        <h1>👷 Enroll New General Worker</h1>
+        <h1>👷 {isEdit ? 'Edit Worker' : 'Enroll New General Worker'}</h1>
         <span style={{ color: '#666' }}>Enrolling as: {user?.name} ({user?.role})</span>
       </div>
       <div className="card">
@@ -91,7 +122,7 @@ const WorkerForm = () => {
           </div>
           <div className="form-actions">
             <button type="submit" className="btn btn-primary" disabled={loading}>
-              {loading ? 'Enrolling...' : 'Enroll Worker'}
+              {loading ? 'Saving...' : isEdit ? 'Update Worker' : 'Enroll Worker'}
             </button>
             <button type="button" className="btn btn-secondary" onClick={() => navigate('/workers')}>
               Cancel

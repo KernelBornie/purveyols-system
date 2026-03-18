@@ -21,6 +21,7 @@ const SubcontractSchema = new mongoose.Schema(
       enum: ['active', 'completed', 'cancelled'],
       default: 'active',
     },
+    isActive: { type: Boolean, default: true }
   },
   { timestamps: true }
 );
