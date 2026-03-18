@@ -25,20 +25,18 @@ const AttendanceList = () => {
     setFormState({
       status: existing?.status || 'present',
       overtimeHours: existing?.overtimeHours ?? 0,
-      overtimeRate: existing?.overtimeRate ?? 0
     });
     setMarkingId(workerId);
   };
 
   const handleMark = async (workerId) => {
-    const { status, overtimeHours, overtimeRate } = formState;
+    const { status, overtimeHours } = formState;
     try {
       const res = await API.post('/attendance/mark', {
         workerId,
         date: selectedDate,
         status,
         overtimeHours: Number(overtimeHours),
-        overtimeRate: Number(overtimeRate)
       });
       const record = res.data.attendance;
       setAttendanceMap(prev => ({ ...prev, [workerId]: record }));
@@ -97,7 +95,7 @@ const AttendanceList = () => {
                   const record = attendanceMap[worker._id];
                   const isMarking = markingId === worker._id;
                   const overtimePay = record
-                    ? (record.overtimeHours || 0) * (record.overtimeRate || 0)
+                    ? (record.overtimeHours || 0) * (worker.overtimeRate || 0)
                     : 0;
                   const wageForDay = record?.status === 'present'
                     ? (worker.dailyRate || 0) + overtimePay
@@ -116,7 +114,7 @@ const AttendanceList = () => {
                         ) : '—'}
                       </td>
                       <td>{record ? record.overtimeHours : '—'}</td>
-                      <td>{record ? `K${record.overtimeRate}` : '—'}</td>
+                      <td>K{worker.overtimeRate ?? 0}</td>
                       <td>{wageForDay !== '—' ? `K${wageForDay}` : '—'}</td>
                       <td>
                         <div className="actions">
@@ -139,15 +137,6 @@ const AttendanceList = () => {
                                 min="0"
                                 value={formState.overtimeHours}
                                 onChange={e => setFormState(s => ({ ...s, overtimeHours: e.target.value }))}
-                              />
-                              <input
-                                type="number"
-                                className="form-control"
-                                style={{ width: '90px' }}
-                                placeholder="OT rate"
-                                min="0"
-                                value={formState.overtimeRate}
-                                onChange={e => setFormState(s => ({ ...s, overtimeRate: e.target.value }))}
                               />
                               <button className="btn btn-primary btn-sm" onClick={() => handleMark(worker._id)}>Save</button>
                               <button className="btn btn-secondary btn-sm" onClick={() => setMarkingId(null)}>Cancel</button>

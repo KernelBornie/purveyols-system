@@ -6,6 +6,7 @@ const WorkerSchema = new mongoose.Schema(
     nrc: { type: String, required: true, unique: true },
     phone: { type: String },
     dailyRate: { type: Number, default: 0 },
+    overtimeRate: { type: Number, default: 0, min: 0 },
     site: { type: String },
     mobileNetwork: { type: String, enum: ['airtel', 'mtn', 'other'], default: 'airtel' },
     role: {

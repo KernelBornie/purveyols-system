@@ -10,7 +10,7 @@ const WorkerForm = () => {
   const today = new Date().toISOString().split('T')[0];
 
   const [form, setForm] = useState({
-    name: '', nrc: '', phone: '', dailyRate: '', site: '', mobileNetwork: 'airtel', enrollmentDate: today
+    name: '', nrc: '', phone: '', dailyRate: '', overtimeRate: '', site: '', mobileNetwork: 'airtel', enrollmentDate: today
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -22,7 +22,11 @@ const WorkerForm = () => {
     setError('');
     setLoading(true);
     try {
-      await API.post('/workers', { ...form, dailyRate: Number(form.dailyRate) });
+      await API.post('/workers', {
+        ...form,
+        dailyRate: Number(form.dailyRate),
+        overtimeRate: form.overtimeRate !== '' ? Number(form.overtimeRate) : 0,
+      });
       navigate('/workers');
     } catch (err) {
       setError(err.response?.data?.message || err.response?.data?.errors?.[0]?.msg || 'Failed to enroll worker');
@@ -55,9 +59,15 @@ const WorkerForm = () => {
               <label>Phone Number *</label>
               <input name="phone" className="form-control" value={form.phone} onChange={handleChange} required placeholder="e.g. 0971234567" />
             </div>
+          </div>
+          <div className="form-row">
             <div className="form-group">
               <label>Daily Rate (ZMW) *</label>
               <input type="number" name="dailyRate" className="form-control" value={form.dailyRate} onChange={handleChange} required min="0" placeholder="e.g. 150" />
+            </div>
+            <div className="form-group">
+              <label>Overtime Rate (ZMW/hr)</label>
+              <input type="number" name="overtimeRate" className="form-control" value={form.overtimeRate} onChange={handleChange} min="0" placeholder="e.g. 25" />
             </div>
           </div>
           <div className="form-row">
