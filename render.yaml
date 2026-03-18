@@ -18,3 +18,5 @@ services:
         sync: false   # Set in Render dashboard; never commit credentials
       - key: JWT_SECRET
         sync: false   # Set in Render dashboard; never commit secrets
+      - key: CORS_ORIGIN
+        sync: false   # Set in Render dashboard to your Netlify/Vercel frontend URL
