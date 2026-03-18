@@ -34,8 +34,8 @@ const Login = () => {
         role: data.user.role,
       };
 
-      localStorage.setItem("token", data.token);
-      localStorage.setItem("user", JSON.stringify(essentialUser));
+      sessionStorage.setItem("token", data.token);
+      sessionStorage.setItem("user", JSON.stringify(essentialUser));
 
       setUser(data.user);
 

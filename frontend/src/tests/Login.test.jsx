@@ -23,7 +23,7 @@ const renderLogin = () =>
 describe('Login page', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    localStorage.clear();
+    sessionStorage.clear();
   });
 
   it('renders the login form', () => {

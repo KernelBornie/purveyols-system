@@ -64,7 +64,7 @@ const ProjectList = () => {
                   <th>Name</th>
                   <th>Location</th>
                   <th>Status</th>
-                  <th>Budget (UGX)</th>
+                  <th>Budget (ZMW)</th>
                   <th>Engineer</th>
                   <th>Foreman</th>
                   <th>Actions</th>

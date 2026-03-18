@@ -9,7 +9,7 @@ const PaymentForm = () => {
 
   const [form, setForm] = useState({
     paymentType: 'mobile_money', recipientName: '', recipientPhone: '',
-    amount: '', currency: 'UGX', description: '', project: '', status: 'pending'
+    amount: '', currency: 'ZMW', description: '', project: '', status: 'pending'
   });
   const [projects, setProjects] = useState([]);
   const [error, setError] = useState('');
@@ -27,7 +27,7 @@ const PaymentForm = () => {
             recipientName: p.recipientName || '',
             recipientPhone: p.recipientPhone || '',
             amount: p.amount ?? '',
-            currency: p.currency || 'UGX',
+            currency: p.currency || 'ZMW',
             description: p.description || '',
             project: p.project?._id || '',
             status: p.status || 'pending'

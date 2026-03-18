@@ -155,6 +155,7 @@ const DirectorDashboard = () => {
                   <th>Site</th>
                   <th>Daily Rate (ZMW)</th>
                   <th>Enrolled By</th>
+                  <th>Date Enrolled</th>
                 </tr>
               </thead>
               <tbody>
@@ -166,6 +167,7 @@ const DirectorDashboard = () => {
                     <td>{w.site}</td>
                     <td>K{w.dailyRate}</td>
                     <td>{w.enrolledBy?.name} ({w.enrolledBy?.role})</td>
+                    <td>{w.enrolledAt ? new Date(w.enrolledAt).toLocaleDateString() : w.createdAt ? new Date(w.createdAt).toLocaleDateString() : '—'}</td>
                   </tr>
                 ))}
               </tbody>

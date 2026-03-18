@@ -57,7 +57,7 @@ const FundingRequestList = () => {
                 <tr>
                   <th>Title</th>
                   <th>Project</th>
-                  <th>Amount (UGX)</th>
+                  <th>Amount (ZMW)</th>
                   <th>Requested By</th>
                   <th>Status</th>
                   <th>Date</th>

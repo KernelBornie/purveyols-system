@@ -174,3 +174,8 @@ padding:24px;
 }
 
 }
+@media print {
+  .sidebar, .navbar, .btn, .page-header { display: none !important; }
+  .logbook-receipt { display: block !important; border: 1px solid #2e7d32; padding: 16px; }
+  body { background: #fff; }
+}

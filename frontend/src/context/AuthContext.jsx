@@ -8,15 +8,15 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   const logout = useCallback(() => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
+    sessionStorage.removeItem("token");
+    sessionStorage.removeItem("user");
     setUser(null);
   }, []);
 
   useEffect(() => {
 
-    const token = localStorage.getItem("token");
-    const storedUser = localStorage.getItem("user");
+    const token = sessionStorage.getItem("token");
+    const storedUser = sessionStorage.getItem("user");
 
     if (token && storedUser) {
       try {
@@ -33,7 +33,7 @@ export const AuthProvider = ({ children }) => {
         .then((data) => {
           if (data.user) {
             setUser(data.user);
-            localStorage.setItem("user", JSON.stringify(data.user));
+            sessionStorage.setItem("user", JSON.stringify(data.user));
           } else {
             logout();
           }
