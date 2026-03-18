@@ -79,7 +79,7 @@ router.post('/', auth, roleCheck('accountant'), async (req, res) => {
     await payment.populate('project', 'name');
     await payment.populate('worker', 'name nrc');
     await payment.populate('processedBy', 'name email');
-    const recipient = payment.recipientName || 'recipient';
+    const recipient = payment.recipientName || 'Unknown Recipient';
     const amountVal = payment.amount != null ? `ZMW ${payment.amount.toLocaleString()}` : '';
     createNotification(
       req.user._id,

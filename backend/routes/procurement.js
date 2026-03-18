@@ -94,6 +94,7 @@ router.put('/:id/approve', auth, roleCheck('director'), async (req, res) => {
     if (order.status !== 'priced') {
       return res.status(400).json({ message: 'Only priced orders can be approved by the director' });
     }
+    // Capture requestedBy before populate replaces it with an object
     const requestedById = order.requestedBy;
     order.status = 'approved';
     order.approvedBy = req.user._id;
@@ -142,6 +143,7 @@ router.put('/:id/reject', auth, roleCheck('director'), async (req, res) => {
     if (order.status !== 'priced') {
       return res.status(400).json({ message: 'Only priced orders can be rejected by the director' });
     }
+    // Capture requestedBy before populate replaces it with an object
     const requestedById = order.requestedBy;
     order.status = 'rejected';
     order.rejectionReason = rejectionReason;
