@@ -12,6 +12,7 @@ const DriverDashboard = () => {
   const [error, setError] = useState('');
   const [msg, setMsg] = useState('');
   const [showLogForm, setShowLogForm] = useState(false);
+  const [lastSubmitted, setLastSubmitted] = useState(null);
 
   const today = new Date().toISOString().substring(0, 10);
 
@@ -71,11 +72,13 @@ const DriverDashboard = () => {
   const handleLogSubmit = async (e) => {
     e.preventDefault();
     try {
-      await API.post('/logbooks', { type: 'vehicle', ...logForm, distanceKm: Number(logForm.distanceKm), fuelLitres: Number(logForm.fuelLitres) });
+      const payload = { type: 'vehicle', ...logForm, distanceKm: Number(logForm.distanceKm), fuelLitres: Number(logForm.fuelLitres) };
+      const res = await API.post('/logbooks', payload);
+      setLastSubmitted({ ...res.data, submittedAt: res.data.createdAt || new Date().toISOString() });
       setMsg('Logbook entry saved and sent to accountant');
       setShowLogForm(false);
-      const res = await API.get('/logbooks');
-      setLogbooks(res.data.entries || []);
+      const updated = await API.get('/logbooks');
+      setLogbooks(updated.data.entries || []);
     } catch (err) {
       alert('Failed: ' + (err.response?.data?.message || JSON.stringify(err.response?.data?.errors)));
     }
@@ -203,6 +206,37 @@ const DriverDashboard = () => {
               <button type="button" className="btn btn-secondary" onClick={() => setShowLogForm(false)}>Cancel</button>
             </div>
           </form>
+        </div>
+      )}
+
+      {/* Last Submitted Logbook Receipt */}
+      {lastSubmitted && (
+        <div className="card logbook-receipt" style={{ borderLeft: '4px solid #2e7d32', background: '#f0faf0' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+            <h3 style={{ color: '#2e7d32', margin: 0 }}>✅ Logbook Submitted — Receipt</h3>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button className="btn btn-secondary btn-sm" onClick={() => window.print()}>🖨️ Print</button>
+              <button className="btn btn-secondary btn-sm" onClick={() => setLastSubmitted(null)}>✕ Dismiss</button>
+            </div>
+          </div>
+          <p style={{ color: '#2e7d32', marginBottom: '12px', fontSize: '0.9rem' }}>
+            📤 A copy of this entry has been sent to the accountant and management.
+          </p>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '8px', fontSize: '0.9rem' }}>
+            <div><strong>Driver:</strong> {user?.name}</div>
+            <div><strong>Date:</strong> {lastSubmitted.date}</div>
+            <div><strong>Vehicle:</strong> {lastSubmitted.vehicleNumber}</div>
+            <div><strong>Time In:</strong> {lastSubmitted.timeIn}</div>
+            <div><strong>Time Out:</strong> {lastSubmitted.timeOut}</div>
+            <div><strong>Hours:</strong> {calcHours(lastSubmitted.timeIn, lastSubmitted.timeOut)}</div>
+            <div><strong>Distance:</strong> {lastSubmitted.distanceKm} km</div>
+            <div><strong>Fuel:</strong> {lastSubmitted.fuelLitres} L</div>
+            <div><strong>Route:</strong> {lastSubmitted.route}</div>
+            <div><strong>Purpose:</strong> {lastSubmitted.purpose}</div>
+            {lastSubmitted.site && <div><strong>Site:</strong> {lastSubmitted.site}</div>}
+            {lastSubmitted.notes && <div><strong>Notes:</strong> {lastSubmitted.notes}</div>}
+            <div><strong>Submitted At:</strong> {new Date(lastSubmitted.submittedAt).toLocaleString()}</div>
+          </div>
         </div>
       )}
 

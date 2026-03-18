@@ -120,7 +120,7 @@ const ProjectForm = () => {
               </select>
             </div>
             <div className="form-group">
-              <label>Budget (UGX)</label>
+              <label>Budget (ZMW)</label>
               <input type="number" name="budget" className="form-control" value={form.budget} onChange={handleChange} min="0" />
             </div>
           </div>

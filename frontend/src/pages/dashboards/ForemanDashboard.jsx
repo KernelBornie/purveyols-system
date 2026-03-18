@@ -91,6 +91,7 @@ const ForemanDashboard = () => {
                   <th>Daily Rate</th>
                   <th>Site</th>
                   <th>Enrolled By</th>
+                  <th>Date Enrolled</th>
                 </tr>
               </thead>
               <tbody>
@@ -102,6 +103,7 @@ const ForemanDashboard = () => {
                     <td>K{w.dailyRate}</td>
                     <td>{w.site}</td>
                     <td>{w.enrolledBy?.name} ({w.enrolledBy?.role})</td>
+                    <td>{w.enrolledAt ? new Date(w.enrolledAt).toLocaleDateString() : w.createdAt ? new Date(w.createdAt).toLocaleDateString() : '—'}</td>
                   </tr>
                 ))}
               </tbody>

@@ -49,7 +49,7 @@ const FundingRequestForm = () => {
           </div>
           <div className="form-row">
             <div className="form-group">
-              <label>Amount (UGX) *</label>
+              <label>Amount (ZMW) *</label>
               <input type="number" name="amount" className="form-control" value={form.amount} onChange={handleChange} required min="1" />
             </div>
             <div className="form-group">

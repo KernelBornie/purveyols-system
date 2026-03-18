@@ -98,12 +98,12 @@ const ProcurementForm = () => {
               <input type="number" name="quantity" className="form-control" value={form.quantity} onChange={handleChange} required min="1" />
             </div>
             <div className="form-group">
-              <label>Unit Price (UGX) *</label>
+              <label>Unit Price (ZMW) *</label>
               <input type="number" name="unitPrice" className="form-control" value={form.unitPrice} onChange={handleChange} required min="0" />
             </div>
           </div>
           <div className="form-group">
-            <label>Total Price (UGX)</label>
+            <label>Total Price (ZMW)</label>
             <input className="form-control" value={totalPrice.toLocaleString()} readOnly style={{ backgroundColor: '#f8f9fa' }} />
           </div>
           <div className="form-row">

@@ -258,6 +258,7 @@ const AccountantDashboard = () => {
                   <th>Daily Rate</th>
                   <th>Site</th>
                   <th>Enrolled By</th>
+                  <th>Date Enrolled</th>
                   <th>Days</th>
                   <th>Paid (ZMW)</th>
                   <th>Pending</th>
@@ -279,6 +280,7 @@ const AccountantDashboard = () => {
                       <td>K{w.dailyRate}</td>
                       <td>{w.site}</td>
                       <td>{w.enrolledBy?.name} ({w.enrolledBy?.role})</td>
+                      <td>{w.enrolledAt ? new Date(w.enrolledAt).toLocaleDateString() : w.createdAt ? new Date(w.createdAt).toLocaleDateString() : '—'}</td>
                       <td>{daysWorked}</td>
                       <td style={{ color: '#2e7d32', fontWeight: '600' }}>K{paid.toLocaleString()}</td>
                       <td style={{ color: '#e65100', fontWeight: '600' }}>K{Math.max(0, w.dailyRate - paid)}</td>
