@@ -54,6 +54,8 @@ const PaymentList = () => {
                   <th>Phone</th>
                   <th>Amount</th>
                   <th>Currency</th>
+                  <th>Network</th>
+                  <th>Txn Ref</th>
                   <th>Project</th>
                   <th>Status</th>
                   <th>Date</th>
@@ -68,6 +70,8 @@ const PaymentList = () => {
                     <td>{payment.recipientPhone || '—'}</td>
                     <td>{payment.amount?.toLocaleString()}</td>
                     <td>{payment.currency}</td>
+                    <td>{payment.mobileNetwork ? payment.mobileNetwork.toUpperCase() : '—'}</td>
+                    <td><code style={{ fontSize: '0.75em' }}>{payment.transactionRef || '—'}</code></td>
                     <td>{payment.project?.name || '—'}</td>
                     <td><span className={`badge badge-${payment.status}`}>{payment.status}</span></td>
                     <td>{new Date(payment.paymentDate).toLocaleDateString()}</td>
