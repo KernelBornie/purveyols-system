@@ -1,4 +1,5 @@
 import { createContext, useState, useEffect, useCallback } from "react";
+import API from "../api/axios";
 
 export const AuthContext = createContext();
 
@@ -26,10 +27,8 @@ export const AuthProvider = ({ children }) => {
       }
 
       // Verify token with server
-      fetch("http://localhost:5000/api/auth/me", {
-        headers: { Authorization: `Bearer ${token}` }
-      })
-        .then((res) => res.json())
+      API.get('/auth/me')
+        .then((res) => res.data)
         .then((data) => {
           if (data.user) {
             setUser(data.user);
