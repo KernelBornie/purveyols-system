@@ -1,4 +1,5 @@
 import { createContext, useState, useEffect, useCallback } from "react";
+import API from "../api/axios";
 
 export const AuthContext = createContext();
 
@@ -8,15 +9,15 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   const logout = useCallback(() => {
-    sessionStorage.removeItem("token");
-    sessionStorage.removeItem("user");
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
     setUser(null);
   }, []);
 
   useEffect(() => {
 
-    const token = sessionStorage.getItem("token");
-    const storedUser = sessionStorage.getItem("user");
+    const token = localStorage.getItem("token");
+    const storedUser = localStorage.getItem("user");
 
     if (token && storedUser) {
       try {
@@ -26,14 +27,12 @@ export const AuthProvider = ({ children }) => {
       }
 
       // Verify token with server
-      fetch("/api/auth/me", {
-        headers: { Authorization: `Bearer ${token}` }
-      })
-        .then((res) => res.json())
+      API.get('/auth/me')
+        .then((res) => res.data)
         .then((data) => {
           if (data.user) {
             setUser(data.user);
-            sessionStorage.setItem("user", JSON.stringify(data.user));
+            localStorage.setItem("user", JSON.stringify(data.user));
           } else {
             logout();
           }

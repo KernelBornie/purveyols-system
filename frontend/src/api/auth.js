@@ -1,46 +1,30 @@
+import API from './axios';
+
 export async function login(email, password) {
-
-  let res;
   try {
-    res = await fetch("/api/auth/login", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        email,
-        password
-      })
-    });
+    const { data } = await API.post('/auth/login', { email, password });
+    return data;
   } catch (networkErr) {
-    throw new Error("Unable to reach the server. Please check your connection and try again.");
+    if (!networkErr.response) {
+      throw new Error("Unable to reach the server. Please check your connection and try again.");
+    }
+    throw new Error(
+      networkErr.response?.data?.message ||
+      networkErr.response?.data?.errors?.[0]?.msg ||
+      "Login failed"
+    );
   }
-
-  let data;
-  try {
-    data = await res.json();
-  } catch (jsonErr) {
-    throw new Error("Server returned an unexpected response. Please try again later.");
-  }
-
-  if (!res.ok) {
-    throw new Error(data.message || "Login failed");
-  }
-
-  return data;
 }
 
 export async function changePassword(oldPassword, newPassword) {
-  const token = sessionStorage.getItem("token");
-  const res = await fetch("/api/auth/change-password", {
-    method: "PUT",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`
-    },
-    body: JSON.stringify({ oldPassword, newPassword })
-  });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.message || (data.errors && data.errors[0]?.msg) || "Failed to change password");
-  return data;
+  try {
+    const { data } = await API.put('/auth/change-password', { oldPassword, newPassword });
+    return data;
+  } catch (err) {
+    throw new Error(
+      err.response?.data?.message ||
+      (err.response?.data?.errors && err.response.data.errors[0]?.msg) ||
+      "Failed to change password"
+    );
+  }
 }
