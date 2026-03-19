@@ -3,13 +3,18 @@ import { useNavigate, useParams } from 'react-router-dom';
 import API from '../../api/axios';
 import { AuthContext } from '../../context/AuthContext';
 
-const emptyItem = () => ({ name: '', quantity: '', description: '' });
+const emptyItem = () => ({ name: '', quantity: '', description: '', unitPrice: '' });
+const calculateItemTotal = (quantity, unitPrice) =>
+  quantity && unitPrice ? Number(quantity) * Number(unitPrice) : null;
+const CURRENCY_SYMBOL = 'K';
 
 const ProcurementForm = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user } = useContext(AuthContext);
   const isEdit = Boolean(id);
+  const canSetPrice = user?.role === 'procurement';
+  const canViewPrice = user?.role !== 'engineer';
 
   const [items, setItems] = useState([emptyItem()]);
   const [form, setForm] = useState({ project: '', deliveryDate: '' });
@@ -28,7 +33,8 @@ const ProcurementForm = () => {
             (o.items || []).map(item => ({
               name: item.name || '',
               quantity: item.quantity ?? '',
-              description: item.description || ''
+              description: item.description || '',
+              unitPrice: item.unitPrice ?? ''
             }))
           );
           setForm({
@@ -76,7 +82,10 @@ const ProcurementForm = () => {
         items: items.map(item => ({
           name: item.name.trim(),
           quantity: Number(item.quantity),
-          description: item.description.trim() || undefined
+          description: item.description.trim() || undefined,
+          ...(canSetPrice && item.unitPrice !== ''
+            ? { unitPrice: Number(item.unitPrice) }
+            : {})
         })),
         project: form.project || undefined,
         deliveryDate: form.deliveryDate || undefined
@@ -105,84 +114,88 @@ const ProcurementForm = () => {
         {error && <div className="alert alert-error">{error}</div>}
         <form onSubmit={handleSubmit}>
           <h3 style={{ marginBottom: '12px' }}>Items</h3>
-          {items.map((item, index) => (
-            <div key={index} style={{ border: '1px solid #e0e0e0', borderRadius: '6px', padding: '12px', marginBottom: '12px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                <strong>Item {index + 1}</strong>
-                {items.length > 1 && (
-                  <button type="button" className="btn btn-danger btn-sm" onClick={() => removeItem(index)}>
-                    Remove
-                  </button>
-                )}
-              </div>
-              <div className="form-row">
-                <div className="form-group">
-                  <label>Item Name *</label>
-                  <input
-                    name="name"
-                    className="form-control"
-                    value={item.name}
-                    onChange={e => handleItemChange(index, e)}
-                    required
-                  />
-                </div>
-                <div className="form-group">
-                  <label>Quantity *</label>
-                  <input
-                    type="number"
-                    name="quantity"
-                    className="form-control"
-                    value={item.quantity}
-                    onChange={e => handleItemChange(index, e)}
-                    required
-                    min="1"
-                  />
-                </div>
-              </div>
-              <div className="form-group">
-                <label>Description</label>
-                <textarea
-                  name="description"
-                  className="form-control"
-                  rows={2}
-                  value={item.description}
-                  onChange={e => handleItemChange(index, e)}
-                />
-              </div>
-            </div>
-          ))}
+          <div className="table-wrapper" style={{ marginBottom: '12px' }}>
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>Item Name *</th>
+                  <th>Quantity *</th>
+                  <th>Description</th>
+                  {canViewPrice && <th>Unit Price (ZMW)</th>}
+                  {canViewPrice && <th>Total Price (ZMW)</th>}
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {items.map((item, index) => {
+                  const totalPrice = calculateItemTotal(item.quantity, item.unitPrice);
+                  return (
+                    <tr key={index}>
+                      <td>
+                        <input
+                          name="name"
+                          aria-label={`Item Name ${index + 1}`}
+                          className="form-control"
+                          value={item.name}
+                          onChange={e => handleItemChange(index, e)}
+                          required
+                        />
+                      </td>
+                      <td>
+                        <input
+                          type="number"
+                          name="quantity"
+                          aria-label={`Quantity ${index + 1}`}
+                          className="form-control"
+                          value={item.quantity}
+                          onChange={e => handleItemChange(index, e)}
+                          required
+                          min="1"
+                        />
+                      </td>
+                      <td>
+                        <textarea
+                          name="description"
+                          aria-label={`Description ${index + 1}`}
+                          className="form-control"
+                          rows={2}
+                          value={item.description}
+                          onChange={e => handleItemChange(index, e)}
+                        />
+                      </td>
+                      {canViewPrice && (
+                        <td>
+                          <input
+                            type="number"
+                            name="unitPrice"
+                            aria-label={`Unit Price ${index + 1}`}
+                            className="form-control"
+                            value={item.unitPrice}
+                            onChange={e => handleItemChange(index, e)}
+                            min="0.01"
+                            step="0.01"
+                            disabled={!canSetPrice}
+                          />
+                        </td>
+                      )}
+                      {canViewPrice && <td>{totalPrice != null ? `${CURRENCY_SYMBOL}${totalPrice.toLocaleString()}` : '—'}</td>}
+                      <td>
+                        {items.length > 1 && (
+                          <button type="button" className="btn btn-danger btn-sm" onClick={() => removeItem(index)}>
+                            Remove
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
 
           <button type="button" className="btn btn-secondary" style={{ marginBottom: '16px' }} onClick={addItem}>
             + Add Item
           </button>
-
-          {items.some(item => item.name.trim()) && (
-            <div style={{ marginBottom: '16px' }}>
-              <h3 style={{ marginBottom: '8px' }}>Items Summary</h3>
-              <div className="table-wrapper">
-                <table className="table">
-                  <thead>
-                    <tr>
-                      <th>#</th>
-                      <th>Item Name</th>
-                      <th>Quantity</th>
-                      <th>Description</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {items.filter(item => item.name.trim()).map((item, i) => (
-                      <tr key={i}>
-                        <td>{i + 1}</td>
-                        <td>{item.name}</td>
-                        <td>{item.quantity}</td>
-                        <td>{item.description || '—'}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
 
           <div className="form-row">
             <div className="form-group">

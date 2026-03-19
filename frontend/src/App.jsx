@@ -247,7 +247,7 @@ const AppRoutes = () => {
       <Route
         path="/procurement/new"
         element={
-          <ProtectedRoute roles={["director", "procurement", "engineer", "foreman", "driver", "safety"]}>
+          <ProtectedRoute roles={["engineer"]}>
             <Layout>
               <ProcurementForm />
             </Layout>
@@ -258,7 +258,7 @@ const AppRoutes = () => {
       <Route
         path="/procurement/:id/edit"
         element={
-          <ProtectedRoute roles={["director", "procurement", "engineer"]}>
+          <ProtectedRoute roles={["engineer"]}>
             <Layout>
               <ProcurementForm />
             </Layout>

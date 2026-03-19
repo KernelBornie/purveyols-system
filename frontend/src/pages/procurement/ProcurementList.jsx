@@ -100,7 +100,7 @@ const ProcurementList = () => {
     <div>
       <div className="page-header">
         <h1>Procurement Orders</h1>
-        {['engineer', 'foreman', 'driver', 'safety'].includes(user?.role) && (
+        {user?.role === 'engineer' && (
           <Link to="/procurement/new" className="btn btn-primary">+ New Request</Link>
         )}
       </div>
@@ -194,9 +194,6 @@ const ProcurementList = () => {
                     <td><span className={`badge badge-${order.status}`}>{order.status}</span></td>
                     <td>
                       <div className="actions">
-                        {['engineer', 'director', 'procurement'].includes(user?.role) && (
-                          <Link to={`/procurement/${order._id}/edit`} className="btn btn-secondary btn-sm">Edit</Link>
-                        )}
                         {user?.role === 'procurement' && order.status === 'pending' && (
                           <button className="btn btn-primary btn-sm" onClick={() => handleSetPrice(order)}>
                             Set Price
