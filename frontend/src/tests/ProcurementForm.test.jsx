@@ -51,7 +51,7 @@ describe('ProcurementForm', () => {
     renderForm('engineer');
     await screen.findByText('Items');
 
-    fireEvent.click(screen.getByRole('button', { name: /\+ Add Item/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Add Item/i }));
 
     expect(screen.getAllByLabelText(/Item Name/i)).toHaveLength(2);
   });
@@ -62,7 +62,7 @@ describe('ProcurementForm', () => {
 
     fireEvent.change(screen.getByLabelText('Quantity 1'), { target: { value: '2' } });
     fireEvent.change(screen.getByLabelText('Unit Price 1'), { target: { value: '100' } });
-    fireEvent.click(screen.getByRole('button', { name: /\+ Add Item/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Add Item/i }));
     fireEvent.change(screen.getByLabelText('Item Name 2'), { target: { value: 'Sand' } });
     fireEvent.change(screen.getByLabelText('Quantity 2'), { target: { value: '3' } });
     fireEvent.change(screen.getByLabelText('Unit Price 2'), { target: { value: '50' } });
@@ -91,5 +91,20 @@ describe('ProcurementForm', () => {
     await waitFor(() => expect(API.post).toHaveBeenCalledTimes(1));
     const payload = API.post.mock.calls[0][1];
     expect(payload.items[0]).not.toHaveProperty('unitPrice');
+  });
+
+  it('ignores blank added item rows when submitting', async () => {
+    renderForm('engineer');
+    await screen.findByText('Items');
+
+    fireEvent.change(screen.getByLabelText('Item Name 1'), { target: { value: 'Cement' } });
+    fireEvent.change(screen.getByLabelText('Quantity 1'), { target: { value: '5' } });
+    fireEvent.click(screen.getByRole('button', { name: /Add Item/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Submit Request/i }));
+
+    await waitFor(() => expect(API.post).toHaveBeenCalledTimes(1));
+    const payload = API.post.mock.calls[0][1];
+    expect(payload.items).toHaveLength(1);
+    expect(payload.items[0]).toMatchObject({ name: 'Cement', quantity: 5 });
   });
 });

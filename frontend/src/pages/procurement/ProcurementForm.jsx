@@ -72,7 +72,22 @@ const ProcurementForm = () => {
   const handleSubmit = async e => {
     e.preventDefault();
     setError('');
-    for (const item of items) {
+    const normalizedItems = items.map(item => ({
+      name: item.name.trim(),
+      quantity: item.quantity,
+      description: item.description.trim(),
+      unitPrice: item.unitPrice
+    }));
+    const populatedItems = normalizedItems.filter(item =>
+      item.name || item.quantity !== '' || item.description || item.unitPrice !== ''
+    );
+
+    if (populatedItems.length === 0) {
+      setError('At least one item is required');
+      return;
+    }
+
+    for (const item of populatedItems) {
       if (!item.name.trim()) {
         setError('Each item must have a name');
         return;
@@ -85,10 +100,10 @@ const ProcurementForm = () => {
     setLoading(true);
     try {
       const payload = {
-        items: items.map(item => ({
+        items: populatedItems.map(item => ({
           name: item.name.trim(),
           quantity: Number(item.quantity),
-          description: item.description.trim() || undefined,
+          description: item.description || undefined,
           ...(canSetPrice && item.unitPrice !== ''
             ? { unitPrice: Number(item.unitPrice) }
             : {})
@@ -146,7 +161,6 @@ const ProcurementForm = () => {
                           className="form-control"
                           value={item.name}
                           onChange={e => handleItemChange(index, e)}
-                          required
                         />
                       </td>
                       <td>
@@ -157,7 +171,6 @@ const ProcurementForm = () => {
                           className="form-control"
                           value={item.quantity}
                           onChange={e => handleItemChange(index, e)}
-                          required
                           min="1"
                         />
                       </td>
@@ -214,7 +227,7 @@ const ProcurementForm = () => {
           </div>
 
           <button type="button" className="btn btn-secondary" style={{ marginBottom: '16px' }} onClick={addItem}>
-            + Add Item
+            Add Item
           </button>
 
           <div className="form-row">
