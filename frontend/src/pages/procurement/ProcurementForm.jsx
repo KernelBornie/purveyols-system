@@ -7,6 +7,7 @@ const emptyItem = () => ({ name: '', quantity: '', description: '', unitPrice: '
 const calculateItemTotal = (quantity, unitPrice) =>
   quantity && unitPrice ? Number(quantity) * Number(unitPrice) : null;
 const CURRENCY_SYMBOL = 'K';
+const GRAND_TOTAL_LABEL_COLSPAN = 5;
 
 const ProcurementForm = () => {
   const { id } = useParams();
@@ -29,13 +30,14 @@ const ProcurementForm = () => {
       API.get(`/procurement/${id}`)
         .then(r => {
           const o = r.data;
+          const fetchedItems = (o.items || []).map(item => ({
+            name: item.name || '',
+            quantity: item.quantity ?? '',
+            description: item.description || '',
+            unitPrice: item.unitPrice ?? ''
+          }));
           setItems(
-            (o.items || []).map(item => ({
-              name: item.name || '',
-              quantity: item.quantity ?? '',
-              description: item.description || '',
-              unitPrice: item.unitPrice ?? ''
-            }))
+            fetchedItems.length ? fetchedItems : [emptyItem()]
           );
           setForm({
             project: o.project?._id || '',
@@ -62,6 +64,10 @@ const ProcurementForm = () => {
   };
 
   const handleFormChange = e => setForm({ ...form, [e.target.name]: e.target.value });
+  const grandTotal = items.reduce(
+    (sum, item) => sum + (calculateItemTotal(item.quantity, item.unitPrice) || 0),
+    0
+  );
 
   const handleSubmit = async e => {
     e.preventDefault();
@@ -118,6 +124,7 @@ const ProcurementForm = () => {
             <table className="table">
               <thead>
                 <tr>
+                  <th>#</th>
                   <th>Item Name *</th>
                   <th>Quantity *</th>
                   <th>Description</th>
@@ -131,6 +138,7 @@ const ProcurementForm = () => {
                   const totalPrice = calculateItemTotal(item.quantity, item.unitPrice);
                   return (
                     <tr key={index}>
+                      <td>{index + 1}</td>
                       <td>
                         <input
                           name="name"
@@ -182,7 +190,7 @@ const ProcurementForm = () => {
                       <td>
                         {items.length > 1 && (
                           <button type="button" className="btn btn-danger btn-sm" onClick={() => removeItem(index)}>
-                            Remove
+                            Remove Item
                           </button>
                         )}
                       </td>
@@ -190,6 +198,18 @@ const ProcurementForm = () => {
                   );
                 })}
               </tbody>
+              {canViewPrice && (
+                <tfoot>
+                  <tr>
+                    <td colSpan={GRAND_TOTAL_LABEL_COLSPAN} style={{ textAlign: 'right', fontWeight: 700 }}>Grand Total:</td>
+                    <td style={{ fontWeight: 700, color: '#1565c0' }}>
+                      {CURRENCY_SYMBOL}
+                      {grandTotal.toLocaleString()}
+                    </td>
+                    <td></td>
+                  </tr>
+                </tfoot>
+              )}
             </table>
           </div>
 
