@@ -63,8 +63,8 @@ router.get('/:id', auth, async (req, res) => {
   }
 });
 
-// PUT /api/workers/:id – director/engineer/foreman only, update worker
-router.put('/:id', auth, roleCheck('director', 'engineer', 'foreman'), async (req, res) => {
+// PUT /api/workers/:id – engineer only, update worker
+router.put('/:id', auth, roleCheck('engineer'), async (req, res) => {
   try {
     const worker = await Worker.findByIdAndUpdate(req.params.id, req.body, { new: true })
       .populate('project', 'name')
@@ -76,8 +76,8 @@ router.put('/:id', auth, roleCheck('director', 'engineer', 'foreman'), async (re
   }
 });
 
-// PUT /api/workers/:id/deactivate – director/engineer only
-router.put('/:id/deactivate', auth, roleCheck('director', 'engineer'), async (req, res) => {
+// PUT /api/workers/:id/deactivate – engineer only
+router.put('/:id/deactivate', auth, roleCheck('engineer'), async (req, res) => {
   try {
     const worker = await Worker.findByIdAndUpdate(
       req.params.id,
@@ -91,8 +91,8 @@ router.put('/:id/deactivate', auth, roleCheck('director', 'engineer'), async (re
   }
 });
 
-// DELETE /api/workers/:id – director/engineer only, deactivate
-router.delete('/:id', auth, roleCheck('director', 'engineer'), async (req, res) => {
+// DELETE /api/workers/:id – engineer only, soft-delete
+router.delete('/:id', auth, roleCheck('engineer'), async (req, res) => {
   try {
     const worker = await Worker.findByIdAndUpdate(req.params.id, { status: 'inactive', isActive: false }, { new: true });
     if (!worker) return res.status(404).json({ message: 'Worker not found' });

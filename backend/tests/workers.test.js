@@ -167,6 +167,37 @@ describe('GET /api/workers/:id', () => {
   });
 });
 
+describe('PUT /api/workers/:id', () => {
+  let workerId;
+
+  beforeEach(async () => {
+    const res = await request(app)
+      .post('/api/workers')
+      .set('Authorization', `Bearer ${engineerToken}`)
+      .send(workerPayload);
+    workerId = res.body._id;
+  });
+
+  it('engineer can update a worker', async () => {
+    const res = await request(app)
+      .put(`/api/workers/${workerId}`)
+      .set('Authorization', `Bearer ${engineerToken}`)
+      .send({ ...workerPayload, name: 'Updated Worker' });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.body.name).toBe('Updated Worker');
+  });
+
+  it('returns 403 when called by director', async () => {
+    const res = await request(app)
+      .put(`/api/workers/${workerId}`)
+      .set('Authorization', `Bearer ${directorToken}`)
+      .send({ ...workerPayload, name: 'Director Edit' });
+
+    expect(res.statusCode).toBe(403);
+  });
+});
+
 describe('DELETE /api/workers/:id (deactivate)', () => {
   let workerId;
 
@@ -178,22 +209,22 @@ describe('DELETE /api/workers/:id (deactivate)', () => {
     workerId = res.body._id;
   });
 
-  it('deactivates a worker when called by director', async () => {
+  it('returns 403 when called by director', async () => {
     const res = await request(app)
       .delete(`/api/workers/${workerId}`)
       .set('Authorization', `Bearer ${directorToken}`);
 
-    expect(res.statusCode).toBe(200);
-    expect(res.body.worker.status).toBe('inactive');
+    expect(res.statusCode).toBe(403);
   });
 
-  it('deactivates a worker when called by engineer', async () => {
+  it('soft deletes a worker when called by engineer', async () => {
     const res = await request(app)
       .delete(`/api/workers/${workerId}`)
       .set('Authorization', `Bearer ${engineerToken}`);
 
     expect(res.statusCode).toBe(200);
     expect(res.body.worker.status).toBe('inactive');
+    expect(res.body.worker.isActive).toBe(false);
   });
 
   it('returns 403 when called by a worker-role user', async () => {

@@ -13,7 +13,7 @@ const ProcurementList = () => {
 
   useEffect(() => {
     API.get('/procurement')
-      .then(r => setOrders(r.data))
+      .then(r => setOrders((r.data || []).filter(order => order.isActive !== false)))
       .catch(() => setError('Failed to load procurement orders'))
       .finally(() => setLoading(false));
   }, []);
@@ -80,10 +80,20 @@ const ProcurementList = () => {
   const handleDeactivate = async (id) => {
     if (!window.confirm('Deactivate this procurement order?')) return;
     try {
-      const res = await API.put(`/procurement/${id}/deactivate`);
-      setOrders(orders.map(o => o._id === id ? res.data.order : o));
+      await API.put(`/procurement/${id}/deactivate`);
+      setOrders(orders.filter(o => o._id !== id));
     } catch (err) {
       alert(err.response?.data?.message || 'Failed to deactivate order');
+    }
+  };
+
+  const handleDelete = async (id) => {
+    if (!window.confirm('Delete this procurement order?')) return;
+    try {
+      await API.delete(`/procurement/${id}`);
+      setOrders(orders.filter(o => o._id !== id));
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to delete order');
     }
   };
 
@@ -194,7 +204,7 @@ const ProcurementList = () => {
                     <td><span className={`badge badge-${order.status}`}>{order.status}</span></td>
                     <td>
                       <div className="actions">
-                        {['engineer', 'director', 'procurement'].includes(user?.role) && (
+                        {user?.role === 'engineer' && (
                           <Link to={`/procurement/${order._id}/edit`} className="btn btn-secondary btn-sm">Edit</Link>
                         )}
                         {user?.role === 'procurement' && order.status === 'pending' && (
@@ -217,9 +227,14 @@ const ProcurementList = () => {
                             Fund
                           </button>
                         )}
-                        {['engineer', 'director'].includes(user?.role) && order.isActive !== false && (
+                        {user?.role === 'engineer' && order.isActive !== false && (
                           <button className="btn btn-warning btn-sm" onClick={() => handleDeactivate(order._id)}>
                             Deactivate
+                          </button>
+                        )}
+                        {user?.role === 'engineer' && (
+                          <button className="btn btn-danger btn-sm" onClick={() => handleDelete(order._id)}>
+                            Delete
                           </button>
                         )}
                       </div>

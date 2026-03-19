@@ -350,3 +350,51 @@ describe('GET /api/procurement', () => {
     expect(res.statusCode).toBe(401);
   });
 });
+
+describe('PUT /api/procurement/:id', () => {
+  it('engineer can update an order', async () => {
+    const order = await createOrder();
+    const res = await request(app)
+      .put(`/api/procurement/${order._id}`)
+      .set('Authorization', `Bearer ${engineerToken}`)
+      .send({
+        items: [{ name: 'Updated Cement Bags', quantity: 80 }]
+      });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.body.items[0].name).toBe('Updated Cement Bags');
+  });
+
+  it('director cannot update an order', async () => {
+    const order = await createOrder();
+    const res = await request(app)
+      .put(`/api/procurement/${order._id}`)
+      .set('Authorization', `Bearer ${directorToken}`)
+      .send({
+        items: [{ name: 'Director Edit', quantity: 80 }]
+      });
+
+    expect(res.statusCode).toBe(403);
+  });
+});
+
+describe('DELETE /api/procurement/:id (soft delete)', () => {
+  it('engineer can soft delete an order', async () => {
+    const order = await createOrder();
+    const res = await request(app)
+      .delete(`/api/procurement/${order._id}`)
+      .set('Authorization', `Bearer ${engineerToken}`);
+
+    expect(res.statusCode).toBe(200);
+    expect(res.body.order.isActive).toBe(false);
+  });
+
+  it('director cannot soft delete an order', async () => {
+    const order = await createOrder();
+    const res = await request(app)
+      .delete(`/api/procurement/${order._id}`)
+      .set('Authorization', `Bearer ${directorToken}`);
+
+    expect(res.statusCode).toBe(403);
+  });
+});

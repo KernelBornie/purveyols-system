@@ -12,7 +12,7 @@ const SubcontractList = () => {
 
   useEffect(() => {
     API.get('/subcontracts')
-      .then((r) => setSubcontracts(r.data.subcontracts || []))
+      .then((r) => setSubcontracts((r.data.subcontracts || []).filter(s => s.isActive !== false)))
       .catch(() => setError('Failed to load subcontracts'))
       .finally(() => setLoading(false));
   }, []);
@@ -100,13 +100,15 @@ const SubcontractList = () => {
                     <td>{s.hiredBy?.name || '—'}</td>
                     <td>
                       <div className="actions">
-                        <Link to={`/subcontracts/${s._id}/edit`} className="btn btn-secondary btn-sm">Edit</Link>
-                        {['engineer', 'director'].includes(user?.role) && s.isActive !== false && (
+                        {user?.role === 'engineer' && (
+                          <Link to={`/subcontracts/${s._id}/edit`} className="btn btn-secondary btn-sm">Edit</Link>
+                        )}
+                        {user?.role === 'engineer' && s.isActive !== false && (
                           <button className="btn btn-warning btn-sm" onClick={() => handleDeactivate(s._id)}>
                             Deactivate
                           </button>
                         )}
-                        {['engineer', 'director', 'admin'].includes(user?.role) && (
+                        {user?.role === 'engineer' && (
                           <button className="btn btn-danger btn-sm" onClick={() => handleDelete(s._id)}>
                             Delete
                           </button>

@@ -56,14 +56,12 @@ describe('PUT /api/workers/:id/deactivate', () => {
     expect(res.body.worker.isActive).toBe(false);
   });
 
-  it('director can deactivate a worker', async () => {
+  it('director cannot deactivate a worker', async () => {
     const res = await request(app)
       .put(`/api/workers/${workerId}/deactivate`)
       .set('Authorization', `Bearer ${directorToken}`);
 
-    expect(res.statusCode).toBe(200);
-    expect(res.body.worker.status).toBe('inactive');
-    expect(res.body.worker.isActive).toBe(false);
+    expect(res.statusCode).toBe(403);
   });
 
   it('worker-role user cannot deactivate a worker', async () => {
@@ -105,13 +103,12 @@ describe('PUT /api/funding-requests/:id/deactivate', () => {
     expect(res.body.request.isActive).toBe(false);
   });
 
-  it('director can deactivate a funding request', async () => {
+  it('director cannot deactivate a funding request', async () => {
     const res = await request(app)
       .put(`/api/funding-requests/${requestId}/deactivate`)
       .set('Authorization', `Bearer ${directorToken}`);
 
-    expect(res.statusCode).toBe(200);
-    expect(res.body.request.isActive).toBe(false);
+    expect(res.statusCode).toBe(403);
   });
 
   it('worker-role user cannot deactivate a funding request', async () => {
@@ -179,13 +176,12 @@ describe('PUT /api/procurement/:id/deactivate', () => {
     expect(res.body.order.isActive).toBe(false);
   });
 
-  it('director can deactivate a procurement order', async () => {
+  it('director cannot deactivate a procurement order', async () => {
     const res = await request(app)
       .put(`/api/procurement/${orderId}/deactivate`)
       .set('Authorization', `Bearer ${directorToken}`);
 
-    expect(res.statusCode).toBe(200);
-    expect(res.body.order.isActive).toBe(false);
+    expect(res.statusCode).toBe(403);
   });
 
   it('worker-role user cannot deactivate a procurement order', async () => {
@@ -219,13 +215,12 @@ describe('PUT /api/subcontracts/:id/deactivate', () => {
     expect(res.body.subcontract.isActive).toBe(false);
   });
 
-  it('director can deactivate a subcontract', async () => {
+  it('director cannot deactivate a subcontract', async () => {
     const res = await request(app)
       .put(`/api/subcontracts/${subcontractId}/deactivate`)
       .set('Authorization', `Bearer ${directorToken}`);
 
-    expect(res.statusCode).toBe(200);
-    expect(res.body.subcontract.isActive).toBe(false);
+    expect(res.statusCode).toBe(403);
   });
 
   it('worker-role user cannot deactivate a subcontract', async () => {
