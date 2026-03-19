@@ -8,47 +8,54 @@ const { createNotification } = require('../utils/notifications');
 // GET /api/procurement
 router.get('/', auth, async (req, res) => {
   try {
-    const orders = await ProcurementOrder.find()
+    const orders = await ProcurementOrder.find({ isActive: { $ne: false } })
       .populate('requestedBy', 'name email')
       .populate('project', 'name')
       .populate('approvedBy', 'name email')
       .populate('priceSetBy', 'name email');
+
     res.json(orders);
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });
   }
 });
 
-// POST /api/procurement – engineer submits a material request WITHOUT price
+// POST /api/procurement – engineer submits request (NO PRICE)
 router.post('/', auth, roleCheck('engineer'), async (req, res) => {
   try {
     const { items, project, deliveryDate } = req.body;
+
     if (!items || !Array.isArray(items) || items.length === 0) {
       return res.status(400).json({ message: 'At least one item is required' });
     }
+
     const sanitizedItems = items.map(item => ({
       name: item.name,
       quantity: item.quantity,
       description: item.description
     }));
+
     const order = new ProcurementOrder({
       items: sanitizedItems,
-      project: project || undefined,
-      deliveryDate: deliveryDate || undefined,
-      requestedBy: req.user._id
+      project,
+      deliveryDate,
+      requestedBy: req.user._id,
+      status: 'pending'
     });
+
     await order.save();
+
     await order.populate('requestedBy', 'name email');
     await order.populate('project', 'name');
-    const itemSummary = order.items.length === 1
-      ? `"${order.items[0].name}"`
-      : `${order.items.length} items`;
+
     createNotification(
       req.user._id,
-      `Your procurement request for ${itemSummary} has been submitted and is pending review.`,
+      `Procurement request submitted (${order.items.length} item(s))`,
       'procurement_request'
     );
+
     res.status(201).json(order);
+
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });
   }
@@ -62,165 +69,180 @@ router.get('/:id', auth, async (req, res) => {
       .populate('project', 'name')
       .populate('approvedBy', 'name email')
       .populate('priceSetBy', 'name email');
-    if (!order) return res.status(404).json({ message: 'Procurement order not found' });
+
+    if (!order) return res.status(404).json({ message: 'Not found' });
+
     res.json(order);
+
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });
   }
 });
 
-// PUT /api/procurement/:id/price – procurement officer sets supplier and unit prices per item
+// SET PRICE (PROCUREMENT)
 router.put('/:id/price', auth, roleCheck('procurement'), async (req, res) => {
   try {
     const { supplier, items } = req.body;
-    if (!items || !Array.isArray(items) || items.length === 0) {
-      return res.status(400).json({ message: 'Items with prices are required' });
-    }
-    for (const item of items) {
-      if (item.unitPrice == null || item.unitPrice <= 0) {
-        return res.status(400).json({ message: 'Unit price is required and must be greater than 0 for all items' });
-      }
-    }
+
     const order = await ProcurementOrder.findById(req.params.id);
-    if (!order) return res.status(404).json({ message: 'Procurement order not found' });
-    if (order.status !== 'pending') {
-      return res.status(400).json({ message: 'Price can only be set on pending orders' });
+    if (!order) return res.status(404).json({ message: 'Not found' });
+
+    if (order.status !== 'pending' || order.priceSetBy) {
+      return res.status(400).json({ message: 'Already priced' });
     }
-    if (items.length !== order.items.length) {
-      return res.status(400).json({ message: 'Items count does not match order' });
+
+    if (!items || items.length !== order.items.length) {
+      return res.status(400).json({ message: 'Invalid items' });
     }
+
     order.supplier = supplier;
+
     order.items = order.items.map((item, i) => ({
       name: item.name,
       description: item.description,
       quantity: item.quantity,
-      unitPrice: items[i].unitPrice
+      unitPrice: items[i].unitPrice,
+      totalPrice: item.quantity * items[i].unitPrice
     }));
+
     order.priceSetBy = req.user._id;
     order.status = 'priced';
+
     await order.save();
-    await order.populate('requestedBy', 'name email');
-    await order.populate('project', 'name');
-    await order.populate('priceSetBy', 'name email');
+
     res.json(order);
+
   } catch (err) {
-    res.status(500).json({ message: 'Server error', error: err.message });
+    res.status(500).json({ message: err.message });
   }
 });
 
-// PUT /api/procurement/:id/approve – director approves a priced request
+// APPROVE (DIRECTOR)
 router.put('/:id/approve', auth, roleCheck('director'), async (req, res) => {
   try {
     const order = await ProcurementOrder.findById(req.params.id);
-    if (!order) return res.status(404).json({ message: 'Procurement order not found' });
+    if (!order) return res.status(404).json({ message: 'Not found' });
+
     if (order.status !== 'priced') {
-      return res.status(400).json({ message: 'Only priced orders can be approved by the director' });
+      return res.status(400).json({ message: 'Must be priced first' });
     }
-    // Capture requestedBy before populate replaces it with an object
-    const requestedById = order.requestedBy;
+
     order.status = 'approved';
     order.approvedBy = req.user._id;
     order.approvedByDirector = true;
+
     await order.save();
-    await order.populate('requestedBy', 'name email');
-    await order.populate('project', 'name');
-    await order.populate('approvedBy', 'name email');
+
     createNotification(
-      requestedById,
-      `Your procurement request for ${order.items.length === 1 ? `"${order.items[0].name}"` : `${order.items.length} items`} has been approved.`,
+      order.requestedBy,
+      `Procurement approved`,
       'approval'
     );
+
     res.json(order);
+
   } catch (err) {
-    res.status(500).json({ message: 'Server error', error: err.message });
+    res.status(500).json({ message: err.message });
   }
 });
 
-// PUT /api/procurement/:id/fund – accountant funds a director-approved request
+// FUND (ACCOUNTANT)
 router.put('/:id/fund', auth, roleCheck('accountant'), async (req, res) => {
   try {
     const order = await ProcurementOrder.findById(req.params.id);
-    if (!order) return res.status(404).json({ message: 'Procurement order not found' });
-    if (!order.approvedByDirector || order.status !== 'approved') {
-      return res.status(400).json({ message: 'Only director-approved orders can be funded' });
+    if (!order) return res.status(404).json({ message: 'Not found' });
+
+    if (!order.approvedByDirector) {
+      return res.status(400).json({ message: 'Not approved yet' });
     }
+
     order.status = 'funded';
     order.fundedByAccountant = true;
+
     await order.save();
-    await order.populate('requestedBy', 'name email');
-    await order.populate('project', 'name');
-    await order.populate('approvedBy', 'name email');
+
+    createNotification(
+      order.requestedBy,
+      `Procurement funded`,
+      'funding'
+    );
+
     res.json(order);
+
   } catch (err) {
-    res.status(500).json({ message: 'Server error', error: err.message });
+    res.status(500).json({ message: err.message });
   }
 });
 
-// PUT /api/procurement/:id/reject – director rejects a priced request
+// REJECT
 router.put('/:id/reject', auth, roleCheck('director'), async (req, res) => {
   try {
-    const { rejectionReason } = req.body;
     const order = await ProcurementOrder.findById(req.params.id);
-    if (!order) return res.status(404).json({ message: 'Procurement order not found' });
-    if (order.status !== 'priced') {
-      return res.status(400).json({ message: 'Only priced orders can be rejected by the director' });
-    }
-    // Capture requestedBy before populate replaces it with an object
-    const requestedById = order.requestedBy;
+    if (!order) return res.status(404).json({ message: 'Not found' });
+
     order.status = 'rejected';
-    order.rejectionReason = rejectionReason;
+    order.rejectionReason = req.body.rejectionReason;
+
     await order.save();
-    await order.populate('requestedBy', 'name email');
-    await order.populate('project', 'name');
+
     createNotification(
-      requestedById,
-      `Your procurement request for ${order.items.length === 1 ? `"${order.items[0].name}"` : `${order.items.length} items`} has been rejected.`,
+      order.requestedBy,
+      `Procurement rejected`,
       'rejection'
     );
+
     res.json(order);
+
   } catch (err) {
-    res.status(500).json({ message: 'Server error', error: err.message });
+    res.status(500).json({ message: err.message });
   }
 });
 
-// PUT /api/procurement/:id – admin-only maintenance update (data correction/recovery use cases)
-router.put('/:id', auth, roleCheck('admin'), async (req, res) => {
+// EDIT (ENGINEER ONLY BEFORE PRICING)
+router.put('/:id', auth, roleCheck('engineer'), async (req, res) => {
   try {
     const order = await ProcurementOrder.findById(req.params.id);
-    if (!order) return res.status(404).json({ message: 'Procurement order not found' });
+    if (!order) return res.status(404).json({ message: 'Not found' });
+
+    if (order.status !== 'pending') {
+      return res.status(400).json({ message: 'Cannot edit after pricing' });
+    }
+
     const { items, project, deliveryDate } = req.body;
-    if (items !== undefined) {
+
+    if (items) {
       order.items = items.map(item => ({
         name: item.name,
         quantity: item.quantity,
         description: item.description
       }));
     }
-    if (project !== undefined) order.project = project || undefined;
-    if (deliveryDate !== undefined) order.deliveryDate = deliveryDate || undefined;
+
+    order.project = project;
+    order.deliveryDate = deliveryDate;
+
     await order.save();
-    await order.populate('requestedBy', 'name email');
-    await order.populate('project', 'name');
+
     res.json(order);
+
   } catch (err) {
-    res.status(500).json({ message: 'Server error', error: err.message });
+    res.status(500).json({ message: err.message });
   }
 });
 
-// PUT /api/procurement/:id/deactivate – engineer/director only
+// SOFT DELETE
 router.put('/:id/deactivate', auth, roleCheck('engineer', 'director'), async (req, res) => {
   try {
     const order = await ProcurementOrder.findByIdAndUpdate(
       req.params.id,
       { isActive: false },
       { new: true }
-    )
-      .populate('requestedBy', 'name email')
-      .populate('project', 'name');
-    if (!order) return res.status(404).json({ message: 'Procurement order not found' });
-    res.json({ message: 'Procurement order deactivated', order });
+    );
+
+    res.json({ message: 'Deactivated', order });
+
   } catch (err) {
-    res.status(500).json({ message: 'Server error', error: err.message });
+    res.status(500).json({ message: err.message });
   }
 });
 

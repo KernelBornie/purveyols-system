@@ -148,3 +148,6 @@ frontend/android/
 # Local env files
 server/.env
 backend/tests/.mongo-test-state.json
+
+# Local Netlify folder
+.netlify
