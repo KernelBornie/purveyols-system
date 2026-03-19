@@ -38,6 +38,8 @@ import SubcontractList from "./pages/subcontracts/SubcontractList";
 import SubcontractForm from "./pages/subcontracts/SubcontractForm";
 
 import SafetyReportList from "./pages/safety/SafetyReportList";
+import AttendanceList from "./pages/attendance/AttendanceList";
+import AttendanceHistory from "./pages/attendance/AttendanceHistory";
 import Reports from "./pages/reports/Reports";
 
 import ChangePassword from "./pages/ChangePassword";

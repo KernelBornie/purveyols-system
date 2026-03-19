@@ -2,7 +2,7 @@ export async function login(email, password) {
 
   let res;
   try {
-    res = await fetch("/api/auth/login", {
+    res = await fetch("http://localhost:5000/api/auth/login", {
       method: "POST",
       headers: {
         "Content-Type": "application/json"
@@ -31,8 +31,8 @@ export async function login(email, password) {
 }
 
 export async function changePassword(oldPassword, newPassword) {
-  const token = sessionStorage.getItem("token");
-  const res = await fetch("/api/auth/change-password", {
+  const token = localStorage.getItem("token");
+  const res = await fetch("http://localhost:5000/api/auth/change-password", {
     method: "PUT",
     headers: {
       "Content-Type": "application/json",

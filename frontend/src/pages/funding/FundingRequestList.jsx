@@ -34,6 +34,8 @@ const FundingRequestList = () => {
       alert('Failed to deactivate funding request');
     }
   };
+
+  const handleReject = async (id) => {
     const reason = window.prompt('Rejection reason:');
     if (reason === null) return;
     try {

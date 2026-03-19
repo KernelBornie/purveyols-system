@@ -8,15 +8,15 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   const logout = useCallback(() => {
-    sessionStorage.removeItem("token");
-    sessionStorage.removeItem("user");
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
     setUser(null);
   }, []);
 
   useEffect(() => {
 
-    const token = sessionStorage.getItem("token");
-    const storedUser = sessionStorage.getItem("user");
+    const token = localStorage.getItem("token");
+    const storedUser = localStorage.getItem("user");
 
     if (token && storedUser) {
       try {
@@ -26,14 +26,14 @@ export const AuthProvider = ({ children }) => {
       }
 
       // Verify token with server
-      fetch("/api/auth/me", {
+      fetch("http://localhost:5000/api/auth/me", {
         headers: { Authorization: `Bearer ${token}` }
       })
         .then((res) => res.json())
         .then((data) => {
           if (data.user) {
             setUser(data.user);
-            sessionStorage.setItem("user", JSON.stringify(data.user));
+            localStorage.setItem("user", JSON.stringify(data.user));
           } else {
             logout();
           }
