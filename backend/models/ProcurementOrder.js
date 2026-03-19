@@ -36,17 +36,17 @@ const ProcurementOrderSchema = new mongoose.Schema(
 
 ProcurementOrderSchema.pre('save', function (next) {
   let orderTotal = 0;
-  let hasPricedItems = false;
+  let allPriced = this.items.length > 0;
   for (const item of this.items) {
     if (item.quantity != null && item.unitPrice != null) {
       item.totalPrice = item.quantity * item.unitPrice;
       orderTotal += item.totalPrice;
-      hasPricedItems = true;
     } else {
       item.totalPrice = undefined;
+      allPriced = false;
     }
   }
-  this.totalPrice = hasPricedItems ? orderTotal : undefined;
+  this.totalPrice = allPriced ? orderTotal : undefined;
   next();
 });
 

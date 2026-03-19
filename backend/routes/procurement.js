@@ -183,7 +183,7 @@ router.put('/:id/reject', auth, roleCheck('director'), async (req, res) => {
   }
 });
 
-// PUT /api/procurement/:id – admin-only maintenance update (engineers can create only)
+// PUT /api/procurement/:id – admin-only maintenance update (data correction/recovery use cases)
 router.put('/:id', auth, roleCheck('admin'), async (req, res) => {
   try {
     const order = await ProcurementOrder.findById(req.params.id);

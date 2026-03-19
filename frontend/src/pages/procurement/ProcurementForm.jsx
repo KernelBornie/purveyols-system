@@ -4,6 +4,9 @@ import API from '../../api/axios';
 import { AuthContext } from '../../context/AuthContext';
 
 const emptyItem = () => ({ name: '', quantity: '', description: '', unitPrice: '' });
+const calculateItemTotal = (quantity, unitPrice) =>
+  quantity && unitPrice ? Number(quantity) * Number(unitPrice) : null;
+const CURRENCY_SYMBOL = 'K';
 
 const ProcurementForm = () => {
   const { id } = useParams();
@@ -125,8 +128,7 @@ const ProcurementForm = () => {
               </thead>
               <tbody>
                 {items.map((item, index) => {
-                  const totalPrice =
-                    item.quantity && item.unitPrice ? Number(item.quantity) * Number(item.unitPrice) : '';
+                  const totalPrice = calculateItemTotal(item.quantity, item.unitPrice);
                   return (
                     <tr key={index}>
                       <td>
@@ -152,10 +154,11 @@ const ProcurementForm = () => {
                         />
                       </td>
                       <td>
-                        <input
+                        <textarea
                           name="description"
                           aria-label={`Description ${index + 1}`}
                           className="form-control"
+                          rows={2}
                           value={item.description}
                           onChange={e => handleItemChange(index, e)}
                         />
@@ -175,7 +178,7 @@ const ProcurementForm = () => {
                           />
                         </td>
                       )}
-                      {canViewPrice && <td>{totalPrice ? `K${totalPrice.toLocaleString()}` : '—'}</td>}
+                      {canViewPrice && <td>{totalPrice != null ? `${CURRENCY_SYMBOL}${totalPrice.toLocaleString()}` : '—'}</td>}
                       <td>
                         {items.length > 1 && (
                           <button type="button" className="btn btn-danger btn-sm" onClick={() => removeItem(index)}>
