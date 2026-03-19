@@ -2,7 +2,14 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import API from '../../api/axios';
 
-const emptyItem = () => ({ description: '', unit: '', quantity: '', unitRate: '' });
+const parseNumber = (value) => {
+  const parsed = parseFloat(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+};
+
+const calculateAmount = (quantity, unitRate) => parseNumber(quantity) * parseNumber(unitRate);
+
+const emptyItem = () => ({ description: '', unit: '', quantity: '', unitRate: '', amount: 0 });
 
 const BOQForm = () => {
   const { id } = useParams();
@@ -29,14 +36,19 @@ const BOQForm = () => {
             notes: b.notes || '',
           });
           setItems(
-            b.items?.length
-              ? b.items.map((it) => ({
-                  description: it.description || '',
-                  unit: it.unit || '',
-                  quantity: it.quantity ?? '',
-                  unitRate: it.unitRate ?? '',
-                }))
-              : [emptyItem()]
+              b.items?.length
+                ? b.items.map((it) => {
+                    const quantity = it.quantity ?? '';
+                    const unitRate = it.unitRate ?? '';
+                    return {
+                      description: it.description || '',
+                      unit: it.unit || '',
+                      quantity,
+                      unitRate,
+                      amount: calculateAmount(quantity, unitRate),
+                    };
+                  })
+                : [emptyItem()]
           );
         })
         .catch(() => setError('Failed to load BOQ'))
@@ -47,9 +59,14 @@ const BOQForm = () => {
   const handleFormChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
 
   const handleItemChange = (index, e) => {
-    const updated = items.map((item, i) =>
-      i === index ? { ...item, [e.target.name]: e.target.value } : item
-    );
+    const updated = items.map((item, i) => {
+      if (i !== index) return item;
+      const nextItem = { ...item, [e.target.name]: e.target.value };
+      return {
+        ...nextItem,
+        amount: calculateAmount(nextItem.quantity, nextItem.unitRate),
+      };
+    });
     setItems(updated);
   };
 
@@ -57,11 +74,7 @@ const BOQForm = () => {
 
   const removeItem = (index) => setItems(items.filter((_, i) => i !== index));
 
-  const totalAmount = items.reduce((sum, it) => {
-    const qty = parseFloat(it.quantity) || 0;
-    const rate = parseFloat(it.unitRate) || 0;
-    return sum + qty * rate;
-  }, 0);
+  const totalAmount = items.reduce((sum, it) => sum + parseNumber(it.amount), 0);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -74,8 +87,9 @@ const BOQForm = () => {
         items: items.map((it) => ({
           description: it.description,
           unit: it.unit,
-          quantity: parseFloat(it.quantity),
-          unitRate: parseFloat(it.unitRate),
+          quantity: parseNumber(it.quantity),
+          unitRate: parseNumber(it.unitRate),
+          amount: parseNumber(it.amount),
         })),
       };
       if (isEdit) {
@@ -150,7 +164,7 @@ const BOQForm = () => {
                 </thead>
                 <tbody>
                   {items.map((item, i) => {
-                    const amt = (parseFloat(item.quantity) || 0) * (parseFloat(item.unitRate) || 0);
+                    const amt = parseNumber(item.amount);
                     return (
                       <tr key={i}>
                         <td>{i + 1}</td>
@@ -202,13 +216,13 @@ const BOQForm = () => {
                         <td style={{ fontWeight: 600 }}>K{amt.toLocaleString()}</td>
                         <td>
                           {items.length > 1 && (
-                            <button
-                              type="button"
-                              className="btn btn-danger btn-sm"
-                              onClick={() => removeItem(i)}
-                            >
-                              ✕
-                            </button>
+                              <button
+                                type="button"
+                                className="btn btn-danger btn-sm"
+                                onClick={() => removeItem(i)}
+                              >
+                                Remove Item
+                              </button>
                           )}
                         </td>
                       </tr>
