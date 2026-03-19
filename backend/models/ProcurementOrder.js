@@ -24,8 +24,7 @@ const ProcurementOrderSchema = new mongoose.Schema(
     status: {
       type: String,
       enum: ['pending', 'approved', 'rejected'],
-      default: 'pending',
-      required: true
+      default: 'pending'
     }
   },
   { timestamps: true }
