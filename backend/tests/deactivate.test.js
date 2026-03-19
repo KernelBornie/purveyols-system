@@ -3,7 +3,6 @@ const app = require('../app');
 const { connect, disconnect, clearCollections } = require('./setup');
 
 let engineerToken;
-let directorToken;
 let workerRoleToken;
 
 beforeAll(async () => {
@@ -21,11 +20,6 @@ beforeEach(async () => {
     .post('/api/auth/register')
     .send({ name: 'Eng User', email: 'eng@example.com', password: 'password123', role: 'engineer' });
   engineerToken = eng.body.token;
-
-  const dir = await request(app)
-    .post('/api/auth/register')
-    .send({ name: 'Dir User', email: 'dir@example.com', password: 'password123', role: 'director' });
-  directorToken = dir.body.token;
 
   const wkr = await request(app)
     .post('/api/auth/register')
@@ -56,17 +50,7 @@ describe('PUT /api/workers/:id/deactivate', () => {
     expect(res.body.worker.isActive).toBe(false);
   });
 
-  it('director can deactivate a worker', async () => {
-    const res = await request(app)
-      .put(`/api/workers/${workerId}/deactivate`)
-      .set('Authorization', `Bearer ${directorToken}`);
-
-    expect(res.statusCode).toBe(200);
-    expect(res.body.worker.status).toBe('inactive');
-    expect(res.body.worker.isActive).toBe(false);
-  });
-
-  it('worker-role user cannot deactivate a worker', async () => {
+  it('non-engineer user cannot deactivate a worker', async () => {
     const res = await request(app)
       .put(`/api/workers/${workerId}/deactivate`)
       .set('Authorization', `Bearer ${workerRoleToken}`);
@@ -80,6 +64,19 @@ describe('PUT /api/workers/:id/deactivate', () => {
       .set('Authorization', `Bearer ${engineerToken}`);
 
     expect(res.statusCode).toBe(404);
+  });
+
+  it('deactivated worker is hidden from list endpoint', async () => {
+    await request(app)
+      .put(`/api/workers/${workerId}/deactivate`)
+      .set('Authorization', `Bearer ${engineerToken}`);
+
+    const listRes = await request(app)
+      .get('/api/workers')
+      .set('Authorization', `Bearer ${engineerToken}`);
+
+    expect(listRes.statusCode).toBe(200);
+    expect(listRes.body.workers).toHaveLength(0);
   });
 });
 
@@ -105,21 +102,25 @@ describe('PUT /api/funding-requests/:id/deactivate', () => {
     expect(res.body.request.isActive).toBe(false);
   });
 
-  it('director can deactivate a funding request', async () => {
-    const res = await request(app)
-      .put(`/api/funding-requests/${requestId}/deactivate`)
-      .set('Authorization', `Bearer ${directorToken}`);
-
-    expect(res.statusCode).toBe(200);
-    expect(res.body.request.isActive).toBe(false);
-  });
-
-  it('worker-role user cannot deactivate a funding request', async () => {
+  it('non-engineer user cannot deactivate a funding request', async () => {
     const res = await request(app)
       .put(`/api/funding-requests/${requestId}/deactivate`)
       .set('Authorization', `Bearer ${workerRoleToken}`);
 
     expect(res.statusCode).toBe(403);
+  });
+
+  it('deactivated funding request is hidden from list endpoint', async () => {
+    await request(app)
+      .put(`/api/funding-requests/${requestId}/deactivate`)
+      .set('Authorization', `Bearer ${engineerToken}`);
+
+    const listRes = await request(app)
+      .get('/api/funding-requests')
+      .set('Authorization', `Bearer ${engineerToken}`);
+
+    expect(listRes.statusCode).toBe(200);
+    expect(listRes.body.requests).toHaveLength(0);
   });
 });
 
@@ -179,21 +180,25 @@ describe('PUT /api/procurement/:id/deactivate', () => {
     expect(res.body.order.isActive).toBe(false);
   });
 
-  it('director can deactivate a procurement order', async () => {
-    const res = await request(app)
-      .put(`/api/procurement/${orderId}/deactivate`)
-      .set('Authorization', `Bearer ${directorToken}`);
-
-    expect(res.statusCode).toBe(200);
-    expect(res.body.order.isActive).toBe(false);
-  });
-
-  it('worker-role user cannot deactivate a procurement order', async () => {
+  it('non-engineer user cannot deactivate a procurement order', async () => {
     const res = await request(app)
       .put(`/api/procurement/${orderId}/deactivate`)
       .set('Authorization', `Bearer ${workerRoleToken}`);
 
     expect(res.statusCode).toBe(403);
+  });
+
+  it('deactivated procurement order is hidden from list endpoint', async () => {
+    await request(app)
+      .put(`/api/procurement/${orderId}/deactivate`)
+      .set('Authorization', `Bearer ${engineerToken}`);
+
+    const listRes = await request(app)
+      .get('/api/procurement')
+      .set('Authorization', `Bearer ${engineerToken}`);
+
+    expect(listRes.statusCode).toBe(200);
+    expect(listRes.body).toHaveLength(0);
   });
 });
 
@@ -219,18 +224,51 @@ describe('PUT /api/subcontracts/:id/deactivate', () => {
     expect(res.body.subcontract.isActive).toBe(false);
   });
 
-  it('director can deactivate a subcontract', async () => {
+  it('non-engineer user cannot deactivate a subcontract', async () => {
     const res = await request(app)
       .put(`/api/subcontracts/${subcontractId}/deactivate`)
-      .set('Authorization', `Bearer ${directorToken}`);
+      .set('Authorization', `Bearer ${workerRoleToken}`);
+
+    expect(res.statusCode).toBe(403);
+  });
+
+  it('deactivated subcontract is hidden from list endpoint', async () => {
+    await request(app)
+      .put(`/api/subcontracts/${subcontractId}/deactivate`)
+      .set('Authorization', `Bearer ${engineerToken}`);
+
+    const listRes = await request(app)
+      .get('/api/subcontracts')
+      .set('Authorization', `Bearer ${engineerToken}`);
+
+    expect(listRes.statusCode).toBe(200);
+    expect(listRes.body.subcontracts).toHaveLength(0);
+  });
+});
+
+describe('DELETE /api/subcontracts/:id', () => {
+  let subcontractId;
+
+  beforeEach(async () => {
+    const res = await request(app)
+      .post('/api/subcontracts')
+      .set('Authorization', `Bearer ${engineerToken}`)
+      .send({ type: 'personnel', name: 'Delete Me', company: 'DelCo', dateHired: new Date().toISOString(), amount: 5000, site: 'Site A' });
+    subcontractId = res.body.subcontract._id;
+  });
+
+  it('engineer soft deletes subcontract', async () => {
+    const res = await request(app)
+      .delete(`/api/subcontracts/${subcontractId}`)
+      .set('Authorization', `Bearer ${engineerToken}`);
 
     expect(res.statusCode).toBe(200);
     expect(res.body.subcontract.isActive).toBe(false);
   });
 
-  it('worker-role user cannot deactivate a subcontract', async () => {
+  it('non-engineer cannot delete subcontract', async () => {
     const res = await request(app)
-      .put(`/api/subcontracts/${subcontractId}/deactivate`)
+      .delete(`/api/subcontracts/${subcontractId}`)
       .set('Authorization', `Bearer ${workerRoleToken}`);
 
     expect(res.statusCode).toBe(403);

@@ -10,6 +10,7 @@ router.get('/', auth, async (req, res) => {
     const filter = req.user.role === 'director'
       ? {}
       : { hiredBy: req.user._id };
+    filter.isActive = { $ne: false };
     const subcontracts = await Subcontract.find(filter)
       .populate('hiredBy', 'name email role')
       .populate('project', 'name')
@@ -47,7 +48,7 @@ router.get('/:id', auth, async (req, res) => {
 });
 
 // PUT /api/subcontracts/:id – update
-router.put('/:id', auth, roleCheck('engineer', 'director'), async (req, res) => {
+router.put('/:id', auth, roleCheck('engineer'), async (req, res) => {
   try {
     const subcontract = await Subcontract.findByIdAndUpdate(
       req.params.id,
@@ -63,19 +64,23 @@ router.put('/:id', auth, roleCheck('engineer', 'director'), async (req, res) => 
   }
 });
 
-// DELETE /api/subcontracts/:id
-router.delete('/:id', auth, roleCheck('engineer', 'director'), async (req, res) => {
+// DELETE /api/subcontracts/:id – soft delete
+router.delete('/:id', auth, roleCheck('engineer'), async (req, res) => {
   try {
-    const subcontract = await Subcontract.findByIdAndDelete(req.params.id);
+    const subcontract = await Subcontract.findByIdAndUpdate(
+      req.params.id,
+      { isActive: false },
+      { new: true }
+    );
     if (!subcontract) return res.status(404).json({ message: 'Subcontract not found' });
-    res.json({ message: 'Subcontract record deleted' });
+    res.json({ message: 'Subcontract deactivated', subcontract });
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });
   }
 });
 
-// PUT /api/subcontracts/:id/deactivate – engineer/director only
-router.put('/:id/deactivate', auth, roleCheck('engineer', 'director'), async (req, res) => {
+// PUT /api/subcontracts/:id/deactivate – engineer only
+router.put('/:id/deactivate', auth, roleCheck('engineer'), async (req, res) => {
   try {
     const subcontract = await Subcontract.findByIdAndUpdate(
       req.params.id,

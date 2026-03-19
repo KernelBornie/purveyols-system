@@ -34,6 +34,18 @@ const FundingRequestList = () => {
       alert('Failed to deactivate funding request');
     }
   };
+
+  const handleDelete = async (id) => {
+    if (!window.confirm('Delete this funding request? This is a soft delete.')) return;
+    try {
+      const res = await API.put(`/funding-requests/${id}/deactivate`);
+      setRequests(requests.map(r => r._id === id ? res.data.request : r));
+    } catch {
+      alert('Failed to delete request');
+    }
+  };
+
+  const handleReject = async (id) => {
     const reason = window.prompt('Rejection reason:');
     if (reason === null) return;
     try {
@@ -83,7 +95,7 @@ const FundingRequestList = () => {
                     <td>{new Date(req.createdAt).toLocaleDateString()}</td>
                     <td>
                       <div className="actions">
-                        {['engineer', 'director'].includes(user?.role) && (
+                        {user?.role === 'engineer' && (
                           <Link to={`/funding-requests/${req._id}/edit`} className="btn btn-secondary btn-sm">Edit</Link>
                         )}
                         {user?.role === 'director' && req.status === 'pending' && (
@@ -96,9 +108,14 @@ const FundingRequestList = () => {
                             </button>
                           </>
                         )}
-                        {['engineer', 'director'].includes(user?.role) && req.isActive !== false && (
+                        {user?.role === 'engineer' && req.isActive !== false && (
                           <button className="btn btn-warning btn-sm" onClick={() => handleDeactivate(req._id)}>
                             Deactivate
+                          </button>
+                        )}
+                        {user?.role === 'engineer' && req.isActive !== false && (
+                          <button className="btn btn-danger btn-sm" onClick={() => handleDelete(req._id)}>
+                            Delete
                           </button>
                         )}
                         {req.rejectionReason && (

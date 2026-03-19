@@ -8,7 +8,7 @@ const { createNotification } = require('../utils/notifications');
 // GET /api/procurement
 router.get('/', auth, async (req, res) => {
   try {
-    const orders = await ProcurementOrder.find()
+    const orders = await ProcurementOrder.find({ isActive: { $ne: false } })
       .populate('requestedBy', 'name email')
       .populate('project', 'name')
       .populate('approvedBy', 'name email')
@@ -196,8 +196,8 @@ router.put('/:id', auth, roleCheck('procurement', 'director', 'admin', 'engineer
   }
 });
 
-// PUT /api/procurement/:id/deactivate – engineer/director only
-router.put('/:id/deactivate', auth, roleCheck('engineer', 'director'), async (req, res) => {
+// PUT /api/procurement/:id/deactivate – engineer only
+router.put('/:id/deactivate', auth, roleCheck('engineer'), async (req, res) => {
   try {
     const order = await ProcurementOrder.findByIdAndUpdate(
       req.params.id,

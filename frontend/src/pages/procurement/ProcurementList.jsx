@@ -87,6 +87,16 @@ const ProcurementList = () => {
     }
   };
 
+  const handleDelete = async (id) => {
+    if (!window.confirm('Delete this procurement order? This is a soft delete.')) return;
+    try {
+      const res = await API.put(`/procurement/${id}/deactivate`);
+      setOrders(orders.map(o => o._id === id ? res.data.order : o));
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to delete order');
+    }
+  };
+
   const handleFund = async (id) => {
     try {
       const res = await API.put(`/procurement/${id}/fund`);
@@ -194,7 +204,7 @@ const ProcurementList = () => {
                     <td><span className={`badge badge-${order.status}`}>{order.status}</span></td>
                     <td>
                       <div className="actions">
-                        {['engineer', 'director', 'procurement'].includes(user?.role) && (
+                        {user?.role === 'engineer' && (
                           <Link to={`/procurement/${order._id}/edit`} className="btn btn-secondary btn-sm">Edit</Link>
                         )}
                         {user?.role === 'procurement' && order.status === 'pending' && (
@@ -217,9 +227,14 @@ const ProcurementList = () => {
                             Fund
                           </button>
                         )}
-                        {['engineer', 'director'].includes(user?.role) && order.isActive !== false && (
+                        {user?.role === 'engineer' && order.isActive !== false && (
                           <button className="btn btn-warning btn-sm" onClick={() => handleDeactivate(order._id)}>
                             Deactivate
+                          </button>
+                        )}
+                        {user?.role === 'engineer' && order.isActive !== false && (
+                          <button className="btn btn-danger btn-sm" onClick={() => handleDelete(order._id)}>
+                            Delete
                           </button>
                         )}
                       </div>

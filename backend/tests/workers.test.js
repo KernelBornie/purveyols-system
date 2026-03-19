@@ -178,13 +178,12 @@ describe('DELETE /api/workers/:id (deactivate)', () => {
     workerId = res.body._id;
   });
 
-  it('deactivates a worker when called by director', async () => {
+  it('returns 403 when called by director', async () => {
     const res = await request(app)
       .delete(`/api/workers/${workerId}`)
       .set('Authorization', `Bearer ${directorToken}`);
 
-    expect(res.statusCode).toBe(200);
-    expect(res.body.worker.status).toBe('inactive');
+    expect(res.statusCode).toBe(403);
   });
 
   it('deactivates a worker when called by engineer', async () => {

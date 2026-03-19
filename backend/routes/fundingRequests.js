@@ -11,6 +11,7 @@ router.get('/', auth, async (req, res) => {
     const filter = req.user.role === 'director' || req.user.role === 'accountant'
       ? {}
       : { requestedBy: req.user._id };
+    filter.isActive = { $ne: false };
     if (req.query.status) filter.status = req.query.status;
     const requests = await FundingRequest.find(filter)
       .populate('requestedBy', 'name email role')
@@ -100,8 +101,8 @@ router.put('/:id/reject', auth, roleCheck('director'), async (req, res) => {
   }
 });
 
-// PUT /api/funding-requests/:id/deactivate – engineer/director only
-router.put('/:id/deactivate', auth, roleCheck('engineer', 'director'), async (req, res) => {
+// PUT /api/funding-requests/:id/deactivate – engineer only
+router.put('/:id/deactivate', auth, roleCheck('engineer'), async (req, res) => {
   try {
     const request = await FundingRequest.findByIdAndUpdate(
       req.params.id,
@@ -117,8 +118,8 @@ router.put('/:id/deactivate', auth, roleCheck('engineer', 'director'), async (re
   }
 });
 
-// PUT /api/funding-requests/:id – engineer/director can modify
-router.put('/:id', auth, roleCheck('engineer', 'director'), async (req, res) => {
+// PUT /api/funding-requests/:id – engineer only
+router.put('/:id', auth, roleCheck('engineer'), async (req, res) => {
   try {
     const { title, description, amount, site, priority, project } = req.body;
     const request = await FundingRequest.findByIdAndUpdate(

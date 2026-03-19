@@ -27,6 +27,16 @@ const WorkerList = () => {
     }
   };
 
+  const handleDelete = async (id) => {
+    if (!window.confirm('Delete this worker? This is a soft delete.')) return;
+    try {
+      await API.delete(`/workers/${id}`);
+      setWorkers(workers.filter(w => w._id !== id));
+    } catch {
+      alert('Failed to delete worker');
+    }
+  };
+
   const filtered = searchNrc
     ? workers.filter((w) =>
         w.nrc?.toLowerCase().includes(searchNrc.toLowerCase()) ||
@@ -95,15 +105,23 @@ const WorkerList = () => {
                     </td>
                     <td>
                       <div className="actions">
-                        {['director', 'engineer', 'foreman'].includes(user?.role) && (
+                        {user?.role === 'engineer' && (
                           <Link to={`/workers/${worker._id}/edit`} className="btn btn-secondary btn-sm">Edit</Link>
                         )}
-                        {['director', 'engineer'].includes(user?.role) && worker.isActive && (
+                        {user?.role === 'engineer' && worker.isActive && (
                           <button
-                            className="btn btn-danger btn-sm"
+                            className="btn btn-warning btn-sm"
                             onClick={() => handleDeactivate(worker._id)}
                           >
                             Deactivate
+                          </button>
+                        )}
+                        {user?.role === 'engineer' && (
+                          <button
+                            className="btn btn-danger btn-sm"
+                            onClick={() => handleDelete(worker._id)}
+                          >
+                            Delete
                           </button>
                         )}
                       </div>
