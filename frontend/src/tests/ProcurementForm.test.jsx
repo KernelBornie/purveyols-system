@@ -56,6 +56,24 @@ describe('ProcurementForm', () => {
     expect(screen.getAllByLabelText(/Item Name/i)).toHaveLength(2);
   });
 
+  it('shows row numbers and grand total for pricing roles', async () => {
+    renderForm('procurement');
+    await screen.findByText('Items');
+
+    fireEvent.change(screen.getByLabelText('Quantity 1'), { target: { value: '2' } });
+    fireEvent.change(screen.getByLabelText('Unit Price 1'), { target: { value: '100' } });
+    fireEvent.click(screen.getByRole('button', { name: /\+ Add Item/i }));
+    fireEvent.change(screen.getByLabelText('Item Name 2'), { target: { value: 'Sand' } });
+    fireEvent.change(screen.getByLabelText('Quantity 2'), { target: { value: '3' } });
+    fireEvent.change(screen.getByLabelText('Unit Price 2'), { target: { value: '50' } });
+
+    expect(screen.getByText('#')).toBeInTheDocument();
+    expect(screen.getByText('1')).toBeInTheDocument();
+    expect(screen.getByText('2')).toBeInTheDocument();
+    expect(screen.getByText('Grand Total:')).toBeInTheDocument();
+    expect(screen.getByText('K350')).toBeInTheDocument();
+  });
+
   it('does not send unitPrice when engineer submits', async () => {
     renderForm('engineer');
     await screen.findByText('Items');
