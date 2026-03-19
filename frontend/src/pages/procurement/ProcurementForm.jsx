@@ -7,6 +7,7 @@ const emptyItem = () => ({ name: '', quantity: '', description: '', unitPrice: '
 const calculateItemTotal = (quantity, unitPrice) =>
   quantity && unitPrice ? Number(quantity) * Number(unitPrice) : null;
 const CURRENCY_SYMBOL = 'K';
+const GRAND_TOTAL_LABEL_COLSPAN = 5;
 
 const ProcurementForm = () => {
   const { id } = useParams();
@@ -200,7 +201,7 @@ const ProcurementForm = () => {
               {canViewPrice && (
                 <tfoot>
                   <tr>
-                    <td colSpan={5} style={{ textAlign: 'right', fontWeight: 700 }}>Grand Total:</td>
+                    <td colSpan={GRAND_TOTAL_LABEL_COLSPAN} style={{ textAlign: 'right', fontWeight: 700 }}>Grand Total:</td>
                     <td style={{ fontWeight: 700, color: '#1565c0' }}>
                       {CURRENCY_SYMBOL}
                       {grandTotal.toLocaleString()}

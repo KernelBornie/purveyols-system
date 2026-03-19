@@ -72,6 +72,9 @@ describe('ProcurementForm', () => {
     expect(screen.getByText('2')).toBeInTheDocument();
     expect(screen.getByText('Grand Total:')).toBeInTheDocument();
     expect(screen.getByText('K350')).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText('Quantity 2'), { target: { value: '4' } });
+    expect(screen.getByText('K400')).toBeInTheDocument();
   });
 
   it('does not send unitPrice when engineer submits', async () => {
