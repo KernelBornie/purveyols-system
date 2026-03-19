@@ -46,16 +46,17 @@ ProcurementOrderSchema.pre('save', function (next) {
   let orderTotal = 0;
   let hasAllItemPrices = true;
 
-  this.items = this.items.map((item) => {
+  for (const item of this.items) {
     if (item.unitPrice == null) {
       hasAllItemPrices = false;
-      return { ...item.toObject(), totalPrice: undefined };
+      item.totalPrice = undefined;
+      continue;
     }
 
     const itemTotal = Number(item.quantity) * Number(item.unitPrice);
     orderTotal += itemTotal;
-    return { ...item.toObject(), totalPrice: itemTotal };
-  });
+    item.totalPrice = itemTotal;
+  }
 
   this.totalPrice = hasAllItemPrices ? orderTotal : undefined;
   next();

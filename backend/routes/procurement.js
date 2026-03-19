@@ -72,7 +72,10 @@ router.post('/', auth, roleCheck('engineer'), async (req, res) => {
       order
     });
   } catch (err) {
-    res.status(500).json({ message: 'Server error' });
+    const isValidationError = err?.name === 'ValidationError';
+    res.status(isValidationError ? 400 : 500).json({
+      message: isValidationError ? 'Invalid procurement order data' : 'Server error'
+    });
   }
 });
 
