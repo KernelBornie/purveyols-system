@@ -78,8 +78,12 @@ const ProcurementForm = () => {
       description: item.description.trim(),
       unitPrice: item.unitPrice
     }));
+    const hasValue = value => value !== '' && value !== null && value !== undefined;
     const populatedItems = normalizedItems.filter(item =>
-      item.name || item.quantity !== '' || item.description || item.unitPrice !== ''
+      item.name ||
+      hasValue(item.quantity) ||
+      item.description ||
+      hasValue(item.unitPrice)
     );
 
     if (populatedItems.length === 0) {
@@ -88,7 +92,7 @@ const ProcurementForm = () => {
     }
 
     for (const item of populatedItems) {
-      if (!item.name.trim()) {
+      if (!item.name) {
         setError('Each item must have a name');
         return;
       }
@@ -101,7 +105,7 @@ const ProcurementForm = () => {
     try {
       const payload = {
         items: populatedItems.map(item => ({
-          name: item.name.trim(),
+          name: item.name,
           quantity: Number(item.quantity),
           description: item.description || undefined,
           ...(canSetPrice && item.unitPrice !== ''
