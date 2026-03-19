@@ -137,4 +137,21 @@ router.put('/:id', auth, roleCheck('engineer'), async (req, res) => {
   }
 });
 
+// DELETE /api/funding-requests/:id – engineer only, soft delete
+router.delete('/:id', auth, roleCheck('engineer'), async (req, res) => {
+  try {
+    const request = await FundingRequest.findByIdAndUpdate(
+      req.params.id,
+      { isActive: false },
+      { new: true }
+    )
+      .populate('requestedBy', 'name email role')
+      .populate('project', 'name');
+    if (!request) return res.status(404).json({ message: 'Funding request not found' });
+    res.json({ message: 'Funding request deleted', request });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+});
+
 module.exports = router;

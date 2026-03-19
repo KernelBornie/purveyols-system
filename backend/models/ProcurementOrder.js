@@ -42,6 +42,7 @@ ProcurementOrderSchema.pre('save', function (next) {
       item.totalPrice = item.quantity * item.unitPrice;
       orderTotal += item.totalPrice;
     } else {
+      item.totalPrice = undefined;
       allPriced = false;
     }
   }

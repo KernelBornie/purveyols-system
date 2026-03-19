@@ -90,8 +90,8 @@ const ProcurementList = () => {
   const handleDelete = async (id) => {
     if (!window.confirm('Delete this procurement order? This is a soft delete.')) return;
     try {
-      const res = await API.put(`/procurement/${id}/deactivate`);
-      setOrders(orders.map(o => o._id === id ? res.data.order : o));
+      await API.delete(`/procurement/${id}`);
+      setOrders(orders.filter(o => o._id !== id));
     } catch (err) {
       alert(err.response?.data?.message || 'Failed to delete order');
     }

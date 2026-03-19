@@ -38,8 +38,8 @@ const FundingRequestList = () => {
   const handleDelete = async (id) => {
     if (!window.confirm('Delete this funding request? This is a soft delete.')) return;
     try {
-      const res = await API.put(`/funding-requests/${id}/deactivate`);
-      setRequests(requests.map(r => r._id === id ? res.data.request : r));
+      await API.delete(`/funding-requests/${id}`);
+      setRequests(requests.filter(r => r._id !== id));
     } catch {
       alert('Failed to delete request');
     }

@@ -20,8 +20,8 @@ const SubcontractList = () => {
   const handleDelete = async (id) => {
     if (!window.confirm('Delete this subcontract record? This is a soft delete.')) return;
     try {
-      const res = await API.delete(`/subcontracts/${id}`);
-      setSubcontracts(subcontracts.map((s) => (s._id === id ? res.data.subcontract : s)));
+      await API.delete(`/subcontracts/${id}`);
+      setSubcontracts(subcontracts.filter((s) => s._id !== id));
       setMsg('Record deleted');
     } catch {
       setError('Failed to delete record');

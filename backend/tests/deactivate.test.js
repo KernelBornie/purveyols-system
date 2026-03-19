@@ -124,6 +124,35 @@ describe('PUT /api/funding-requests/:id/deactivate', () => {
   });
 });
 
+describe('DELETE /api/funding-requests/:id', () => {
+  let requestId;
+
+  beforeEach(async () => {
+    const res = await request(app)
+      .post('/api/funding-requests')
+      .set('Authorization', `Bearer ${engineerToken}`)
+      .send({ title: 'Delete Funding', description: 'Some description', amount: 5000, priority: 'medium' });
+    requestId = res.body._id;
+  });
+
+  it('engineer soft deletes a funding request', async () => {
+    const res = await request(app)
+      .delete(`/api/funding-requests/${requestId}`)
+      .set('Authorization', `Bearer ${engineerToken}`);
+
+    expect(res.statusCode).toBe(200);
+    expect(res.body.request.isActive).toBe(false);
+  });
+
+  it('non-engineer cannot delete a funding request', async () => {
+    const res = await request(app)
+      .delete(`/api/funding-requests/${requestId}`)
+      .set('Authorization', `Bearer ${workerRoleToken}`);
+
+    expect(res.statusCode).toBe(403);
+  });
+});
+
 // ─── FundingRequest edit (PUT /:id) ────────────────────────────────────────────
 
 describe('PUT /api/funding-requests/:id', () => {
@@ -199,6 +228,35 @@ describe('PUT /api/procurement/:id/deactivate', () => {
 
     expect(listRes.statusCode).toBe(200);
     expect(listRes.body).toHaveLength(0);
+  });
+});
+
+describe('DELETE /api/procurement/:id', () => {
+  let orderId;
+
+  beforeEach(async () => {
+    const res = await request(app)
+      .post('/api/procurement')
+      .set('Authorization', `Bearer ${engineerToken}`)
+      .send({ items: [{ name: 'Delete Item', quantity: 10 }] });
+    orderId = res.body._id;
+  });
+
+  it('engineer soft deletes a procurement order', async () => {
+    const res = await request(app)
+      .delete(`/api/procurement/${orderId}`)
+      .set('Authorization', `Bearer ${engineerToken}`);
+
+    expect(res.statusCode).toBe(200);
+    expect(res.body.order.isActive).toBe(false);
+  });
+
+  it('non-engineer cannot delete a procurement order', async () => {
+    const res = await request(app)
+      .delete(`/api/procurement/${orderId}`)
+      .set('Authorization', `Bearer ${workerRoleToken}`);
+
+    expect(res.statusCode).toBe(403);
   });
 });
 
