@@ -9,7 +9,7 @@ const navItems = [
   { to: '/attendance', label: '📅 Attendance', roles: ['director', 'engineer', 'foreman', 'accountant'] },
   { to: '/logbooks', label: '📋 Logbooks', roles: ['director', 'accountant', 'driver'] },
   { to: '/funding-requests', label: '💰 Funding Requests', roles: ['director', 'engineer', 'accountant', 'foreman', 'driver', 'procurement'] },
-  { to: '/procurement', label: '🛒 Materials / Procurement', roles: ['director', 'procurement', 'engineer', 'foreman', 'driver', 'safety'] },
+  { to: '/procurement', label: '🛒 Materials / Procurement', roles: ['director', 'procurement', 'engineer', 'accountant'] },
   { to: '/material-list', label: '📋 Material List', roles: ['director', 'engineer'] },
   { to: '/subcontracts', label: '🏗️ Subcontracts', roles: ['director', 'engineer'] },
   { to: '/payments', label: '💳 Payments', roles: ['director', 'accountant'] },

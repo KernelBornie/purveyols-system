@@ -20,14 +20,19 @@ router.get('/', auth, async (req, res) => {
 });
 
 // POST /api/procurement – engineer submits a material request WITHOUT price
-router.post('/', auth, roleCheck('engineer', 'foreman', 'driver', 'safety'), async (req, res) => {
+router.post('/', auth, roleCheck('engineer'), async (req, res) => {
   try {
     const { items, project, deliveryDate } = req.body;
     if (!items || !Array.isArray(items) || items.length === 0) {
       return res.status(400).json({ message: 'At least one item is required' });
     }
+    const sanitizedItems = items.map(item => ({
+      name: item.name,
+      quantity: item.quantity,
+      description: item.description
+    }));
     const order = new ProcurementOrder({
-      items,
+      items: sanitizedItems,
       project: project || undefined,
       deliveryDate: deliveryDate || undefined,
       requestedBy: req.user._id
@@ -178,13 +183,19 @@ router.put('/:id/reject', auth, roleCheck('director'), async (req, res) => {
   }
 });
 
-// PUT /api/procurement/:id – general update (procurement officer, engineer, director, admin only)
-router.put('/:id', auth, roleCheck('procurement', 'director', 'admin', 'engineer'), async (req, res) => {
+// PUT /api/procurement/:id – admin-only maintenance update (engineers can create only)
+router.put('/:id', auth, roleCheck('admin'), async (req, res) => {
   try {
     const order = await ProcurementOrder.findById(req.params.id);
     if (!order) return res.status(404).json({ message: 'Procurement order not found' });
     const { items, project, deliveryDate } = req.body;
-    if (items !== undefined) order.items = items;
+    if (items !== undefined) {
+      order.items = items.map(item => ({
+        name: item.name,
+        quantity: item.quantity,
+        description: item.description
+      }));
+    }
     if (project !== undefined) order.project = project || undefined;
     if (deliveryDate !== undefined) order.deliveryDate = deliveryDate || undefined;
     await order.save();

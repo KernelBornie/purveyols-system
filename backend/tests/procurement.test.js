@@ -6,6 +6,7 @@ let engineerToken;
 let procurementToken;
 let directorToken;
 let accountantToken;
+let adminToken;
 let workerToken;
 
 beforeAll(async () => {
@@ -38,6 +39,11 @@ beforeEach(async () => {
     .post('/api/auth/register')
     .send({ name: 'Acc User', email: 'acc@example.com', password: 'password123', role: 'accountant' });
   accountantToken = acc.body.token;
+
+  const adm = await request(app)
+    .post('/api/auth/register')
+    .send({ name: 'Admin User', email: 'admin@example.com', password: 'password123', role: 'admin' });
+  adminToken = adm.body.token;
 
   const wkr = await request(app)
     .post('/api/auth/register')
@@ -86,6 +92,20 @@ describe('POST /api/procurement', () => {
     expect(res.body.items[0].totalPrice).toBeUndefined();
   });
 
+  it('ignores unitPrice sent by engineer when creating a request', async () => {
+    const res = await request(app)
+      .post('/api/procurement')
+      .set('Authorization', `Bearer ${engineerToken}`)
+      .send({
+        items: [{ name: 'Steel', description: '16mm', quantity: 25, unitPrice: 900 }]
+      });
+
+    expect(res.statusCode).toBe(201);
+    expect(res.body.items[0].unitPrice).toBeUndefined();
+    expect(res.body.items[0].totalPrice).toBeUndefined();
+    expect(res.body.totalPrice).toBeUndefined();
+  });
+
   it('returns 401 without authentication', async () => {
     const res = await request(app).post('/api/procurement').send(orderPayload);
     expect(res.statusCode).toBe(401);
@@ -131,6 +151,29 @@ describe('PUT /api/procurement/:id/price', () => {
     expect(res.body.items[0].totalPrice).toBe(5000);
     expect(res.body.totalPrice).toBe(5000);
     expect(res.body.priceSetBy).toBeDefined();
+  });
+
+  it('calculates order total from multiple priced items', async () => {
+    const createRes = await request(app)
+      .post('/api/procurement')
+      .set('Authorization', `Bearer ${engineerToken}`)
+      .send({
+        items: [
+          { name: 'Cement Bags', description: '50kg bags', quantity: 100 },
+          { name: 'Steel Rods', description: '12mm rods', quantity: 10 }
+        ]
+      });
+
+    const res = await request(app)
+      .put(`/api/procurement/${createRes.body._id}/price`)
+      .set('Authorization', `Bearer ${procurementToken}`)
+      .send({ supplier: 'BuildMart', items: [{ unitPrice: 50 }, { unitPrice: 120 }] });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.body.status).toBe('priced');
+    expect(res.body.items[0].totalPrice).toBe(5000);
+    expect(res.body.items[1].totalPrice).toBe(1200);
+    expect(res.body.totalPrice).toBe(6200);
   });
 
   it('returns 400 if items prices are missing', async () => {
@@ -293,6 +336,47 @@ describe('PUT /api/procurement/:id/fund', () => {
     const res = await request(app)
       .put(`/api/procurement/${order._id}/fund`)
       .set('Authorization', `Bearer ${engineerToken}`);
+
+    expect(res.statusCode).toBe(403);
+  });
+});
+
+describe('PUT /api/procurement/:id', () => {
+  it('admin can update order details while ignoring unitPrice updates', async () => {
+    const order = await createOrder();
+    const res = await request(app)
+      .put(`/api/procurement/${order._id}`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({
+        items: [{ name: 'Updated Cement', description: 'Updated', quantity: 120, unitPrice: 99 }]
+      });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.body.items[0].name).toBe('Updated Cement');
+    expect(res.body.items[0].unitPrice).toBeUndefined();
+    expect(res.body.totalPrice).toBeUndefined();
+  });
+
+  it('returns 403 when procurement officer tries to update order', async () => {
+    const order = await createOrder();
+    const res = await request(app)
+      .put(`/api/procurement/${order._id}`)
+      .set('Authorization', `Bearer ${procurementToken}`)
+      .send({
+        items: [{ name: 'Attempted Edit', quantity: 10 }]
+      });
+
+    expect(res.statusCode).toBe(403);
+  });
+
+  it('returns 403 when engineer tries to update order', async () => {
+    const order = await createOrder();
+    const res = await request(app)
+      .put(`/api/procurement/${order._id}`)
+      .set('Authorization', `Bearer ${engineerToken}`)
+      .send({
+        items: [{ name: 'Attempted Edit', quantity: 10 }]
+      });
 
     expect(res.statusCode).toBe(403);
   });
