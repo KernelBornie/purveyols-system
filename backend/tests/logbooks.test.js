@@ -4,6 +4,8 @@ const { connect, disconnect, clearCollections } = require('./setup');
 
 let engineerToken;
 let driverToken;
+let engineerUserId;
+let projectId;
 
 beforeAll(async () => {
   await connect();
@@ -20,54 +22,79 @@ beforeEach(async () => {
     .post('/api/auth/register')
     .send({ name: 'Eng User', email: 'eng@example.com', password: 'password123', role: 'engineer' });
   engineerToken = eng.body.token;
+  engineerUserId = eng.body.user.id;
 
   const drv = await request(app)
     .post('/api/auth/register')
     .send({ name: 'Drv User', email: 'drv@example.com', password: 'password123', role: 'driver' });
   driverToken = drv.body.token;
+
+  const projectRes = await request(app)
+    .post('/api/projects')
+    .set('Authorization', `Bearer ${engineerToken}`)
+    .send({
+    name: 'Test Logbook Project',
+    location: 'Lusaka',
+    status: 'planning',
+    budget: 100000
+  });
+  projectId = projectRes.body._id;
 });
 
-const workLogPayload = {
+const makeWorkLogPayload = () => ({
   type: 'work',
   date: new Date().toISOString(),
+  projectId,
+  workerId: engineerUserId,
+  project: projectId,
+  worker: engineerUserId,
+  hours: 8,
+  distance: 0,
   hoursWorked: 8,
-  site: 'Site A',
-  notes: 'Routine daily log'
-};
+  description: 'Routine daily log',
+  site: 'Site A'
+});
 
-const vehicleLogPayload = {
+const makeVehicleLogPayload = () => ({
   type: 'vehicle',
   date: new Date().toISOString(),
+  projectId,
+  project: projectId,
   distanceKm: 120,
+  distanceTravelled: 120,
+  distance: 120,
   fuelLitres: 15,
   route: 'Lusaka to Kafue',
-  vehicleNumber: 'AAA 1234'
-};
+  vehicleNumber: 'AAA 1234',
+  description: 'Vehicle movement log'
+});
 
 describe('POST /api/logbooks', () => {
   it('engineer can create a work logbook entry', async () => {
     const res = await request(app)
       .post('/api/logbooks')
       .set('Authorization', `Bearer ${engineerToken}`)
-      .send(workLogPayload);
+      .send(makeWorkLogPayload());
 
     expect(res.statusCode).toBe(201);
-    expect(res.body).toMatchObject({ type: 'work', hoursWorked: 8 });
+    expect(res.body).toMatchObject({ type: 'work', hoursWorked: 8, hours: 8, description: 'Routine daily log' });
     expect(res.body).toHaveProperty('createdBy');
+    expect(res.body.workerId?.name).toBe('Eng User');
+    expect(res.body.projectId?.name).toBe('Test Logbook Project');
   });
 
   it('driver can create a vehicle logbook entry', async () => {
     const res = await request(app)
       .post('/api/logbooks')
       .set('Authorization', `Bearer ${driverToken}`)
-      .send(vehicleLogPayload);
+      .send(makeVehicleLogPayload());
 
     expect(res.statusCode).toBe(201);
-    expect(res.body).toMatchObject({ type: 'vehicle', distanceKm: 120 });
+    expect(res.body).toMatchObject({ type: 'vehicle', distanceKm: 120, distanceTravelled: 120, distance: 120 });
   });
 
   it('returns 401 without a token', async () => {
-    const res = await request(app).post('/api/logbooks').send(workLogPayload);
+    const res = await request(app).post('/api/logbooks').send(makeWorkLogPayload());
     expect(res.statusCode).toBe(401);
   });
 });
@@ -77,12 +104,12 @@ describe('GET /api/logbooks', () => {
     await request(app)
       .post('/api/logbooks')
       .set('Authorization', `Bearer ${engineerToken}`)
-      .send(workLogPayload);
+      .send(makeWorkLogPayload());
 
     await request(app)
       .post('/api/logbooks')
       .set('Authorization', `Bearer ${driverToken}`)
-      .send(vehicleLogPayload);
+      .send(makeVehicleLogPayload());
   });
 
   it('engineer sees all logbook entries', async () => {
@@ -93,6 +120,10 @@ describe('GET /api/logbooks', () => {
     expect(res.statusCode).toBe(200);
     expect(res.body).toHaveProperty('entries');
     expect(res.body.entries).toHaveLength(2);
+    expect(res.body.entries[0]).toHaveProperty('projectId');
+    expect(res.body.entries[0]).toHaveProperty('workerId');
+    expect(res.body.entries[0].date).toBeTruthy();
+    expect(res.body.entries[0].description || res.body.entries[0].notes).toBeTruthy();
   });
 
   it('driver sees only their own logbook entries', async () => {
@@ -118,7 +149,7 @@ describe('GET /api/logbooks/:id', () => {
     const res = await request(app)
       .post('/api/logbooks')
       .set('Authorization', `Bearer ${engineerToken}`)
-      .send(workLogPayload);
+      .send(makeWorkLogPayload());
     logbookId = res.body._id;
   });
 
@@ -148,7 +179,7 @@ describe('PUT /api/logbooks/:id', () => {
     const res = await request(app)
       .post('/api/logbooks')
       .set('Authorization', `Bearer ${engineerToken}`)
-      .send(workLogPayload);
+      .send(makeWorkLogPayload());
     logbookId = res.body._id;
   });
 

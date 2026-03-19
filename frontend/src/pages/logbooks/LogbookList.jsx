@@ -16,6 +16,21 @@ const LogbookList = () => {
   }, []);
 
   const filtered = typeFilter ? logbooks.filter(l => l.type === typeFilter) : logbooks;
+  const displayProjectName = (log) => log.projectId?.name || log.project?.name || '—';
+  const displayWorkerName = (log) => log.workerId?.name || log.worker?.name || log.workerEnrolled?.name || log.createdBy?.name || '—';
+  const displayMetric = (log) => {
+    if (log.type === 'work') {
+      const value = log.hours ?? log.hoursWorked;
+      return value != null ? `${value} hrs` : '—';
+    }
+    const value = log.distance ?? log.distanceTravelled ?? log.distanceKm;
+    return value != null ? `${value} km` : '—';
+  };
+  const displayDate = (value) => {
+    if (!value) return '—';
+    const parsed = new Date(value);
+    return Number.isNaN(parsed.getTime()) ? '—' : parsed.toLocaleString();
+  };
 
   return (
     <div>
@@ -57,15 +72,11 @@ const LogbookList = () => {
                 {filtered.map(log => (
                   <tr key={log._id}>
                     <td><span className={`badge badge-${log.type}`}>{log.type}</span></td>
-                    <td>{log.project?.name || '—'}</td>
-                    <td>{log.worker?.name || log.workerEnrolled?.name || log.createdBy?.name || '—'}</td>
-                    <td>{new Date(log.date).toLocaleDateString()}</td>
-                    <td>
-                      {log.type === 'work'
-                        ? (log.hoursWorked != null ? `${log.hoursWorked} hrs` : '—')
-                        : (log.distanceTravelled != null ? `${log.distanceTravelled} km` : '—')}
-                    </td>
-                    <td>{log.description || '—'}</td>
+                    <td>{displayProjectName(log)}</td>
+                    <td>{displayWorkerName(log)}</td>
+                    <td>{displayDate(log.date)}</td>
+                    <td>{displayMetric(log)}</td>
+                    <td>{log.description || log.notes || '—'}</td>
                     <td>
                       <Link to={`/logbooks/${log._id}/edit`} className="btn btn-secondary btn-sm">Edit</Link>
                     </td>

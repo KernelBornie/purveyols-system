@@ -3,6 +3,10 @@ const mongoose = require('mongoose');
 const LogbookSchema = new mongoose.Schema(
   {
     type: { type: String, enum: ['work', 'vehicle'], required: true },
+    projectId: { type: mongoose.Schema.Types.ObjectId, ref: 'Project' },
+    workerId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    hours: { type: Number },
+    distance: { type: Number },
     project: { type: mongoose.Schema.Types.ObjectId, ref: 'Project' },
     worker: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     workerEnrolled: { type: mongoose.Schema.Types.ObjectId, ref: 'Worker' },
@@ -27,5 +31,23 @@ const LogbookSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+LogbookSchema.pre('validate', function syncCanonicalFields(next) {
+  if (!this.projectId && this.project) this.projectId = this.project;
+  if (!this.project && this.projectId) this.project = this.projectId;
+
+  if (!this.workerId && this.worker) this.workerId = this.worker;
+  if (!this.worker && this.workerId) this.worker = this.workerId;
+
+  if (this.hours == null && this.hoursWorked != null) this.hours = this.hoursWorked;
+  if (this.hoursWorked == null && this.hours != null) this.hoursWorked = this.hours;
+
+  if (this.distance == null && this.distanceTravelled != null) this.distance = this.distanceTravelled;
+  if (this.distanceTravelled == null && this.distance != null) this.distanceTravelled = this.distance;
+  if (this.distance == null && this.distanceKm != null) this.distance = this.distanceKm;
+  if (this.distanceKm == null && this.distance != null) this.distanceKm = this.distance;
+
+  next();
+});
 
 module.exports = mongoose.model('Logbook', LogbookSchema);
