@@ -28,7 +28,8 @@ const ProcurementOrderSchema = new mongoose.Schema(
     rejectionReason: { type: String },
     priceSetBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     approvedByDirector: { type: Boolean, default: false },
-    fundedByAccountant: { type: Boolean, default: false }
+    fundedByAccountant: { type: Boolean, default: false },
+    isActive: { type: Boolean, default: true }
   },
   { timestamps: true }
 );

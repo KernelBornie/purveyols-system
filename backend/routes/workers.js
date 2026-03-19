@@ -63,8 +63,8 @@ router.get('/:id', auth, async (req, res) => {
   }
 });
 
-// PUT /api/workers/:id
-router.put('/:id', auth, async (req, res) => {
+// PUT /api/workers/:id – director/engineer/foreman only, update worker
+router.put('/:id', auth, roleCheck('director', 'engineer', 'foreman'), async (req, res) => {
   try {
     const worker = await Worker.findByIdAndUpdate(req.params.id, req.body, { new: true })
       .populate('project', 'name')
@@ -76,10 +76,25 @@ router.put('/:id', auth, async (req, res) => {
   }
 });
 
+// PUT /api/workers/:id/deactivate – director/engineer only
+router.put('/:id/deactivate', auth, roleCheck('director', 'engineer'), async (req, res) => {
+  try {
+    const worker = await Worker.findByIdAndUpdate(
+      req.params.id,
+      { status: 'inactive', isActive: false },
+      { new: true }
+    );
+    if (!worker) return res.status(404).json({ message: 'Worker not found' });
+    res.json({ message: 'Worker deactivated', worker });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+});
+
 // DELETE /api/workers/:id – director/engineer only, deactivate
 router.delete('/:id', auth, roleCheck('director', 'engineer'), async (req, res) => {
   try {
-    const worker = await Worker.findByIdAndUpdate(req.params.id, { status: 'inactive' }, { new: true });
+    const worker = await Worker.findByIdAndUpdate(req.params.id, { status: 'inactive', isActive: false }, { new: true });
     if (!worker) return res.status(404).json({ message: 'Worker not found' });
     res.json({ message: 'Worker deactivated', worker });
   } catch (err) {

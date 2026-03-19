@@ -13,7 +13,8 @@ const FundingRequestSchema = new mongoose.Schema(
     approvedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     approvedAt: { type: Date },
     rejectionReason: { type: String },
-    attachments: [{ type: String }]
+    attachments: [{ type: String }],
+    isActive: { type: Boolean, default: true }
   },
   { timestamps: true }
 );

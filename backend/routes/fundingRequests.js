@@ -100,4 +100,40 @@ router.put('/:id/reject', auth, roleCheck('director'), async (req, res) => {
   }
 });
 
+// PUT /api/funding-requests/:id/deactivate – engineer/director only
+router.put('/:id/deactivate', auth, roleCheck('engineer', 'director'), async (req, res) => {
+  try {
+    const request = await FundingRequest.findByIdAndUpdate(
+      req.params.id,
+      { isActive: false },
+      { new: true }
+    )
+      .populate('requestedBy', 'name email role')
+      .populate('project', 'name');
+    if (!request) return res.status(404).json({ message: 'Funding request not found' });
+    res.json({ message: 'Funding request deactivated', request });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+});
+
+// PUT /api/funding-requests/:id – engineer/director can modify
+router.put('/:id', auth, roleCheck('engineer', 'director'), async (req, res) => {
+  try {
+    const { title, description, amount, site, priority, project } = req.body;
+    const request = await FundingRequest.findByIdAndUpdate(
+      req.params.id,
+      { title, description, amount, site, priority, project: project || undefined },
+      { new: true, runValidators: true }
+    )
+      .populate('requestedBy', 'name email role')
+      .populate('project', 'name')
+      .populate('approvedBy', 'name email');
+    if (!request) return res.status(404).json({ message: 'Funding request not found' });
+    res.json(request);
+  } catch (err) {
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+});
+
 module.exports = router;

@@ -77,6 +77,16 @@ const ProcurementList = () => {
     }
   };
 
+  const handleDeactivate = async (id) => {
+    if (!window.confirm('Deactivate this procurement order?')) return;
+    try {
+      const res = await API.put(`/procurement/${id}/deactivate`);
+      setOrders(orders.map(o => o._id === id ? res.data.order : o));
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to deactivate order');
+    }
+  };
+
   const handleFund = async (id) => {
     try {
       const res = await API.put(`/procurement/${id}/fund`);
@@ -184,6 +194,9 @@ const ProcurementList = () => {
                     <td><span className={`badge badge-${order.status}`}>{order.status}</span></td>
                     <td>
                       <div className="actions">
+                        {['engineer', 'director', 'procurement'].includes(user?.role) && (
+                          <Link to={`/procurement/${order._id}/edit`} className="btn btn-secondary btn-sm">Edit</Link>
+                        )}
                         {user?.role === 'procurement' && order.status === 'pending' && (
                           <button className="btn btn-primary btn-sm" onClick={() => handleSetPrice(order)}>
                             Set Price
@@ -202,6 +215,11 @@ const ProcurementList = () => {
                         {user?.role === 'accountant' && order.status === 'approved' && (
                           <button className="btn btn-success btn-sm" onClick={() => handleFund(order._id)}>
                             Fund
+                          </button>
+                        )}
+                        {['engineer', 'director'].includes(user?.role) && order.isActive !== false && (
+                          <button className="btn btn-warning btn-sm" onClick={() => handleDeactivate(order._id)}>
+                            Deactivate
                           </button>
                         )}
                       </div>

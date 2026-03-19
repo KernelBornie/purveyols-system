@@ -74,4 +74,21 @@ router.delete('/:id', auth, roleCheck('engineer', 'director'), async (req, res) 
   }
 });
 
+// PUT /api/subcontracts/:id/deactivate – engineer/director only
+router.put('/:id/deactivate', auth, roleCheck('engineer', 'director'), async (req, res) => {
+  try {
+    const subcontract = await Subcontract.findByIdAndUpdate(
+      req.params.id,
+      { isActive: false },
+      { new: true }
+    )
+      .populate('hiredBy', 'name email role')
+      .populate('project', 'name');
+    if (!subcontract) return res.status(404).json({ message: 'Subcontract not found' });
+    res.json({ message: 'Subcontract deactivated', subcontract });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+});
+
 module.exports = router;
