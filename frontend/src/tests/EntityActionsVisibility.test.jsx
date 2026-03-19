@@ -26,6 +26,21 @@ const renderWithRole = (ui, role) =>
     </MemoryRouter>
   );
 
+const workerRow = (overrides = {}) => ({
+  _id: 'w1',
+  name: 'Worker',
+  nrc: '1',
+  phone: '',
+  dailyRate: 0,
+  overtimeRate: 0,
+  site: '',
+  mobileNetwork: 'airtel',
+  enrolledBy: { name: 'E', role: 'engineer' },
+  createdAt: new Date().toISOString(),
+  isActive: true,
+  ...overrides,
+});
+
 describe('Engineer-only entity actions and hide inactive records', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -38,8 +53,8 @@ describe('Engineer-only entity actions and hide inactive records', () => {
     API.get.mockResolvedValueOnce({
       data: {
         workers: [
-          { _id: 'w1', name: 'Active Worker', nrc: '1', phone: '', dailyRate: 0, overtimeRate: 0, site: '', mobileNetwork: 'airtel', enrolledBy: { name: 'E', role: 'engineer' }, createdAt: new Date().toISOString(), isActive: true },
-          { _id: 'w2', name: 'Inactive Worker', nrc: '2', phone: '', dailyRate: 0, overtimeRate: 0, site: '', mobileNetwork: 'airtel', enrolledBy: { name: 'E', role: 'engineer' }, createdAt: new Date().toISOString(), isActive: false },
+          workerRow({ _id: 'w1', name: 'Active Worker' }),
+          workerRow({ _id: 'w2', name: 'Inactive Worker', nrc: '2', isActive: false }),
         ],
       },
     });
@@ -59,7 +74,7 @@ describe('Engineer-only entity actions and hide inactive records', () => {
     unmount();
     API.get.mockResolvedValueOnce({
       data: {
-        workers: [{ _id: 'w3', name: 'Worker Three', nrc: '3', phone: '', dailyRate: 0, overtimeRate: 0, site: '', mobileNetwork: 'airtel', enrolledBy: { name: 'E', role: 'engineer' }, createdAt: new Date().toISOString(), isActive: true }],
+        workers: [workerRow({ _id: 'w3', name: 'Worker Three', nrc: '3' })],
       },
     });
     renderWithRole(<WorkerList />, 'director');

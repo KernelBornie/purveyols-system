@@ -231,3 +231,32 @@ describe('PUT /api/subcontracts/:id/deactivate', () => {
     expect(res.statusCode).toBe(403);
   });
 });
+
+describe('DELETE /api/subcontracts/:id (soft delete)', () => {
+  let subcontractId;
+
+  beforeEach(async () => {
+    const res = await request(app)
+      .post('/api/subcontracts')
+      .set('Authorization', `Bearer ${engineerToken}`)
+      .send({ type: 'personnel', name: 'Delete Electrician', company: 'ElecCo', dateHired: new Date().toISOString(), amount: 11000, site: 'Site A' });
+    subcontractId = res.body.subcontract._id;
+  });
+
+  it('engineer can soft delete a subcontract', async () => {
+    const res = await request(app)
+      .delete(`/api/subcontracts/${subcontractId}`)
+      .set('Authorization', `Bearer ${engineerToken}`);
+
+    expect(res.statusCode).toBe(200);
+    expect(res.body.subcontract.isActive).toBe(false);
+  });
+
+  it('director cannot soft delete a subcontract', async () => {
+    const res = await request(app)
+      .delete(`/api/subcontracts/${subcontractId}`)
+      .set('Authorization', `Bearer ${directorToken}`);
+
+    expect(res.statusCode).toBe(403);
+  });
+});
