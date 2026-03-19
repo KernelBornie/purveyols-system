@@ -26,11 +26,30 @@ router.post('/', auth, roleCheck('engineer'), async (req, res) => {
     if (!items || !Array.isArray(items) || items.length === 0) {
       return res.status(400).json({ message: 'At least one item is required' });
     }
-    const sanitizedItems = items.map(item => ({
-      name: item.name,
-      quantity: item.quantity,
-      description: item.description
-    }));
+    const sanitizedItems = [];
+    for (const item of items) {
+      const name = item?.name?.trim();
+      const quantity = Number(item?.quantity);
+      if (!name) {
+        return res.status(400).json({ message: 'Each item name is required' });
+      }
+      if (!Number.isFinite(quantity) || quantity < 1) {
+        return res.status(400).json({ message: 'Each item quantity must be at least 1' });
+      }
+      const sanitizedItem = {
+        name,
+        quantity,
+        description: item?.description?.trim() || undefined
+      };
+      if (item.unitPrice != null && item.unitPrice !== '') {
+        const unitPrice = Number(item.unitPrice);
+        if (!Number.isFinite(unitPrice) || unitPrice < 0) {
+          return res.status(400).json({ message: 'Each item unitPrice must be 0 or greater when provided' });
+        }
+        sanitizedItem.unitPrice = unitPrice;
+      }
+      sanitizedItems.push(sanitizedItem);
+    }
     const order = new ProcurementOrder({
       items: sanitizedItems,
       project: project || undefined,
@@ -48,9 +67,15 @@ router.post('/', auth, roleCheck('engineer'), async (req, res) => {
       `Your procurement request for ${itemSummary} has been submitted and is pending review.`,
       'procurement_request'
     );
-    res.status(201).json(order);
+    res.status(201).json({
+      message: 'Procurement order created successfully',
+      order
+    });
   } catch (err) {
-    res.status(500).json({ message: 'Server error', error: err.message });
+    const isValidationError = err?.name === 'ValidationError';
+    res.status(isValidationError ? 400 : 500).json({
+      message: isValidationError ? 'Invalid procurement order data' : 'Server error'
+    });
   }
 });
 

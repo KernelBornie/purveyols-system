@@ -4,7 +4,9 @@ const ItemSchema = new mongoose.Schema(
   {
     name: { type: String, required: true, trim: true },
     quantity: { type: Number, required: true, min: 1 },
-    unitPrice: { type: Number, required: true, min: 0 }
+    description: { type: String, trim: true },
+    unitPrice: { type: Number, min: 0 },
+    totalPrice: { type: Number, min: 0 }
   },
   { _id: false }
 );
@@ -20,14 +22,44 @@ const ProcurementOrderSchema = new mongoose.Schema(
       }
     },
     requestedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-    project: { type: mongoose.Schema.Types.ObjectId, ref: 'Project', required: true },
+    project: { type: mongoose.Schema.Types.ObjectId, ref: 'Project' },
+    deliveryDate: { type: Date },
+    supplier: { type: String, trim: true },
+    totalPrice: { type: Number, min: 0 },
+    priceSetBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    approvedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    fundedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    approvedByDirector: { type: Boolean, default: false },
+    fundedByAccountant: { type: Boolean, default: false },
+    rejectionReason: { type: String, trim: true },
+    isActive: { type: Boolean, default: true },
     status: {
       type: String,
-      enum: ['pending', 'approved', 'rejected'],
+      enum: ['pending', 'priced', 'approved', 'funded', 'rejected'],
       default: 'pending'
     }
   },
   { timestamps: true }
 );
+
+ProcurementOrderSchema.pre('save', function (next) {
+  let orderTotal = 0;
+  let hasAllItemPrices = true;
+
+  for (const item of this.items) {
+    if (item.unitPrice == null) {
+      hasAllItemPrices = false;
+      item.totalPrice = undefined;
+      continue;
+    }
+
+    const itemTotal = Number(item.quantity) * Number(item.unitPrice);
+    orderTotal += itemTotal;
+    item.totalPrice = itemTotal;
+  }
+
+  this.totalPrice = hasAllItemPrices ? orderTotal : undefined;
+  next();
+});
 
 module.exports = mongoose.model('ProcurementOrder', ProcurementOrderSchema);

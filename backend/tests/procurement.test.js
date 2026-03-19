@@ -63,7 +63,7 @@ const createOrder = async () => {
     .post('/api/procurement')
     .set('Authorization', `Bearer ${engineerToken}`)
     .send(orderPayload);
-  return res.body;
+  return res.body.order;
 };
 
 // Helper: procurement officer sets price
@@ -83,27 +83,57 @@ describe('POST /api/procurement', () => {
       .send(orderPayload);
 
     expect(res.statusCode).toBe(201);
-    expect(res.body.status).toBe('pending');
-    expect(Array.isArray(res.body.items)).toBe(true);
-    expect(res.body.items.length).toBe(1);
-    expect(res.body.items[0].name).toBe('Cement Bags');
-    expect(res.body.items[0].quantity).toBe(100);
-    expect(res.body.items[0].unitPrice).toBeUndefined();
-    expect(res.body.items[0].totalPrice).toBeUndefined();
+    expect(res.body.message).toBe('Procurement order created successfully');
+    expect(res.body.order.status).toBe('pending');
+    expect(Array.isArray(res.body.order.items)).toBe(true);
+    expect(res.body.order.items.length).toBe(1);
+    expect(res.body.order.items[0].name).toBe('Cement Bags');
+    expect(res.body.order.items[0].quantity).toBe(100);
+    expect(res.body.order.items[0].unitPrice).toBeUndefined();
+    expect(res.body.order.items[0].totalPrice).toBeUndefined();
   });
 
-  it('ignores unitPrice sent by engineer when creating a request', async () => {
+  it('calculates total price from multiple items when unit prices are provided', async () => {
     const res = await request(app)
       .post('/api/procurement')
       .set('Authorization', `Bearer ${engineerToken}`)
       .send({
-        items: [{ name: 'Steel', description: '16mm', quantity: 25, unitPrice: 900 }]
+        items: [
+          { name: 'Steel', description: '16mm', quantity: 25, unitPrice: 900 },
+          { name: 'Cement', description: '50kg', quantity: 2, unitPrice: 100 }
+        ]
       });
 
     expect(res.statusCode).toBe(201);
-    expect(res.body.items[0].unitPrice).toBeUndefined();
-    expect(res.body.items[0].totalPrice).toBeUndefined();
-    expect(res.body.totalPrice).toBeUndefined();
+    expect(res.body.order.items[0].unitPrice).toBe(900);
+    expect(res.body.order.items[0].totalPrice).toBe(22500);
+    expect(res.body.order.items[1].unitPrice).toBe(100);
+    expect(res.body.order.items[1].totalPrice).toBe(200);
+    expect(res.body.order.totalPrice).toBe(22700);
+  });
+
+  it('returns 400 when an item has no name', async () => {
+    const res = await request(app)
+      .post('/api/procurement')
+      .set('Authorization', `Bearer ${engineerToken}`)
+      .send({
+        items: [{ name: ' ', quantity: 2 }]
+      });
+
+    expect(res.statusCode).toBe(400);
+    expect(res.body.message).toBe('Each item name is required');
+  });
+
+  it('returns 400 when an item quantity is less than 1', async () => {
+    const res = await request(app)
+      .post('/api/procurement')
+      .set('Authorization', `Bearer ${engineerToken}`)
+      .send({
+        items: [{ name: 'Steel', quantity: 0 }]
+      });
+
+    expect(res.statusCode).toBe(400);
+    expect(res.body.message).toBe('Each item quantity must be at least 1');
   });
 
   it('returns 401 without authentication', async () => {
@@ -165,7 +195,7 @@ describe('PUT /api/procurement/:id/price', () => {
       });
 
     const res = await request(app)
-      .put(`/api/procurement/${createRes.body._id}/price`)
+      .put(`/api/procurement/${createRes.body.order._id}/price`)
       .set('Authorization', `Bearer ${procurementToken}`)
       .send({ supplier: 'BuildMart', items: [{ unitPrice: 50 }, { unitPrice: 120 }] });
 
