@@ -15,6 +15,7 @@ const PaymentSchema = new mongoose.Schema(
     processedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     status: { type: String, enum: ['pending', 'completed', 'failed'], default: 'pending' },
     transactionId: { type: String },
+    transactionRef: { type: String },
     paymentDate: { type: Date, default: Date.now }
   },
   { timestamps: true }

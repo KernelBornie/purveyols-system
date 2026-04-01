@@ -165,3 +165,106 @@ purveyols-system/
 | GET/POST | /api/material-requests | List / Submit material request |
 | GET | /api/reports/summary | Aggregated system summary |
 | GET | /api/users | List users (director only) |
+| GET | /api/health | Health check (DB status) |
+
+## 💰 Mobile Money Payments
+
+Payments are processed via simulated **Airtel Money** and **MTN Mobile Money** (Zambia). Each disbursement generates a network-prefixed transaction reference (e.g. `AIR-ZM-…` or `MTN-ZM-…`) and records the outcome (`completed` / `failed`) on the payment record.
+
+> **Production integration:** Replace the `simulateMobileMoney` function in `backend/routes/payments.js` with real API calls to the [Airtel Money API](https://developers.airtel.africa/) or the [MTN MoMo API](https://momodeveloper.mtn.com/).
+
+### Payment fields
+
+| Field | Description |
+|-------|-------------|
+| `mobileNetwork` | `airtel` or `mtn` |
+| `transactionRef` | Network-prefixed reference generated per disbursement |
+| `status` | `pending` / `completed` / `failed` |
+
+---
+
+## 📦 Android APK
+
+The app ships as an Android APK using [Capacitor](https://capacitorjs.com/). A GitHub Actions workflow (`.github/workflows/build-apk.yml`) builds the APK automatically on every push.
+
+### Build locally
+
+> Prerequisites: Node 18+, JDK 17+, Android SDK (API 33+)
+
+```bash
+# 1. Build the web bundle
+cd frontend
+npm install
+npm run build
+
+# 2. Add the Android platform (first time only)
+npx cap add android
+
+# 3. Sync web assets into the Android project
+npx cap sync android
+
+# 4. Build the APK
+cd android
+./gradlew assembleDebug
+
+# The APK is written to:
+# frontend/android/app/build/outputs/apk/debug/app-debug.apk
+```
+
+For a **release** (signed) APK, follow the [Capacitor Android signing guide](https://capacitorjs.com/docs/android#signing).
+
+---
+
+## 💻 Windows Installer (.exe)
+
+The desktop app is powered by [Electron](https://electronjs.org/) and packaged with [electron-builder](https://www.electron.build/). A GitHub Actions workflow (`.github/workflows/build-windows.yml`) builds the `.exe` installer automatically on every push.
+
+### Build locally
+
+> Prerequisites: Node 18+, Windows (or Wine on Linux)
+
+```bash
+# 1. Build the frontend
+cd frontend
+npm install
+npm run build
+
+# 2. Build the Windows installer
+cd ../electron
+npm install
+npm run build:win
+
+# The installer is written to:
+# electron/dist-electron/PURVEYOLS Setup *.exe
+```
+
+---
+
+## 🌍 Online Deployment
+
+### Frontend – Netlify
+
+The `netlify.toml` at the repo root configures automatic deployment to [Netlify](https://netlify.com):
+
+1. Connect the repository in the Netlify dashboard.
+2. Netlify will auto-detect `netlify.toml` and deploy on every push to `main`.
+
+For GitHub Actions-based deployment, set the following repository secrets:
+
+| Secret | Description |
+|--------|-------------|
+| `NETLIFY_AUTH_TOKEN` | Your Netlify personal access token |
+| `NETLIFY_SITE_ID` | The site ID from the Netlify dashboard |
+
+### Backend – Render
+
+The `render.yaml` at the repo root configures deployment to [Render](https://render.com):
+
+1. Create a new **Web Service** in Render and point it to this repository.
+2. Render will auto-detect `render.yaml` and configure the build.
+3. Set the following environment variables in the Render dashboard (never commit these):
+
+| Variable | Description |
+|----------|-------------|
+| `MONGO_URI` | MongoDB connection string (e.g. MongoDB Atlas) |
+| `JWT_SECRET` | Long random secret for JWT signing |

@@ -18,13 +18,24 @@ const SubcontractList = () => {
   }, []);
 
   const handleDelete = async (id) => {
-    if (!window.confirm('Delete this subcontract record?')) return;
+    if (!window.confirm('Delete this subcontract record? This is a soft delete.')) return;
     try {
       await API.delete(`/subcontracts/${id}`);
       setSubcontracts(subcontracts.filter((s) => s._id !== id));
       setMsg('Record deleted');
     } catch {
       setError('Failed to delete record');
+    }
+  };
+
+  const handleDeactivate = async (id) => {
+    if (!window.confirm('Deactivate this subcontract?')) return;
+    try {
+      const res = await API.put(`/subcontracts/${id}/deactivate`);
+      setSubcontracts(subcontracts.map(s => s._id === id ? res.data.subcontract : s));
+      setMsg('Subcontract deactivated');
+    } catch {
+      setError('Failed to deactivate subcontract');
     }
   };
 
@@ -89,8 +100,15 @@ const SubcontractList = () => {
                     <td>{s.hiredBy?.name || '—'}</td>
                     <td>
                       <div className="actions">
-                        <Link to={`/subcontracts/${s._id}/edit`} className="btn btn-secondary btn-sm">Edit</Link>
-                        {['engineer', 'director', 'admin'].includes(user?.role) && (
+                        {user?.role === 'engineer' && (
+                          <Link to={`/subcontracts/${s._id}/edit`} className="btn btn-secondary btn-sm">Edit</Link>
+                        )}
+                        {user?.role === 'engineer' && s.isActive !== false && (
+                          <button className="btn btn-warning btn-sm" onClick={() => handleDeactivate(s._id)}>
+                            Deactivate
+                          </button>
+                        )}
+                        {user?.role === 'engineer' && s.isActive !== false && (
                           <button className="btn btn-danger btn-sm" onClick={() => handleDelete(s._id)}>
                             Delete
                           </button>

@@ -6,17 +6,20 @@ const navItems = [
   { to: '/dashboard', label: '🏠 Dashboard', roles: ['director', 'engineer', 'foreman', 'procurement', 'driver', 'accountant', 'worker', 'safety', 'admin'] },
   { to: '/projects', label: '🏗️ Projects', roles: ['director', 'engineer', 'foreman'] },
   { to: '/workers', label: '👷 Workers', roles: ['director', 'engineer', 'foreman', 'accountant'] },
+  { to: '/attendance', label: '📅 Attendance', roles: ['director', 'engineer', 'foreman', 'accountant'] },
   { to: '/logbooks', label: '📋 Logbooks', roles: ['director', 'accountant', 'driver'] },
   { to: '/funding-requests', label: '💰 Funding Requests', roles: ['director', 'engineer', 'accountant', 'foreman', 'driver', 'procurement'] },
   { to: '/procurement', label: '🛒 Materials / Procurement', roles: ['director', 'procurement', 'engineer', 'foreman', 'driver', 'safety'] },
-  { to: '/boq', label: '📋 Bills of Quantities', roles: ['director', 'engineer'] },
+  { to: '/material-list', label: '📋 Material List', roles: ['director', 'engineer'] },
   { to: '/subcontracts', label: '🏗️ Subcontracts', roles: ['director', 'engineer'] },
   { to: '/payments', label: '💳 Payments', roles: ['director', 'accountant'] },
   { to: '/safety', label: '⚠️ Safety Reports', roles: ['director', 'safety', 'engineer'] },
   { to: '/reports', label: '📊 Reports', roles: ['director', 'accountant', 'engineer'] },
+  { to: '/admin/users', label: '👥 User Management', roles: ['admin', 'director'] },
+  { to: '/change-password', label: '🔑 Change Password', roles: ['director', 'engineer', 'foreman', 'procurement', 'driver', 'accountant', 'worker', 'safety', 'admin'] },
 ];
 
-const Sidebar = () => {
+const Sidebar = ({ isOpen, onClose }) => {
   const { user } = useContext(AuthContext);
 
   if (!user) return null;
@@ -24,7 +27,7 @@ const Sidebar = () => {
   const visibleItems = navItems.filter(item => item.roles.includes(user.role));
 
   return (
-    <div className="sidebar">
+    <div className={`sidebar${isOpen ? ' open' : ''}`}>
       <div className="sidebar-header">
         PURVEYOLS <span>CMS</span>
       </div>
@@ -34,6 +37,7 @@ const Sidebar = () => {
             key={item.to}
             to={item.to}
             className={({ isActive }) => isActive ? 'active' : ''}
+            onClick={onClose}
           >
             {item.label}
           </NavLink>

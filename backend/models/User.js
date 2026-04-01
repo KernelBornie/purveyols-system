@@ -11,7 +11,8 @@ const UserSchema = new mongoose.Schema(
       enum: ['director', 'engineer', 'foreman', 'procurement', 'driver', 'accountant', 'safety', 'admin', 'worker'],
       default: 'worker'
     },
-    isActive: { type: Boolean, default: true }
+    isActive: { type: Boolean, default: true },
+    deletedAt: { type: Date, default: null }
   },
   { timestamps: true }
 );

@@ -20,10 +20,20 @@ const WorkerList = () => {
   const handleDeactivate = async (id) => {
     if (!window.confirm('Deactivate this worker?')) return;
     try {
-      await API.delete(`/workers/${id}`);
-      setWorkers(workers.map(w => w._id === id ? { ...w, isActive: false } : w));
+      const res = await API.put(`/workers/${id}/deactivate`);
+      setWorkers(workers.map(w => w._id === id ? res.data.worker : w));
     } catch {
       alert('Failed to deactivate worker');
+    }
+  };
+
+  const handleDelete = async (id) => {
+    if (!window.confirm('Delete this worker? This is a soft delete.')) return;
+    try {
+      await API.delete(`/workers/${id}`);
+      setWorkers(workers.filter(w => w._id !== id));
+    } catch {
+      alert('Failed to delete worker');
     }
   };
 
@@ -67,6 +77,7 @@ const WorkerList = () => {
                   <th>NRC</th>
                   <th>Phone</th>
                   <th>Daily Rate (ZMW)</th>
+                  <th>Overtime Rate (ZMW/hr)</th>
                   <th>Site</th>
                   <th>Network</th>
                   <th>Enrolled By</th>
@@ -82,6 +93,7 @@ const WorkerList = () => {
                     <td>{worker.nrc}</td>
                     <td>{worker.phone}</td>
                     <td>K{worker.dailyRate}</td>
+                    <td>K{worker.overtimeRate ?? 0}</td>
                     <td>{worker.site}</td>
                     <td style={{ textTransform: 'capitalize' }}>{worker.mobileNetwork}</td>
                     <td>{worker.enrolledBy?.name} ({worker.enrolledBy?.role})</td>
@@ -93,12 +105,23 @@ const WorkerList = () => {
                     </td>
                     <td>
                       <div className="actions">
-                        {['director', 'engineer'].includes(user?.role) && worker.isActive && (
+                        {user?.role === 'engineer' && (
+                          <Link to={`/workers/${worker._id}/edit`} className="btn btn-secondary btn-sm">Edit</Link>
+                        )}
+                        {user?.role === 'engineer' && worker.isActive && (
                           <button
-                            className="btn btn-danger btn-sm"
+                            className="btn btn-warning btn-sm"
                             onClick={() => handleDeactivate(worker._id)}
                           >
                             Deactivate
+                          </button>
+                        )}
+                        {user?.role === 'engineer' && (
+                          <button
+                            className="btn btn-danger btn-sm"
+                            onClick={() => handleDelete(worker._id)}
+                          >
+                            Delete
                           </button>
                         )}
                       </div>

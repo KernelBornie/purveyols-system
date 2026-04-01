@@ -6,6 +6,7 @@ const WorkerSchema = new mongoose.Schema(
     nrc: { type: String, required: true, unique: true },
     phone: { type: String },
     dailyRate: { type: Number, default: 0 },
+    overtimeRate: { type: Number, default: 0, min: 0 },
     site: { type: String },
     mobileNetwork: { type: String, enum: ['airtel', 'mtn', 'other'], default: 'airtel' },
     role: {
@@ -16,13 +17,10 @@ const WorkerSchema = new mongoose.Schema(
     project: { type: mongoose.Schema.Types.ObjectId, ref: 'Project' },
     enrolledBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     enrolledAt: { type: Date, default: Date.now },
-    status: { type: String, enum: ['active', 'inactive'], default: 'active' }
+    status: { type: String, enum: ['active', 'inactive'], default: 'active' },
+    isActive: { type: Boolean, default: true }
   },
-  { timestamps: true, toJSON: { virtuals: true }, toObject: { virtuals: true } }
+  { timestamps: true }
 );
-
-WorkerSchema.virtual('isActive').get(function () {
-  return this.status === 'active';
-});
 
 module.exports = mongoose.model('Worker', WorkerSchema);

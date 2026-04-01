@@ -25,6 +25,26 @@ const FundingRequestList = () => {
     }
   };
 
+  const handleDeactivate = async (id) => {
+    if (!window.confirm('Deactivate this funding request?')) return;
+    try {
+      const res = await API.put(`/funding-requests/${id}/deactivate`);
+      setRequests(requests.map(r => r._id === id ? res.data.request : r));
+    } catch {
+      alert('Failed to deactivate funding request');
+    }
+  };
+
+  const handleDelete = async (id) => {
+    if (!window.confirm('Delete this funding request? This is a soft delete.')) return;
+    try {
+      await API.delete(`/funding-requests/${id}`);
+      setRequests(requests.filter(r => r._id !== id));
+    } catch {
+      alert('Failed to delete request');
+    }
+  };
+
   const handleReject = async (id) => {
     const reason = window.prompt('Rejection reason:');
     if (reason === null) return;
@@ -75,6 +95,9 @@ const FundingRequestList = () => {
                     <td>{new Date(req.createdAt).toLocaleDateString()}</td>
                     <td>
                       <div className="actions">
+                        {user?.role === 'engineer' && (
+                          <Link to={`/funding-requests/${req._id}/edit`} className="btn btn-secondary btn-sm">Edit</Link>
+                        )}
                         {user?.role === 'director' && req.status === 'pending' && (
                           <>
                             <button className="btn btn-success btn-sm" onClick={() => handleApprove(req._id)}>
@@ -84,6 +107,16 @@ const FundingRequestList = () => {
                               Reject
                             </button>
                           </>
+                        )}
+                        {user?.role === 'engineer' && req.isActive !== false && (
+                          <button className="btn btn-warning btn-sm" onClick={() => handleDeactivate(req._id)}>
+                            Deactivate
+                          </button>
+                        )}
+                        {user?.role === 'engineer' && req.isActive !== false && (
+                          <button className="btn btn-danger btn-sm" onClick={() => handleDelete(req._id)}>
+                            Delete
+                          </button>
                         )}
                         {req.rejectionReason && (
                           <span title={req.rejectionReason} style={{ cursor: 'help', color: '#e74c3c' }}>⚠</span>
