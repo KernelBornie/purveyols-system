@@ -1,0 +1,32 @@
+{
+  "short_name": "PURVEYOLS",
+  "name": "PURVEYOLS Construction Management System",
+  "description": "Role-based construction management system for managing workers, payments, and operations",
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "64x64 32x32 24x24 16x16",
+      "type": "image/x-icon"
+    },
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "theme_color": "#2c3e50",
+  "background_color": "#1a252f",
+  "orientation": "any",
+  "categories": ["business", "productivity"],
+  "lang": "en"
+}

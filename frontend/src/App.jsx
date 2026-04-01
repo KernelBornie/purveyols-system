@@ -1,4 +1,4 @@
-import { useContext } from "react";
+import { useContext, useState } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 
 import { AuthProvider, AuthContext } from "./context/AuthContext";
@@ -31,31 +31,38 @@ import PaymentForm from "./pages/payments/PaymentForm";
 import BOQList from "./pages/boq/BOQList";
 import BOQForm from "./pages/boq/BOQForm";
 
+import MaterialListPage from "./pages/materialList/MaterialListPage";
+import MaterialListForm from "./pages/materialList/MaterialListForm";
+
 import SubcontractList from "./pages/subcontracts/SubcontractList";
 import SubcontractForm from "./pages/subcontracts/SubcontractForm";
 
 import SafetyReportList from "./pages/safety/SafetyReportList";
 import Reports from "./pages/reports/Reports";
 
+import ChangePassword from "./pages/ChangePassword";
+import UserManagement from "./pages/admin/UserManagement";
+
 const ALL_ROLES = ["director", "accountant", "engineer", "foreman", "driver", "procurement", "safety", "admin"];
 
-const Layout = ({ children }) => (
-  <div className="layout">
+const Layout = ({ children }) => {
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
-    <Sidebar />
-
-    <div className="main-content">
-
-      <Navbar />
-
-      <div className="page-content">
-        {children}
+  return (
+    <div className="layout">
+      {sidebarOpen && (
+        <div className="sidebar-overlay" onClick={() => setSidebarOpen(false)} />
+      )}
+      <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      <div className="main-content">
+        <Navbar onMenuClick={() => setSidebarOpen((prev) => !prev)} />
+        <div className="page-content">
+          {children}
+        </div>
       </div>
-
     </div>
-
-  </div>
-);
+  );
+};
 
 
 const AppRoutes = () => {
@@ -212,6 +219,17 @@ const AppRoutes = () => {
         }
       />
 
+      <Route
+        path="/funding-requests/:id/edit"
+        element={
+          <ProtectedRoute roles={["director", "engineer"]}>
+            <Layout>
+              <FundingRequestForm />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+
 
       {/* PROCUREMENT / MATERIAL REQUESTS */}
 
@@ -240,7 +258,7 @@ const AppRoutes = () => {
       <Route
         path="/procurement/:id/edit"
         element={
-          <ProtectedRoute roles={["director", "procurement"]}>
+          <ProtectedRoute roles={["director", "procurement", "engineer"]}>
             <Layout>
               <ProcurementForm />
             </Layout>
@@ -310,6 +328,42 @@ const AppRoutes = () => {
       />
 
 
+      {/* MATERIAL LIST */}
+
+      <Route
+        path="/material-list"
+        element={
+          <ProtectedRoute roles={["director", "engineer"]}>
+            <Layout>
+              <MaterialListPage />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/material-list/new"
+        element={
+          <ProtectedRoute roles={["director", "engineer"]}>
+            <Layout>
+              <MaterialListForm />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/material-list/:id/edit"
+        element={
+          <ProtectedRoute roles={["director", "engineer"]}>
+            <Layout>
+              <MaterialListForm />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+
+
       {/* SUBCONTRACTS */}
 
       <Route
@@ -360,6 +414,31 @@ const AppRoutes = () => {
       />
 
 
+      {/* ATTENDANCE */}
+
+      <Route
+        path="/attendance"
+        element={
+          <ProtectedRoute roles={["director", "engineer", "foreman", "accountant"]}>
+            <Layout>
+              <AttendanceList />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/attendance/worker/:id"
+        element={
+          <ProtectedRoute roles={["director", "engineer", "foreman", "accountant"]}>
+            <Layout>
+              <AttendanceHistory />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+
+
       {/* REPORTS */}
 
       <Route
@@ -368,6 +447,34 @@ const AppRoutes = () => {
           <ProtectedRoute roles={["director", "accountant", "engineer"]}>
             <Layout>
               <Reports />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+
+
+      {/* CHANGE PASSWORD */}
+
+      <Route
+        path="/change-password"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <ChangePassword />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+
+
+      {/* ADMIN: USER MANAGEMENT */}
+
+      <Route
+        path="/admin/users"
+        element={
+          <ProtectedRoute roles={["admin", "director"]}>
+            <Layout>
+              <UserManagement />
             </Layout>
           </ProtectedRoute>
         }

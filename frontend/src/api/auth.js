@@ -29,3 +29,18 @@ export async function login(email, password) {
 
   return data;
 }
+
+export async function changePassword(oldPassword, newPassword) {
+  const token = sessionStorage.getItem("token");
+  const res = await fetch("/api/auth/change-password", {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`
+    },
+    body: JSON.stringify({ oldPassword, newPassword })
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || (data.errors && data.errors[0]?.msg) || "Failed to change password");
+  return data;
+}

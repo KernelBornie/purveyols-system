@@ -9,7 +9,8 @@ const PaymentForm = () => {
 
   const [form, setForm] = useState({
     paymentType: 'mobile_money', recipientName: '', recipientPhone: '',
-    amount: '', currency: 'ZMW', description: '', project: '', status: 'pending'
+    amount: '', currency: 'ZMW', description: '', project: '', status: 'pending',
+    mobileNetwork: 'airtel'
   });
   const [projects, setProjects] = useState([]);
   const [error, setError] = useState('');
@@ -30,7 +31,8 @@ const PaymentForm = () => {
             currency: p.currency || 'ZMW',
             description: p.description || '',
             project: p.project?._id || '',
-            status: p.status || 'pending'
+            status: p.status || 'pending',
+            mobileNetwork: p.mobileNetwork || 'airtel'
           });
         })
         .catch(() => setError('Failed to load payment'))
@@ -88,6 +90,17 @@ const PaymentForm = () => {
               </select>
             </div>
           </div>
+          {form.paymentType === 'mobile_money' && (
+            <div className="form-row">
+              <div className="form-group">
+                <label>Mobile Network *</label>
+                <select name="mobileNetwork" className="form-control" value={form.mobileNetwork} onChange={handleChange} required>
+                  <option value="airtel">Airtel Money</option>
+                  <option value="mtn">MTN Mobile Money</option>
+                </select>
+              </div>
+            </div>
+          )}
           <div className="form-row">
             <div className="form-group">
               <label>Recipient Name *</label>
