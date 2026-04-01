@@ -1,17 +1,35 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import API from '../../api/axios';
 
 const FundingRequestForm = () => {
+  const { id } = useParams();
   const navigate = useNavigate();
+  const isEdit = Boolean(id);
+
   const [form, setForm] = useState({ title: '', description: '', amount: '', project: '' });
   const [projects, setProjects] = useState([]);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [fetching, setFetching] = useState(isEdit);
 
   useEffect(() => {
     API.get('/projects').then(r => setProjects(r.data)).catch(() => {});
-  }, []);
+    if (isEdit) {
+      API.get(`/funding-requests/${id}`)
+        .then(r => {
+          const req = r.data;
+          setForm({
+            title: req.title || '',
+            description: req.description || '',
+            amount: req.amount ?? '',
+            project: req.project?._id || ''
+          });
+        })
+        .catch(() => setError('Failed to load funding request'))
+        .finally(() => setFetching(false));
+    }
+  }, [id, isEdit]);
 
   const handleChange = e => setForm({ ...form, [e.target.name]: e.target.value });
 
@@ -22,7 +40,11 @@ const FundingRequestForm = () => {
     try {
       const payload = { ...form };
       if (!payload.project) delete payload.project;
-      await API.post('/funding-requests', payload);
+      if (isEdit) {
+        await API.put(`/funding-requests/${id}`, payload);
+      } else {
+        await API.post('/funding-requests', payload);
+      }
       navigate('/funding-requests');
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to submit request');
@@ -31,10 +53,12 @@ const FundingRequestForm = () => {
     }
   };
 
+  if (fetching) return <div className="loading">Loading...</div>;
+
   return (
     <div>
       <div className="page-header">
-        <h1>New Funding Request</h1>
+        <h1>{isEdit ? 'Edit Funding Request' : 'New Funding Request'}</h1>
       </div>
       <div className="card">
         {error && <div className="alert alert-error">{error}</div>}
@@ -62,7 +86,7 @@ const FundingRequestForm = () => {
           </div>
           <div className="form-actions">
             <button type="submit" className="btn btn-primary" disabled={loading}>
-              {loading ? 'Submitting...' : 'Submit Request'}
+              {loading ? 'Saving...' : isEdit ? 'Update Request' : 'Submit Request'}
             </button>
             <button type="button" className="btn btn-secondary" onClick={() => navigate('/funding-requests')}>
               Cancel

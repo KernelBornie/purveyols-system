@@ -118,6 +118,66 @@ describe('PUT /api/funding-requests/:id/approve', () => {
   });
 });
 
+describe('PUT /api/funding-requests/:id', () => {
+  let requestId;
+
+  beforeEach(async () => {
+    const res = await request(app)
+      .post('/api/funding-requests')
+      .set('Authorization', `Bearer ${engineerToken}`)
+      .send(fundingPayload);
+    requestId = res.body._id;
+  });
+
+  it('engineer can update a funding request', async () => {
+    const res = await request(app)
+      .put(`/api/funding-requests/${requestId}`)
+      .set('Authorization', `Bearer ${engineerToken}`)
+      .send({ ...fundingPayload, title: 'Updated Funding Title' });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.body.title).toBe('Updated Funding Title');
+  });
+
+  it('director cannot update a funding request', async () => {
+    const res = await request(app)
+      .put(`/api/funding-requests/${requestId}`)
+      .set('Authorization', `Bearer ${directorToken}`)
+      .send({ ...fundingPayload, title: 'Director Edit' });
+
+    expect(res.statusCode).toBe(403);
+  });
+});
+
+describe('DELETE /api/funding-requests/:id (soft delete)', () => {
+  let requestId;
+
+  beforeEach(async () => {
+    const res = await request(app)
+      .post('/api/funding-requests')
+      .set('Authorization', `Bearer ${engineerToken}`)
+      .send(fundingPayload);
+    requestId = res.body._id;
+  });
+
+  it('engineer can soft delete a funding request', async () => {
+    const res = await request(app)
+      .delete(`/api/funding-requests/${requestId}`)
+      .set('Authorization', `Bearer ${engineerToken}`);
+
+    expect(res.statusCode).toBe(200);
+    expect(res.body.request.isActive).toBe(false);
+  });
+
+  it('director cannot soft delete a funding request', async () => {
+    const res = await request(app)
+      .delete(`/api/funding-requests/${requestId}`)
+      .set('Authorization', `Bearer ${directorToken}`);
+
+    expect(res.statusCode).toBe(403);
+  });
+});
+
 describe('PUT /api/funding-requests/:id/reject', () => {
   let requestId;
 

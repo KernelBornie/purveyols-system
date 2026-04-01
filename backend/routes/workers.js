@@ -3,6 +3,7 @@ const router = express.Router();
 const auth = require('../middleware/auth');
 const roleCheck = require('../middleware/roleCheck');
 const Worker = require('../models/Worker');
+const { createNotification } = require('../utils/notifications');
 
 // GET /api/workers/search?nrc=
 router.get('/search', auth, async (req, res) => {
@@ -38,6 +39,11 @@ router.post('/', auth, async (req, res) => {
     await worker.save();
     await worker.populate('project', 'name');
     await worker.populate('enrolledBy', 'name email role');
+    createNotification(
+      req.user._id,
+      `Worker "${worker.name}" has been enrolled successfully.`,
+      'worker_enrollment'
+    );
     res.status(201).json(worker);
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });
@@ -57,8 +63,8 @@ router.get('/:id', auth, async (req, res) => {
   }
 });
 
-// PUT /api/workers/:id
-router.put('/:id', auth, async (req, res) => {
+// PUT /api/workers/:id – engineer only, update worker
+router.put('/:id', auth, roleCheck('engineer'), async (req, res) => {
   try {
     const worker = await Worker.findByIdAndUpdate(req.params.id, req.body, { new: true })
       .populate('project', 'name')
@@ -70,10 +76,25 @@ router.put('/:id', auth, async (req, res) => {
   }
 });
 
-// DELETE /api/workers/:id – director/engineer only, deactivate
-router.delete('/:id', auth, roleCheck('director', 'engineer'), async (req, res) => {
+// PUT /api/workers/:id/deactivate – engineer only
+router.put('/:id/deactivate', auth, roleCheck('engineer'), async (req, res) => {
   try {
-    const worker = await Worker.findByIdAndUpdate(req.params.id, { status: 'inactive' }, { new: true });
+    const worker = await Worker.findByIdAndUpdate(
+      req.params.id,
+      { status: 'inactive', isActive: false },
+      { new: true }
+    );
+    if (!worker) return res.status(404).json({ message: 'Worker not found' });
+    res.json({ message: 'Worker deactivated', worker });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+});
+
+// DELETE /api/workers/:id – engineer only, soft-delete
+router.delete('/:id', auth, roleCheck('engineer'), async (req, res) => {
+  try {
+    const worker = await Worker.findByIdAndUpdate(req.params.id, { status: 'inactive', isActive: false }, { new: true });
     if (!worker) return res.status(404).json({ message: 'Worker not found' });
     res.json({ message: 'Worker deactivated', worker });
   } catch (err) {
