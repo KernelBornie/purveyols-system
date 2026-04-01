@@ -1,0 +1,15 @@
+[build]
+  base      = "frontend"
+  command   = "npm run build"
+  publish   = "dist"
+
+[build.environment]
+  NODE_VERSION = "20"
+  # VITE_API_URL must be set in the Netlify dashboard (Site settings > Environment variables)
+  # e.g. https://purveyols-api.onrender.com/api
+
+# Redirect all routes to index.html (SPA routing)
+[[redirects]]
+  from   = "/*"
+  to     = "/index.html"
+  status = 200

@@ -28,6 +28,17 @@ const SubcontractList = () => {
     }
   };
 
+  const handleDeactivate = async (id) => {
+    if (!window.confirm('Deactivate this subcontract?')) return;
+    try {
+      const res = await API.put(`/subcontracts/${id}/deactivate`);
+      setSubcontracts(subcontracts.map(s => s._id === id ? res.data.subcontract : s));
+      setMsg('Subcontract deactivated');
+    } catch {
+      setError('Failed to deactivate subcontract');
+    }
+  };
+
   const statusColor = (s) => {
     const map = { active: '#2e7d32', completed: '#1565c0', cancelled: '#c62828' };
     return map[s] || '#757575';
@@ -90,6 +101,11 @@ const SubcontractList = () => {
                     <td>
                       <div className="actions">
                         <Link to={`/subcontracts/${s._id}/edit`} className="btn btn-secondary btn-sm">Edit</Link>
+                        {['engineer', 'director'].includes(user?.role) && s.isActive !== false && (
+                          <button className="btn btn-warning btn-sm" onClick={() => handleDeactivate(s._id)}>
+                            Deactivate
+                          </button>
+                        )}
                         {['engineer', 'director', 'admin'].includes(user?.role) && (
                           <button className="btn btn-danger btn-sm" onClick={() => handleDelete(s._id)}>
                             Delete
