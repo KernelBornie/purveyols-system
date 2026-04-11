@@ -7,7 +7,7 @@ const Navbar = () => {
   return (
     <div className="navbar">
       <div className="navbar-brand">
-        PURVEYOLS <span>CMS</span>
+        BuildSync <span>CMS</span>
       </div>
       <div className="navbar-right">
         {user && (

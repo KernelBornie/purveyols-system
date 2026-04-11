@@ -32,7 +32,7 @@ export default function Dashboard() {
     default:
       return (
         <div className="card">
-          <h2>Welcome to PURVEYOLS CMS</h2>
+          <h2>Welcome to BuildSync CMS</h2>
           <p style={{ color: '#666', marginTop: '8px' }}>
             Your role: <strong>{user?.role || 'unknown'}</strong>. Contact your administrator if you need access.
           </p>

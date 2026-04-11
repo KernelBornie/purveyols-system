@@ -28,7 +28,7 @@ const Login = () => {
       <div style={{ background: '#fff', borderRadius: '12px', padding: '2.5rem', width: '100%', maxWidth: '420px', boxShadow: '0 20px 60px rgba(0,0,0,0.3)' }}>
         <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
           <div style={{ fontSize: '3rem', marginBottom: '0.5rem' }}>🏗️</div>
-          <h1 style={{ margin: 0, color: '#1a237e', fontSize: '1.5rem' }}>PURVEYOLS</h1>
+          <h1 style={{ margin: 0, color: '#1a237e', fontSize: '1.5rem' }}>BuildSync</h1>
           <p style={{ margin: '0.25rem 0 0', color: '#666', fontSize: '0.9rem' }}>Construction Management System</p>
         </div>
 

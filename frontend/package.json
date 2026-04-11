@@ -1,7 +1,7 @@
 {
   "name": "buildsync-frontend",
   "version": "1.0.0",
-  "description": "PURVEYOLS Construction Management System Frontend",
+  "description": "BuildSync Construction Management System Frontend",
   "type": "module",
   "scripts": {
     "dev": "vite",

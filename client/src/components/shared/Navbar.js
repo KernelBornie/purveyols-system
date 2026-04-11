@@ -38,7 +38,7 @@ const Navbar = () => {
     <nav style={{ background: bgColor, color: '#fff', padding: '0.75rem 1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'sticky', top: 0, zIndex: 100, boxShadow: '0 2px 8px rgba(0,0,0,0.3)' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
         <Link to="/dashboard" style={{ color: '#fff', textDecoration: 'none', fontWeight: 'bold', fontSize: '1.2rem' }}>
-          🏗️ PURVEYOLS
+          🏗️ BuildSync
         </Link>
         <span style={{ opacity: 0.8, fontSize: '0.85rem', background: 'rgba(255,255,255,0.2)', padding: '2px 10px', borderRadius: '12px' }}>
           {roleLabels[user.role]}

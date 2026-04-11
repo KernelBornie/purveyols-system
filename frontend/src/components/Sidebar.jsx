@@ -26,7 +26,7 @@ const Sidebar = () => {
   return (
     <div className="sidebar">
       <div className="sidebar-header">
-        PURVEYOLS <span>CMS</span>
+        BuildSync <span>CMS</span>
       </div>
       <nav className="sidebar-nav">
         {visibleItems.map(item => (

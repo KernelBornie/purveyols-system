@@ -37,7 +37,7 @@ const Register = () => {
         <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
           <div style={{ fontSize: '3rem', marginBottom: '0.5rem' }}>🏗️</div>
           <h1 style={{ margin: 0, color: '#1a237e', fontSize: '1.5rem' }}>Create Account</h1>
-          <p style={{ margin: '0.25rem 0 0', color: '#666', fontSize: '0.9rem' }}>PURVEYOLS Construction Management</p>
+          <p style={{ margin: '0.25rem 0 0', color: '#666', fontSize: '0.9rem' }}>BuildSync Construction Management</p>
         </div>
 
         {error && (
