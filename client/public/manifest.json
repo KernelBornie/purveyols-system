@@ -1,6 +1,6 @@
 {
-  "short_name": "PURVEYOLS",
-  "name": "PURVEYOLS Construction Management System",
+  "short_name": "BuildSync",
+  "name": "BuildSync Construction Management System",
   "description": "Role-based construction management system for managing workers, payments, and operations",
   "icons": [
     {

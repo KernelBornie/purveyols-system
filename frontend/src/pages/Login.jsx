@@ -59,7 +59,7 @@ const Login = () => {
 
       <div className="login-card">
 
-        <h2>PURVEYOLS CMS</h2>
+        <h2>BuildSync CMS</h2>
 
         <p className="subtitle">
           Construction Management System – Sign in to your account

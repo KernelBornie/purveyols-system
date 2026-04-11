@@ -28,7 +28,7 @@ describe('Login page', () => {
 
   it('renders the login form', () => {
     renderLogin();
-    expect(screen.getByText('PURVEYOLS CMS')).toBeInTheDocument();
+    expect(screen.getByText('BuildSync CMS')).toBeInTheDocument();
     expect(screen.getByLabelText(/email address/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/password/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /sign in/i })).toBeInTheDocument();
