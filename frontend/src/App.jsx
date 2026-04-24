@@ -107,7 +107,7 @@ const AppRoutes = () => {
       <Route
         path="/projects/new"
         element={
-          <ProtectedRoute roles={["director", "engineer"]}>
+          <ProtectedRoute roles={["director", "engineer", "surveyor"]}>
             <Layout>
               <ProjectForm />
             </Layout>
@@ -132,7 +132,7 @@ const AppRoutes = () => {
       <Route
         path="/workers"
         element={
-          <ProtectedRoute roles={["director", "engineer", "foreman", "accountant"]}>
+          <ProtectedRoute roles={["director", "engineer", "foreman", "accountant", "surveyor"]}>
             <Layout>
               <WorkerList />
             </Layout>
@@ -143,7 +143,7 @@ const AppRoutes = () => {
       <Route
         path="/workers/new"
         element={
-          <ProtectedRoute roles={["director", "engineer", "foreman"]}>
+          <ProtectedRoute roles={["director", "engineer", "foreman", "surveyor"]}>
             <Layout>
               <WorkerForm />
             </Layout>
@@ -154,7 +154,7 @@ const AppRoutes = () => {
       <Route
         path="/workers/:id/edit"
         element={
-          <ProtectedRoute roles={["director", "engineer", "foreman"]}>
+          <ProtectedRoute roles={["director", "engineer", "foreman", "surveyor"]}>
             <Layout>
               <WorkerForm />
             </Layout>
@@ -193,7 +193,7 @@ const AppRoutes = () => {
       <Route
         path="/funding-requests"
         element={
-          <ProtectedRoute roles={["director", "engineer", "accountant", "foreman", "driver", "procurement"]}>
+          <ProtectedRoute roles={["director", "engineer", "accountant", "foreman", "driver", "procurement", "surveyor"]}>
             <Layout>
               <FundingRequestList />
             </Layout>
@@ -204,7 +204,7 @@ const AppRoutes = () => {
       <Route
         path="/funding-requests/new"
         element={
-          <ProtectedRoute roles={["director", "engineer", "accountant", "foreman", "driver", "procurement"]}>
+          <ProtectedRoute roles={["director", "engineer", "accountant", "foreman", "driver", "procurement", "surveyor"]}>
             <Layout>
               <FundingRequestForm />
             </Layout>
@@ -218,7 +218,7 @@ const AppRoutes = () => {
       <Route
         path="/procurement"
         element={
-          <ProtectedRoute roles={["director", "procurement", "engineer", "foreman", "driver", "safety"]}>
+          <ProtectedRoute roles={["director", "procurement", "engineer", "foreman", "driver", "safety", "surveyor"]}>
             <Layout>
               <ProcurementList />
             </Layout>
@@ -229,7 +229,7 @@ const AppRoutes = () => {
       <Route
         path="/procurement/new"
         element={
-          <ProtectedRoute roles={["director", "procurement", "engineer", "foreman", "driver", "safety"]}>
+          <ProtectedRoute roles={["director", "procurement", "engineer", "foreman", "driver", "safety", "surveyor"]}>
             <Layout>
               <ProcurementForm />
             </Layout>

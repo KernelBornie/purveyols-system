@@ -13,7 +13,7 @@ import SurveyorDashboard from './dashboards/SurveyorDashboard';
 export default function Dashboard() {
   const { user } = useContext(AuthContext);
 
-  switch (user?.role) {
+  switch (user?.role?.toLowerCase().trim()) {
     case 'director':
       return <DirectorDashboard />;
     case 'accountant':
