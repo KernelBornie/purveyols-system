@@ -17,8 +17,8 @@ router.get('/', auth, async (req, res) => {
   }
 });
 
-// POST /api/projects – director/engineer only
-router.post('/', auth, roleCheck('director', 'engineer'), async (req, res) => {
+// POST /api/projects – director/engineer/surveyor
+router.post('/', auth, roleCheck('director', 'engineer', 'surveyor'), async (req, res) => {
   try {
     const project = new Project({ ...req.body, createdBy: req.user._id });
     await project.save();

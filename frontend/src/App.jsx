@@ -35,7 +35,8 @@ import SubcontractList from "./pages/subcontracts/SubcontractList";
 import SubcontractForm from "./pages/subcontracts/SubcontractForm";
 
 import SafetyReportList from "./pages/safety/SafetyReportList";
-import Reports from "./pages/reports/Reports";
+import SiteList from "./pages/sites/SiteList";
+import SiteForm from "./pages/sites/SiteForm";
 
 const ALL_ROLES = ["director", "accountant", "engineer", "foreman", "driver", "procurement", "safety", "admin", "surveyor"];
 
@@ -354,6 +355,31 @@ const AppRoutes = () => {
           <ProtectedRoute roles={["director", "safety", "engineer"]}>
             <Layout>
               <SafetyReportList />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+
+
+      {/* SITES */}
+
+      <Route
+        path="/sites"
+        element={
+          <ProtectedRoute roles={["director", "engineer", "surveyor", "foreman", "admin"]}>
+            <Layout>
+              <SiteList />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/sites/new"
+        element={
+          <ProtectedRoute roles={["director", "engineer", "surveyor", "foreman"]}>
+            <Layout>
+              <SiteForm />
             </Layout>
           </ProtectedRoute>
         }

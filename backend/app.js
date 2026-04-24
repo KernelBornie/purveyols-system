@@ -54,6 +54,8 @@ app.use('/api/subcontracts', require('./routes/subcontracts'));
 app.use('/api/material-requests', require('./routes/materialRequests'));
 app.use('/api/safety-reports', require('./routes/safetyReports'));
 app.use('/api/reports', require('./routes/reports'));
+app.use('/api/ai', require('./routes/ai'));
+app.use('/api/sites', require('./routes/sites'));
 
 app.use((err, req, res, next) => {
   console.error(err.stack);

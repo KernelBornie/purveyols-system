@@ -10,6 +10,7 @@ const navItems = [
   { to: '/funding-requests', label: '💰 Funding Requests', roles: ['director', 'engineer', 'accountant', 'foreman', 'driver', 'procurement', 'surveyor'] },
   { to: '/procurement', label: '🛒 Materials / Procurement', roles: ['director', 'procurement', 'engineer', 'foreman', 'driver', 'safety', 'surveyor'] },
   { to: '/boq', label: '📋 Bills of Quantities', roles: ['director', 'engineer', 'surveyor'] },
+  { to: '/sites', label: '📍 Sites', roles: ['director', 'engineer', 'surveyor', 'foreman', 'admin'] },
   { to: '/subcontracts', label: '🏗️ Subcontracts', roles: ['director', 'engineer'] },
   { to: '/payments', label: '💳 Payments', roles: ['director', 'accountant'] },
   { to: '/safety', label: '⚠️ Safety Reports', roles: ['director', 'safety', 'engineer'] },
