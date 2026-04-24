@@ -25,6 +25,7 @@ async function seed() {
       { name: 'Gilbert K',     role: 'procurement', email: 'gilbert.procurement@purveyols.com',   password: 'purveyols123' },
       { name: 'Royd',          role: 'safety',      email: 'royd.safety@purveyols.com',           password: 'purveyols123' },
       { name: 'Admin',         role: 'admin',       email: 'admin@purveyols.com',                 password: 'purveyols123' },
+      { name: 'Simon Surveyor', role: 'surveyor',   email: 'surveyor@purveyols.com',              password: 'purveyols123' },
     ];
 
     for (const u of users) {
@@ -42,6 +43,7 @@ async function seed() {
     console.log('Procurement : gilbert.procurement@purveyols.com');
     console.log('Safety      : royd.safety@purveyols.com');
     console.log('Admin       : admin@purveyols.com');
+    console.log('Surveyor    : surveyor@purveyols.com');
 
     process.exit(0);
   } catch (error) {

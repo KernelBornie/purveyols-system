@@ -30,7 +30,8 @@ const UserSchema = new mongoose.Schema({
       "accountant",
       "driver",
       "procurement",
-      "safety"
+      "safety",
+      "surveyor"
     ],
     default: "engineer"
   },

@@ -37,7 +37,7 @@ import SubcontractForm from "./pages/subcontracts/SubcontractForm";
 import SafetyReportList from "./pages/safety/SafetyReportList";
 import Reports from "./pages/reports/Reports";
 
-const ALL_ROLES = ["director", "accountant", "engineer", "foreman", "driver", "procurement", "safety", "admin"];
+const ALL_ROLES = ["director", "accountant", "engineer", "foreman", "driver", "procurement", "safety", "admin", "surveyor"];
 
 const Layout = ({ children }) => (
   <div className="layout">
@@ -96,7 +96,7 @@ const AppRoutes = () => {
       <Route
         path="/projects"
         element={
-          <ProtectedRoute roles={["director", "engineer", "foreman"]}>
+          <ProtectedRoute roles={["director", "engineer", "foreman", "surveyor"]}>
             <Layout>
               <ProjectList />
             </Layout>
@@ -279,7 +279,7 @@ const AppRoutes = () => {
       <Route
         path="/boq"
         element={
-          <ProtectedRoute roles={["director", "engineer"]}>
+          <ProtectedRoute roles={["director", "engineer", "surveyor"]}>
             <Layout>
               <BOQList />
             </Layout>
@@ -290,7 +290,7 @@ const AppRoutes = () => {
       <Route
         path="/boq/new"
         element={
-          <ProtectedRoute roles={["director", "engineer"]}>
+          <ProtectedRoute roles={["director", "engineer", "surveyor"]}>
             <Layout>
               <BOQForm />
             </Layout>
@@ -301,7 +301,7 @@ const AppRoutes = () => {
       <Route
         path="/boq/:id/edit"
         element={
-          <ProtectedRoute roles={["director", "engineer"]}>
+          <ProtectedRoute roles={["director", "engineer", "surveyor"]}>
             <Layout>
               <BOQForm />
             </Layout>
@@ -365,7 +365,7 @@ const AppRoutes = () => {
       <Route
         path="/reports"
         element={
-          <ProtectedRoute roles={["director", "accountant", "engineer"]}>
+          <ProtectedRoute roles={["director", "accountant", "engineer", "surveyor"]}>
             <Layout>
               <Reports />
             </Layout>

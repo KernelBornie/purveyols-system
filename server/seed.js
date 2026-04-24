@@ -119,6 +119,14 @@ async function seed() {
         password: "purveyols123"
       },
 
+      /* Surveyor */
+      {
+        name: "Simon Surveyor",
+        role: "surveyor",
+        email: "surveyor@purveyols.com",
+        password: "purveyols123"
+      },
+
     ];
 
     for (const u of users) {
@@ -141,6 +149,7 @@ async function seed() {
     console.log("Driver    : boyd.driver@purveyols.com");
     console.log("Procurement: gilbert.procurement@purveyols.com");
     console.log("Safety    : royd.safety@purveyols.com");
+    console.log("Surveyor  : surveyor@purveyols.com");
 
     process.exit(0);
 

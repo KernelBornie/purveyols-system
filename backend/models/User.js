@@ -8,7 +8,7 @@ const UserSchema = new mongoose.Schema(
     password: { type: String, required: true },
     role: {
       type: String,
-      enum: ['director', 'engineer', 'foreman', 'procurement', 'driver', 'accountant', 'safety', 'admin', 'worker'],
+      enum: ['director', 'engineer', 'foreman', 'procurement', 'driver', 'accountant', 'safety', 'admin', 'worker', 'surveyor'],
       default: 'worker'
     },
     isActive: { type: Boolean, default: true }

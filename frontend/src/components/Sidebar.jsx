@@ -3,17 +3,17 @@ import { NavLink } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 
 const navItems = [
-  { to: '/dashboard', label: '🏠 Dashboard', roles: ['director', 'engineer', 'foreman', 'procurement', 'driver', 'accountant', 'worker', 'safety', 'admin'] },
-  { to: '/projects', label: '🏗️ Projects', roles: ['director', 'engineer', 'foreman'] },
+  { to: '/dashboard', label: '🏠 Dashboard', roles: ['director', 'engineer', 'foreman', 'procurement', 'driver', 'accountant', 'worker', 'safety', 'admin', 'surveyor'] },
+  { to: '/projects', label: '🏗️ Projects', roles: ['director', 'engineer', 'foreman', 'surveyor'] },
   { to: '/workers', label: '👷 Workers', roles: ['director', 'engineer', 'foreman', 'accountant'] },
   { to: '/logbooks', label: '📋 Logbooks', roles: ['director', 'accountant', 'driver'] },
   { to: '/funding-requests', label: '💰 Funding Requests', roles: ['director', 'engineer', 'accountant', 'foreman', 'driver', 'procurement'] },
   { to: '/procurement', label: '🛒 Materials / Procurement', roles: ['director', 'procurement', 'engineer', 'foreman', 'driver', 'safety'] },
-  { to: '/boq', label: '📋 Bills of Quantities', roles: ['director', 'engineer'] },
+  { to: '/boq', label: '📋 Bills of Quantities', roles: ['director', 'engineer', 'surveyor'] },
   { to: '/subcontracts', label: '🏗️ Subcontracts', roles: ['director', 'engineer'] },
   { to: '/payments', label: '💳 Payments', roles: ['director', 'accountant'] },
   { to: '/safety', label: '⚠️ Safety Reports', roles: ['director', 'safety', 'engineer'] },
-  { to: '/reports', label: '📊 Reports', roles: ['director', 'accountant', 'engineer'] },
+  { to: '/reports', label: '📊 Reports', roles: ['director', 'accountant', 'engineer', 'surveyor'] },
 ];
 
 const Sidebar = () => {
