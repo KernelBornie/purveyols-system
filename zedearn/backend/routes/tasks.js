@@ -7,7 +7,9 @@ const Transaction = require('../models/Transaction');
 const Notification = require('../models/Notification');
 const User = require('../models/User');
 const { protect, authorize } = require('../middleware/auth');
+const { safeEnum } = require('../utils/sanitize');
 
+const TASK_TYPES = ['product', 'survey', 'adwatch', 'sponsored', 'daily_checkin', 'weekly_mission', 'referral', 'team'];
 const VIP_TIERS = ['none', 'silver', 'gold', 'platinum', 'diamond'];
 
 const hasRequiredVip = (userTier, requiredTier) => {
@@ -21,8 +23,8 @@ router.get('/', protect, async (req, res) => {
     const { type, vipRequired, page = 1, limit = 20 } = req.query;
     const query = { status: 'active' };
 
-    if (type) query.type = type;
-    if (vipRequired) query.vipRequired = vipRequired;
+    const safeType = safeEnum(type, TASK_TYPES);
+    if (safeType) query.type = safeType;
 
     // Filter by user's VIP tier (only show tasks user can access)
     const accessibleTiers = VIP_TIERS.slice(0, VIP_TIERS.indexOf(req.user.vipTier) + 1);

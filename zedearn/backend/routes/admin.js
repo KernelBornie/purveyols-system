@@ -7,8 +7,16 @@ const Task = require('../models/Task');
 const Campaign = require('../models/Campaign');
 const Notification = require('../models/Notification');
 const { protect, authorize } = require('../middleware/auth');
+const { escapeRegex, safeEnum } = require('../utils/sanitize');
 
 const adminAuth = [protect, authorize('admin', 'superadmin')];
+
+const USER_ROLES = ['guest', 'user', 'vip', 'agent', 'merchant', 'support', 'admin', 'superadmin'];
+const TX_TYPES = ['deposit', 'withdraw', 'task_reward', 'referral_bonus', 'cashback', 'vip_purchase', 'marketplace_sale', 'adjustment', 'transfer'];
+const TX_STATUSES = ['pending', 'completed', 'failed', 'reversed'];
+const TASK_TYPES = ['product', 'survey', 'adwatch', 'sponsored', 'daily_checkin', 'weekly_mission', 'referral', 'team'];
+const TASK_STATUSES = ['active', 'inactive', 'expired'];
+const CAMPAIGN_STATUSES = ['draft', 'active', 'paused', 'completed'];
 
 // GET /api/admin/analytics
 router.get('/analytics', ...adminAuth, async (req, res) => {
@@ -128,15 +136,17 @@ router.get('/users', ...adminAuth, async (req, res) => {
     const { page = 1, limit = 20, search = '', role, status } = req.query;
     const query = {};
     if (search) {
+      const safeSearch = escapeRegex(String(search).substring(0, 100));
       query.$or = [
-        { name: { $regex: search, $options: 'i' } },
-        { email: { $regex: search, $options: 'i' } },
-        { phone: { $regex: search, $options: 'i' } },
+        { name: { $regex: safeSearch, $options: 'i' } },
+        { email: { $regex: safeSearch, $options: 'i' } },
+        { phone: { $regex: safeSearch, $options: 'i' } },
       ];
     }
-    if (role) query.role = role;
+    const safeRole = safeEnum(role, USER_ROLES);
+    if (safeRole) query.role = safeRole;
     if (status === 'frozen') query.isFrozen = true;
-    if (status === 'active') query.isFrozen = false;
+    else if (status === 'active') query.isFrozen = false;
 
     const total = await User.countDocuments(query);
     const users = await User.find(query)
@@ -222,8 +232,10 @@ router.get('/transactions', ...adminAuth, async (req, res) => {
   try {
     const { page = 1, limit = 20, type, status, userId } = req.query;
     const query = {};
-    if (type) query.type = type;
-    if (status) query.status = status;
+    const safeType = safeEnum(type, TX_TYPES);
+    const safeStatus = safeEnum(status, TX_STATUSES);
+    if (safeType) query.type = safeType;
+    if (safeStatus) query.status = safeStatus;
     if (userId) query.userId = userId;
 
     const total = await Transaction.countDocuments(query);
@@ -340,8 +352,10 @@ router.get('/tasks', ...adminAuth, async (req, res) => {
   try {
     const { page = 1, limit = 20, status, type } = req.query;
     const query = {};
-    if (status) query.status = status;
-    if (type) query.type = type;
+    const safeStatus = safeEnum(status, TASK_STATUSES);
+    const safeType = safeEnum(type, TASK_TYPES);
+    if (safeStatus) query.status = safeStatus;
+    if (safeType) query.type = safeType;
 
     const total = await Task.countDocuments(query);
     const tasks = await Task.find(query)
@@ -360,7 +374,8 @@ router.get('/campaigns', ...adminAuth, async (req, res) => {
   try {
     const { page = 1, limit = 20, status } = req.query;
     const query = {};
-    if (status) query.status = status;
+    const safeStatus = safeEnum(status, CAMPAIGN_STATUSES);
+    if (safeStatus) query.status = safeStatus;
 
     const total = await Campaign.countDocuments(query);
     const campaigns = await Campaign.find(query)
@@ -385,12 +400,13 @@ router.get('/campaigns', ...adminAuth, async (req, res) => {
 router.put('/campaigns/:id/status', ...adminAuth, async (req, res) => {
   try {
     const { status } = req.body;
-    if (!['draft', 'active', 'paused', 'completed'].includes(status)) {
+    const safeStatus = safeEnum(status, CAMPAIGN_STATUSES);
+    if (!safeStatus) {
       return res.status(400).json({ success: false, message: 'Invalid status' });
     }
     const campaign = await Campaign.findByIdAndUpdate(
       req.params.id,
-      { status },
+      { status: safeStatus },
       { new: true }
     );
     if (!campaign) return res.status(404).json({ success: false, message: 'Campaign not found' });

@@ -5,6 +5,10 @@ const Transaction = require('../models/Transaction');
 const User = require('../models/User');
 const Notification = require('../models/Notification');
 const { protect } = require('../middleware/auth');
+const { safeEnum } = require('../utils/sanitize');
+
+const TX_TYPES = ['deposit', 'withdraw', 'task_reward', 'referral_bonus', 'cashback', 'vip_purchase', 'marketplace_sale', 'adjustment', 'transfer'];
+const TX_STATUSES = ['pending', 'completed', 'failed', 'reversed'];
 
 // GET /api/wallet - balances + recent transactions
 router.get('/', protect, async (req, res) => {
@@ -36,8 +40,10 @@ router.get('/transactions', protect, async (req, res) => {
   try {
     const { page = 1, limit = 20, type, status } = req.query;
     const query = { userId: req.user._id };
-    if (type) query.type = type;
-    if (status) query.status = status;
+    const safeType = safeEnum(type, TX_TYPES);
+    const safeStatus = safeEnum(status, TX_STATUSES);
+    if (safeType) query.type = safeType;
+    if (safeStatus) query.status = safeStatus;
 
     const total = await Transaction.countDocuments(query);
     const transactions = await Transaction.find(query)

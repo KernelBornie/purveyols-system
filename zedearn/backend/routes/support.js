@@ -3,6 +3,10 @@ const router = express.Router();
 const { body, validationResult } = require('express-validator');
 const SupportTicket = require('../models/SupportTicket');
 const { protect, authorize } = require('../middleware/auth');
+const { safeEnum } = require('../utils/sanitize');
+
+const TICKET_STATUSES = ['open', 'in_progress', 'resolved', 'closed'];
+const TICKET_PRIORITIES = ['low', 'medium', 'high', 'urgent'];
 
 // POST /api/support/ticket
 router.post(
@@ -52,7 +56,8 @@ router.get('/ticket', protect, async (req, res) => {
   try {
     const { page = 1, limit = 10, status } = req.query;
     const query = { userId: req.user._id };
-    if (status) query.status = status;
+    const safeStatus = safeEnum(status, TICKET_STATUSES);
+    if (safeStatus) query.status = safeStatus;
 
     const total = await SupportTicket.countDocuments(query);
     const tickets = await SupportTicket.find(query)
@@ -77,8 +82,10 @@ router.get('/tickets', protect, authorize('support', 'admin', 'superadmin'), asy
   try {
     const { page = 1, limit = 20, status, priority } = req.query;
     const query = {};
-    if (status) query.status = status;
-    if (priority) query.priority = priority;
+    const safeStatus = safeEnum(status, TICKET_STATUSES);
+    const safePriority = safeEnum(priority, TICKET_PRIORITIES);
+    if (safeStatus) query.status = safeStatus;
+    if (safePriority) query.priority = safePriority;
 
     const total = await SupportTicket.countDocuments(query);
     const tickets = await SupportTicket.find(query)

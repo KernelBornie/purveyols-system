@@ -6,6 +6,9 @@ const User = require('../models/User');
 const Transaction = require('../models/Transaction');
 const Notification = require('../models/Notification');
 const { protect, authorize } = require('../middleware/auth');
+const { safeEnum } = require('../utils/sanitize');
+
+const VALID_PLANS = ['silver', 'gold', 'platinum', 'diamond'];
 
 // GET /api/vip/plans
 router.get('/plans', protect, async (req, res) => {
@@ -63,8 +66,12 @@ router.post(
 
     try {
       const { planName } = req.body;
+      const safePlanName = safeEnum(planName, VALID_PLANS);
+      if (!safePlanName) {
+        return res.status(400).json({ success: false, message: 'Invalid VIP plan name' });
+      }
 
-      const plan = await VIPPlan.findOne({ name: planName, isActive: true });
+      const plan = await VIPPlan.findOne({ name: safePlanName, isActive: true });
       if (!plan) {
         return res.status(404).json({ success: false, message: 'VIP plan not found' });
       }
@@ -87,7 +94,7 @@ router.post(
       // Determine new tier (use highest)
       const VIP_TIERS = ['none', 'silver', 'gold', 'platinum', 'diamond'];
       const currentTierIdx = VIP_TIERS.indexOf(user.vipTier);
-      const newTierIdx = VIP_TIERS.indexOf(planName);
+      const newTierIdx = VIP_TIERS.indexOf(safePlanName);
       const finalTier = VIP_TIERS[Math.max(currentTierIdx, newTierIdx)];
 
       // Deduct balance
@@ -104,15 +111,15 @@ router.post(
         amount: plan.price,
         fee: 0,
         status: 'completed',
-        description: `VIP ${planName.toUpperCase()} plan purchase`,
-        meta: { planName, duration: plan.duration, expiry: newExpiry },
+        description: `VIP ${safePlanName.toUpperCase()} plan purchase`,
+        meta: { planName: safePlanName, duration: plan.duration, expiry: newExpiry },
         processedAt: new Date(),
       });
 
       await Notification.create({
         userId: req.user._id,
-        title: `VIP ${planName.toUpperCase()} Activated!`,
-        message: `Congratulations! Your ${planName.toUpperCase()} VIP plan is active until ${newExpiry.toDateString()}. Enjoy your premium benefits!`,
+        title: `VIP ${safePlanName.toUpperCase()} Activated!`,
+        message: `Congratulations! Your ${safePlanName.toUpperCase()} VIP plan is active until ${newExpiry.toDateString()}. Enjoy your premium benefits!`,
         type: 'success',
         link: '/vip',
       });
@@ -125,7 +132,7 @@ router.post(
 
       res.json({
         success: true,
-        message: `VIP ${planName.toUpperCase()} plan activated!`,
+        message: `VIP ${safePlanName.toUpperCase()} plan activated!`,
         vipTier: finalTier,
         vipExpiry: newExpiry,
         transaction: transaction.reference,

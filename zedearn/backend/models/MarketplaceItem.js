@@ -20,6 +20,7 @@ const MarketplaceItemSchema = new mongoose.Schema(
     category: {
       type: String,
       enum: ['airtime', 'data', 'voucher', 'service', 'product'],
+      required: [true, 'Category is required'],
     },
     price: {
       type: Number,

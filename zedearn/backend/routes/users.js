@@ -4,6 +4,10 @@ const { body, validationResult } = require('express-validator');
 const User = require('../models/User');
 const Referral = require('../models/Referral');
 const { protect, authorize } = require('../middleware/auth');
+const { escapeRegex, safeEnum } = require('../utils/sanitize');
+
+const USER_ROLES = ['guest', 'user', 'vip', 'agent', 'merchant', 'support', 'admin', 'superadmin'];
+const VIP_TIERS = ['none', 'silver', 'gold', 'platinum', 'diamond'];
 
 // GET /api/users/ - admin only: list all users
 router.get('/', protect, authorize('admin', 'superadmin'), async (req, res) => {
@@ -19,15 +23,18 @@ router.get('/', protect, authorize('admin', 'superadmin'), async (req, res) => {
 
     const query = {};
     if (search) {
+      const safeSearch = escapeRegex(String(search).substring(0, 100));
       query.$or = [
-        { name: { $regex: search, $options: 'i' } },
-        { email: { $regex: search, $options: 'i' } },
-        { phone: { $regex: search, $options: 'i' } },
-        { referralCode: { $regex: search, $options: 'i' } },
+        { name: { $regex: safeSearch, $options: 'i' } },
+        { email: { $regex: safeSearch, $options: 'i' } },
+        { phone: { $regex: safeSearch, $options: 'i' } },
+        { referralCode: { $regex: safeSearch, $options: 'i' } },
       ];
     }
-    if (role) query.role = role;
-    if (vipTier) query.vipTier = vipTier;
+    const safeRole = safeEnum(role, USER_ROLES);
+    const safeVipTier = safeEnum(vipTier, VIP_TIERS);
+    if (safeRole) query.role = safeRole;
+    if (safeVipTier) query.vipTier = safeVipTier;
     if (isFrozen !== undefined) query.isFrozen = isFrozen === 'true';
 
     const total = await User.countDocuments(query);
@@ -118,6 +125,10 @@ router.put(
       .optional({ checkFalsy: true })
       .matches(/^0[79][0-9]{8}$/)
       .withMessage('Invalid Zambian phone number'),
+    body('profilePhoto')
+      .optional({ checkFalsy: true })
+      .isURL()
+      .withMessage('Profile photo must be a valid URL'),
   ],
   async (req, res) => {
     const errors = validationResult(req);
@@ -128,7 +139,7 @@ router.put(
     try {
       const { name, phone, profilePhoto } = req.body;
       const updates = {};
-      if (name) updates.name = name;
+      if (name) updates.name = String(name).substring(0, 100);
       if (phone) updates.phone = phone;
       if (profilePhoto) updates.profilePhoto = profilePhoto;
 
@@ -189,15 +200,20 @@ router.put(
 
     try {
       const { role } = req.body;
+      const safeRole = safeEnum(role, USER_ROLES);
+
+      if (!safeRole) {
+        return res.status(400).json({ success: false, message: 'Invalid role' });
+      }
 
       // Only superadmin can assign admin/superadmin roles
-      if (['admin', 'superadmin'].includes(role) && req.user.role !== 'superadmin') {
+      if (['admin', 'superadmin'].includes(safeRole) && req.user.role !== 'superadmin') {
         return res.status(403).json({ success: false, message: 'Only superadmin can assign admin roles' });
       }
 
       const user = await User.findByIdAndUpdate(
         req.params.id,
-        { role },
+        { role: safeRole },
         { new: true, runValidators: true }
       );
       if (!user) return res.status(404).json({ success: false, message: 'User not found' });

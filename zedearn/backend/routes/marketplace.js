@@ -6,17 +6,22 @@ const User = require('../models/User');
 const Transaction = require('../models/Transaction');
 const Notification = require('../models/Notification');
 const { protect, authorize } = require('../middleware/auth');
+const { escapeRegex, safeEnum } = require('../utils/sanitize');
+
+const ITEM_CATEGORIES = ['airtime', 'data', 'voucher', 'service', 'product'];
 
 // GET /api/marketplace - list active items
 router.get('/', protect, async (req, res) => {
   try {
     const { category, page = 1, limit = 20, search = '' } = req.query;
     const query = { status: 'active' };
-    if (category) query.category = category;
+    const safeCategory = safeEnum(category, ITEM_CATEGORIES);
+    if (safeCategory) query.category = safeCategory;
     if (search) {
+      const safeSearch = escapeRegex(String(search).substring(0, 100));
       query.$or = [
-        { title: { $regex: search, $options: 'i' } },
-        { description: { $regex: search, $options: 'i' } },
+        { title: { $regex: safeSearch, $options: 'i' } },
+        { description: { $regex: safeSearch, $options: 'i' } },
       ];
     }
 
