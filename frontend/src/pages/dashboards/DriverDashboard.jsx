@@ -39,7 +39,6 @@ const DriverDashboard = () => {
       let procData = [];
       if (Array.isArray(procRes.data)) procData = procRes.data;
       else if (procRes.data?.data && Array.isArray(procRes.data.data)) procData = procRes.data.data;
-      // Filter to only this driver's orders (we can use createdBy field)
       const user = JSON.parse(localStorage.getItem('user') || '{}');
       if (user.id) {
         procData = procData.filter(p => p.createdBy?._id === user.id);
@@ -229,7 +228,7 @@ const DriverDashboard = () => {
               </Paper>
             </Grid>
 
-            {/* Procurement Orders (Spare Parts) */}
+            {/* Procurement Orders (Spare Parts) with Requested By */}
             <Grid item xs={12}>
               <Paper sx={{ p: 2 }}>
                 <Typography variant="h6" gutterBottom>My Spare Parts Requests</Typography>
@@ -239,7 +238,8 @@ const DriverDashboard = () => {
                       <TableCell>Item</TableCell>
                       <TableCell>Quantity</TableCell>
                       <TableCell>Status</TableCell>
-                      <TableCell>Created</TableCell>
+                      <TableCell>Requested By</TableCell>
+                      <TableCell>Date</TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
@@ -248,6 +248,7 @@ const DriverDashboard = () => {
                         <TableCell>{p.items?.length > 0 ? p.items.map(i => i.name).join(', ') : 'N/A'}</TableCell>
                         <TableCell>{p.items?.length || 0}</TableCell>
                         <TableCell><Chip label={p.status} color={p.status === 'funded' ? 'success' : p.status === 'purchased' ? 'info' : 'warning'} size="small" /></TableCell>
+                        <TableCell>{p.createdBy?.name || 'N/A'}</TableCell>
                         <TableCell>{new Date(p.createdAt).toLocaleDateString()}</TableCell>
                       </TableRow>
                     ))}
