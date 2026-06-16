@@ -20,24 +20,20 @@ const QuantitySurveyorDashboard = () => {
         api.get('/api/projects'),
         api.get('/api/boq'),
       ]);
-      setProjects(projectsRes.data);
-      setBoqs(boqsRes.data);
+      const projectsData = Array.isArray(projectsRes.data) ? projectsRes.data : [];
+      const boqsData = Array.isArray(boqsRes.data) ? boqsRes.data : [];
+      setProjects(projectsData);
+      setBoqs(boqsData);
       setStats({
-        projects: projectsRes.data.length,
-        boqs: boqsRes.data.length,
-        submitted: boqsRes.data.filter(b => b.status === 'submitted').length,
-        approved: boqsRes.data.filter(b => b.status === 'approved').length,
+        projects: projectsData.length,
+        boqs: boqsData.length,
+        submitted: boqsData.filter(b => b.status === 'submitted').length,
+        approved: boqsData.filter(b => b.status === 'approved').length,
       });
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
+    } catch (err) { console.error(err); } finally { setLoading(false); }
   };
 
-  useEffect(() => {
-    fetchData();
-  }, []);
+  useEffect(() => { fetchData(); }, []);
 
   const actions = [
     { label: 'Enroll Worker', path: '/workers/new' },
@@ -89,7 +85,6 @@ const QuantitySurveyorDashboard = () => {
             </Grid>
           </Grid>
 
-          {/* Quick Actions */}
           <Paper sx={{ p: 2, mb: 3 }}>
             <Typography variant="h6" gutterBottom>Quick Actions</Typography>
             <Grid container spacing={2}>
@@ -103,7 +98,6 @@ const QuantitySurveyorDashboard = () => {
             </Grid>
           </Paper>
 
-          {/* BOQs Table */}
           <Paper sx={{ p: 2 }}>
             <Typography variant="h6" gutterBottom>Recent BOQs</Typography>
             <Table size="small">

@@ -11,32 +11,34 @@ const EngineerDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [projects, setProjects] = useState([]);
   const [workers, setWorkers] = useState([]);
-  const [stats, setStats] = useState({ projects: 0, workers: 0, activeProjects: 0 });
+  const [boqs, setBoqs] = useState([]);
+  const [stats, setStats] = useState({ projects: 0, workers: 0, activeProjects: 0, boqs: 0 });
 
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [projectsRes, workersRes] = await Promise.all([
+      const [projectsRes, workersRes, boqsRes] = await Promise.all([
         api.get('/api/projects'),
         api.get('/api/workers'),
+        api.get('/api/boq'),
       ]);
-      setProjects(projectsRes.data);
-      setWorkers(workersRes.data);
+      const projectsData = Array.isArray(projectsRes.data) ? projectsRes.data : [];
+      const workersData = Array.isArray(workersRes.data) ? workersRes.data : [];
+      const boqsData = Array.isArray(boqsRes.data) ? boqsRes.data : [];
+
+      setProjects(projectsData);
+      setWorkers(workersData);
+      setBoqs(boqsData);
       setStats({
-        projects: projectsRes.data.length,
-        workers: workersRes.data.length,
-        activeProjects: projectsRes.data.filter(p => p.status === 'active').length,
+        projects: projectsData.length,
+        workers: workersData.length,
+        activeProjects: projectsData.filter(p => p.status === 'active').length,
+        boqs: boqsData.length,
       });
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
+    } catch (err) { console.error(err); } finally { setLoading(false); }
   };
 
-  useEffect(() => {
-    fetchData();
-  }, []);
+  useEffect(() => { fetchData(); }, []);
 
   const actions = [
     { label: 'Enroll Worker', path: '/workers/new' },
@@ -44,6 +46,7 @@ const EngineerDashboard = () => {
     { label: 'Create Procurement Order', path: '/procurement/new' },
     { label: 'Request Funding', path: '/funding/new' },
     { label: 'Subcontract', path: '/subcontracts/new' },
+    { label: 'Create BOQ', path: '/boq/new' },
   ];
 
   return (
@@ -76,16 +79,14 @@ const EngineerDashboard = () => {
             </Grid>
             <Grid item xs={12} sm={4}>
               <Card><CardContent>
-                <Typography variant="body2" color="textSecondary">Quick Actions</Typography>
-                <Button component={Link} to="/workers/new" variant="outlined" size="small">Enroll</Button>
-                <Button component={Link} to="/projects/new" variant="outlined" size="small" sx={{ ml: 1 }}>Project</Button>
+                <Typography variant="body2" color="textSecondary">BOQs Created</Typography>
+                <Typography variant="h4">{stats.boqs}</Typography>
               </CardContent></Card>
             </Grid>
           </Grid>
 
-          {/* Quick Actions */}
           <Paper sx={{ p: 2, mb: 3 }}>
-            <Typography variant="h6" gutterBottom>Actions</Typography>
+            <Typography variant="h6" gutterBottom>Quick Actions</Typography>
             <Grid container spacing={2}>
               {actions.map((action, i) => (
                 <Grid item xs={12} sm={6} md={4} key={i}>
@@ -97,7 +98,6 @@ const EngineerDashboard = () => {
             </Grid>
           </Paper>
 
-          {/* Recent Projects */}
           <Paper sx={{ p: 2 }}>
             <Typography variant="h6" gutterBottom>My Projects</Typography>
             <Table size="small">

@@ -20,22 +20,16 @@ const ForemanDashboard = () => {
         api.get('/api/workers'),
         api.get('/api/projects'),
       ]);
-      setWorkers(workersRes.data);
-      setProjects(projectsRes.data);
+      setWorkers(Array.isArray(workersRes.data) ? workersRes.data : []);
+      setProjects(Array.isArray(projectsRes.data) ? projectsRes.data : []);
       setStats({
         workers: workersRes.data.length,
         projects: projectsRes.data.length,
       });
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
+    } catch (err) { console.error(err); } finally { setLoading(false); }
   };
 
-  useEffect(() => {
-    fetchData();
-  }, []);
+  useEffect(() => { fetchData(); }, []);
 
   const actions = [
     { label: 'Enroll Worker', path: '/workers/new' },
@@ -43,6 +37,7 @@ const ForemanDashboard = () => {
     { label: 'Create Procurement Order', path: '/procurement/new' },
     { label: 'Request Funding', path: '/funding/new' },
     { label: 'Subcontract', path: '/subcontracts/new' },
+    { label: 'Create BOQ', path: '/boq/new' },
   ];
 
   return (
