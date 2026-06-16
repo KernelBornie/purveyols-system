@@ -4,6 +4,7 @@ import {
   Chip, Paper, TextField, Dialog, DialogTitle, DialogContent, DialogActions,
   CircularProgress, Alert
 } from '@mui/material';
+import { Link } from 'react-router-dom';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import api from '../../api/axios';
 
@@ -19,7 +20,10 @@ const SafetyDashboard = () => {
     setLoading(true);
     try {
       const res = await api.get('/api/safety-reports');
-      const data = Array.isArray(res.data) ? res.data : [];
+      let data = [];
+      if (Array.isArray(res.data)) data = res.data;
+      else if (res.data && typeof res.data === 'object' && Array.isArray(res.data.data)) data = res.data.data;
+      else data = [];
       setInspections(data);
       const total = data.length;
       const passed = data.filter(i => i.status === 'passed').length;
@@ -49,6 +53,12 @@ const SafetyDashboard = () => {
       setMessage({ type: 'error', text: err.response?.data?.error || 'Submission failed' });
     }
   };
+
+  const quickActions = [
+    { label: 'Create Procurement Order', path: '/procurement/new' },
+    { label: 'Request Funding', path: '/funding/new' },
+    { label: 'New Inspection', action: 'modal' }, // we handle this separately
+  ];
 
   return (
     <Box>
@@ -97,6 +107,26 @@ const SafetyDashboard = () => {
               </CardContent></Card>
             </Grid>
           </Grid>
+
+          {/* Quick Actions */}
+          <Paper sx={{ p: 2, mb: 3 }}>
+            <Typography variant="h6" gutterBottom>Quick Actions</Typography>
+            <Grid container spacing={2}>
+              {quickActions.map((action, i) => (
+                <Grid item xs={12} sm={6} md={4} key={i}>
+                  {action.path ? (
+                    <Button component={Link} to={action.path} variant="contained" fullWidth>
+                      {action.label}
+                    </Button>
+                  ) : (
+                    <Button variant="contained" fullWidth onClick={() => setOpenModal(true)}>
+                      {action.label}
+                    </Button>
+                  )}
+                </Grid>
+              ))}
+            </Grid>
+          </Paper>
 
           <Paper sx={{ p: 2 }}>
             <Typography variant="h6" gutterBottom>Inspection Reports</Typography>
