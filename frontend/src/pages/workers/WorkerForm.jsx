@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { TextField, Button, Paper, Typography, Box, Alert, Grid } from '@mui/material';
+import {
+  TextField, Button, Paper, Typography, Box, Alert, Grid,
+  Table, TableHead, TableRow, TableCell, TableBody
+} from '@mui/material';
 import api from '../../api/axios';
 import { useAuth } from '../../context/AuthContext';
 
