@@ -1,6 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
-  Dialog, DialogTitle, DialogContent, TextField, Button, Box, Typography, Alert
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  TextField,
+  Button,
+  Box,
+  Typography,
+  Alert
 } from '@mui/material';
 import api from '../api/axios';
 
@@ -10,8 +17,7 @@ const PaymentModal = ({ open, onClose, worker, onSuccess }) => {
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState(null);
 
-  // When worker changes, set default amount to pending balance
-  React.useEffect(() => {
+  useEffect(() => {
     if (worker) {
       const pending = worker.balance || 0;
       setAmount(pending > 0 ? pending.toString() : '');
