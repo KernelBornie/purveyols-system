@@ -4,12 +4,18 @@ import {
   Chip, Paper, CircularProgress
 } from '@mui/material';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, PieChart, Pie, Cell } from 'recharts';
+import { Link } from 'react-router-dom';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import api from '../../api/axios';
 
 const DirectorDashboard = () => {
   const [loading, setLoading] = useState(true);
-  const [stats, setStats] = useState({ totalProjects: 0, activeProjects: 0, totalFundingRequests: 0, pendingFunding: 0, totalBOQs: 0, pendingBOQs: 0, totalWorkers: 0, totalSubcontracts: 0 });
+  const [stats, setStats] = useState({
+    totalProjects: 0, activeProjects: 0,
+    totalFundingRequests: 0, pendingFunding: 0,
+    totalBOQs: 0, pendingBOQs: 0,
+    totalWorkers: 0, totalSubcontracts: 0,
+  });
   const [projects, setProjects] = useState([]);
   const [fundingRequests, setFundingRequests] = useState([]);
   const [boqs, setBoqs] = useState([]);
@@ -26,11 +32,11 @@ const DirectorDashboard = () => {
         api.get('/api/subcontracts'),
         api.get('/api/workers'),
       ]);
-      const projectsData = Array.isArray(projectsRes.data) ? projectsRes.data : (Array.isArray(projectsRes.data?.data) ? projectsRes.data.data : []);
-      const fundingData = Array.isArray(fundingRes.data) ? fundingRes.data : (Array.isArray(fundingRes.data?.data) ? fundingRes.data.data : []);
-      const boqData = Array.isArray(boqRes.data) ? boqRes.data : (Array.isArray(boqRes.data?.data) ? boqRes.data.data : []);
-      const subData = Array.isArray(subRes.data) ? subRes.data : (Array.isArray(subRes.data?.data) ? subRes.data.data : []);
-      const workersData = Array.isArray(workersRes.data) ? workersRes.data : (Array.isArray(workersRes.data?.data) ? workersRes.data.data : []);
+      const projectsData = Array.isArray(projectsRes.data) ? projectsRes.data : [];
+      const fundingData = Array.isArray(fundingRes.data) ? fundingRes.data : [];
+      const boqData = Array.isArray(boqRes.data) ? boqRes.data : [];
+      const subData = Array.isArray(subRes.data) ? subRes.data : [];
+      const workersData = Array.isArray(workersRes.data) ? workersRes.data : [];
 
       setProjects(projectsData);
       setFundingRequests(fundingData);
@@ -57,9 +63,16 @@ const DirectorDashboard = () => {
 
   useEffect(() => { fetchData(); }, []);
 
-  const handleApproveBOQ = async (id) => { try { await api.put(`/api/boq/${id}/approve`); fetchData(); } catch (err) { alert('Approval failed'); } };
-  const handleApproveFunding = async (id) => { try { await api.put(`/api/funding-requests/${id}/approve`); fetchData(); } catch (err) { alert('Approval failed'); } };
-  const handleRejectFunding = async (id) => { const reason = prompt('Rejection reason:'); if (reason === null) return; try { await api.put(`/api/funding-requests/${id}/reject`, { reason }); fetchData(); } catch (err) { alert('Rejection failed'); } };
+  const handleApproveBOQ = async (id) => {
+    try { await api.put(`/api/boq/${id}/approve`); fetchData(); } catch (err) { alert('Approval failed'); }
+  };
+  const handleApproveFunding = async (id) => {
+    try { await api.put(`/api/funding-requests/${id}/approve`); fetchData(); } catch (err) { alert('Approval failed'); }
+  };
+  const handleRejectFunding = async (id) => {
+    const reason = prompt('Rejection reason:'); if (reason === null) return;
+    try { await api.put(`/api/funding-requests/${id}/reject`, { reason }); fetchData(); } catch (err) { alert('Rejection failed'); }
+  };
 
   const projectStatusData = [
     { name: 'Planning', value: projects.filter(p => p.status === 'planning').length },
@@ -81,22 +94,200 @@ const DirectorDashboard = () => {
       {loading ? <CircularProgress /> : (
         <>
           <Grid container spacing={3} sx={{ mb: 3 }}>
-            <Grid item xs={12} sm={6} md={3}><Card><CardContent><Typography variant="body2" color="textSecondary">Total Projects</Typography><Typography variant="h4">{stats.totalProjects}</Typography><Typography variant="caption" color="textSecondary">{stats.activeProjects} active</Typography></CardContent></Card></Grid>
-            <Grid item xs={12} sm={6} md={3}><Card><CardContent><Typography variant="body2" color="textSecondary">Funding Requests</Typography><Typography variant="h4">{stats.totalFundingRequests}</Typography><Typography variant="caption" color="warning.main">{stats.pendingFunding} pending</Typography></CardContent></Card></Grid>
-            <Grid item xs={12} sm={6} md={3}><Card><CardContent><Typography variant="body2" color="textSecondary">BOQs</Typography><Typography variant="h4">{stats.totalBOQs}</Typography><Typography variant="caption" color="warning.main">{stats.pendingBOQs} pending</Typography></CardContent></Card></Grid>
-            <Grid item xs={12} sm={6} md={3}><Card><CardContent><Typography variant="body2" color="textSecondary">Workers</Typography><Typography variant="h4">{stats.totalWorkers}</Typography><Typography variant="caption" color="textSecondary">{stats.totalSubcontracts} subcontracts</Typography></CardContent></Card></Grid>
+            <Grid item xs={12} sm={6} md={3}>
+              <Card><CardContent>
+                <Typography variant="body2" color="textSecondary">Total Projects</Typography>
+                <Typography variant="h4">{stats.totalProjects}</Typography>
+                <Typography variant="caption" color="textSecondary">{stats.activeProjects} active</Typography>
+              </CardContent></Card>
+            </Grid>
+            <Grid item xs={12} sm={6} md={3}>
+              <Card><CardContent>
+                <Typography variant="body2" color="textSecondary">Funding Requests</Typography>
+                <Typography variant="h4">{stats.totalFundingRequests}</Typography>
+                <Typography variant="caption" color="warning.main">{stats.pendingFunding} pending</Typography>
+              </CardContent></Card>
+            </Grid>
+            <Grid item xs={12} sm={6} md={3}>
+              <Card><CardContent>
+                <Typography variant="body2" color="textSecondary">BOQs</Typography>
+                <Typography variant="h4">{stats.totalBOQs}</Typography>
+                <Typography variant="caption" color="warning.main">{stats.pendingBOQs} pending</Typography>
+              </CardContent></Card>
+            </Grid>
+            <Grid item xs={12} sm={6} md={3}>
+              <Card><CardContent>
+                <Typography variant="body2" color="textSecondary">Workers</Typography>
+                <Typography variant="h4">{stats.totalWorkers}</Typography>
+                <Typography variant="caption">
+                  {stats.totalSubcontracts} subcontracts
+                  <Button component={Link} to="/workers" size="small" sx={{ ml: 1 }}>View All</Button>
+                </Typography>
+              </CardContent></Card>
+            </Grid>
           </Grid>
+
+          {/* Quick Actions */}
+          <Paper sx={{ p: 2, mb: 3 }}>
+            <Typography variant="h6" gutterBottom>Quick Actions</Typography>
+            <Grid container spacing={2}>
+              <Grid item xs={12} sm={6} md={3}>
+                <Button component={Link} to="/projects" variant="outlined" fullWidth>Manage Projects</Button>
+              </Grid>
+              <Grid item xs={12} sm={6} md={3}>
+                <Button component={Link} to="/funding" variant="outlined" fullWidth>Funding Requests</Button>
+              </Grid>
+              <Grid item xs={12} sm={6} md={3}>
+                <Button component={Link} to="/boq" variant="outlined" fullWidth>BOQs</Button>
+              </Grid>
+              <Grid item xs={12} sm={6} md={3}>
+                <Button component={Link} to="/workers" variant="outlined" fullWidth>View Workers</Button>
+              </Grid>
+            </Grid>
+          </Paper>
 
           <Grid container spacing={3} sx={{ mb: 3 }}>
-            <Grid item xs={12} md={6}><Paper sx={{ p: 2 }}><Typography variant="h6">Project Status</Typography><PieChart width={300} height={200}><Pie data={projectStatusData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} label>{projectStatusData.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}</Pie><Tooltip /><Legend /></PieChart></Paper></Grid>
-            <Grid item xs={12} md={6}><Paper sx={{ p: 2 }}><Typography variant="h6">Funding Requests</Typography><BarChart width={350} height={200} data={fundingChartData.slice(0, 5)}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="name" /><YAxis /><Tooltip /><Legend /><Bar dataKey="amount" fill="#8884d8" /></BarChart></Paper></Grid>
+            <Grid item xs={12} md={6}>
+              <Paper sx={{ p: 2 }}>
+                <Typography variant="h6">Project Status</Typography>
+                <PieChart width={300} height={200}>
+                  <Pie data={projectStatusData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} label>
+                    {projectStatusData.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
+                  </Pie>
+                  <Tooltip /><Legend />
+                </PieChart>
+              </Paper>
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <Paper sx={{ p: 2 }}>
+                <Typography variant="h6">Funding Requests</Typography>
+                <BarChart width={350} height={200} data={fundingChartData.slice(0, 5)}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="name" />
+                  <YAxis />
+                  <Tooltip /><Legend />
+                  <Bar dataKey="amount" fill="#8884d8" />
+                </BarChart>
+              </Paper>
+            </Grid>
           </Grid>
 
-          <Paper sx={{ p: 2, mb: 3 }}><Typography variant="h6" gutterBottom>All Projects</Typography><Table size="small"><TableHead><TableRow><TableCell>Name</TableCell><TableCell>Location</TableCell><TableCell>Status</TableCell><TableCell>Budget</TableCell><TableCell>Manager</TableCell></TableRow></TableHead><TableBody>{projects.map(p => <TableRow key={p._id}><TableCell>{p.name}</TableCell><TableCell>{p.location}</TableCell><TableCell><Chip label={p.status} size="small" color={p.status === 'active' ? 'success' : 'default'} /></TableCell><TableCell>{p.budget}</TableCell><TableCell>{p.manager?.name || 'N/A'}</TableCell></TableRow>)}</TableBody></Table></Paper>
+          <Paper sx={{ p: 2, mb: 3 }}>
+            <Typography variant="h6" gutterBottom>Recent Workers</Typography>
+            <Table size="small">
+              <TableHead>
+                <TableRow>
+                  <TableCell>Name</TableCell>
+                  <TableCell>NRC</TableCell>
+                  <TableCell>Site</TableCell>
+                  <TableCell>Enrolled By</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {workers.slice(0, 5).map(w => (
+                  <TableRow key={w._id}>
+                    <TableCell>{w.name}</TableCell>
+                    <TableCell>{w.nrc}</TableCell>
+                    <TableCell>{w.site}</TableCell>
+                    <TableCell>{w.enrolledBy ? `${w.enrolledBy.name} (${w.enrolledBy.role})` : 'N/A'}</TableCell>
+                  </TableRow>
+                ))}
+                {workers.length === 0 && (
+                  <TableRow><TableCell colSpan={4} align="center">No workers enrolled yet</TableCell></TableRow>
+                )}
+              </TableBody>
+            </Table>
+            <Button component={Link} to="/workers" size="small" sx={{ mt: 1 }}>View All Workers →</Button>
+          </Paper>
 
-          <Paper sx={{ p: 2, mb: 3 }}><Typography variant="h6" gutterBottom>Funding Requests</Typography><Table size="small"><TableHead><TableRow><TableCell>Project</TableCell><TableCell>Amount</TableCell><TableCell>Status</TableCell><TableCell>Requested By</TableCell><TableCell>Actions</TableCell></TableRow></TableHead><TableBody>{fundingRequests.map(f => <TableRow key={f._id}><TableCell>{f.project?.name}</TableCell><TableCell>{f.amount}</TableCell><TableCell><Chip label={f.status} color={f.status === 'approved' ? 'success' : f.status === 'rejected' ? 'error' : 'warning'} /></TableCell><TableCell>{f.requestedBy?.name}</TableCell><TableCell>{f.status === 'pending' && <><Button size="small" color="success" onClick={() => handleApproveFunding(f._id)}>Approve</Button><Button size="small" color="error" onClick={() => handleRejectFunding(f._id)}>Reject</Button></>}</TableCell></TableRow>)}</TableBody></Table></Paper>
+          <Paper sx={{ p: 2, mb: 3 }}>
+            <Typography variant="h6" gutterBottom>All Projects</Typography>
+            <Table size="small">
+              <TableHead>
+                <TableRow>
+                  <TableCell>Name</TableCell>
+                  <TableCell>Location</TableCell>
+                  <TableCell>Status</TableCell>
+                  <TableCell>Budget</TableCell>
+                  <TableCell>Manager</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {projects.map(p => (
+                  <TableRow key={p._id}>
+                    <TableCell>{p.name}</TableCell>
+                    <TableCell>{p.location}</TableCell>
+                    <TableCell><Chip label={p.status} size="small" color={p.status === 'active' ? 'success' : 'default'} /></TableCell>
+                    <TableCell>{p.budget}</TableCell>
+                    <TableCell>{p.manager?.name || 'N/A'}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </Paper>
 
-          <Paper sx={{ p: 2 }}><Typography variant="h6" gutterBottom>BOQs</Typography><Table size="small"><TableHead><TableRow><TableCell>Project</TableCell><TableCell>Items</TableCell><TableCell>Status</TableCell><TableCell>Created By</TableCell><TableCell>Actions</TableCell></TableRow></TableHead><TableBody>{boqs.map(b => <TableRow key={b._id}><TableCell>{b.project?.name}</TableCell><TableCell>{b.items?.length || 0}</TableCell><TableCell><Chip label={b.status} color={b.status === 'approved' ? 'success' : b.status === 'submitted' ? 'warning' : 'default'} /></TableCell><TableCell>{b.createdBy?.name}</TableCell><TableCell>{b.status === 'submitted' && <Button size="small" color="primary" onClick={() => handleApproveBOQ(b._id)}>Approve</Button>}</TableCell></TableRow>)}</TableBody></Table></Paper>
+          <Paper sx={{ p: 2, mb: 3 }}>
+            <Typography variant="h6" gutterBottom>Funding Requests</Typography>
+            <Table size="small">
+              <TableHead>
+                <TableRow>
+                  <TableCell>Project</TableCell>
+                  <TableCell>Amount</TableCell>
+                  <TableCell>Status</TableCell>
+                  <TableCell>Requested By</TableCell>
+                  <TableCell>Actions</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {fundingRequests.map(f => (
+                  <TableRow key={f._id}>
+                    <TableCell>{f.project?.name}</TableCell>
+                    <TableCell>{f.amount}</TableCell>
+                    <TableCell><Chip label={f.status} color={f.status === 'approved' ? 'success' : f.status === 'rejected' ? 'error' : 'warning'} /></TableCell>
+                    <TableCell>{f.requestedBy?.name}</TableCell>
+                    <TableCell>
+                      {f.status === 'pending' && (
+                        <>
+                          <Button size="small" color="success" onClick={() => handleApproveFunding(f._id)}>Approve</Button>
+                          <Button size="small" color="error" onClick={() => handleRejectFunding(f._id)}>Reject</Button>
+                        </>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </Paper>
+
+          <Paper sx={{ p: 2 }}>
+            <Typography variant="h6" gutterBottom>BOQs</Typography>
+            <Table size="small">
+              <TableHead>
+                <TableRow>
+                  <TableCell>Project</TableCell>
+                  <TableCell>Items</TableCell>
+                  <TableCell>Status</TableCell>
+                  <TableCell>Created By</TableCell>
+                  <TableCell>Actions</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {boqs.map(b => (
+                  <TableRow key={b._id}>
+                    <TableCell>{b.project?.name}</TableCell>
+                    <TableCell>{b.items?.length || 0}</TableCell>
+                    <TableCell><Chip label={b.status} color={b.status === 'approved' ? 'success' : b.status === 'submitted' ? 'warning' : 'default'} /></TableCell>
+                    <TableCell>{b.createdBy?.name}</TableCell>
+                    <TableCell>
+                      {b.status === 'submitted' && (
+                        <Button size="small" color="primary" onClick={() => handleApproveBOQ(b._id)}>Approve</Button>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </Paper>
         </>
       )}
     </Box>
