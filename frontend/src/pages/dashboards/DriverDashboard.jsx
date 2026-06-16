@@ -2,8 +2,9 @@ import React, { useState, useEffect } from 'react';
 import {
   Box, Typography, Grid, Card, CardContent, Button, Table, TableHead, TableRow, TableCell, TableBody,
   Chip, Paper, TextField, Dialog, DialogTitle, DialogContent, DialogActions,
-  CircularProgress, Alert, IconButton
+  CircularProgress, Alert, IconButton, Divider
 } from '@mui/material';
+import { Link } from 'react-router-dom';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import AttachFileIcon from '@mui/icons-material/AttachFile';
 import ImageIcon from '@mui/icons-material/Image';
@@ -13,6 +14,8 @@ import api from '../../api/axios';
 const DriverDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [logbooks, setLogbooks] = useState([]);
+  const [procurementOrders, setProcurementOrders] = useState([]);
+  const [fundingRequests, setFundingRequests] = useState([]);
   const [stats, setStats] = useState({ total: 0, completed: 0, inProgress: 0 });
   const [openModal, setOpenModal] = useState(false);
   const [form, setForm] = useState({
@@ -24,15 +27,38 @@ const DriverDashboard = () => {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const res = await api.get('/api/logbooks');
-      let data = [];
-      if (Array.isArray(res.data)) data = res.data;
-      else if (res.data?.data && Array.isArray(res.data.data)) data = res.data.data;
-      else data = [];
-      setLogbooks(data);
-      const total = data.length;
-      const completed = data.filter(l => l.status === 'completed').length;
-      const inProgress = data.filter(l => l.status === 'in-progress').length;
+      // Fetch logbooks
+      const logRes = await api.get('/api/logbooks');
+      let logData = [];
+      if (Array.isArray(logRes.data)) logData = logRes.data;
+      else if (logRes.data?.data && Array.isArray(logRes.data.data)) logData = logRes.data.data;
+      setLogbooks(logData);
+
+      // Fetch procurement orders created by this driver
+      const procRes = await api.get('/api/procurement');
+      let procData = [];
+      if (Array.isArray(procRes.data)) procData = procRes.data;
+      else if (procRes.data?.data && Array.isArray(procRes.data.data)) procData = procRes.data.data;
+      // Filter to only this driver's orders (we can use createdBy field)
+      const user = JSON.parse(localStorage.getItem('user') || '{}');
+      if (user.id) {
+        procData = procData.filter(p => p.createdBy?._id === user.id);
+      }
+      setProcurementOrders(procData);
+
+      // Fetch funding requests created by this driver
+      const fundRes = await api.get('/api/funding-requests');
+      let fundData = [];
+      if (Array.isArray(fundRes.data)) fundData = fundRes.data;
+      else if (fundRes.data?.data && Array.isArray(fundRes.data.data)) fundData = fundRes.data.data;
+      if (user.id) {
+        fundData = fundData.filter(f => f.requestedBy?._id === user.id);
+      }
+      setFundingRequests(fundData);
+
+      const total = logData.length;
+      const completed = logData.filter(l => l.status === 'completed').length;
+      const inProgress = logData.filter(l => l.status === 'in-progress').length;
       setStats({ total, completed, inProgress });
     } catch (err) { console.error(err); } finally { setLoading(false); }
   };
@@ -82,18 +108,44 @@ const DriverDashboard = () => {
     <Box>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
         <Typography variant="h4">Driver Dashboard</Typography>
-        <Box>
-          <Button variant="contained" startIcon={<RefreshIcon />} onClick={fetchData} sx={{ mr: 1 }}>
-            Refresh
-          </Button>
-          <Button variant="contained" color="primary" onClick={() => setOpenModal(true)}>
-            New Logbook
-          </Button>
-        </Box>
+        <Button variant="contained" startIcon={<RefreshIcon />} onClick={fetchData}>
+          Refresh
+        </Button>
       </Box>
       <Typography variant="subtitle1" gutterBottom>Transport & Logistics</Typography>
 
       {message && <Alert severity={message.type} sx={{ mb: 2 }}>{message.text}</Alert>}
+
+      {/* Quick Actions */}
+      <Paper sx={{ p: 2, mb: 3 }}>
+        <Typography variant="h6" gutterBottom>Quick Actions</Typography>
+        <Grid container spacing={2}>
+          <Grid item xs={12} sm={6} md={4}>
+            <Button component={Link} to="/procurement/new" variant="contained" fullWidth>
+              Request Spare Parts
+            </Button>
+            <Typography variant="caption" color="textSecondary">
+              Create procurement order (leave unit prices blank)
+            </Typography>
+          </Grid>
+          <Grid item xs={12} sm={6} md={4}>
+            <Button component={Link} to="/funding/new" variant="contained" fullWidth>
+              Request Funds
+            </Button>
+            <Typography variant="caption" color="textSecondary">
+              For lunch, lodge, spare parts, etc.
+            </Typography>
+          </Grid>
+          <Grid item xs={12} sm={6} md={4}>
+            <Button variant="contained" color="primary" onClick={() => setOpenModal(true)} fullWidth>
+              New Logbook
+            </Button>
+            <Typography variant="caption" color="textSecondary">
+              Record trip and upload logbook
+            </Typography>
+          </Grid>
+        </Grid>
+      </Paper>
 
       {loading ? <CircularProgress /> : (
         <>
@@ -118,42 +170,96 @@ const DriverDashboard = () => {
             </Grid>
           </Grid>
 
-          <Paper sx={{ p: 2 }}>
-            <Typography variant="h6" gutterBottom>Logbook Entries</Typography>
-            <Table size="small">
-              <TableHead>
-                <TableRow>
-                  <TableCell>Vehicle</TableCell>
-                  <TableCell>Route</TableCell>
-                  <TableCell>Distance</TableCell>
-                  <TableCell>Fuel Used</TableCell>
-                  <TableCell>Status</TableCell>
-                  <TableCell>Attachment</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {logbooks.map(l => (
-                  <TableRow key={l._id}>
-                    <TableCell>{l.vehicle}</TableCell>
-                    <TableCell>{l.route}</TableCell>
-                    <TableCell>{l.distance} km</TableCell>
-                    <TableCell>{l.fuelUsed} L</TableCell>
-                    <TableCell><Chip label={l.status} color={l.status === 'completed' ? 'success' : 'warning'} /></TableCell>
-                    <TableCell>
-                      {l.fileData ? (
-                        <IconButton size="small" onClick={() => viewFile(l)}>
-                          {getFileIcon(l.fileType)}
-                        </IconButton>
-                      ) : '—'}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </Paper>
+          <Grid container spacing={3}>
+            {/* Logbook Entries */}
+            <Grid item xs={12} md={6}>
+              <Paper sx={{ p: 2, height: '100%' }}>
+                <Typography variant="h6" gutterBottom>Logbook Entries</Typography>
+                <Table size="small">
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>Vehicle</TableCell>
+                      <TableCell>Route</TableCell>
+                      <TableCell>Status</TableCell>
+                      <TableCell>Attachment</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {logbooks.slice(0, 5).map(l => (
+                      <TableRow key={l._id}>
+                        <TableCell>{l.vehicle}</TableCell>
+                        <TableCell>{l.route}</TableCell>
+                        <TableCell><Chip label={l.status} color={l.status === 'completed' ? 'success' : 'warning'} size="small" /></TableCell>
+                        <TableCell>
+                          {l.fileData ? (
+                            <IconButton size="small" onClick={() => viewFile(l)}>
+                              {getFileIcon(l.fileType)}
+                            </IconButton>
+                          ) : '—'}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </Paper>
+            </Grid>
+
+            {/* Funding Requests */}
+            <Grid item xs={12} md={6}>
+              <Paper sx={{ p: 2, height: '100%' }}>
+                <Typography variant="h6" gutterBottom>My Funding Requests</Typography>
+                <Table size="small">
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>Description</TableCell>
+                      <TableCell>Amount</TableCell>
+                      <TableCell>Status</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {fundingRequests.slice(0, 5).map(f => (
+                      <TableRow key={f._id}>
+                        <TableCell>{f.description}</TableCell>
+                        <TableCell>{f.amount}</TableCell>
+                        <TableCell><Chip label={f.status} color={f.status === 'approved' ? 'success' : f.status === 'rejected' ? 'error' : 'warning'} size="small" /></TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </Paper>
+            </Grid>
+
+            {/* Procurement Orders (Spare Parts) */}
+            <Grid item xs={12}>
+              <Paper sx={{ p: 2 }}>
+                <Typography variant="h6" gutterBottom>My Spare Parts Requests</Typography>
+                <Table size="small">
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>Item</TableCell>
+                      <TableCell>Quantity</TableCell>
+                      <TableCell>Status</TableCell>
+                      <TableCell>Created</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {procurementOrders.slice(0, 5).map(p => (
+                      <TableRow key={p._id}>
+                        <TableCell>{p.items?.length > 0 ? p.items.map(i => i.name).join(', ') : 'N/A'}</TableCell>
+                        <TableCell>{p.items?.length || 0}</TableCell>
+                        <TableCell><Chip label={p.status} color={p.status === 'funded' ? 'success' : p.status === 'purchased' ? 'info' : 'warning'} size="small" /></TableCell>
+                        <TableCell>{new Date(p.createdAt).toLocaleDateString()}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </Paper>
+            </Grid>
+          </Grid>
         </>
       )}
 
+      {/* New Logbook Modal */}
       <Dialog open={openModal} onClose={() => setOpenModal(false)} maxWidth="sm" fullWidth>
         <DialogTitle>New Logbook Entry</DialogTitle>
         <form onSubmit={handleSubmit}>
