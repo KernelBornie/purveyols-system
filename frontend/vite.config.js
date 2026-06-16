@@ -1,17 +1,10 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
+import { VitePWA } from 'vite-plugin-pwa';
 
-// Conditional PWA import (fallback if not installed)
-let VitePWA;
-try {
-  VitePWA = (await import('vite-plugin-pwa')).VitePWA;
-} catch (_) {
-  VitePWA = null;
-}
-
-const plugins = [react()];
-if (VitePWA) {
-  plugins.push(
+export default defineConfig({
+  plugins: [
+    react(),
     VitePWA({
       registerType: 'autoUpdate',
       manifest: false,
@@ -28,12 +21,8 @@ if (VitePWA) {
           },
         ],
       },
-    })
-  );
-}
-
-export default defineConfig({
-  plugins,
+    }),
+  ],
   server: {
     port: 3000,
     proxy: {
