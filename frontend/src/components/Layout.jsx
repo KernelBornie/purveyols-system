@@ -12,6 +12,7 @@ import FileDownloadIcon from '@mui/icons-material/FileDownload';
 import { useAuth } from '../context/AuthContext';
 import NotificationBell from './NotificationBell';
 import ReportModal from './ReportModal';
+import MessageDialog from './MessageDialog';
 import api from '../api/axios';
 
 const Layout = () => {
@@ -20,7 +21,6 @@ const Layout = () => {
   const [anchorEl, setAnchorEl] = useState(null);
   const [msgOpen, setMsgOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
-  const [msgText, setMsgText] = useState('');
   const [exportAnchor, setExportAnchor] = useState(null);
   const [exportLoading, setExportLoading] = useState(false);
 
@@ -79,7 +79,6 @@ const Layout = () => {
       } else {
         return;
       }
-      // Build CSV
       const csv = [headers.join(','), ...rows.map(row => row.join(','))].join('\n');
       const blob = new Blob([csv], { type: 'text/csv' });
       const url = URL.createObjectURL(blob);
@@ -100,14 +99,6 @@ const Layout = () => {
 
   const handleMsgOpen = () => setMsgOpen(true);
   const handleMsgClose = () => setMsgOpen(false);
-
-  const handleSendMessage = () => {
-    const phone = '+260971234567';
-    const url = `https://wa.me/${phone}?text=${encodeURIComponent(msgText || 'Hello from Purveyols CMS!')}`;
-    window.open(url, '_blank');
-    setMsgOpen(false);
-    setMsgText('');
-  };
 
   return (
     <>
@@ -162,18 +153,7 @@ const Layout = () => {
         <MessageIcon />
       </Fab>
 
-      <Dialog open={msgOpen} onClose={handleMsgClose} fullWidth maxWidth="sm">
-        <DialogTitle>Send Message</DialogTitle>
-        <DialogContent>
-          <DialogContentText>Send a message to our support team via WhatsApp.</DialogContentText>
-          <TextField autoFocus margin="dense" label="Your Message" type="text" fullWidth multiline rows={4} value={msgText} onChange={(e) => setMsgText(e.target.value)} variant="outlined" />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleMsgClose}>Cancel</Button>
-          <Button onClick={handleSendMessage} variant="contained">Send via WhatsApp</Button>
-        </DialogActions>
-      </Dialog>
-
+      <MessageDialog open={msgOpen} onClose={handleMsgClose} onSent={() => {}} />
       <ReportModal open={reportOpen} onClose={() => setReportOpen(false)} />
     </>
   );
