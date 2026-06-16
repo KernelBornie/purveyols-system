@@ -5,7 +5,6 @@ import {
   CircularProgress, Alert
 } from '@mui/material';
 import RefreshIcon from '@mui/icons-material/Refresh';
-import DirectionsCarIcon from '@mui/icons-material/DirectionsCar';
 import api from '../../api/axios';
 
 const DriverDashboard = () => {
@@ -13,28 +12,22 @@ const DriverDashboard = () => {
   const [logbooks, setLogbooks] = useState([]);
   const [stats, setStats] = useState({ total: 0, completed: 0, inProgress: 0 });
   const [openModal, setOpenModal] = useState(false);
-  const [form, setForm] = useState({
-    vehicle: '',
-    route: '',
-    startTime: '',
-    endTime: '',
-    distance: '',
-    fuelUsed: '',
-    notes: '',
-  });
+  const [form, setForm] = useState({ vehicle: '', route: '', startTime: '', endTime: '', distance: '', fuelUsed: '', notes: '' });
   const [message, setMessage] = useState(null);
 
   const fetchData = async () => {
     setLoading(true);
     try {
       const res = await api.get('/api/logbooks');
-      setLogbooks(res.data);
-      const total = res.data.length;
-      const completed = res.data.filter(l => l.status === 'completed').length;
-      const inProgress = res.data.filter(l => l.status === 'in-progress').length;
+      const data = Array.isArray(res.data) ? res.data : [];
+      setLogbooks(data);
+      const total = data.length;
+      const completed = data.filter(l => l.status === 'completed').length;
+      const inProgress = data.filter(l => l.status === 'in-progress').length;
       setStats({ total, completed, inProgress });
     } catch (err) {
       console.error(err);
+      setLogbooks([]);
     } finally {
       setLoading(false);
     }
@@ -117,9 +110,7 @@ const DriverDashboard = () => {
                     <TableCell>{l.route}</TableCell>
                     <TableCell>{l.distance} km</TableCell>
                     <TableCell>{l.fuelUsed} L</TableCell>
-                    <TableCell>
-                      <Chip label={l.status} color={l.status === 'completed' ? 'success' : 'warning'} />
-                    </TableCell>
+                    <TableCell><Chip label={l.status} color={l.status === 'completed' ? 'success' : 'warning'} /></TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -128,70 +119,17 @@ const DriverDashboard = () => {
         </>
       )}
 
-      {/* New Logbook Modal */}
       <Dialog open={openModal} onClose={() => setOpenModal(false)} maxWidth="sm" fullWidth>
         <DialogTitle>New Logbook Entry</DialogTitle>
         <form onSubmit={handleSubmit}>
           <DialogContent>
-            <TextField
-              label="Vehicle"
-              fullWidth
-              margin="normal"
-              value={form.vehicle}
-              onChange={e => setForm({ ...form, vehicle: e.target.value })}
-              required
-            />
-            <TextField
-              label="Route"
-              fullWidth
-              margin="normal"
-              value={form.route}
-              onChange={e => setForm({ ...form, route: e.target.value })}
-              required
-            />
-            <TextField
-              label="Start Time"
-              type="datetime-local"
-              fullWidth
-              margin="normal"
-              value={form.startTime}
-              onChange={e => setForm({ ...form, startTime: e.target.value })}
-              InputLabelProps={{ shrink: true }}
-            />
-            <TextField
-              label="End Time"
-              type="datetime-local"
-              fullWidth
-              margin="normal"
-              value={form.endTime}
-              onChange={e => setForm({ ...form, endTime: e.target.value })}
-              InputLabelProps={{ shrink: true }}
-            />
-            <TextField
-              label="Distance (km)"
-              type="number"
-              fullWidth
-              margin="normal"
-              value={form.distance}
-              onChange={e => setForm({ ...form, distance: e.target.value })}
-            />
-            <TextField
-              label="Fuel Used (L)"
-              type="number"
-              fullWidth
-              margin="normal"
-              value={form.fuelUsed}
-              onChange={e => setForm({ ...form, fuelUsed: e.target.value })}
-            />
-            <TextField
-              label="Notes"
-              fullWidth
-              margin="normal"
-              multiline
-              rows={2}
-              value={form.notes}
-              onChange={e => setForm({ ...form, notes: e.target.value })}
-            />
+            <TextField label="Vehicle" fullWidth margin="normal" value={form.vehicle} onChange={e => setForm({ ...form, vehicle: e.target.value })} required />
+            <TextField label="Route" fullWidth margin="normal" value={form.route} onChange={e => setForm({ ...form, route: e.target.value })} required />
+            <TextField label="Start Time" type="datetime-local" fullWidth margin="normal" value={form.startTime} onChange={e => setForm({ ...form, startTime: e.target.value })} InputLabelProps={{ shrink: true }} />
+            <TextField label="End Time" type="datetime-local" fullWidth margin="normal" value={form.endTime} onChange={e => setForm({ ...form, endTime: e.target.value })} InputLabelProps={{ shrink: true }} />
+            <TextField label="Distance (km)" type="number" fullWidth margin="normal" value={form.distance} onChange={e => setForm({ ...form, distance: e.target.value })} />
+            <TextField label="Fuel Used (L)" type="number" fullWidth margin="normal" value={form.fuelUsed} onChange={e => setForm({ ...form, fuelUsed: e.target.value })} />
+            <TextField label="Notes" fullWidth margin="normal" multiline rows={2} value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} />
           </DialogContent>
           <DialogActions>
             <Button onClick={() => setOpenModal(false)}>Cancel</Button>

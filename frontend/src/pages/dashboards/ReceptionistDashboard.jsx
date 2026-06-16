@@ -13,25 +13,21 @@ const ReceptionistDashboard = () => {
   const [visitors, setVisitors] = useState([]);
   const [stats, setStats] = useState({ total: 0, today: 0 });
   const [openModal, setOpenModal] = useState(false);
-  const [form, setForm] = useState({
-    name: '',
-    phone: '',
-    purpose: '',
-    host: '',
-    checkIn: new Date().toISOString().slice(0, 16),
-  });
+  const [form, setForm] = useState({ name: '', phone: '', purpose: '', host: '', checkIn: new Date().toISOString().slice(0,16) });
   const [message, setMessage] = useState(null);
 
   const fetchData = async () => {
     setLoading(true);
     try {
       const res = await api.get('/api/visitors');
-      setVisitors(res.data);
-      const total = res.data.length;
-      const today = res.data.filter(v => new Date(v.checkIn).toDateString() === new Date().toDateString()).length;
+      const data = Array.isArray(res.data) ? res.data : [];
+      setVisitors(data);
+      const total = data.length;
+      const today = data.filter(v => new Date(v.checkIn).toDateString() === new Date().toDateString()).length;
       setStats({ total, today });
     } catch (err) {
       console.error(err);
+      setVisitors([]);
     } finally {
       setLoading(false);
     }
@@ -117,50 +113,15 @@ const ReceptionistDashboard = () => {
         </>
       )}
 
-      {/* Log Visitor Modal */}
       <Dialog open={openModal} onClose={() => setOpenModal(false)} maxWidth="sm" fullWidth>
         <DialogTitle>Log Visitor</DialogTitle>
         <form onSubmit={handleSubmit}>
           <DialogContent>
-            <TextField
-              label="Full Name"
-              fullWidth
-              margin="normal"
-              value={form.name}
-              onChange={e => setForm({ ...form, name: e.target.value })}
-              required
-            />
-            <TextField
-              label="Phone"
-              fullWidth
-              margin="normal"
-              value={form.phone}
-              onChange={e => setForm({ ...form, phone: e.target.value })}
-            />
-            <TextField
-              label="Purpose"
-              fullWidth
-              margin="normal"
-              value={form.purpose}
-              onChange={e => setForm({ ...form, purpose: e.target.value })}
-              required
-            />
-            <TextField
-              label="Host / Person to see"
-              fullWidth
-              margin="normal"
-              value={form.host}
-              onChange={e => setForm({ ...form, host: e.target.value })}
-            />
-            <TextField
-              label="Check-in Time"
-              type="datetime-local"
-              fullWidth
-              margin="normal"
-              value={form.checkIn}
-              onChange={e => setForm({ ...form, checkIn: e.target.value })}
-              InputLabelProps={{ shrink: true }}
-            />
+            <TextField label="Full Name" fullWidth margin="normal" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} required />
+            <TextField label="Phone" fullWidth margin="normal" value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} />
+            <TextField label="Purpose" fullWidth margin="normal" value={form.purpose} onChange={e => setForm({ ...form, purpose: e.target.value })} required />
+            <TextField label="Host / Person to see" fullWidth margin="normal" value={form.host} onChange={e => setForm({ ...form, host: e.target.value })} />
+            <TextField label="Check-in Time" type="datetime-local" fullWidth margin="normal" value={form.checkIn} onChange={e => setForm({ ...form, checkIn: e.target.value })} InputLabelProps={{ shrink: true }} />
           </DialogContent>
           <DialogActions>
             <Button onClick={() => setOpenModal(false)}>Cancel</Button>

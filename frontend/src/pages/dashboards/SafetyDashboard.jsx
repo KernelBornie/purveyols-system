@@ -5,8 +5,6 @@ import {
   CircularProgress, Alert
 } from '@mui/material';
 import RefreshIcon from '@mui/icons-material/Refresh';
-import WarningIcon from '@mui/icons-material/Warning';
-import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import api from '../../api/axios';
 
 const SafetyDashboard = () => {
@@ -21,14 +19,16 @@ const SafetyDashboard = () => {
     setLoading(true);
     try {
       const res = await api.get('/api/safety-reports');
-      setInspections(res.data);
-      const total = res.data.length;
-      const passed = res.data.filter(i => i.status === 'passed').length;
-      const failed = res.data.filter(i => i.status === 'failed').length;
-      const pending = res.data.filter(i => i.status === 'pending').length;
+      const data = Array.isArray(res.data) ? res.data : [];
+      setInspections(data);
+      const total = data.length;
+      const passed = data.filter(i => i.status === 'passed').length;
+      const failed = data.filter(i => i.status === 'failed').length;
+      const pending = data.filter(i => i.status === 'pending').length;
       setStats({ total, passed, failed, pending });
     } catch (err) {
       console.error(err);
+      setInspections([]);
     } finally {
       setLoading(false);
     }
@@ -115,9 +115,7 @@ const SafetyDashboard = () => {
                     <TableCell>{i.site}</TableCell>
                     <TableCell>{new Date(i.date).toLocaleDateString()}</TableCell>
                     <TableCell>{i.findings}</TableCell>
-                    <TableCell>
-                      <Chip label={i.status} color={i.status === 'passed' ? 'success' : i.status === 'failed' ? 'error' : 'warning'} />
-                    </TableCell>
+                    <TableCell><Chip label={i.status} color={i.status === 'passed' ? 'success' : i.status === 'failed' ? 'error' : 'warning'} /></TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -126,39 +124,13 @@ const SafetyDashboard = () => {
         </>
       )}
 
-      {/* New Inspection Modal */}
       <Dialog open={openModal} onClose={() => setOpenModal(false)} maxWidth="sm" fullWidth>
         <DialogTitle>New Safety Inspection</DialogTitle>
         <form onSubmit={handleSubmit}>
           <DialogContent>
-            <TextField
-              label="Site"
-              fullWidth
-              margin="normal"
-              value={form.site}
-              onChange={e => setForm({ ...form, site: e.target.value })}
-              required
-            />
-            <TextField
-              label="Date"
-              type="date"
-              fullWidth
-              margin="normal"
-              value={form.date}
-              onChange={e => setForm({ ...form, date: e.target.value })}
-              InputLabelProps={{ shrink: true }}
-              required
-            />
-            <TextField
-              label="Findings / Observations"
-              fullWidth
-              margin="normal"
-              multiline
-              rows={3}
-              value={form.findings}
-              onChange={e => setForm({ ...form, findings: e.target.value })}
-              required
-            />
+            <TextField label="Site" fullWidth margin="normal" value={form.site} onChange={e => setForm({ ...form, site: e.target.value })} required />
+            <TextField label="Date" type="date" fullWidth margin="normal" value={form.date} onChange={e => setForm({ ...form, date: e.target.value })} InputLabelProps={{ shrink: true }} required />
+            <TextField label="Findings / Observations" fullWidth margin="normal" multiline rows={3} value={form.findings} onChange={e => setForm({ ...form, findings: e.target.value })} required />
           </DialogContent>
           <DialogActions>
             <Button onClick={() => setOpenModal(false)}>Cancel</Button>
