@@ -46,7 +46,6 @@ const AccountantDashboard = () => {
   const [notificationCount, setNotificationCount] = useState(0);
   const [error, setError] = useState(null);
 
-  // Helper to safely get date string
   const safeDate = (value) => {
     if (!value) return 'unknown';
     if (typeof value === 'string') {
@@ -84,7 +83,7 @@ const AccountantDashboard = () => {
       setPayments(paymentsData);
       setReportData(reportRes.data);
 
-      // Compute chart data from the same response
+      // Compute chart data
       const projectSpending = {};
       paymentsData.forEach(p => {
         if (p.project) {
@@ -113,6 +112,10 @@ const AccountantDashboard = () => {
         { name: 'Rejected', value: fundingData.filter(f => f.status === 'rejected').length },
       ].filter(item => item.value > 0);
 
+      // Build a map of worker IDs to names for quick lookup
+      const workerMap = {};
+      workersData.forEach(w => { workerMap[w._id] = w.name || 'Unknown'; });
+
       setChartData({
         projectSpending: Object.entries(projectSpending).map(([key, value]) => ({
           name: projectsData.find(p => p._id === key)?.name || key,
@@ -121,7 +124,7 @@ const AccountantDashboard = () => {
         paymentTrends: Object.entries(paymentTrends).map(([key, value]) => ({ date: key, amount: value })).sort((a, b) => a.date.localeCompare(b.date)),
         approvalRatio,
         topWorkers: Object.entries(workerEarnings).map(([key, value]) => ({
-          name: workersData.find(w => w._id === key)?.name || key,
+          name: workerMap[key] || key,
           amount: value
         })).sort((a, b) => b.amount - a.amount).slice(0, 5),
       });
@@ -135,7 +138,6 @@ const AccountantDashboard = () => {
         totalReleased,
       });
 
-      // Notification count
       const pendingFunding = fundingData.filter(f => f.status === 'pending').length;
       setNotificationCount(pendingFunding);
 
@@ -222,7 +224,6 @@ const AccountantDashboard = () => {
     approved: fr.status === 'approved' ? fr.amount : 0,
   }));
 
-  // Export CSV
   const exportCSV = () => {
     const headers = ['Name', 'NRC', 'Phone', 'Site', 'Enrolled By', 'Pending'];
     const rows = workers.map(w => [

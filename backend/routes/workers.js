@@ -10,7 +10,6 @@ router.get('/', auth, async (req, res) => {
   try {
     const workers = await Worker.find().populate('enrolledBy', 'name role');
 
-    // For each worker, compute total earned from attendance and total paid from payments
     const enriched = await Promise.all(workers.map(async (worker) => {
       const attendance = await Attendance.find({ worker: worker._id });
       const totalEarned = attendance.reduce((sum, a) => sum + a.rate, 0);
@@ -32,7 +31,7 @@ router.get('/', auth, async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// Enroll worker (no change)
+// Enroll worker
 router.post('/', auth, async (req, res) => {
   try {
     const worker = new Worker({ ...req.body, enrolledBy: req.user.id });
@@ -42,7 +41,7 @@ router.post('/', auth, async (req, res) => {
   } catch (err) { res.status(400).json({ error: err.message }); }
 });
 
-// Update worker (name, nrc, phone, dailyRate, site)
+// Update worker
 router.put('/:id', auth, async (req, res) => {
   try {
     const worker = await Worker.findByIdAndUpdate(req.params.id, req.body, { new: true })
