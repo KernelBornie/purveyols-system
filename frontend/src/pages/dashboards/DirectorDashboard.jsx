@@ -26,11 +26,11 @@ const DirectorDashboard = () => {
         api.get('/api/subcontracts'),
         api.get('/api/workers'),
       ]);
-      const projectsData = Array.isArray(projectsRes.data) ? projectsRes.data : [];
-      const fundingData = Array.isArray(fundingRes.data) ? fundingRes.data : [];
-      const boqData = Array.isArray(boqRes.data) ? boqRes.data : [];
-      const subData = Array.isArray(subRes.data) ? subRes.data : [];
-      const workersData = Array.isArray(workersRes.data) ? workersRes.data : [];
+      const projectsData = Array.isArray(projectsRes.data) ? projectsRes.data : (Array.isArray(projectsRes.data?.data) ? projectsRes.data.data : []);
+      const fundingData = Array.isArray(fundingRes.data) ? fundingRes.data : (Array.isArray(fundingRes.data?.data) ? fundingRes.data.data : []);
+      const boqData = Array.isArray(boqRes.data) ? boqRes.data : (Array.isArray(boqRes.data?.data) ? boqRes.data.data : []);
+      const subData = Array.isArray(subRes.data) ? subRes.data : (Array.isArray(subRes.data?.data) ? subRes.data.data : []);
+      const workersData = Array.isArray(workersRes.data) ? workersRes.data : (Array.isArray(workersRes.data?.data) ? workersRes.data.data : []);
 
       setProjects(projectsData);
       setFundingRequests(fundingData);

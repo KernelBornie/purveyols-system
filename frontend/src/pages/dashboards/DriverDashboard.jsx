@@ -19,7 +19,18 @@ const DriverDashboard = () => {
     setLoading(true);
     try {
       const res = await api.get('/api/logbooks');
-      const data = Array.isArray(res.data) ? res.data : [];
+      // Safely extract array from response
+      let data = [];
+      if (Array.isArray(res.data)) {
+        data = res.data;
+      } else if (res.data && typeof res.data === 'object' && Array.isArray(res.data.data)) {
+        data = res.data.data;
+      } else if (res.data && typeof res.data === 'object' && Array.isArray(res.data.logbooks)) {
+        data = res.data.logbooks;
+      } else {
+        console.warn('Unexpected response format:', res.data);
+        data = [];
+      }
       setLogbooks(data);
       const total = data.length;
       const completed = data.filter(l => l.status === 'completed').length;
