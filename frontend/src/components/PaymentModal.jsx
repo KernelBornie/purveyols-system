@@ -4,19 +4,34 @@ import {
 } from '@mui/material';
 import api from '../api/axios';
 
-const PaymentModal = ({ open, onClose, worker, project }) => {
+const PaymentModal = ({ open, onClose, worker, onSuccess }) => {
   const [amount, setAmount] = useState('');
   const [pin, setPin] = useState('');
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState(null);
 
+  // When worker changes, set default amount to pending balance
+  React.useEffect(() => {
+    if (worker) {
+      const pending = worker.balance || 0;
+      setAmount(pending > 0 ? pending.toString() : '');
+    }
+  }, [worker]);
+
+  const handlePayPending = () => {
+    if (worker) {
+      const pending = worker.balance || 0;
+      setAmount(pending > 0 ? pending.toString() : '');
+    }
+  };
+
   const handlePay = async () => {
-    if (!amount || !pin) {
-      setStatus({ type: 'error', message: 'Please fill all fields' });
+    if (!amount || parseFloat(amount) <= 0) {
+      setStatus({ type: 'error', message: 'Enter a valid amount' });
       return;
     }
-    if (pin.length < 4) {
-      setStatus({ type: 'error', message: 'PIN must be at least 4 digits' });
+    if (!pin || pin.length < 4) {
+      setStatus({ type: 'error', message: 'Enter a 4-digit PIN' });
       return;
     }
     setLoading(true);
@@ -28,15 +43,15 @@ const PaymentModal = ({ open, onClose, worker, project }) => {
         recipientPhone: worker.phone,
         amount: parseFloat(amount),
         worker: worker._id,
-        project: project?._id || null,
         notes: `Payment for ${worker.name}`,
       };
       const res = await api.post('/api/payments', payload);
       setStatus({ type: 'success', message: `Payment sent! Reference: ${res.data.reference}` });
       setTimeout(() => {
         onClose();
+        if (onSuccess) onSuccess();
         window.location.reload();
-      }, 2000);
+      }, 1500);
     } catch (err) {
       setStatus({ type: 'error', message: err.response?.data?.error || 'Payment failed' });
     } finally {
@@ -53,6 +68,9 @@ const PaymentModal = ({ open, onClose, worker, project }) => {
             <Typography><strong>Worker:</strong> {worker.name}</Typography>
             <Typography><strong>Phone:</strong> {worker.phone}</Typography>
             <Typography><strong>NRC:</strong> {worker.nrc}</Typography>
+            <Typography>
+              <strong>Pending Balance:</strong> ZMW {(worker.balance || 0).toFixed(2)}
+            </Typography>
           </Box>
         )}
         <TextField
@@ -64,6 +82,9 @@ const PaymentModal = ({ open, onClose, worker, project }) => {
           onChange={(e) => setAmount(e.target.value)}
           required
         />
+        <Button variant="outlined" size="small" onClick={handlePayPending} sx={{ mt: 1 }}>
+          Pay Pending Balance
+        </Button>
         <TextField
           label="Airtel Money PIN (simulated)"
           type="password"

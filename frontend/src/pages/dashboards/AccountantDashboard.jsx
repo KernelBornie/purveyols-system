@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   Box, Typography, Grid, Card, CardContent, Button, Table, TableHead, TableRow, TableCell, TableBody,
-  Chip, Paper, CircularProgress
+  Chip, Paper, CircularProgress, Alert, Dialog, DialogTitle, DialogContent, DialogActions
 } from '@mui/material';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
 import RefreshIcon from '@mui/icons-material/Refresh';
@@ -28,6 +28,10 @@ const AccountantDashboard = () => {
   const [searchOpen, setSearchOpen] = useState(false);
   const [paymentOpen, setPaymentOpen] = useState(false);
   const [selectedWorker, setSelectedWorker] = useState(null);
+  const [payAllOpen, setPayAllOpen] = useState(false);
+  const [payAllConfirm, setPayAllConfirm] = useState(false);
+  const [payAllPin, setPayAllPin] = useState('');
+  const [payAllStatus, setPayAllStatus] = useState(null);
 
   const fetchData = async () => {
     setLoading(true);
@@ -41,11 +45,11 @@ const AccountantDashboard = () => {
         api.get(`/api/reports/accountant?period=${period}`)
       ]);
 
-      setWorkers(workersRes.data);
-      setProjects(projectsRes.data);
-      setFundingRequests(fundingRes.data);
-      setProcurementOrders(procRes.data);
-      setPayments(paymentsRes.data);
+      setWorkers(Array.isArray(workersRes.data) ? workersRes.data : []);
+      setProjects(Array.isArray(projectsRes.data) ? projectsRes.data : []);
+      setFundingRequests(Array.isArray(fundingRes.data) ? fundingRes.data : []);
+      setProcurementOrders(Array.isArray(procRes.data) ? procRes.data : []);
+      setPayments(Array.isArray(paymentsRes.data) ? paymentsRes.data : []);
       setReportData(reportRes.data);
 
       const totalReleased = paymentsRes.data.reduce((sum, p) => sum + p.amount, 0);
@@ -71,9 +75,7 @@ const AccountantDashboard = () => {
     try {
       await api.put(`/api/funding-requests/${id}/approve`);
       fetchData();
-    } catch (err) {
-      alert('Approval failed');
-    }
+    } catch (err) { alert('Approval failed'); }
   };
 
   const handleRejectFunding = async (id) => {
@@ -82,18 +84,14 @@ const AccountantDashboard = () => {
     try {
       await api.put(`/api/funding-requests/${id}/reject`, { reason });
       fetchData();
-    } catch (err) {
-      alert('Rejection failed');
-    }
+    } catch (err) { alert('Rejection failed'); }
   };
 
   const handleFundProcurement = async (id) => {
     try {
       await api.put(`/api/procurement/${id}/fund`);
       fetchData();
-    } catch (err) {
-      alert('Failed to fund order');
-    }
+    } catch (err) { alert('Failed to fund order'); }
   };
 
   const handleWorkerSelect = (worker) => {
@@ -106,6 +104,42 @@ const AccountantDashboard = () => {
     setPaymentOpen(false);
     setSelectedWorker(null);
     fetchData();
+  };
+
+  // Pay all workers with pending balance
+  const pendingWorkers = workers.filter(w => (w.balance || 0) > 0);
+  const totalPending = pendingWorkers.reduce((sum, w) => sum + (w.balance || 0), 0);
+
+  const handlePayAll = () => {
+    if (pendingWorkers.length === 0) {
+      alert('No pending balances to pay.');
+      return;
+    }
+    setPayAllOpen(true);
+  };
+
+  const handlePayAllConfirm = async () => {
+    if (!payAllPin || payAllPin.length < 4) {
+      setPayAllStatus({ type: 'error', message: 'Enter a valid 4-digit PIN' });
+      return;
+    }
+    setPayAllStatus(null);
+    try {
+      const paymentsData = pendingWorkers.map(w => ({
+        workerId: w._id,
+        amount: w.balance || 0,
+      }));
+      await api.post('/api/payments/bulk', { payments: paymentsData });
+      setPayAllStatus({ type: 'success', message: 'All pending payments processed!' });
+      setTimeout(() => {
+        setPayAllOpen(false);
+        setPayAllPin('');
+        setPayAllStatus(null);
+        fetchData();
+      }, 1500);
+    } catch (err) {
+      setPayAllStatus({ type: 'error', message: err.response?.data?.error || 'Bulk payment failed' });
+    }
   };
 
   const chartData = fundingRequests.map(fr => ({
@@ -154,7 +188,13 @@ const AccountantDashboard = () => {
         <Button variant="contained" color="primary" onClick={() => setSearchOpen(true)} sx={{ mr: 2 }}>
           Pay Worker (Airtel Money)
         </Button>
-        <Button variant="outlined" onClick={() => setPeriod(period === 'week' ? 'month' : 'week')}>
+        <Button variant="contained" color="secondary" onClick={handlePayAll} sx={{ mr: 2 }}>
+          Pay All Pending
+        </Button>
+        <Typography variant="caption" display="inline" sx={{ ml: 1 }}>
+          Total pending: ZMW {totalPending.toFixed(2)} ({pendingWorkers.length} workers)
+        </Typography>
+        <Button variant="outlined" onClick={() => setPeriod(period === 'week' ? 'month' : 'week')} sx={{ ml: 2 }}>
           Switch to {period === 'week' ? 'Monthly' : 'Weekly'} Report
         </Button>
       </Box>
@@ -195,6 +235,7 @@ const AccountantDashboard = () => {
               <TableCell>Phone</TableCell>
               <TableCell>Site</TableCell>
               <TableCell>Enrolled By</TableCell>
+              <TableCell>Pending</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
@@ -205,6 +246,7 @@ const AccountantDashboard = () => {
                 <TableCell>{w.phone}</TableCell>
                 <TableCell>{w.site}</TableCell>
                 <TableCell>{w.enrolledBy ? `${w.enrolledBy.name} (${w.enrolledBy.role})` : 'N/A'}</TableCell>
+                <TableCell>{(w.balance || 0).toFixed(2)}</TableCell>
               </TableRow>
             ))}
           </TableBody>
@@ -321,20 +363,46 @@ const AccountantDashboard = () => {
         )}
       </Paper>
 
-      <WorkerSearch
-        open={searchOpen}
-        onClose={() => setSearchOpen(false)}
-        onSelect={handleWorkerSelect}
-      />
+      <WorkerSearch open={searchOpen} onClose={() => setSearchOpen(false)} onSelect={handleWorkerSelect} />
 
       {selectedWorker && (
         <PaymentModal
           open={paymentOpen}
           onClose={handlePaymentClose}
           worker={selectedWorker}
-          project={null}
+          onSuccess={fetchData}
         />
       )}
+
+      {/* Pay All Dialog */}
+      <Dialog open={payAllOpen} onClose={() => setPayAllOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Pay All Pending Workers</DialogTitle>
+        <DialogContent>
+          <Typography>
+            You are about to pay <strong>{pendingWorkers.length}</strong> workers a total of <strong>ZMW {totalPending.toFixed(2)}</strong>.
+          </Typography>
+          {pendingWorkers.map(w => (
+            <Typography key={w._id} variant="body2">
+              {w.name}: ZMW {(w.balance || 0).toFixed(2)}
+            </Typography>
+          ))}
+          <TextField
+            label="Airtel Money PIN (simulated)"
+            type="password"
+            fullWidth
+            margin="normal"
+            value={payAllPin}
+            onChange={(e) => setPayAllPin(e.target.value)}
+            placeholder="Enter 4-digit PIN"
+            required
+          />
+          {payAllStatus && <Alert severity={payAllStatus.type} sx={{ mt: 2 }}>{payAllStatus.message}</Alert>}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setPayAllOpen(false)}>Cancel</Button>
+          <Button variant="contained" onClick={handlePayAllConfirm}>Confirm Payment</Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };
