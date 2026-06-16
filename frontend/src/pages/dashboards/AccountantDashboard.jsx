@@ -46,6 +46,18 @@ const AccountantDashboard = () => {
   const [notificationCount, setNotificationCount] = useState(0);
   const [error, setError] = useState(null);
 
+  // Helper to safely get date string
+  const safeDate = (value) => {
+    if (!value) return 'unknown';
+    if (typeof value === 'string') {
+      try { return new Date(value).toISOString().split('T')[0]; } catch(e) { return 'unknown'; }
+    }
+    if (value instanceof Date) {
+      try { return value.toISOString().split('T')[0]; } catch(e) { return 'unknown'; }
+    }
+    return 'unknown';
+  };
+
   const fetchData = async () => {
     setLoading(true);
     setError(null);
@@ -83,7 +95,7 @@ const AccountantDashboard = () => {
 
       const paymentTrends = {};
       paymentsData.forEach(p => {
-        const date = p.paidAt ? p.paidAt.toISOString().split('T')[0] : 'unknown';
+        const date = safeDate(p.paidAt);
         paymentTrends[date] = (paymentTrends[date] || 0) + p.amount;
       });
 
@@ -483,11 +495,11 @@ const AccountantDashboard = () => {
               <Grid container spacing={2}>
                 <Grid item xs={6} sm={3}>
                   <Typography variant="body2">Workers Enrolled</Typography>
-                  <Typography variant="h6">{reportData.workersEnrolled || 0}</Typography>
+                  <Typography variant="h6">{reportData.workers || 0}</Typography>
                 </Grid>
                 <Grid item xs={6} sm={3}>
                   <Typography variant="body2">Projects Created</Typography>
-                  <Typography variant="h6">{reportData.projectsCreated || 0}</Typography>
+                  <Typography variant="h6">{reportData.projects || 0}</Typography>
                 </Grid>
                 <Grid item xs={6} sm={3}>
                   <Typography variant="body2">Payments Made</Typography>
@@ -495,7 +507,7 @@ const AccountantDashboard = () => {
                 </Grid>
                 <Grid item xs={6} sm={3}>
                   <Typography variant="body2">Total Released</Typography>
-                  <Typography variant="h6">ZMW {reportData.totalAmountReleased?.toFixed(2) || '0.00'}</Typography>
+                  <Typography variant="h6">ZMW {reportData.totalReleased?.toFixed(2) || '0.00'}</Typography>
                 </Grid>
               </Grid>
             ) : <Typography>No data</Typography>}
