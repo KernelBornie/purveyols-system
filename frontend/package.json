@@ -6,7 +6,8 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "postinstall": "chmod +x node_modules/.bin/vite || true"
+    "postinstall": "chmod +x node_modules/.bin/vite || true",
+    "preinstall": "chmod +x node_modules/.bin/vite || true"
   },
   "dependencies": {
     "@emotion/react": "^11.11.4",
