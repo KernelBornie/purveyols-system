@@ -2,9 +2,12 @@ import React, { useState, useEffect } from 'react';
 import {
   Box, Typography, Grid, Card, CardContent, Button, Table, TableHead, TableRow, TableCell, TableBody,
   Chip, Paper, TextField, Dialog, DialogTitle, DialogContent, DialogActions,
-  CircularProgress, Alert
+  CircularProgress, Alert, IconButton
 } from '@mui/material';
 import RefreshIcon from '@mui/icons-material/Refresh';
+import AttachFileIcon from '@mui/icons-material/AttachFile';
+import ImageIcon from '@mui/icons-material/Image';
+import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 import api from '../../api/axios';
 
 const DriverDashboard = () => {
@@ -12,52 +15,67 @@ const DriverDashboard = () => {
   const [logbooks, setLogbooks] = useState([]);
   const [stats, setStats] = useState({ total: 0, completed: 0, inProgress: 0 });
   const [openModal, setOpenModal] = useState(false);
-  const [form, setForm] = useState({ vehicle: '', route: '', startTime: '', endTime: '', distance: '', fuelUsed: '', notes: '' });
+  const [form, setForm] = useState({
+    vehicle: '', route: '', startTime: '', endTime: '',
+    distance: '', fuelUsed: '', notes: '', file: null,
+  });
   const [message, setMessage] = useState(null);
 
   const fetchData = async () => {
     setLoading(true);
     try {
       const res = await api.get('/api/logbooks');
-      // Safely extract array from response
       let data = [];
-      if (Array.isArray(res.data)) {
-        data = res.data;
-      } else if (res.data && typeof res.data === 'object' && Array.isArray(res.data.data)) {
-        data = res.data.data;
-      } else if (res.data && typeof res.data === 'object' && Array.isArray(res.data.logbooks)) {
-        data = res.data.logbooks;
-      } else {
-        console.warn('Unexpected response format:', res.data);
-        data = [];
-      }
+      if (Array.isArray(res.data)) data = res.data;
+      else if (res.data?.data && Array.isArray(res.data.data)) data = res.data.data;
+      else data = [];
       setLogbooks(data);
       const total = data.length;
       const completed = data.filter(l => l.status === 'completed').length;
       const inProgress = data.filter(l => l.status === 'in-progress').length;
       setStats({ total, completed, inProgress });
-    } catch (err) {
-      console.error(err);
-      setLogbooks([]);
-    } finally {
-      setLoading(false);
-    }
+    } catch (err) { console.error(err); } finally { setLoading(false); }
   };
 
-  useEffect(() => {
-    fetchData();
-  }, []);
+  useEffect(() => { fetchData(); }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    const formData = new FormData();
+    for (let key in form) {
+      if (key === 'file') {
+        if (form.file) formData.append('file', form.file);
+      } else {
+        formData.append(key, form[key]);
+      }
+    }
     try {
-      await api.post('/api/logbooks', form);
+      await api.post('/api/logbooks', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
       setMessage({ type: 'success', text: 'Logbook submitted' });
       setOpenModal(false);
       fetchData();
     } catch (err) {
       setMessage({ type: 'error', text: err.response?.data?.error || 'Submission failed' });
     }
+  };
+
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file) setForm({ ...form, file });
+  };
+
+  const getFileIcon = (mimeType) => {
+    if (mimeType?.startsWith('image/')) return <ImageIcon />;
+    if (mimeType === 'application/pdf') return <PictureAsPdfIcon />;
+    return <AttachFileIcon />;
+  };
+
+  const viewFile = (logbook) => {
+    if (!logbook.fileData) return;
+    const url = `data:${logbook.fileType};base64,${logbook.fileData}`;
+    window.open(url, '_blank');
   };
 
   return (
@@ -77,9 +95,7 @@ const DriverDashboard = () => {
 
       {message && <Alert severity={message.type} sx={{ mb: 2 }}>{message.text}</Alert>}
 
-      {loading ? (
-        <CircularProgress />
-      ) : (
+      {loading ? <CircularProgress /> : (
         <>
           <Grid container spacing={3} sx={{ mb: 3 }}>
             <Grid item xs={12} sm={4}>
@@ -112,6 +128,7 @@ const DriverDashboard = () => {
                   <TableCell>Distance</TableCell>
                   <TableCell>Fuel Used</TableCell>
                   <TableCell>Status</TableCell>
+                  <TableCell>Attachment</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -122,6 +139,13 @@ const DriverDashboard = () => {
                     <TableCell>{l.distance} km</TableCell>
                     <TableCell>{l.fuelUsed} L</TableCell>
                     <TableCell><Chip label={l.status} color={l.status === 'completed' ? 'success' : 'warning'} /></TableCell>
+                    <TableCell>
+                      {l.fileData ? (
+                        <IconButton size="small" onClick={() => viewFile(l)}>
+                          {getFileIcon(l.fileType)}
+                        </IconButton>
+                      ) : '—'}
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -134,13 +158,45 @@ const DriverDashboard = () => {
         <DialogTitle>New Logbook Entry</DialogTitle>
         <form onSubmit={handleSubmit}>
           <DialogContent>
-            <TextField label="Vehicle" fullWidth margin="normal" value={form.vehicle} onChange={e => setForm({ ...form, vehicle: e.target.value })} required />
-            <TextField label="Route" fullWidth margin="normal" value={form.route} onChange={e => setForm({ ...form, route: e.target.value })} required />
-            <TextField label="Start Time" type="datetime-local" fullWidth margin="normal" value={form.startTime} onChange={e => setForm({ ...form, startTime: e.target.value })} InputLabelProps={{ shrink: true }} />
-            <TextField label="End Time" type="datetime-local" fullWidth margin="normal" value={form.endTime} onChange={e => setForm({ ...form, endTime: e.target.value })} InputLabelProps={{ shrink: true }} />
-            <TextField label="Distance (km)" type="number" fullWidth margin="normal" value={form.distance} onChange={e => setForm({ ...form, distance: e.target.value })} />
-            <TextField label="Fuel Used (L)" type="number" fullWidth margin="normal" value={form.fuelUsed} onChange={e => setForm({ ...form, fuelUsed: e.target.value })} />
-            <TextField label="Notes" fullWidth margin="normal" multiline rows={2} value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} />
+            <TextField
+              label="Vehicle" fullWidth margin="normal"
+              value={form.vehicle} onChange={e => setForm({...form, vehicle: e.target.value})}
+              required
+            />
+            <TextField
+              label="Route" fullWidth margin="normal"
+              value={form.route} onChange={e => setForm({...form, route: e.target.value})}
+              required
+            />
+            <TextField
+              label="Start Time" type="datetime-local" fullWidth margin="normal"
+              value={form.startTime} onChange={e => setForm({...form, startTime: e.target.value})}
+              InputLabelProps={{ shrink: true }}
+            />
+            <TextField
+              label="End Time" type="datetime-local" fullWidth margin="normal"
+              value={form.endTime} onChange={e => setForm({...form, endTime: e.target.value})}
+              InputLabelProps={{ shrink: true }}
+            />
+            <TextField
+              label="Distance (km)" type="number" fullWidth margin="normal"
+              value={form.distance} onChange={e => setForm({...form, distance: e.target.value})}
+            />
+            <TextField
+              label="Fuel Used (L)" type="number" fullWidth margin="normal"
+              value={form.fuelUsed} onChange={e => setForm({...form, fuelUsed: e.target.value})}
+            />
+            <TextField
+              label="Notes" fullWidth margin="normal" multiline rows={2}
+              value={form.notes} onChange={e => setForm({...form, notes: e.target.value})}
+            />
+            <Box sx={{ mt: 2 }}>
+              <Button variant="outlined" component="label">
+                Upload Logbook (Image/PDF)
+                <input type="file" hidden accept="image/*,application/pdf" onChange={handleFileChange} />
+              </Button>
+              {form.file && <Typography variant="caption" sx={{ ml: 2 }}>{form.file.name}</Typography>}
+            </Box>
           </DialogContent>
           <DialogActions>
             <Button onClick={() => setOpenModal(false)}>Cancel</Button>
