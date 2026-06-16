@@ -13,10 +13,10 @@ import api from '../api/axios';
 
 const PaymentModal = ({ open, onClose, worker, onSuccess }) => {
   const [amount, setAmount] = useState('');
-  const [pin, setPin] = useState('');
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState(null);
 
+  // When worker changes, set default amount to pending balance
   useEffect(() => {
     if (worker) {
       const pending = worker.balance || 0;
@@ -34,10 +34,6 @@ const PaymentModal = ({ open, onClose, worker, onSuccess }) => {
   const handlePay = async () => {
     if (!amount || parseFloat(amount) <= 0) {
       setStatus({ type: 'error', message: 'Enter a valid amount' });
-      return;
-    }
-    if (!pin || pin.length < 4) {
-      setStatus({ type: 'error', message: 'Enter a 4-digit PIN' });
       return;
     }
     setLoading(true);
@@ -91,21 +87,16 @@ const PaymentModal = ({ open, onClose, worker, onSuccess }) => {
         <Button variant="outlined" size="small" onClick={handlePayPending} sx={{ mt: 1 }}>
           Pay Pending Balance
         </Button>
-        <TextField
-          label="Airtel Money PIN (simulated)"
-          type="password"
-          fullWidth
-          margin="normal"
-          value={pin}
-          onChange={(e) => setPin(e.target.value)}
-          placeholder="Enter 4-digit PIN"
-          required
-        />
+        <Box sx={{ mt: 2, p: 1, bgcolor: '#e3f2fd', borderRadius: 1 }}>
+          <Typography variant="body2" color="primary">
+            💡 You will be prompted to enter your Airtel Money PIN on your phone to complete the transaction.
+          </Typography>
+        </Box>
         {status && <Alert severity={status.type} sx={{ mt: 2 }}>{status.message}</Alert>}
         <Box sx={{ display: 'flex', gap: 2, mt: 3 }}>
           <Button variant="outlined" onClick={onClose} disabled={loading}>Cancel</Button>
           <Button variant="contained" onClick={handlePay} disabled={loading}>
-            {loading ? 'Sending...' : 'Send Money'}
+            {loading ? 'Processing...' : 'Send Money'}
           </Button>
         </Box>
       </DialogContent>

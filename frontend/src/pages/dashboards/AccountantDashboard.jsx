@@ -30,7 +30,6 @@ const AccountantDashboard = () => {
   const [paymentOpen, setPaymentOpen] = useState(false);
   const [selectedWorker, setSelectedWorker] = useState(null);
   const [payAllOpen, setPayAllOpen] = useState(false);
-  const [payAllPin, setPayAllPin] = useState('');
   const [payAllStatus, setPayAllStatus] = useState(null);
 
   const fetchData = async () => {
@@ -118,10 +117,6 @@ const AccountantDashboard = () => {
   };
 
   const handlePayAllConfirm = async () => {
-    if (!payAllPin || payAllPin.length < 4) {
-      setPayAllStatus({ type: 'error', message: 'Enter a valid 4-digit PIN' });
-      return;
-    }
     setPayAllStatus(null);
     try {
       const paymentsData = pendingWorkers.map(w => ({
@@ -129,10 +124,9 @@ const AccountantDashboard = () => {
         amount: w.balance || 0,
       }));
       await api.post('/api/payments/bulk', { payments: paymentsData });
-      setPayAllStatus({ type: 'success', message: 'All pending payments processed!' });
+      setPayAllStatus({ type: 'success', message: 'All pending payments processed! Check your phone to approve the transactions.' });
       setTimeout(() => {
         setPayAllOpen(false);
-        setPayAllPin('');
         setPayAllStatus(null);
         fetchData();
       }, 1500);
@@ -384,16 +378,11 @@ const AccountantDashboard = () => {
               {w.name}: ZMW {(w.balance || 0).toFixed(2)}
             </Typography>
           ))}
-          <TextField
-            label="Airtel Money PIN (simulated)"
-            type="password"
-            fullWidth
-            margin="normal"
-            value={payAllPin}
-            onChange={(e) => setPayAllPin(e.target.value)}
-            placeholder="Enter 4-digit PIN"
-            required
-          />
+          <Box sx={{ mt: 2, p: 1, bgcolor: '#e3f2fd', borderRadius: 1 }}>
+            <Typography variant="body2" color="primary">
+              💡 You will be prompted to enter your Airtel Money PIN on your phone to approve these transactions.
+            </Typography>
+          </Box>
           {payAllStatus && <Alert severity={payAllStatus.type} sx={{ mt: 2 }}>{payAllStatus.message}</Alert>}
         </DialogContent>
         <DialogActions>
