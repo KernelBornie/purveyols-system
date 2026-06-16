@@ -18,6 +18,7 @@ const WorkerList = () => {
             <TableCell>Name</TableCell>
             <TableCell>NRC</TableCell>
             <TableCell>Site</TableCell>
+            <TableCell>Project</TableCell>
             <TableCell>Rate</TableCell>
             <TableCell>Enrolled By</TableCell>
           </TableRow>
@@ -28,6 +29,7 @@ const WorkerList = () => {
               <TableCell>{w.name}</TableCell>
               <TableCell>{w.nrc}</TableCell>
               <TableCell>{w.site}</TableCell>
+              <TableCell>{w.project?.name || '—'}</TableCell>
               <TableCell>{w.dailyRate}</TableCell>
               <TableCell>{w.enrolledBy ? `${w.enrolledBy.name} (${w.enrolledBy.role})` : 'N/A'}</TableCell>
             </TableRow>

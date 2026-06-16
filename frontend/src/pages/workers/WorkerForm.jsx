@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { TextField, Button, Paper, Typography, Box } from '@mui/material';
+import { TextField, Button, Paper, Typography, Box, MenuItem } from '@mui/material';
 import api from '../../api/axios';
 import { useAuth } from '../../context/AuthContext';
 
@@ -8,10 +8,13 @@ const WorkerForm = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const [form, setForm] = useState({ name: '', nrc: '', phone: '', dailyRate: '', site: '' });
+  const [form, setForm] = useState({ name: '', nrc: '', phone: '', dailyRate: '', site: '', project: '' });
+  const [projects, setProjects] = useState([]);
   const [creator, setCreator] = useState(null);
 
   useEffect(() => {
+    // Fetch projects for dropdown
+    api.get('/api/projects').then(res => setProjects(res.data)).catch(err => console.log(err));
     if (id) {
       api.get(`/api/workers/${id}`).then(res => {
         setForm(res.data);
@@ -33,10 +36,7 @@ const WorkerForm = () => {
 
   return (
     <Paper sx={{ p: 3 }}>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-        <Typography variant="h5">{id ? 'Edit Worker' : 'Enroll Worker'}</Typography>
-        <Button variant="outlined" onClick={() => navigate(-1)}>Back</Button>
-      </Box>
+      <Typography variant="h5">{id ? 'Edit Worker' : 'Enroll Worker'}</Typography>
       {creator && (
         <Box sx={{ mt: 1, mb: 2, p: 1, bgcolor: '#f5f5f5', borderRadius: 1 }}>
           <Typography variant="body2" color="textSecondary">
@@ -50,6 +50,19 @@ const WorkerForm = () => {
         <TextField label="Phone" fullWidth margin="normal" value={form.phone} onChange={e => setForm({...form, phone: e.target.value})} />
         <TextField label="Daily Rate" type="number" fullWidth margin="normal" value={form.dailyRate} onChange={e => setForm({...form, dailyRate: e.target.value})} />
         <TextField label="Site" fullWidth margin="normal" value={form.site} onChange={e => setForm({...form, site: e.target.value})} />
+        <TextField
+          select
+          label="Project"
+          fullWidth
+          margin="normal"
+          value={form.project || ''}
+          onChange={e => setForm({...form, project: e.target.value})}
+        >
+          <MenuItem value="">None</MenuItem>
+          {projects.map(p => (
+            <MenuItem key={p._id} value={p._id}>{p.name}</MenuItem>
+          ))}
+        </TextField>
         <Button type="submit" variant="contained" sx={{ mt: 2 }}>Save</Button>
       </form>
     </Paper>

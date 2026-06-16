@@ -5,6 +5,7 @@ const WorkerSchema = new mongoose.Schema({
   phone: String,
   dailyRate: Number,
   site: String,
+  project: { type: mongoose.Schema.Types.ObjectId, ref: 'Project' }, // NEW
   enrolledBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   enrolledAt: { type: Date, default: Date.now },
   status: { type: String, enum: ['active','inactive'], default: 'active' },
