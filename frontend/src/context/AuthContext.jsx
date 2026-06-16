@@ -11,11 +11,13 @@ export const AuthProvider = ({ children }) => {
     const token = localStorage.getItem('token');
     if (token) {
       api.defaults.headers.common.Authorization = `Bearer ${token}`;
-      api.get('/api/auth/me')
+      api.get('/api/users/profile')
         .then(res => setUser(res.data))
         .catch(() => { localStorage.removeItem('token'); setUser(null); })
         .finally(() => setLoading(false));
-    } else setLoading(false);
+    } else {
+      setLoading(false);
+    }
   }, []);
 
   const login = async (email, password) => {
@@ -33,7 +35,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, logout, setUser }}>
       {children}
     </AuthContext.Provider>
   );

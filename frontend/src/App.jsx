@@ -7,6 +7,7 @@ import ProtectedRoute from './components/ProtectedRoute';
 import Layout from './components/Layout';
 import ChangePassword from './pages/ChangePassword';
 import ForgotPassword from './pages/ForgotPassword';
+import Profile from './pages/Profile';
 import WorkerList from './pages/workers/WorkerList';
 import WorkerForm from './pages/workers/WorkerForm';
 import ProjectList from './pages/projects/ProjectList';
@@ -31,6 +32,7 @@ function App() {
           <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/change-password" element={<ChangePassword />} />
+            <Route path="/profile" element={<Profile />} />
             <Route path="/workers" element={<WorkerList />} />
             <Route path="/workers/new" element={<WorkerForm />} />
             <Route path="/workers/:id" element={<WorkerForm />} />
@@ -54,4 +56,5 @@ function App() {
     </AuthProvider>
   );
 }
+
 export default App;
