@@ -2,7 +2,6 @@ import React from 'react';
 import { Outlet, useNavigate } from 'react-router-dom';
 import { AppBar, Toolbar, Typography, Button, Box, Container, Menu, MenuItem, IconButton } from '@mui/material';
 import AccountCircle from '@mui/icons-material/AccountCircle';
-import Settings from '@mui/icons-material/Settings';
 import { useAuth } from '../context/AuthContext';
 
 const Layout = () => {
@@ -10,13 +9,8 @@ const Layout = () => {
   const navigate = useNavigate();
   const [anchorEl, setAnchorEl] = React.useState(null);
 
-  const handleMenu = (event) => {
-    setAnchorEl(event.currentTarget);
-  };
-
-  const handleClose = () => {
-    setAnchorEl(null);
-  };
+  const handleMenu = (event) => setAnchorEl(event.currentTarget);
+  const handleClose = () => setAnchorEl(null);
 
   const handleLogout = () => {
     logout();
@@ -29,13 +23,8 @@ const Layout = () => {
     handleClose();
   };
 
-  const handleChangePassword = () => {
-    navigate('/change-password');
-    handleClose();
-  };
-
   const handleSettings = () => {
-    alert('Settings – customization coming soon!');
+    navigate('/settings');
     handleClose();
   };
 
@@ -47,22 +36,14 @@ const Layout = () => {
             PURVEYOLS CMS
           </Typography>
           <Box>
+            <Button color="inherit" onClick={() => navigate('/dashboard')}>Dashboard</Button>
+            <Button color="inherit" onClick={() => navigate('/change-password')}>Change Password</Button>
             <IconButton color="inherit" onClick={handleMenu}>
               <AccountCircle />
             </IconButton>
-            <Menu
-              anchorEl={anchorEl}
-              anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-              keepMounted
-              transformOrigin={{ vertical: 'top', horizontal: 'right' }}
-              open={Boolean(anchorEl)}
-              onClose={handleClose}
-            >
+            <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={handleClose}>
               <MenuItem onClick={handleProfile}>Profile</MenuItem>
-              <MenuItem onClick={handleChangePassword}>Change Password</MenuItem>
-              <MenuItem onClick={handleSettings}>
-                <Settings fontSize="small" sx={{ mr: 1 }} /> Settings
-              </MenuItem>
+              <MenuItem onClick={handleSettings}>Settings</MenuItem>
               <MenuItem onClick={handleLogout}>Logout</MenuItem>
             </Menu>
           </Box>

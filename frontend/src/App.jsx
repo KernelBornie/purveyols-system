@@ -8,6 +8,7 @@ import Layout from './components/Layout';
 import ChangePassword from './pages/ChangePassword';
 import ForgotPassword from './pages/ForgotPassword';
 import Profile from './pages/Profile';
+import Settings from './pages/Settings';
 import WorkerList from './pages/workers/WorkerList';
 import WorkerForm from './pages/workers/WorkerForm';
 import ProjectList from './pages/projects/ProjectList';
@@ -33,6 +34,7 @@ function App() {
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/change-password" element={<ChangePassword />} />
             <Route path="/profile" element={<Profile />} />
+            <Route path="/settings" element={<Settings />} />
             <Route path="/workers" element={<WorkerList />} />
             <Route path="/workers/new" element={<WorkerForm />} />
             <Route path="/workers/:id" element={<WorkerForm />} />
@@ -56,5 +58,4 @@ function App() {
     </AuthProvider>
   );
 }
-
 export default App;

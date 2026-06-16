@@ -11,13 +11,11 @@ export const AuthProvider = ({ children }) => {
     const token = localStorage.getItem('token');
     if (token) {
       api.defaults.headers.common.Authorization = `Bearer ${token}`;
-      api.get('/api/users/profile')
+      api.get('/api/users/me')
         .then(res => setUser(res.data))
         .catch(() => { localStorage.removeItem('token'); setUser(null); })
         .finally(() => setLoading(false));
-    } else {
-      setLoading(false);
-    }
+    } else setLoading(false);
   }, []);
 
   const login = async (email, password) => {

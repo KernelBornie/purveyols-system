@@ -1,14 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { Box, Typography, Paper, TextField, Button, Alert, CircularProgress } from '@mui/material';
+import { Paper, Typography, TextField, Button, Box, Alert } from '@mui/material';
 import api from '../api/axios';
 
 const Profile = () => {
   const { user, setUser } = useAuth();
   const [form, setForm] = useState({ name: '', email: '', phone: '', nrc: '' });
+  const [passwordForm, setPasswordForm] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' });
+  const [message, setMessage] = useState(null);
+  const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
 
   useEffect(() => {
     if (user) {
@@ -21,21 +22,15 @@ const Profile = () => {
     }
   }, [user]);
 
-  const handleChange = (e) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
-  };
-
-  const handleSubmit = async (e) => {
+  const handleProfileUpdate = async (e) => {
     e.preventDefault();
     setLoading(true);
-    setError('');
-    setSuccess('');
+    setError(null);
+    setMessage(null);
     try {
       const res = await api.put('/api/users/profile', form);
-      setSuccess('Profile updated successfully!');
-      // Update context user
-      if (setUser) setUser(res.data.user);
-      setForm(res.data.user); // update form with new data
+      setMessage('Profile updated successfully');
+      setUser(res.data.user); // update context
     } catch (err) {
       setError(err.response?.data?.message || 'Update failed');
     } finally {
@@ -43,54 +38,108 @@ const Profile = () => {
     }
   };
 
+  const handlePasswordChange = async (e) => {
+    e.preventDefault();
+    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+      setError('New passwords do not match');
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    setMessage(null);
+    try {
+      await api.post('/api/auth/change-password', {
+        currentPassword: passwordForm.currentPassword,
+        newPassword: passwordForm.newPassword,
+      });
+      setMessage('Password changed successfully');
+      setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
+    } catch (err) {
+      setError(err.response?.data?.message || 'Password change failed');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
-    <Box sx={{ maxWidth: 600, mx: 'auto', mt: 4 }}>
-      <Paper sx={{ p: 4 }}>
-        <Typography variant="h5" gutterBottom>Edit Profile</Typography>
-        {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
-        {success && <Alert severity="success" sx={{ mb: 2 }}>{success}</Alert>}
-        <form onSubmit={handleSubmit}>
+    <Paper sx={{ p: 3, maxWidth: 600, mx: 'auto' }}>
+      <Typography variant="h4" gutterBottom>Edit Profile</Typography>
+      {message && <Alert severity="success" sx={{ mb: 2 }}>{message}</Alert>}
+      {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+
+      <form onSubmit={handleProfileUpdate}>
+        <TextField
+          label="Name"
+          fullWidth
+          margin="normal"
+          value={form.name}
+          onChange={(e) => setForm({ ...form, name: e.target.value })}
+          required
+        />
+        <TextField
+          label="Email"
+          fullWidth
+          margin="normal"
+          value={form.email}
+          onChange={(e) => setForm({ ...form, email: e.target.value })}
+          required
+          type="email"
+        />
+        <TextField
+          label="Phone"
+          fullWidth
+          margin="normal"
+          value={form.phone || ''}
+          onChange={(e) => setForm({ ...form, phone: e.target.value })}
+        />
+        <TextField
+          label="NRC"
+          fullWidth
+          margin="normal"
+          value={form.nrc || ''}
+          onChange={(e) => setForm({ ...form, nrc: e.target.value })}
+        />
+        <Button type="submit" variant="contained" sx={{ mt: 2 }} disabled={loading}>
+          {loading ? 'Saving...' : 'Update Profile'}
+        </Button>
+      </form>
+
+      <Box sx={{ mt: 4 }}>
+        <Typography variant="h6" gutterBottom>Change Password</Typography>
+        <form onSubmit={handlePasswordChange}>
           <TextField
-            label="Name"
-            name="name"
+            label="Current Password"
+            type="password"
             fullWidth
             margin="normal"
-            value={form.name}
-            onChange={handleChange}
+            value={passwordForm.currentPassword}
+            onChange={(e) => setPasswordForm({ ...passwordForm, currentPassword: e.target.value })}
             required
           />
           <TextField
-            label="Email"
-            name="email"
-            type="email"
+            label="New Password"
+            type="password"
             fullWidth
             margin="normal"
-            value={form.email}
-            onChange={handleChange}
+            value={passwordForm.newPassword}
+            onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
             required
           />
           <TextField
-            label="Phone Number"
-            name="phone"
+            label="Confirm New Password"
+            type="password"
             fullWidth
             margin="normal"
-            value={form.phone}
-            onChange={handleChange}
+            value={passwordForm.confirmPassword}
+            onChange={(e) => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })}
+            required
           />
-          <TextField
-            label="Staff NRC"
-            name="nrc"
-            fullWidth
-            margin="normal"
-            value={form.nrc}
-            onChange={handleChange}
-          />
-          <Button type="submit" variant="contained" fullWidth sx={{ mt: 3 }} disabled={loading}>
-            {loading ? <CircularProgress size={24} /> : 'Save Changes'}
+          <Button type="submit" variant="outlined" sx={{ mt: 2 }} disabled={loading}>
+            {loading ? 'Changing...' : 'Change Password'}
           </Button>
         </form>
-      </Paper>
-    </Box>
+      </Box>
+    </Paper>
   );
 };
 

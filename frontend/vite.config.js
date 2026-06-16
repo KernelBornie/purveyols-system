@@ -1,13 +1,20 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
-import { VitePWA } from 'vite-plugin-pwa';
 
-export default defineConfig({
-  plugins: [
-    react(),
+// Conditional PWA import (fallback if not installed)
+let VitePWA;
+try {
+  VitePWA = (await import('vite-plugin-pwa')).VitePWA;
+} catch (_) {
+  VitePWA = null;
+}
+
+const plugins = [react()];
+if (VitePWA) {
+  plugins.push(
     VitePWA({
       registerType: 'autoUpdate',
-      manifest: false, // we use our own manifest
+      manifest: false,
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
         runtimeCaching: [
@@ -16,16 +23,17 @@ export default defineConfig({
             handler: 'NetworkFirst',
             options: {
               cacheName: 'api-cache',
-              expiration: {
-                maxEntries: 50,
-                maxAgeSeconds: 60 * 60, // 1 hour
-              },
+              expiration: { maxEntries: 50, maxAgeSeconds: 3600 },
             },
           },
         ],
       },
-    }),
-  ],
+    })
+  );
+}
+
+export default defineConfig({
+  plugins,
   server: {
     port: 3000,
     proxy: {
