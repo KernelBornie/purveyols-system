@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import {
   Box, Typography, Grid, Card, CardContent, Button, Table, TableHead, TableRow, TableCell, TableBody,
-  Chip, Paper, CircularProgress, Alert, Dialog, DialogTitle, DialogContent, DialogActions
+  Chip, Paper, CircularProgress, Alert, Dialog, DialogTitle, DialogContent, DialogActions,
+  TextField, IconButton
 } from '@mui/material';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
 import RefreshIcon from '@mui/icons-material/Refresh';
@@ -29,7 +30,6 @@ const AccountantDashboard = () => {
   const [paymentOpen, setPaymentOpen] = useState(false);
   const [selectedWorker, setSelectedWorker] = useState(null);
   const [payAllOpen, setPayAllOpen] = useState(false);
-  const [payAllConfirm, setPayAllConfirm] = useState(false);
   const [payAllPin, setPayAllPin] = useState('');
   const [payAllStatus, setPayAllStatus] = useState(null);
 
@@ -106,7 +106,6 @@ const AccountantDashboard = () => {
     fetchData();
   };
 
-  // Pay all workers with pending balance
   const pendingWorkers = workers.filter(w => (w.balance || 0) > 0);
   const totalPending = pendingWorkers.reduce((sum, w) => sum + (w.balance || 0), 0);
 
@@ -374,7 +373,6 @@ const AccountantDashboard = () => {
         />
       )}
 
-      {/* Pay All Dialog */}
       <Dialog open={payAllOpen} onClose={() => setPayAllOpen(false)} maxWidth="sm" fullWidth>
         <DialogTitle>Pay All Pending Workers</DialogTitle>
         <DialogContent>
