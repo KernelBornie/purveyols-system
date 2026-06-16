@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import {
   Dialog, DialogTitle, DialogContent, DialogActions,
-  Button, TextField, Box, Typography, Grid, Card, CardContent, Chip, Alert
+  Button, TextField, Box, Typography, Grid, Card, CardContent, Chip, Alert, IconButton
 } from '@mui/material';
+import ShareIcon from '@mui/icons-material/Share';
 import api from '../api/axios';
 
 const ReportModal = ({ open, onClose }) => {
@@ -26,6 +27,26 @@ const ReportModal = ({ open, onClose }) => {
       setError(err.response?.data?.error || 'Failed to generate report');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleShare = () => {
+    if (!report) return;
+    const text = `📊 Purveyols Report (${startDate} to ${endDate}):
+Workers: ${report.workers || 0}
+Projects: ${report.projects || 0}
+Payments: ${report.payments || 0}
+Total Released: ZMW ${report.totalReleased?.toFixed(2) || '0.00'}
+Pending Funding: ${report.pendingFunding || 0}
+Pending BOQs: ${report.pendingBOQs || 0}`;
+    if (navigator.share) {
+      navigator.share({
+        title: 'Purveyols Report',
+        text: text,
+      }).catch(() => {});
+    } else {
+      // Fallback: copy to clipboard
+      navigator.clipboard?.writeText(text).then(() => alert('Report copied to clipboard!'));
     }
   };
 
@@ -57,7 +78,12 @@ const ReportModal = ({ open, onClose }) => {
         {error && <Alert severity="error" sx={{ mt: 2 }}>{error}</Alert>}
         {report && (
           <Box sx={{ mt: 3 }}>
-            <Typography variant="h6" gutterBottom>Report Summary</Typography>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Typography variant="h6">Report Summary</Typography>
+              <IconButton onClick={handleShare} color="primary">
+                <ShareIcon />
+              </IconButton>
+            </Box>
             <Grid container spacing={2}>
               <Grid item xs={6} sm={3}>
                 <Card><CardContent><Typography variant="body2">Workers</Typography><Typography variant="h6">{report.workers}</Typography></CardContent></Card>

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   IconButton, Badge, Popover, List, ListItem, ListItemText, Typography,
-  Box, Divider, Chip, Button
+  Box, Divider, Chip, Button, CircularProgress
 } from '@mui/material';
 import NotificationsIcon from '@mui/icons-material/Notifications';
 import api from '../api/axios';
@@ -9,20 +9,46 @@ import { Link } from 'react-router-dom';
 
 const NotificationBell = () => {
   const [anchorEl, setAnchorEl] = useState(null);
-  const [pending, setPending] = useState({ total: 0, pendingFunding: 0, pendingBOQs: 0, pendingProcurement: 0 });
+  const [notifications, setNotifications] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(true);
 
-  const fetchPending = async () => {
+  const fetchNotifications = async () => {
+    setLoading(true);
     try {
-      const res = await api.get('/api/reports/accountant/pending-count');
-      setPending(res.data);
+      const res = await api.get('/api/notifications');
+      setNotifications(res.data);
+      const unread = res.data.filter(n => !n.read).length;
+      setUnreadCount(unread);
     } catch (err) { console.error(err); } finally { setLoading(false); }
   };
 
-  useEffect(() => { fetchPending(); const interval = setInterval(fetchPending, 30000); return () => clearInterval(interval); }, []);
+  useEffect(() => {
+    fetchNotifications();
+    const interval = setInterval(fetchNotifications, 30000);
+    return () => clearInterval(interval);
+  }, []);
 
-  const handleClick = (e) => setAnchorEl(e.currentTarget);
+  const handleClick = (e) => {
+    setAnchorEl(e.currentTarget);
+    // Mark all as read when opened? We'll let user click to mark individually.
+  };
+
   const handleClose = () => setAnchorEl(null);
+
+  const handleMarkRead = async (id) => {
+    try {
+      await api.put(`/api/notifications/${id}/read`);
+      fetchNotifications();
+    } catch (err) { console.error(err); }
+  };
+
+  const handleMarkAllRead = async () => {
+    try {
+      await api.put('/api/notifications/read-all');
+      fetchNotifications();
+    } catch (err) { console.error(err); }
+  };
 
   const open = Boolean(anchorEl);
   const id = open ? 'notification-popover' : undefined;
@@ -30,7 +56,7 @@ const NotificationBell = () => {
   return (
     <>
       <IconButton color="inherit" onClick={handleClick}>
-        <Badge badgeContent={pending.total} color="error" max={99}>
+        <Badge badgeContent={unreadCount} color="error" max={99}>
           <NotificationsIcon />
         </Badge>
       </IconButton>
@@ -41,37 +67,44 @@ const NotificationBell = () => {
         onClose={handleClose}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
         transformOrigin={{ vertical: 'top', horizontal: 'right' }}
-        PaperProps={{ sx: { width: 350, maxHeight: 400 } }}
+        PaperProps={{ sx: { width: 380, maxHeight: 450 } }}
       >
         <Box sx={{ p: 2 }}>
-          <Typography variant="h6">Pending Actions</Typography>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Typography variant="h6">Notifications</Typography>
+            {unreadCount > 0 && (
+              <Button size="small" onClick={handleMarkAllRead}>Mark all read</Button>
+            )}
+          </Box>
           <Divider sx={{ my: 1 }} />
           {loading ? (
-            <Typography>Loading...</Typography>
+            <CircularProgress size={24} sx={{ display: 'block', mx: 'auto', my: 2 }} />
+          ) : notifications.length === 0 ? (
+            <Typography color="textSecondary" align="center">No notifications</Typography>
           ) : (
-            <List dense>
-              {pending.pendingFunding > 0 && (
-                <ListItem component={Link} to="/funding">
-                  <ListItemText primary={`${pending.pendingFunding} Funding Requests`} />
-                  <Chip label="Approve" size="small" color="warning" />
+            <List dense sx={{ overflow: 'auto', maxHeight: 350 }}>
+              {notifications.map((n) => (
+                <ListItem
+                  key={n._id}
+                  sx={{
+                    bgcolor: n.read ? 'transparent' : 'action.hover',
+                    borderRadius: 1,
+                    mb: 0.5
+                  }}
+                  component={Link}
+                  to={n.link || '#'}
+                  onClick={() => { if (!n.read) handleMarkRead(n._id); handleClose(); }}
+                >
+                  <ListItemText
+                    primary={n.title}
+                    secondary={n.message}
+                    secondaryTypographyProps={{ variant: 'caption' }}
+                  />
+                  {!n.read && <Chip label="New" size="small" color="primary" />}
                 </ListItem>
-              )}
-              {pending.pendingBOQs > 0 && (
-                <ListItem component={Link} to="/boq">
-                  <ListItemText primary={`${pending.pendingBOQs} BOQs`} />
-                  <Chip label="Review" size="small" color="warning" />
-                </ListItem>
-              )}
-              {pending.pendingProcurement > 0 && (
-                <ListItem component={Link} to="/procurement">
-                  <ListItemText primary={`${pending.pendingProcurement} Procurement Orders`} />
-                  <Chip label="Fund" size="small" color="warning" />
-                </ListItem>
-              )}
-              {pending.total === 0 && <Typography color="textSecondary">All caught up! 🎉</Typography>}
+              ))}
             </List>
           )}
-          <Button size="small" onClick={handleClose} sx={{ mt: 1 }}>Close</Button>
         </Box>
       </Popover>
     </>

@@ -4,8 +4,9 @@ const Payment = require('../models/Payment');
 const Worker = require('../models/Worker');
 const auth = require('../middleware/auth');
 const crypto = require('crypto');
+const { createNotification } = require('../utils/notificationHelper');
+const User = require('../models/User');
 
-// Get all payments
 router.get('/', auth, async (req, res) => {
   try {
     const payments = await Payment.find()
@@ -16,7 +17,6 @@ router.get('/', auth, async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// Create a single payment
 router.post('/', auth, async (req, res) => {
   try {
     const { type, recipientName, recipientPhone, amount, project, worker, subcontract, notes } = req.body;
@@ -36,14 +36,39 @@ router.post('/', auth, async (req, res) => {
       status: 'completed',
     });
     await payment.save();
+    // Notify all accountants and directors
+    const accountants = await User.find({ role: 'accountant' });
+    const directors = await User.find({ role: 'director' });
+    const recipients = [...accountants, ...directors];
+    for (let recipient of recipients) {
+      await createNotification(
+        recipient._id,
+        'payment_made',
+        'Payment Made',
+        `${req.user.name} paid ${recipientName} ZMW ${amount}`,
+        `/payments/${payment._id}`
+      );
+    }
+    // Notify the worker if they have a user account (optional)
+    if (worker) {
+      const workerUser = await User.findOne({ email: recipientPhone }); // simplistic
+      if (workerUser) {
+        await createNotification(
+          workerUser._id,
+          'payment_made',
+          'You Received Payment',
+          `You received ZMW ${amount} from ${req.user.name}`,
+          `/payments/${payment._id}`
+        );
+      }
+    }
     res.status(201).json(payment);
   } catch (err) { res.status(400).json({ error: err.message }); }
 });
 
-// Bulk payment – pay multiple workers at once
 router.post('/bulk', auth, async (req, res) => {
   try {
-    const { payments } = req.body; // array of { workerId, amount }
+    const { payments } = req.body;
     if (!payments || !payments.length) return res.status(400).json({ error: 'No payments provided' });
     const created = [];
     for (let p of payments) {
@@ -69,7 +94,6 @@ router.post('/bulk', auth, async (req, res) => {
   } catch (err) { res.status(400).json({ error: err.message }); }
 });
 
-// Search workers by NRC or phone
 router.get('/workers/search', auth, async (req, res) => {
   try {
     const { q } = req.query;
@@ -80,9 +104,9 @@ router.get('/workers/search', auth, async (req, res) => {
         { phone: { $regex: q, $options: 'i' } }
       ]
     }).populate('enrolledBy', 'name role');
-    // Include balance (we need to compute it)
+    const Attendance = require('../models/Attendance');
     const enriched = await Promise.all(workers.map(async (worker) => {
-      const attendance = await require('../models/Attendance').find({ worker: worker._id });
+      const attendance = await Attendance.find({ worker: worker._id });
       const totalEarned = attendance.reduce((sum, a) => sum + a.rate, 0);
       const payments = await Payment.find({ worker: worker._id, status: 'completed' });
       const totalPaid = payments.reduce((sum, p) => sum + p.amount, 0);
