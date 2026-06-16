@@ -56,7 +56,7 @@ const AccountantDashboard = () => {
         api.get('/api/funding-requests'),
         api.get('/api/procurement'),
         api.get('/api/payments'),
-        api.get(`/api/reports/accountant?period=${period}`)
+        api.get(`/api/reports/accountant/stats?period=${period}`)
       ]);
 
       const workersData = Array.isArray(workersRes.data) ? workersRes.data : [];
@@ -483,15 +483,15 @@ const AccountantDashboard = () => {
               <Grid container spacing={2}>
                 <Grid item xs={6} sm={3}>
                   <Typography variant="body2">Workers Enrolled</Typography>
-                  <Typography variant="h6">{reportData.workersEnrolled}</Typography>
+                  <Typography variant="h6">{reportData.workersEnrolled || 0}</Typography>
                 </Grid>
                 <Grid item xs={6} sm={3}>
                   <Typography variant="body2">Projects Created</Typography>
-                  <Typography variant="h6">{reportData.projectsCreated}</Typography>
+                  <Typography variant="h6">{reportData.projectsCreated || 0}</Typography>
                 </Grid>
                 <Grid item xs={6} sm={3}>
                   <Typography variant="body2">Payments Made</Typography>
-                  <Typography variant="h6">{reportData.payments}</Typography>
+                  <Typography variant="h6">{reportData.payments || 0}</Typography>
                 </Grid>
                 <Grid item xs={6} sm={3}>
                   <Typography variant="body2">Total Released</Typography>
