@@ -9,7 +9,7 @@ const FundingRequestForm = () => {
   const { user } = useAuth();
   const [form, setForm] = useState({ project: '', amount: '', description: '' });
   const [projects, setProjects] = useState([]);
-  const [creator, setCreator] = useState(user);
+  const [creator] = useState(user);
 
   useEffect(() => {
     api.get('/api/projects').then(res => setProjects(res.data));
@@ -25,7 +25,10 @@ const FundingRequestForm = () => {
 
   return (
     <Paper sx={{ p: 3 }}>
-      <Typography variant="h5">Request Direct Funding</Typography>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+        <Typography variant="h5">Request Direct Funding</Typography>
+        <Button variant="outlined" onClick={() => navigate(-1)}>Back</Button>
+      </Box>
       {creator && (
         <Box sx={{ mt: 1, mb: 2, p: 1, bgcolor: '#f5f5f5', borderRadius: 1 }}>
           <Typography variant="body2" color="textSecondary">

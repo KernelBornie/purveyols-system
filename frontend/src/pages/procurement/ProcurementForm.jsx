@@ -30,7 +30,6 @@ const ProcurementForm = () => {
     }
   }, [id, user]);
 
-  // Auto-calculate total for each item whenever quantity or unitPrice changes
   useEffect(() => {
     const itemsWithTotal = form.items.map(item => {
       const qty = parseFloat(item.quantity) || 0;
@@ -79,7 +78,10 @@ const ProcurementForm = () => {
 
   return (
     <Paper sx={{ p: 3 }}>
-      <Typography variant="h5">{id ? 'Edit Order' : 'New Procurement Order (blank amounts)'}</Typography>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+        <Typography variant="h5">{id ? 'Edit Order' : 'New Procurement Order (blank amounts)'}</Typography>
+        <Button variant="outlined" onClick={() => navigate(-1)}>Back</Button>
+      </Box>
       {creator && (
         <Box sx={{ mt: 1, mb: 2, p: 1, bgcolor: '#f5f5f5', borderRadius: 1 }}>
           <Typography variant="body2" color="textSecondary">
@@ -155,5 +157,4 @@ const ProcurementForm = () => {
     </Paper>
   );
 };
-
 export default ProcurementForm;

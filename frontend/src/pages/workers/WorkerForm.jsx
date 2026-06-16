@@ -18,7 +18,6 @@ const WorkerForm = () => {
         setCreator(res.data.enrolledBy);
       });
     } else {
-      // New record – creator is current user
       setCreator(user);
     }
   }, [id, user]);
@@ -34,7 +33,10 @@ const WorkerForm = () => {
 
   return (
     <Paper sx={{ p: 3 }}>
-      <Typography variant="h5">{id ? 'Edit Worker' : 'Enroll Worker'}</Typography>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+        <Typography variant="h5">{id ? 'Edit Worker' : 'Enroll Worker'}</Typography>
+        <Button variant="outlined" onClick={() => navigate(-1)}>Back</Button>
+      </Box>
       {creator && (
         <Box sx={{ mt: 1, mb: 2, p: 1, bgcolor: '#f5f5f5', borderRadius: 1 }}>
           <Typography variant="body2" color="textSecondary">
