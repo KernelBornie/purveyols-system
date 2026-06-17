@@ -2,8 +2,9 @@ const express = require('express');
 const router = express.Router();
 const auth = require('../middleware/auth');
 const { fetchAdvertisedProjects, markProjectAsBidded, getBiddedProjects } = require('../services/advertisedProjectsService');
+const Bid = require('../models/Bid');
 
-// Get advertised projects with optional filters
+// Get advertised projects
 router.get('/', auth, async (req, res) => {
   try {
     const { status, category, search } = req.query;
@@ -21,13 +22,13 @@ router.get('/', auth, async (req, res) => {
   }
 });
 
-// Get bidded projects (history)
+// Get bidded projects from database
 router.get('/bidded', auth, async (req, res) => {
   try {
-    const bidded = await getBiddedProjects();
+    const bids = await Bid.find({ user: req.user.id }).sort({ createdAt: -1 });
     res.json({
-      count: bidded.length,
-      projects: bidded,
+      count: bids.length,
+      projects: bids,
       timestamp: new Date().toISOString(),
     });
   } catch (err) {
@@ -35,16 +36,55 @@ router.get('/bidded', auth, async (req, res) => {
   }
 });
 
-// Mark a project as bidded
+// Mark a project as bidded and save to database
 router.post('/:id/bid', auth, async (req, res) => {
   try {
-    const result = markProjectAsBidded(req.params.id);
-    if (result) {
-      res.json({ message: 'Project marked as bidded', id: req.params.id });
-    } else {
-      res.status(404).json({ error: 'Project not found' });
+    const projectId = req.params.id;
+    
+    // First, get the project data from the service
+    const projects = await fetchAdvertisedProjects({});
+    const project = projects.find(p => p.id === projectId);
+    
+    if (!project) {
+      return res.status(404).json({ error: 'Project not found' });
     }
+    
+    // Check if already bidded
+    const existingBid = await Bid.findOne({ projectId: projectId, user: req.user.id });
+    if (existingBid) {
+      return res.status(400).json({ error: 'Already bidded on this project' });
+    }
+    
+    // Create bid in database
+    const bid = new Bid({
+      projectId: project.id,
+      projectTitle: project.title,
+      client: project.client,
+      location: project.location,
+      budget: project.budget,
+      deadline: project.deadline,
+      source: project.source,
+      sourceUrl: project.sourceUrl,
+      description: project.description,
+      skills: project.skills || [],
+      contactEmail: project.contactEmail,
+      biddingFee: project.biddingFee,
+      user: req.user.id,
+      status: 'bidded',
+      bidDate: new Date(),
+    });
+    await bid.save();
+    
+    // Also mark in service cache
+    markProjectAsBidded(projectId);
+    
+    res.json({ 
+      message: 'Project marked as bidded', 
+      id: projectId,
+      bid: bid 
+    });
   } catch (err) {
+    console.error(err);
     res.status(500).json({ error: err.message });
   }
 });

@@ -35,10 +35,11 @@ const BiddedProjects = () => {
   const fetchBids = async () => {
     setLoading(true);
     try {
-      const res = await api.get('/api/bids');
-      setBids(res.data || []);
+      const res = await api.get('/api/advertised-projects/bidded');
+      setBids(res.data.projects || []);
     } catch (err) {
       console.error(err);
+      setSnackbar({ open: true, message: 'Failed to fetch bids', severity: 'error' });
     } finally {
       setLoading(false);
     }
@@ -97,6 +98,8 @@ const BiddedProjects = () => {
     awarded: '🏆 Awarded', lost: '❌ Lost', withdrawn: 'Withdrawn'
   }[status] || status);
 
+  const handleCloseSnackbar = () => setSnackbar({ ...snackbar, open: false });
+
   return (
     <Box>
       <BackButton />
@@ -111,17 +114,29 @@ const BiddedProjects = () => {
       ) : bids.length === 0 ? (
         <Paper sx={{ p: 4, textAlign: 'center' }}>
           <Typography variant="h6">No bidded projects yet</Typography>
+          <Typography variant="body2" color="textSecondary">Projects you bid on will appear here</Typography>
           <Button variant="contained" onClick={() => navigate('/advertised-projects')} sx={{ mt: 2 }}>View Open Projects</Button>
         </Paper>
       ) : (
         <Grid container spacing={3}>
           {bids.map((bid) => (
-            <Grid item xs={12} md={6} lg={4} key={bid._id}>
-              <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column', borderLeft: `4px solid ${bid.status === 'awarded' ? '#4caf50' : bid.status === 'lost' ? '#f44336' : '#ff9800'}` }}>
+            <Grid item xs={12} md={6} lg={4} key={bid._id || bid.id}>
+              <Card sx={{ 
+                height: '100%', 
+                display: 'flex', 
+                flexDirection: 'column',
+                borderLeft: `4px solid ${bid.status === 'awarded' ? '#4caf50' : bid.status === 'lost' ? '#f44336' : '#ff9800'}`,
+              }}>
                 <CardContent sx={{ flexGrow: 1 }}>
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
-                    <Typography variant="h6" component="div" noWrap title={bid.projectTitle}>{bid.projectTitle}</Typography>
-                    <Chip label={getStatusLabel(bid.status)} size="small" color={getStatusColor(bid.status)} />
+                    <Typography variant="h6" component="div" noWrap title={bid.projectTitle}>
+                      {bid.projectTitle}
+                    </Typography>
+                    <Chip 
+                      label={getStatusLabel(bid.status)} 
+                      size="small" 
+                      color={getStatusColor(bid.status)} 
+                    />
                   </Box>
                   <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 1 }}>
                     <Chip size="small" icon={<BusinessIcon />} label={bid.client} variant="outlined" />
@@ -134,17 +149,21 @@ const BiddedProjects = () => {
                     <Chip size="small" icon={<AttachMoneyIcon />} label={bid.budget} variant="outlined" />
                     <Chip size="small" icon={<CalendarTodayIcon />} label={`Deadline: ${bid.deadline}`} variant="outlined" />
                   </Box>
-                  {bid.bidAmount && <Typography variant="body2"><strong>Bid Amount:</strong> {bid.bidAmount}</Typography>}
-                  {bid.notes && <Typography variant="caption" color="textSecondary" display="block">📝 {bid.notes}</Typography>}
+                  {bid.bidAmount && (
+                    <Typography variant="body2"><strong>Bid Amount:</strong> {bid.bidAmount}</Typography>
+                  )}
+                  {bid.notes && (
+                    <Typography variant="caption" color="textSecondary" display="block">📝 {bid.notes}</Typography>
+                  )}
                   <Typography variant="caption" color="textSecondary" display="block">
-                    Bidded: {new Date(bid.bidDate).toLocaleDateString()}
+                    Bidded: {new Date(bid.bidDate || bid.createdAt).toLocaleDateString()}
                     {bid.followUpDate && ` • Follow-up: ${new Date(bid.followUpDate).toLocaleDateString()}`}
                   </Typography>
                 </CardContent>
                 <CardActions>
                   <Button size="small" startIcon={<EditIcon />} onClick={() => handleEditOpen(bid)}>Edit</Button>
                   <Button size="small" color="error" startIcon={<DeleteIcon />} onClick={() => handleDelete(bid._id)}>Delete</Button>
-                  <Button size="small" href={bid.sourceUrl} target="_blank">Source</Button>
+                  <Button size="small" href={bid.sourceUrl} target="_blank" rel="noopener noreferrer">Source</Button>
                 </CardActions>
               </Card>
             </Grid>
@@ -177,8 +196,15 @@ const BiddedProjects = () => {
         </DialogActions>
       </Dialog>
 
-      <Snackbar open={snackbar.open} autoHideDuration={4000} onClose={() => setSnackbar({ ...snackbar, open: false })} anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}>
-        <Alert onClose={() => setSnackbar({ ...snackbar, open: false })} severity={snackbar.severity} variant="filled">{snackbar.message}</Alert>
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={4000}
+        onClose={handleCloseSnackbar}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert onClose={handleCloseSnackbar} severity={snackbar.severity} variant="filled">
+          {snackbar.message}
+        </Alert>
       </Snackbar>
     </Box>
   );
