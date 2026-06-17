@@ -10,22 +10,25 @@ let lastFetchTime = null;
 const CACHE_DURATION = 15 * 60 * 1000; // 15 minutes
 const BID_TRACKING_DURATION = 7 * 24 * 60 * 60 * 1000; // 7 days
 
-// Real sources for construction projects and tenders
+// REAL sources for construction projects and tenders
 const SOURCES = [
   {
-    name: 'Zambia Public Procurement Authority (ZPPA)',
+    name: 'ZPPA - Zambia Public Procurement Authority',
     url: 'https://www.zppa.org.zm/tenders',
     type: 'web',
+    selector: 'h2, h3, .tender-item, .project-item, .listing-item',
   },
   {
-    name: 'African Development Bank - Procurement',
+    name: 'African Development Bank',
     url: 'https://www.afdb.org/en/projects-and-operations/procurement',
     type: 'web',
+    selector: 'h2, h3, .project-item, .procurement-item',
   },
   {
-    name: 'World Bank - Projects & Operations',
+    name: 'World Bank Projects',
     url: 'https://projects.worldbank.org/en/projects-operations/projects-list',
     type: 'web',
+    selector: 'h2, h3, .project-title, .project-item',
   },
   {
     name: 'Construction News Zambia',
@@ -37,9 +40,21 @@ const SOURCES = [
     url: 'https://zambiatenders.gov.zm/tenders/rss',
     type: 'rss',
   },
+  {
+    name: 'ZESCO Tenders',
+    url: 'https://zesco.co.zm/tenders',
+    type: 'web',
+    selector: 'h2, h3, .tender-item, .project-item',
+  },
+  {
+    name: 'Lusaka City Council Tenders',
+    url: 'https://lcc.gov.zm/tenders',
+    type: 'web',
+    selector: 'h2, h3, .tender-item, .project-item',
+  },
 ];
 
-// High-quality fallback projects (only genuine construction opportunities)
+// Fallback data (only used when real sources fail)
 const FALLBACK_PROJECTS = [
   {
     id: 'FALLBACK-001',
@@ -131,114 +146,17 @@ const FALLBACK_PROJECTS = [
     biddingFee: 'ZMW 4,000',
     isBidded: false,
   },
-  {
-    id: 'FALLBACK-006',
-    title: 'Lusaka Water & Sewerage – Pipeline Upgrade',
-    client: 'LWSC',
-    category: 'Infrastructure',
-    location: 'Lusaka, Zambia',
-    budget: 'ZMW 3,500,000 - 4,500,000',
-    postedDate: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-    deadline: new Date(Date.now() + 40 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-    status: 'open',
-    source: 'LWSC',
-    sourceUrl: 'https://lwsc.com.zm/tenders',
-    description: 'Upgrade of aging water pipelines in Lusaka residential areas.',
-    skills: ['Civil Engineering', 'Pipeline Construction', 'Project Management'],
-    contactEmail: 'procurement@lwsc.co.zm',
-    biddingFee: 'ZMW 5,000',
-    isBidded: false,
-  },
-  {
-    id: 'FALLBACK-007',
-    title: 'University of Zambia – New Library Building',
-    client: 'UNZA',
-    category: 'Educational Construction',
-    location: 'Lusaka, Zambia',
-    budget: 'ZMW 6,500,000 - 8,000,000',
-    postedDate: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-    deadline: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-    status: 'open',
-    source: 'UNZA',
-    sourceUrl: 'https://unza.zm/tenders',
-    description: 'Construction of a new state-of-the-art library building at the University of Zambia.',
-    skills: ['Structural Engineering', 'Architectural Design', 'Project Management'],
-    contactEmail: 'procurement@unza.zm',
-    biddingFee: 'ZMW 7,500',
-    isBidded: false,
-  },
-  {
-    id: 'FALLBACK-008',
-    title: 'Zambia Railways – Track Rehabilitation',
-    client: 'Zambia Railways',
-    category: 'Infrastructure Upgrade',
-    location: 'Copperbelt, Zambia',
-    budget: 'ZMW 4,200,000 - 5,500,000',
-    postedDate: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-    deadline: new Date(Date.now() + 50 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-    status: 'open',
-    source: 'Zambia Railways',
-    sourceUrl: 'https://zr.co.zm/tenders',
-    description: 'Rehabilitation of railway tracks on the Copperbelt line.',
-    skills: ['Civil Engineering', 'Railway Construction', 'Project Management'],
-    contactEmail: 'procurement@zr.co.zm',
-    biddingFee: 'ZMW 6,000',
-    isBidded: false,
-  },
-  {
-    id: 'FALLBACK-009',
-    title: 'National Housing Authority – 100 Unit Housing Project',
-    client: 'NHA Zambia',
-    category: 'Residential Construction',
-    location: 'Lusaka, Zambia',
-    budget: 'ZMW 5,500,000 - 7,000,000',
-    postedDate: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-    deadline: new Date(Date.now() + 55 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-    status: 'open',
-    source: 'NHA',
-    sourceUrl: 'https://nha.co.zm/tenders',
-    description: 'Construction of 100 affordable housing units with supporting infrastructure.',
-    skills: ['Residential Construction', 'Civil Engineering', 'Project Management'],
-    contactEmail: 'procurement@nha.co.zm',
-    biddingFee: 'ZMW 8,000',
-    isBidded: false,
-  },
-  {
-    id: 'FALLBACK-010',
-    title: 'Lusaka City Council – Street Lighting Project',
-    client: 'LCC',
-    category: 'Urban Infrastructure',
-    location: 'Lusaka, Zambia',
-    budget: 'ZMW 2,200,000 - 3,000,000',
-    postedDate: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-    deadline: new Date(Date.now() + 35 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-    status: 'open',
-    source: 'LCC',
-    sourceUrl: 'https://lcc.gov.zm/tenders',
-    description: 'Installation of solar-powered street lights in Lusaka residential areas.',
-    skills: ['Electrical Engineering', 'Solar Energy', 'Urban Planning'],
-    contactEmail: 'procurement@lcc.gov.zm',
-    biddingFee: 'ZMW 3,500',
-    isBidded: false,
-  },
 ];
 
 // Mark a project as bidded
 const markAsBidded = (projectId) => {
-  bidStatus[projectId] = {
-    bidded: true,
-    timestamp: Date.now(),
-  };
-  // Also update in cache if exists
+  bidStatus[projectId] = { bidded: true, timestamp: Date.now() };
   const project = cachedProjects.find(p => p.id === projectId);
-  if (project) {
-    project.isBidded = true;
-  }
+  if (project) project.isBidded = true;
   console.log(`📌 Project marked as bidded: ${projectId}`);
   return true;
 };
 
-// Check if project is bidded
 const isBidded = (projectId) => {
   const status = bidStatus[projectId];
   if (!status) return false;
@@ -249,22 +167,15 @@ const isBidded = (projectId) => {
   return status.bidded;
 };
 
-// Extract clean project data from web sources
-const extractProjectsFromWeb = ($, source) => {
+// Extract project data from web pages
+const extractProjectsFromWeb = ($, source, selector) => {
   const projects = [];
-  // Look for tender/project related content
-  const patterns = [
-    'h2', 'h3', 'h4', '.project', '.tender', '.item', 
-    '.post-title', '.entry-title', '.title', '.listing-title',
-    '.project-title', '.tender-title'
-  ];
+  const elements = $(selector || 'h2, h3, h4, .project, .tender, .item, .post-title, .entry-title, .title');
+  const constructionKeywords = ['construction', 'tender', 'project', 'building', 'renovation', 'upgrade', 'housing', 'infrastructure', 'road', 'bridge', 'school', 'hospital', 'water', 'power', 'solar'];
   
-  const elements = $(patterns.join(', '));
   elements.each((i, el) => {
     const text = $(el).text().trim();
-    // Filter out generic/non-construction content
-    const constructionKeywords = ['construction', 'tender', 'project', 'building', 'renovation', 'upgrade', 'housing', 'infrastructure', 'road', 'bridge', 'school', 'hospital', 'water', 'power', 'solar'];
-    if (text.length > 30 && text.length < 250 && 
+    if (text.length > 30 && text.length < 300 && 
         constructionKeywords.some(kw => text.toLowerCase().includes(kw))) {
       const id = `WEB-${Date.now()}-${i}`;
       projects.push({
@@ -279,7 +190,7 @@ const extractProjectsFromWeb = ($, source) => {
         status: 'open',
         source: source.name,
         sourceUrl: source.url,
-        description: text || 'Please check the source for details.',
+        description: text,
         skills: ['Construction', 'Project Management'],
         contactEmail: 'info@' + source.name.toLowerCase().replace(/ /g, '') + '.com',
         biddingFee: 'ZMW ' + (Math.floor(Math.random() * 5000) + 1000),
@@ -290,7 +201,7 @@ const extractProjectsFromWeb = ($, source) => {
   return projects;
 };
 
-// Fetch from real sources with fallback
+// Fetch from real sources
 const fetchRealProjects = async () => {
   const projects = [];
   const errors = [];
@@ -298,10 +209,10 @@ const fetchRealProjects = async () => {
   for (const source of SOURCES) {
     try {
       if (source.type === 'rss') {
+        console.log(`📡 Fetching RSS: ${source.name}`);
         const feed = await parser.parseURL(source.url);
-        feed.items.slice(0, 10).forEach(item => {
+        feed.items.slice(0, 8).forEach(item => {
           const title = item.title || '';
-          // Filter out non-construction content
           const constructionKeywords = ['construction', 'tender', 'project', 'building', 'renovation', 'upgrade', 'housing', 'infrastructure', 'road', 'bridge'];
           if (constructionKeywords.some(kw => title.toLowerCase().includes(kw))) {
             const id = `RSS-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
@@ -326,52 +237,54 @@ const fetchRealProjects = async () => {
           }
         });
       } else if (source.type === 'web') {
+        console.log(`🌐 Fetching web: ${source.name}`);
         try {
-          const response = await axios.get(source.url, { timeout: 5000 });
+          const response = await axios.get(source.url, { 
+            timeout: 8000,
+            headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' }
+          });
           const $ = cheerio.load(response.data);
-          const extracted = extractProjectsFromWeb($, source);
+          const extracted = extractProjectsFromWeb($, source, source.selector);
           projects.push(...extracted);
+          console.log(`   ✅ Extracted ${extracted.length} projects from ${source.name}`);
         } catch (e) {
           errors.push({ source: source.name, error: e.message });
+          console.log(`   ❌ Failed to fetch ${source.name}: ${e.message}`);
         }
       }
     } catch (err) {
       errors.push({ source: source.name, error: err.message });
+      console.log(`   ❌ Error with ${source.name}: ${err.message}`);
     }
+  }
+
+  // Log results
+  console.log(`📊 Total projects fetched: ${projects.length}`);
+  if (errors.length > 0) {
+    console.log(`⚠️ ${errors.length} sources had errors:`, errors.map(e => e.source).join(', '));
   }
 
   // If no projects were fetched, use fallback
   if (projects.length === 0) {
-    console.log('⚠️ Using fallback data – no real sources fetched.');
-    return FALLBACK_PROJECTS.filter(p => !isBidded(p.id));
+    console.log('⚠️ No real data fetched – using fallback projects.');
+    return FALLBACK_PROJECTS.map(p => ({ ...p, isBidded: isBidded(p.id) }));
   }
 
-  // Remove duplicates based on title
+  // Remove duplicates
   const uniqueProjects = [];
   const seenTitles = new Set();
   for (const p of projects) {
     const key = p.title.substring(0, 30);
     if (!seenTitles.has(key)) {
       seenTitles.add(key);
-      // Check if already bidded
-      p.isBidded = isBidded(p.id);
       uniqueProjects.push(p);
     }
   }
 
-  // Add some fallback projects for variety (only if not bidded)
-  const fallbackCount = Math.min(FALLBACK_PROJECTS.length, 5);
-  for (let i = 0; i < fallbackCount; i++) {
-    const fallback = { ...FALLBACK_PROJECTS[i] };
-    if (!isBidded(fallback.id)) {
-      uniqueProjects.push(fallback);
-    }
-  }
-
-  // Filter out bidded projects and ensure status is open
-  const openProjects = uniqueProjects.filter(p => !p.isBidded && p.status === 'open');
+  // Filter out bidded projects
+  const openProjects = uniqueProjects.filter(p => !isBidded(p.id) && p.status === 'open');
   
-  // Sort by posted date (newest first)
+  console.log(`📌 ${openProjects.length} open projects available`);
   return openProjects.sort((a, b) => new Date(b.postedDate) - new Date(a.postedDate));
 };
 
@@ -379,20 +292,15 @@ const fetchRealProjects = async () => {
 const fetchAdvertisedProjects = async (filters = {}) => {
   const now = Date.now();
   
-  // Check cache
   if (cachedProjects.length > 0 && lastFetchTime && (now - lastFetchTime) < CACHE_DURATION) {
     console.log('📦 Using cached projects data');
     let results = cachedProjects.filter(p => !p.isBidded && p.status === 'open');
     
-    if (filters.status) {
-      results = results.filter(p => p.status === filters.status);
-    }
-    if (filters.category) {
-      results = results.filter(p => p.category.toLowerCase().includes(filters.category.toLowerCase()));
-    }
+    if (filters.status) results = results.filter(p => p.status === filters.status);
+    if (filters.category) results = results.filter(p => p.category.toLowerCase().includes(filters.category.toLowerCase()));
     if (filters.search) {
       const search = filters.search.toLowerCase();
-      results = results.filter(p =>
+      results = results.filter(p => 
         p.title.toLowerCase().includes(search) ||
         p.client.toLowerCase().includes(search) ||
         p.location.toLowerCase().includes(search)
@@ -401,23 +309,18 @@ const fetchAdvertisedProjects = async (filters = {}) => {
     return results;
   }
 
-  console.log('🔄 Fetching fresh data from sources...');
+  console.log('🔄 Fetching fresh data from real sources...');
   try {
     const projects = await fetchRealProjects();
     cachedProjects = projects;
     lastFetchTime = now;
-    console.log(`✅ Fetched ${projects.length} open projects`);
     
     let results = projects.filter(p => !p.isBidded && p.status === 'open');
-    if (filters.status) {
-      results = results.filter(p => p.status === filters.status);
-    }
-    if (filters.category) {
-      results = results.filter(p => p.category.toLowerCase().includes(filters.category.toLowerCase()));
-    }
+    if (filters.status) results = results.filter(p => p.status === filters.status);
+    if (filters.category) results = results.filter(p => p.category.toLowerCase().includes(filters.category.toLowerCase()));
     if (filters.search) {
       const search = filters.search.toLowerCase();
-      results = results.filter(p =>
+      results = results.filter(p => 
         p.title.toLowerCase().includes(search) ||
         p.client.toLowerCase().includes(search) ||
         p.location.toLowerCase().includes(search)
@@ -426,9 +329,7 @@ const fetchAdvertisedProjects = async (filters = {}) => {
     return results;
   } catch (err) {
     console.error('Error fetching projects:', err);
-    if (cachedProjects.length > 0) {
-      return cachedProjects.filter(p => !p.isBidded && p.status === 'open');
-    }
+    if (cachedProjects.length > 0) return cachedProjects.filter(p => !p.isBidded && p.status === 'open');
     return FALLBACK_PROJECTS.filter(p => !p.isBidded && p.status === 'open');
   }
 };
@@ -439,13 +340,6 @@ const markProjectAsBidded = (projectId) => {
   return true;
 };
 
-module.exports = { 
-  fetchAdvertisedProjects, 
-  markProjectAsBidded,
-  isBidded,
-};
-
-// Get all bidded projects (history)
 const getBiddedProjects = async () => {
   const biddedProjects = [];
   const biddedIds = Object.keys(bidStatus);
@@ -453,20 +347,13 @@ const getBiddedProjects = async () => {
   for (const id of biddedIds) {
     const project = cachedProjects.find(p => p.id === id);
     if (project) {
-      biddedProjects.push({
-        ...project,
-        biddedAt: bidStatus[id].timestamp,
-      });
+      biddedProjects.push({ ...project, biddedAt: bidStatus[id].timestamp });
     }
   }
   
-  // Also check fallback projects
   for (const fallback of FALLBACK_PROJECTS) {
     if (isBidded(fallback.id) && !biddedProjects.find(p => p.id === fallback.id)) {
-      biddedProjects.push({
-        ...fallback,
-        biddedAt: bidStatus[fallback.id]?.timestamp || Date.now(),
-      });
+      biddedProjects.push({ ...fallback, biddedAt: bidStatus[fallback.id]?.timestamp || Date.now() });
     }
   }
   
