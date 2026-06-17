@@ -60,3 +60,15 @@ router.get('/unread-count', auth, async (req, res) => {
 });
 
 module.exports = router;
+
+// Delete a message
+router.delete('/:id', auth, async (req, res) => {
+  try {
+    const message = await Message.findOne({ _id: req.params.id, to: req.user.id });
+    if (!message) return res.status(404).json({ error: 'Not found' });
+    await message.deleteOne();
+    res.json({ message: 'Deleted' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});

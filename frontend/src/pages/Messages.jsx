@@ -13,19 +13,18 @@ import api from '../api/axios';
 const Messages = () => {
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [tab, setTab] = useState(0); // 0: Inbox, 1: Sent (we'll add sent later if needed)
   const [selectedMessage, setSelectedMessage] = useState(null);
-  const [openDialog, setOpenDialog] = useState(false);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [tabValue, setTabValue] = useState(0);
+  const navigate = useNavigate();
 
   const fetchMessages = async () => {
     setLoading(true);
-    setError(null);
     try {
       const res = await api.get('/api/messages');
       setMessages(res.data);
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to load messages');
+      console.error(err);
     } finally {
       setLoading(false);
     }
@@ -40,81 +39,88 @@ const Messages = () => {
       await api.put(`/api/messages/${id}/read`);
       fetchMessages();
     } catch (err) {
-      alert('Failed to mark as read');
+      console.error(err);
     }
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm('Delete this message?')) return;
-    try {
-      await api.delete(`/api/messages/${id}`);
-      fetchMessages();
-    } catch (err) {
-      alert('Failed to delete');
+    if (window.confirm('Delete this message?')) {
+      try {
+        await api.delete(`/api/messages/${id}`);
+        fetchMessages();
+      } catch (err) {
+        console.error(err);
+      }
     }
   };
 
-  const handleView = (msg) => {
-    setSelectedMessage(msg);
-    setOpenDialog(true);
-    if (!msg.read) handleMarkRead(msg._id);
+  const handleView = (message) => {
+    setSelectedMessage(message);
+    setDialogOpen(true);
+    if (!message.read) {
+      handleMarkRead(message._id);
+    }
   };
 
-  const unreadCount = messages.filter(m => !m.read).length;
+  const handleCloseDialog = () => {
+    setDialogOpen(false);
+    setSelectedMessage(null);
+  };
+
+  const filteredMessages = tabValue === 0
+    ? messages
+    : messages.filter(m => m.read);
 
   return (
     <Box>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
         <Typography variant="h4">Messages</Typography>
-        <Button startIcon={<RefreshIcon />} onClick={fetchMessages} variant="outlined">
+        <Button variant="contained" startIcon={<RefreshIcon />} onClick={fetchMessages}>
           Refresh
         </Button>
       </Box>
 
-      {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
-
       <Paper sx={{ p: 2 }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
-          <Typography variant="h6">
-            Inbox <Chip label={unreadCount} color={unreadCount > 0 ? 'error' : 'default'} size="small" />
-          </Typography>
-        </Box>
+        <Tabs value={tabValue} onChange={(e, v) => setTabValue(v)} sx={{ mb: 2 }}>
+          <Tab label="All" />
+          <Tab label="Read" />
+        </Tabs>
 
         {loading ? (
-          <CircularProgress />
-        ) : messages.length === 0 ? (
-          <Typography color="textSecondary">No messages</Typography>
+          <CircularProgress sx={{ display: 'block', mx: 'auto', my: 2 }} />
+        ) : filteredMessages.length === 0 ? (
+          <Typography align="center" color="textSecondary" sx={{ py: 4 }}>
+            No messages to display.
+          </Typography>
         ) : (
-          <Table size="small">
+          <Table>
             <TableHead>
               <TableRow>
                 <TableCell>From</TableCell>
                 <TableCell>Subject</TableCell>
-                <TableCell>Message</TableCell>
                 <TableCell>Date</TableCell>
                 <TableCell>Status</TableCell>
                 <TableCell>Actions</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
-              {messages.map((msg) => (
-                <TableRow key={msg._id} sx={{ bgcolor: msg.read ? 'transparent' : 'action.hover' }}>
-                  <TableCell>{msg.from?.name || 'Unknown'}</TableCell>
-                  <TableCell>{msg.subject || '(no subject)'}</TableCell>
-                  <TableCell>{msg.content?.substring(0, 50)}...</TableCell>
-                  <TableCell>{new Date(msg.createdAt).toLocaleString()}</TableCell>
+              {filteredMessages.map((m) => (
+                <TableRow key={m._id} sx={{ bgcolor: m.read ? 'transparent' : 'action.hover' }}>
+                  <TableCell>{m.from?.name || 'Unknown'}</TableCell>
+                  <TableCell>{m.subject || '(no subject)'}</TableCell>
+                  <TableCell>{new Date(m.createdAt).toLocaleString()}</TableCell>
                   <TableCell>
-                    {msg.read ? (
+                    {m.read ? (
                       <Chip label="Read" size="small" color="success" />
                     ) : (
                       <Chip label="Unread" size="small" color="warning" />
                     )}
                   </TableCell>
                   <TableCell>
-                    <IconButton size="small" onClick={() => handleView(msg)}>
+                    <IconButton size="small" onClick={() => handleView(m)}>
                       <MarkAsReadIcon fontSize="small" />
                     </IconButton>
-                    <IconButton size="small" onClick={() => handleDelete(msg._id)}>
+                    <IconButton size="small" onClick={() => handleDelete(m._id)}>
                       <DeleteIcon fontSize="small" />
                     </IconButton>
                   </TableCell>
@@ -125,29 +131,20 @@ const Messages = () => {
         )}
       </Paper>
 
-      <Dialog open={openDialog} onClose={() => setOpenDialog(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Message</DialogTitle>
+      <Dialog open={dialogOpen} onClose={handleCloseDialog} maxWidth="sm" fullWidth>
+        <DialogTitle>{selectedMessage?.subject || 'Message'}</DialogTitle>
         <DialogContent>
-          {selectedMessage && (
-            <>
-              <DialogContentText>
-                <strong>From:</strong> {selectedMessage.from?.name} ({selectedMessage.from?.role})
-              </DialogContentText>
-              <DialogContentText>
-                <strong>Subject:</strong> {selectedMessage.subject || '(no subject)'}
-              </DialogContentText>
-              <DialogContentText>
-                <strong>Date:</strong> {new Date(selectedMessage.createdAt).toLocaleString()}
-              </DialogContentText>
-              <Box sx={{ mt: 2, p: 2, bgcolor: '#f5f5f5', borderRadius: 1 }}>
-                <Typography variant="body2">{selectedMessage.content}</Typography>
-              </Box>
-            </>
-          )}
+          <Typography variant="body2" color="textSecondary" sx={{ mb: 2 }}>
+            From: {selectedMessage?.from?.name || 'Unknown'} ({selectedMessage?.from?.role || 'N/A'})
+          </Typography>
+          <Typography variant="body2" color="textSecondary" sx={{ mb: 2 }}>
+            Date: {selectedMessage?.createdAt ? new Date(selectedMessage.createdAt).toLocaleString() : ''}
+          </Typography>
+          <DialogContentText sx={{ whiteSpace: 'pre-wrap' }}>
+            {selectedMessage?.content}
+          </DialogContentText>
         </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setOpenDialog(false)}>Close</Button>
-        </DialogActions>
+        <Button onClick={handleCloseDialog}>Close</Button>
       </Dialog>
     </Box>
   );
