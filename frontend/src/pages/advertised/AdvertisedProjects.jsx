@@ -3,7 +3,7 @@ import {
   Box, Typography, Paper, Grid, Card, CardContent, CardActions,
   Button, Chip, TextField, InputAdornment, IconButton, CircularProgress,
   Divider, Dialog, DialogTitle, DialogContent, DialogContentText,
-  Link, Tooltip, Avatar
+  DialogActions, Link, Tooltip, Avatar
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import FilterListIcon from '@mui/icons-material/FilterList';
@@ -38,7 +38,6 @@ const AdvertisedProjects = () => {
     } catch (err) {
       console.error(err);
       setError('Failed to fetch advertised projects. Using fallback data.');
-      // Fallback data if API fails
       setProjects([]);
     } finally {
       setLoading(false);
