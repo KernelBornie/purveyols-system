@@ -3,13 +3,12 @@ import { Outlet, useNavigate } from 'react-router-dom';
 import {
   AppBar, Toolbar, Typography, Button, Box, Container, Menu, MenuItem, IconButton, Fab,
   Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions, TextField,
-  Tooltip, Menu as MuiMenu, ListItemIcon, ListItemText, Badge
+  Tooltip, Menu as MuiMenu, ListItemIcon, ListItemText
 } from '@mui/material';
 import AccountCircle from '@mui/icons-material/AccountCircle';
 import MessageIcon from '@mui/icons-material/Message';
 import DescriptionIcon from '@mui/icons-material/Description';
 import FileDownloadIcon from '@mui/icons-material/FileDownload';
-import MailIcon from '@mui/icons-material/Mail';
 import { useAuth } from '../context/AuthContext';
 import NotificationBell from './NotificationBell';
 import ReportModal from './ReportModal';
@@ -24,16 +23,6 @@ const Layout = () => {
   const [reportOpen, setReportOpen] = useState(false);
   const [exportAnchor, setExportAnchor] = useState(null);
   const [exportLoading, setExportLoading] = useState(false);
-  const [unreadMessages, setUnreadMessages] = useState(0);
-
-  // Fetch unread messages count
-  React.useEffect(() => {
-    if (user) {
-      api.get('/api/messages/unread-count')
-        .then(res => setUnreadMessages(res.data.count))
-        .catch(() => {});
-    }
-  }, [user]);
 
   const handleMenu = (event) => setAnchorEl(event.currentTarget);
   const handleClose = () => setAnchorEl(null);
@@ -56,11 +45,6 @@ const Layout = () => {
 
   const handleReports = () => {
     setReportOpen(true);
-    handleClose();
-  };
-
-  const handleMessages = () => {
-    navigate('/messages');
     handleClose();
   };
 
@@ -117,7 +101,7 @@ const Layout = () => {
   const handleMsgClose = () => setMsgOpen(false);
 
   return (
-    <>
+    <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', bgcolor: 'background.default' }}>
       <AppBar position="static">
         <Toolbar>
           <Typography variant="h6" sx={{ flexGrow: 1, cursor: 'pointer' }} onClick={() => navigate('/dashboard')}>
@@ -125,13 +109,6 @@ const Layout = () => {
           </Typography>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
             <NotificationBell />
-            <Tooltip title="Messages">
-              <IconButton color="inherit" onClick={() => navigate('/messages')}>
-                <Badge badgeContent={unreadMessages} color="error" max={99}>
-                  <MailIcon />
-                </Badge>
-              </IconButton>
-            </Tooltip>
             <Button color="inherit" onClick={() => navigate('/dashboard')}>Dashboard</Button>
             <Button color="inherit" onClick={() => navigate('/change-password')}>Change Password</Button>
             <Tooltip title="Export Data">
@@ -159,10 +136,6 @@ const Layout = () => {
             <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={handleClose}>
               <MenuItem onClick={handleProfile}>Profile</MenuItem>
               <MenuItem onClick={handleSettings}>Settings</MenuItem>
-              <MenuItem onClick={handleMessages}>
-                <ListItemIcon><MailIcon fontSize="small" /></ListItemIcon>
-                <ListItemText>Messages</ListItemText>
-              </MenuItem>
               <MenuItem onClick={handleReports}>
                 <ListItemIcon><DescriptionIcon fontSize="small" /></ListItemIcon>
                 <ListItemText>Generate Report</ListItemText>
@@ -172,7 +145,7 @@ const Layout = () => {
           </Box>
         </Toolbar>
       </AppBar>
-      <Container maxWidth="xl" sx={{ mt: 4, mb: 4 }}>
+      <Container maxWidth="xl" sx={{ mt: 4, mb: 4, flex: 1, bgcolor: 'background.default' }}>
         <Outlet />
       </Container>
 
@@ -182,7 +155,7 @@ const Layout = () => {
 
       <MessageDialog open={msgOpen} onClose={handleMsgClose} onSent={() => {}} />
       <ReportModal open={reportOpen} onClose={() => setReportOpen(false)} />
-    </>
+    </Box>
   );
 };
 
