@@ -16,6 +16,7 @@ import NotificationBell from './NotificationBell';
 import ReportModal from './ReportModal';
 import MessageDialog from './MessageDialog';
 import AIAssistant from './AIAssistant';
+import NetworkStatus from './NetworkStatus';
 import api from '../api/axios';
 
 const Layout = () => {
@@ -133,6 +134,7 @@ const Layout = () => {
             PURVEYOLS CMS
           </Typography>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <NetworkStatus />
             <NotificationBell />
             <Button color="inherit" onClick={() => navigate('/dashboard')}>Dashboard</Button>
             <Tooltip title="Advertised Projects & Tenders">
