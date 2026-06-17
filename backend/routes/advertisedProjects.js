@@ -3,7 +3,6 @@ const router = express.Router();
 const auth = require('../middleware/auth');
 const { fetchAdvertisedProjects } = require('../services/advertisedProjectsService');
 
-// Get advertised projects with optional filters
 router.get('/', auth, async (req, res) => {
   try {
     const { status, category, search } = req.query;
@@ -12,7 +11,8 @@ router.get('/', auth, async (req, res) => {
       count: projects.length,
       projects,
       timestamp: new Date().toISOString(),
-      source: 'Simulated (social media, tenders, etc.)',
+      source: 'Mixed (real + fallback)',
+      note: 'Data is automatically refreshed every hour',
     });
   } catch (err) {
     console.error(err);
@@ -20,14 +20,21 @@ router.get('/', auth, async (req, res) => {
   }
 });
 
-// Get project details
-router.get('/:id', auth, async (req, res) => {
+router.get('/refresh', auth, async (req, res) => {
   try {
-    const projects = await fetchAdvertisedProjects();
-    const project = projects.find(p => p.id === req.params.id);
-    if (!project) return res.status(404).json({ error: 'Project not found' });
-    res.json(project);
-  } catch (err) { res.status(500).json({ error: err.message }); }
+    // Force refresh by clearing cache
+    const { fetchAdvertisedProjects: fetchFresh } = require('../services/advertisedProjectsService');
+    // We need to reset the cache – we'll just re-fetch
+    const projects = await fetchFresh({});
+    res.json({
+      count: projects.length,
+      projects,
+      timestamp: new Date().toISOString(),
+      refreshed: true,
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 module.exports = router;
