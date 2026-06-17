@@ -23,6 +23,7 @@ app.use(morgan('dev'));
 
 app.use('/api/test', require('./routes/test'));
 app.use('/api/auth', require('./routes/auth'));
+app.use('/api/bids', require('./routes/bids'));
 app.use('/api/advertised-projects', require('./routes/advertisedProjects'));
 app.use('/api/mobile-money', require('./routes/mobileMoney'));
 app.use('/api/messages', require('./routes/messages'));
