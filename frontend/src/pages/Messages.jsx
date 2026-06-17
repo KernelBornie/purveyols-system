@@ -100,7 +100,15 @@ const Messages = () => {
             </TableHead>
             <TableBody>
               {filteredMessages.map((msg) => (
-                <TableRow key={msg._id} sx={{ bgcolor: msg.read ? 'transparent' : 'action.hover' }}>
+                <TableRow
+                  key={msg._id}
+                  sx={{
+                    bgcolor: msg.read ? 'transparent' : 'action.hover',
+                    cursor: 'pointer',
+                    '&:hover': { bgcolor: 'action.selected' }
+                  }}
+                  onClick={() => handleViewMessage(msg)}
+                >
                   <TableCell>{msg.from?.name || 'Unknown'}</TableCell>
                   <TableCell>{msg.subject || '(no subject)'}</TableCell>
                   <TableCell>{new Date(msg.createdAt).toLocaleDateString()}</TableCell>
@@ -108,10 +116,17 @@ const Messages = () => {
                     {msg.read ? <Chip label="Read" size="small" color="success" /> : <Chip label="Unread" size="small" color="warning" />}
                   </TableCell>
                   <TableCell>
-                    <IconButton size="small" onClick={() => handleViewMessage(msg)}>
+                    <IconButton
+                      size="small"
+                      onClick={(e) => { e.stopPropagation(); handleViewMessage(msg); }}
+                    >
                       <DoneAllIcon fontSize="small" />
                     </IconButton>
-                    <IconButton size="small" color="error" onClick={() => handleDelete(msg._id)}>
+                    <IconButton
+                      size="small"
+                      color="error"
+                      onClick={(e) => { e.stopPropagation(); handleDelete(msg._id); }}
+                    >
                       <DeleteIcon fontSize="small" />
                     </IconButton>
                   </TableCell>
