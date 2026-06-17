@@ -41,12 +41,20 @@ router.post('/:id/bid', auth, async (req, res) => {
   try {
     const projectId = req.params.id;
     
-    // First, get the project data from the service
-    const projects = await fetchAdvertisedProjects({});
+    // Get project data from the service (with fresh fetch)
+    let projects = await fetchAdvertisedProjects({});
+    
+    // Also check fallback projects if not found
+    const { fetchAdvertisedProjects: fetchFresh } = require('../services/advertisedProjectsService');
+    const freshProjects = await fetchFresh({});
+    if (freshProjects && freshProjects.length > 0) {
+      projects = freshProjects;
+    }
+    
     const project = projects.find(p => p.id === projectId);
     
     if (!project) {
-      return res.status(404).json({ error: 'Project not found' });
+      return res.status(404).json({ error: 'Project not found. Please refresh and try again.' });
     }
     
     // Check if already bidded
@@ -79,13 +87,13 @@ router.post('/:id/bid', auth, async (req, res) => {
     markProjectAsBidded(projectId);
     
     res.json({ 
-      message: 'Project marked as bidded', 
+      message: '✅ Project marked as bidded!', 
       id: projectId,
       bid: bid 
     });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: err.message });
+    console.error('Bid error:', err);
+    res.status(500).json({ error: err.message || 'Failed to mark as bidded' });
   }
 });
 

@@ -70,12 +70,19 @@ const AdvertisedProjects = () => {
 
   const handleBid = async (projectId) => {
     try {
-      await api.post(`/api/advertised-projects/${projectId}/bid`);
-      setSnackbar({ open: true, message: '✅ Project marked as bidded! Check the Bidded Projects page.', severity: 'success' });
+      const res = await api.post(`/api/advertised-projects/${projectId}/bid`);
+      setSnackbar({ 
+        open: true, 
+        message: res.data.message || '✅ Project marked as bidded! Check the Bidded Projects page.', 
+        severity: 'success' 
+      });
+      // Remove from list immediately
       setProjects(prev => prev.filter(p => p.id !== projectId));
       setDetailOpen(false);
     } catch (err) {
-      setSnackbar({ open: true, message: '❌ Failed to mark as bidded.', severity: 'error' });
+      console.error('Bid error:', err);
+      const errorMsg = err.response?.data?.error || 'Failed to mark as bidded. Please refresh and try again.';
+      setSnackbar({ open: true, message: '❌ ' + errorMsg, severity: 'error' });
     }
   };
 
@@ -222,8 +229,15 @@ const AdvertisedProjects = () => {
         )}
       </Dialog>
 
-      <Snackbar open={snackbar.open} autoHideDuration={4000} onClose={handleCloseSnackbar} anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}>
-        <Alert onClose={handleCloseSnackbar} severity={snackbar.severity} variant="filled">{snackbar.message}</Alert>
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={6000}
+        onClose={handleCloseSnackbar}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert onClose={handleCloseSnackbar} severity={snackbar.severity} variant="filled">
+          {snackbar.message}
+        </Alert>
       </Snackbar>
     </Box>
   );
