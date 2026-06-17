@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const auth = require('../middleware/auth');
-const { fetchAdvertisedProjects, markProjectAsBidded } = require('../services/advertisedProjectsService');
+const { fetchAdvertisedProjects, markProjectAsBidded, getBiddedProjects } = require('../services/advertisedProjectsService');
 
 // Get advertised projects with optional filters
 router.get('/', auth, async (req, res) => {
@@ -21,7 +21,21 @@ router.get('/', auth, async (req, res) => {
   }
 });
 
-// Mark a project as bidded (so it disappears from feed)
+// Get bidded projects (history)
+router.get('/bidded', auth, async (req, res) => {
+  try {
+    const bidded = await getBiddedProjects();
+    res.json({
+      count: bidded.length,
+      projects: bidded,
+      timestamp: new Date().toISOString(),
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Mark a project as bidded
 router.post('/:id/bid', auth, async (req, res) => {
   try {
     const result = markProjectAsBidded(req.params.id);
@@ -38,7 +52,6 @@ router.post('/:id/bid', auth, async (req, res) => {
 // Force refresh
 router.get('/refresh', auth, async (req, res) => {
   try {
-    // Clear cache to force refresh
     const { fetchAdvertisedProjects: fetchFresh } = require('../services/advertisedProjectsService');
     const projects = await fetchFresh({});
     res.json({

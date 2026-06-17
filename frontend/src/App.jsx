@@ -1,8 +1,8 @@
-import React from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import React, { useEffect } from 'react';
+import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
-import { AuthProvider } from './context/AuthContext';
+import { AuthProvider, useAuth } from './context/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import Layout from './components/Layout';
 import Profile from './pages/Profile';
@@ -22,6 +22,16 @@ import BOQForm from './pages/boq/BOQForm';
 import Messages from './pages/Messages';
 import ForgotPassword from './pages/ForgotPassword';
 import AdvertisedProjects from './pages/advertised/AdvertisedProjects';
+import BiddedProjects from './pages/advertised/BiddedProjects';
+
+const AuthRedirect = () => {
+  const { user, loading } = useAuth();
+  const navigate = useNavigate();
+  useEffect(() => {
+    if (!loading) navigate(user ? '/dashboard' : '/login', { replace: true });
+  }, [user, loading, navigate]);
+  return <div>Loading...</div>;
+};
 
 function App() {
   return (
@@ -30,7 +40,7 @@ function App() {
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
-          <Route path="/" element={<Navigate to="/login" />} />
+          <Route path="/" element={<AuthRedirect />} />
           <Route path="/change-password" element={<Navigate to="/profile" />} />
           <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>
             <Route path="/dashboard" element={<Dashboard />} />
@@ -55,6 +65,7 @@ function App() {
             <Route path="/boq/new" element={<BOQForm />} />
             <Route path="/boq/:id" element={<BOQForm />} />
             <Route path="/advertised-projects" element={<AdvertisedProjects />} />
+            <Route path="/advertised-projects/bidded" element={<BiddedProjects />} />
           </Route>
         </Routes>
       </BrowserRouter>

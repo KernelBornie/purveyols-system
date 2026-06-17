@@ -444,3 +444,38 @@ module.exports = {
   markProjectAsBidded,
   isBidded,
 };
+
+// Get all bidded projects (history)
+const getBiddedProjects = async () => {
+  const biddedProjects = [];
+  const biddedIds = Object.keys(bidStatus);
+  
+  for (const id of biddedIds) {
+    const project = cachedProjects.find(p => p.id === id);
+    if (project) {
+      biddedProjects.push({
+        ...project,
+        biddedAt: bidStatus[id].timestamp,
+      });
+    }
+  }
+  
+  // Also check fallback projects
+  for (const fallback of FALLBACK_PROJECTS) {
+    if (isBidded(fallback.id) && !biddedProjects.find(p => p.id === fallback.id)) {
+      biddedProjects.push({
+        ...fallback,
+        biddedAt: bidStatus[fallback.id]?.timestamp || Date.now(),
+      });
+    }
+  }
+  
+  return biddedProjects.sort((a, b) => (b.biddedAt || 0) - (a.biddedAt || 0));
+};
+
+module.exports = { 
+  fetchAdvertisedProjects, 
+  markProjectAsBidded,
+  isBidded,
+  getBiddedProjects,
+};
