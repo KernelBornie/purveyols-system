@@ -14,6 +14,11 @@ const UserSchema = new mongoose.Schema({
   reportsTo: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   resetPasswordToken: String,
   resetPasswordExpires: Date,
+  settings: {
+    emailNotifications: { type: Boolean, default: true },
+    pushNotifications: { type: Boolean, default: true },
+    darkMode: { type: Boolean, default: false },
+  },
   createdAt: { type: Date, default: Date.now },
 });
 module.exports = mongoose.model('User', UserSchema);
