@@ -10,7 +10,7 @@ let lastFetchTime = null;
 const CACHE_DURATION = 15 * 60 * 1000;
 const BID_TRACKING_DURATION = 7 * 24 * 60 * 60 * 1000;
 
-// ONLY WORKING SOURCES - Verified URLs that actually exist
+// Working sources
 const SOURCES = [
   {
     name: 'African Development Bank - Procurement',
@@ -44,7 +44,7 @@ const SOURCES = [
   },
 ];
 
-// REAL fallback projects with WORKING URLs
+// Fallback projects with REAL working URLs
 const FALLBACK_PROJECTS = [
   {
     id: 'FALLBACK-001',
@@ -118,114 +118,6 @@ const FALLBACK_PROJECTS = [
     biddingFee: 'ZMW 2,000',
     isBidded: false,
   },
-  {
-    id: 'FALLBACK-005',
-    title: 'Google News – Construction Sector Updates',
-    client: 'Various',
-    category: 'Construction',
-    location: 'Zambia',
-    budget: 'ZMW 1,000,000 - 5,000,000',
-    postedDate: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-    deadline: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-    status: 'open',
-    source: 'Google News',
-    sourceUrl: 'https://news.google.com/rss/search?q=construction+projects+zambia&hl=en-US&gl=US&ceid=US:en',
-    description: 'Latest construction news and project updates from Zambia.',
-    skills: ['Construction', 'Project Management'],
-    contactEmail: 'info@constructionnews.co.zm',
-    biddingFee: 'ZMW 1,500',
-    isBidded: false,
-  },
-  {
-    id: 'FALLBACK-006',
-    title: 'Lusaka Housing Development Tender',
-    client: 'Housing Authority',
-    category: 'Housing Construction',
-    location: 'Lusaka, Zambia',
-    budget: 'ZMW 3,500,000 - 6,000,000',
-    postedDate: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-    deadline: new Date(Date.now() + 40 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-    status: 'open',
-    source: 'Housing Authority',
-    sourceUrl: 'https://constructionnews.co.zm',
-    description: 'Affordable housing development project in Lusaka.',
-    skills: ['Residential Construction', 'Civil Engineering', 'Project Management'],
-    contactEmail: 'info@housingauthority.co.zm',
-    biddingFee: 'ZMW 3,500',
-    isBidded: false,
-  },
-  {
-    id: 'FALLBACK-007',
-    title: 'Copperbelt Road Construction Tender',
-    client: 'Road Development Agency',
-    category: 'Road Construction',
-    location: 'Copperbelt, Zambia',
-    budget: 'ZMW 8,000,000 - 12,000,000',
-    postedDate: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-    deadline: new Date(Date.now() + 50 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-    status: 'open',
-    source: 'Road Development Agency',
-    sourceUrl: 'https://constructionnews.co.zm',
-    description: 'Road construction and rehabilitation in the Copperbelt region.',
-    skills: ['Road Construction', 'Civil Engineering', 'Project Management'],
-    contactEmail: 'info@rda.co.zm',
-    biddingFee: 'ZMW 5,000',
-    isBidded: false,
-  },
-  {
-    id: 'FALLBACK-008',
-    title: 'Solar Energy Infrastructure Tender',
-    client: 'Rural Electrification Authority',
-    category: 'Solar Energy',
-    location: 'Zambia',
-    budget: 'ZMW 4,000,000 - 7,000,000',
-    postedDate: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-    deadline: new Date(Date.now() + 45 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-    status: 'open',
-    source: 'Rural Electrification Authority',
-    sourceUrl: 'https://constructionnews.co.zm',
-    description: 'Solar energy infrastructure projects in rural areas.',
-    skills: ['Solar Energy', 'Electrical Engineering', 'Project Management'],
-    contactEmail: 'info@rea.co.zm',
-    biddingFee: 'ZMW 4,000',
-    isBidded: false,
-  },
-  {
-    id: 'FALLBACK-009',
-    title: 'ZPPA – Infrastructure Development Tender',
-    client: 'Zambia Public Procurement Authority',
-    category: 'Public Infrastructure',
-    location: 'Lusaka, Zambia',
-    budget: 'ZMW 5,000,000 - 10,000,000',
-    postedDate: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-    deadline: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-    status: 'open',
-    source: 'ZPPA',
-    sourceUrl: 'https://www.zppa.org.zm',
-    description: 'Infrastructure development and construction projects open for bidding.',
-    skills: ['Civil Engineering', 'Project Management', 'Construction'],
-    contactEmail: 'info@zppa.org.zm',
-    biddingFee: 'ZMW 2,500',
-    isBidded: false,
-  },
-  {
-    id: 'FALLBACK-010',
-    title: 'Lusaka City Council – Urban Development Tender',
-    client: 'Lusaka City Council',
-    category: 'Urban Development',
-    location: 'Lusaka, Zambia',
-    budget: 'ZMW 2,500,000 - 5,000,000',
-    postedDate: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-    deadline: new Date(Date.now() + 25 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-    status: 'open',
-    source: 'LCC',
-    sourceUrl: 'https://www.lcc.gov.zm',
-    description: 'Urban development and infrastructure projects in Lusaka.',
-    skills: ['Urban Planning', 'Civil Engineering', 'Construction'],
-    contactEmail: 'procurement@lcc.gov.zm',
-    biddingFee: 'ZMW 2,000',
-    isBidded: false,
-  },
 ];
 
 const markAsBidded = (projectId) => {
@@ -248,20 +140,31 @@ const isBidded = (projectId) => {
 
 const extractProjectsFromWeb = ($, source) => {
   const projects = [];
-  const elements = $('h2, h3, h4, .project, .post-title, .entry-title, .title, .item, .listing, .news-item');
-  const constructionKeywords = ['construction', 'tender', 'project', 'building', 'renovation', 'upgrade', 'housing', 'infrastructure', 'road', 'bridge', 'school', 'hospital', 'water', 'power', 'solar'];
+  const elements = $('h2, h3, h4, .project, .post-title, .entry-title, .title, .item, .listing, .news-item, article, .headline');
+  const constructionKeywords = ['construction', 'tender', 'project', 'building', 'renovation', 'upgrade', 'housing', 'infrastructure', 'road', 'bridge', 'school', 'hospital', 'water', 'power', 'solar', 'plant', 'refinery', 'energy'];
   
   elements.each((i, el) => {
     const text = $(el).text().trim();
     if (text.length > 30 && text.length < 300 && 
         constructionKeywords.some(kw => text.toLowerCase().includes(kw))) {
       const id = `WEB-${Date.now()}-${i}`;
-      const link = $(el).find('a').attr('href') || $(el).closest('a').attr('href') || '';
-      const fullUrl = link.startsWith('http') ? link : (source.baseUrl || '') + (link.startsWith('/') ? '' : '/') + link;
+      // Get the actual link
+      let link = $(el).find('a').attr('href') || $(el).closest('a').attr('href') || '';
+      // For Google News, the link might be relative or have a redirect
+      if (link.startsWith('./') || link.startsWith('/')) {
+        link = (source.baseUrl || '') + link;
+      }
+      // Clean up Google News URLs - extract the actual article URL
+      if (link.includes('news.google.com') && link.includes('url=')) {
+        const urlMatch = link.match(/url=([^&]+)/);
+        if (urlMatch) {
+          link = decodeURIComponent(urlMatch[1]);
+        }
+      }
       
       projects.push({
         id,
-        title: text.substring(0, 80),
+        title: text.substring(0, 100),
         client: source.name,
         category: 'Construction',
         location: 'Zambia',
@@ -270,7 +173,7 @@ const extractProjectsFromWeb = ($, source) => {
         deadline: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
         status: 'open',
         source: source.name,
-        sourceUrl: fullUrl || source.url,
+        sourceUrl: link || source.url,
         description: text,
         skills: ['Construction', 'Project Management'],
         contactEmail: 'info@' + source.name.toLowerCase().replace(/ /g, '') + '.com',
@@ -291,15 +194,23 @@ const fetchRealProjects = async () => {
         console.log(`📡 Fetching RSS: ${source.name}`);
         try {
           const feed = await parser.parseURL(source.url);
-          feed.items.slice(0, 8).forEach(item => {
+          feed.items.slice(0, 10).forEach(item => {
             const title = item.title || '';
-            const constructionKeywords = ['construction', 'tender', 'project', 'building', 'renovation', 'upgrade', 'housing', 'infrastructure', 'road', 'bridge'];
+            const constructionKeywords = ['construction', 'tender', 'project', 'building', 'renovation', 'upgrade', 'housing', 'infrastructure', 'road', 'bridge', 'plant', 'refinery', 'energy', 'solar'];
             if (constructionKeywords.some(kw => title.toLowerCase().includes(kw))) {
               const id = `RSS-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
-              const link = item.link || source.url;
+              // Get the actual link from the RSS item
+              let link = item.link || source.url;
+              // For Google News, extract the actual article URL
+              if (link && link.includes('news.google.com') && link.includes('url=')) {
+                const urlMatch = link.match(/url=([^&]+)/);
+                if (urlMatch) {
+                  link = decodeURIComponent(urlMatch[1]);
+                }
+              }
               projects.push({
                 id,
-                title: title.substring(0, 100),
+                title: title.substring(0, 120),
                 client: item.creator || source.name,
                 category: 'Construction',
                 location: 'Zambia',
