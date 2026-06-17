@@ -6,6 +6,7 @@ import { ThemeProvider } from './context/ThemeContext';
 import { AuthProvider } from './context/AuthContext';
 import { CssBaseline } from '@mui/material';
 import { initOfflineSync } from './utils/offlineSync';
+import { syncAllData } from './services/dataSyncService';
 
 // Register service worker
 if ('serviceWorker' in navigator) {
@@ -25,12 +26,21 @@ if ('serviceWorker' in navigator) {
   });
 }
 
-// Initialize offline sync (doesn't block rendering)
+// Initialize offline sync
 try {
   initOfflineSync();
 } catch (e) {
   console.log('Offline sync not available:', e);
 }
+
+// Preload data from API into persistent storage
+setTimeout(() => {
+  syncAllData().then(results => {
+    console.log('📦 Data preloaded into persistent storage:', results);
+  }).catch(err => {
+    console.log('Data preload failed:', err);
+  });
+}, 5000);
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
