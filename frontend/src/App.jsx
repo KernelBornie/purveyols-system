@@ -21,6 +21,7 @@ import BOQList from './pages/boq/BOQList';
 import BOQForm from './pages/boq/BOQForm';
 import Messages from './pages/Messages';
 import ForgotPassword from './pages/ForgotPassword';
+import AdvertisedProjects from './pages/advertised/AdvertisedProjects';
 
 function App() {
   return (
@@ -30,7 +31,6 @@ function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/" element={<Navigate to="/login" />} />
-          {/* Redirect /change-password to /profile */}
           <Route path="/change-password" element={<Navigate to="/profile" />} />
           <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>
             <Route path="/dashboard" element={<Dashboard />} />
@@ -54,6 +54,7 @@ function App() {
             <Route path="/boq" element={<BOQList />} />
             <Route path="/boq/new" element={<BOQForm />} />
             <Route path="/boq/:id" element={<BOQForm />} />
+            <Route path="/advertised-projects" element={<AdvertisedProjects />} />
           </Route>
         </Routes>
       </BrowserRouter>

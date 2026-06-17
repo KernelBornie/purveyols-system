@@ -10,10 +10,12 @@ import MessageIcon from '@mui/icons-material/Message';
 import DescriptionIcon from '@mui/icons-material/Description';
 import FileDownloadIcon from '@mui/icons-material/FileDownload';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import ConstructionIcon from '@mui/icons-material/Construction';
 import { useAuth } from '../context/AuthContext';
 import NotificationBell from './NotificationBell';
 import ReportModal from './ReportModal';
 import MessageDialog from './MessageDialog';
+import AIAssistant from './AIAssistant';
 import api from '../api/axios';
 
 const Layout = () => {
@@ -42,6 +44,11 @@ const Layout = () => {
 
   const handleSettings = () => {
     navigate('/settings');
+    handleClose();
+  };
+
+  const handleAdvertisedProjects = () => {
+    navigate('/advertised-projects');
     handleClose();
   };
 
@@ -103,7 +110,6 @@ const Layout = () => {
   const handleMsgClose = () => setMsgOpen(false);
 
   const handleBack = () => {
-    // If on dashboard or login, do nothing; else go back or to dashboard
     if (location.pathname === '/dashboard') return;
     if (window.history.length > 2) {
       navigate(-1);
@@ -112,7 +118,7 @@ const Layout = () => {
     }
   };
 
-  const showBack = location.pathname !== '/dashboard' && location.pathname !== '/login';
+  const showBack = location.pathname !== '/dashboard' && location.pathname !== '/login' && location.pathname !== '/';
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', bgcolor: 'background.default' }}>
@@ -129,6 +135,11 @@ const Layout = () => {
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
             <NotificationBell />
             <Button color="inherit" onClick={() => navigate('/dashboard')}>Dashboard</Button>
+            <Tooltip title="Advertised Projects & Tenders">
+              <IconButton color="inherit" onClick={() => navigate('/advertised-projects')}>
+                <ConstructionIcon />
+              </IconButton>
+            </Tooltip>
             <Tooltip title="Export Data">
               <IconButton color="inherit" onClick={handleExportOpen}>
                 <FileDownloadIcon />
@@ -154,6 +165,10 @@ const Layout = () => {
             <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={handleClose}>
               <MenuItem onClick={handleProfile}>Profile</MenuItem>
               <MenuItem onClick={handleSettings}>Settings</MenuItem>
+              <MenuItem onClick={handleAdvertisedProjects}>
+                <ListItemIcon><ConstructionIcon fontSize="small" /></ListItemIcon>
+                <ListItemText>Advertised Projects</ListItemText>
+              </MenuItem>
               <MenuItem onClick={handleReports}>
                 <ListItemIcon><DescriptionIcon fontSize="small" /></ListItemIcon>
                 <ListItemText>Generate Report</ListItemText>
@@ -170,6 +185,8 @@ const Layout = () => {
       <Fab color="primary" aria-label="message" sx={{ position: 'fixed', bottom: 24, right: 24 }} onClick={handleMsgOpen}>
         <MessageIcon />
       </Fab>
+
+      <AIAssistant />
 
       <MessageDialog open={msgOpen} onClose={handleMsgClose} onSent={() => {}} />
       <ReportModal open={reportOpen} onClose={() => setReportOpen(false)} />
