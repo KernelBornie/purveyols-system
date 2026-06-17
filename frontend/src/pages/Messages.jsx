@@ -2,30 +2,47 @@ import React, { useState, useEffect } from 'react';
 import {
   Box, Typography, Paper, Table, TableHead, TableRow, TableCell, TableBody,
   Chip, IconButton, Dialog, DialogTitle, DialogContent, DialogContentText,
-  Button, Badge, Tabs, Tab, CircularProgress, Alert
+  Button, Badge, Tabs, Tab, CircularProgress, Alert, TextField, Avatar,
+  ListItemIcon, MenuItem, Select, FormControl, InputLabel
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import DoneAllIcon from '@mui/icons-material/DoneAll';
 import DeleteIcon from '@mui/icons-material/Delete';
+import ReplyIcon from '@mui/icons-material/Reply';
+import SendIcon from '@mui/icons-material/Send';
+import PersonIcon from '@mui/icons-material/Person';
 import api from '../api/axios';
 
 const Messages = () => {
   const [messages, setMessages] = useState([]);
+  const [sentMessages, setSentMessages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedMessage, setSelectedMessage] = useState(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [tabValue, setTabValue] = useState(0);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [replyDialogOpen, setReplyDialogOpen] = useState(false);
+  const [replyTo, setReplyTo] = useState(null);
+  const [replySubject, setReplySubject] = useState('');
+  const [replyContent, setReplyContent] = useState('');
+  const [sending, setSending] = useState(false);
+  const [replyError, setReplyError] = useState(null);
+  const [replySuccess, setReplySuccess] = useState(false);
   const navigate = useNavigate();
 
   const fetchMessages = async () => {
     setLoading(true);
     try {
-      const res = await api.get('/api/messages');
-      const sorted = res.data.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-      setMessages(sorted);
-      const unread = sorted.filter(m => !m.read).length;
+      const [inboxRes, sentRes] = await Promise.all([
+        api.get('/api/messages'),
+        api.get('/api/messages/sent')
+      ]);
+      const sortedInbox = inboxRes.data.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+      const sortedSent = sentRes.data.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+      setMessages(sortedInbox);
+      setSentMessages(sortedSent);
+      const unread = sortedInbox.filter(m => !m.read).length;
       setUnreadCount(unread);
     } catch (err) {
       console.error(err);
@@ -61,7 +78,42 @@ const Messages = () => {
     if (!msg.read) handleMarkRead(msg._id);
   };
 
-  const filteredMessages = tabValue === 0 ? messages : messages.filter(m => m.read);
+  const handleReply = (msg) => {
+    setReplyTo(msg);
+    setReplySubject(msg.subject ? `Re: ${msg.subject}` : 'Re: Your message');
+    setReplyContent('');
+    setReplyError(null);
+    setReplySuccess(false);
+    setReplyDialogOpen(true);
+  };
+
+  const handleSendReply = async () => {
+    if (!replyContent.trim()) {
+      setReplyError('Please enter a message');
+      return;
+    }
+    setSending(true);
+    setReplyError(null);
+    try {
+      await api.post('/api/messages', {
+        to: replyTo.from._id,
+        subject: replySubject,
+        content: replyContent
+      });
+      setReplySuccess(true);
+      setTimeout(() => {
+        setReplyDialogOpen(false);
+        setReplySuccess(false);
+        fetchMessages();
+      }, 1500);
+    } catch (err) {
+      setReplyError(err.response?.data?.error || 'Failed to send reply');
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const filteredMessages = tabValue === 0 ? messages : (tabValue === 1 ? messages.filter(m => m.read) : sentMessages);
 
   return (
     <Box>
@@ -79,8 +131,9 @@ const Messages = () => {
 
       <Paper sx={{ p: 2 }}>
         <Tabs value={tabValue} onChange={handleTabChange} sx={{ mb: 2 }}>
-          <Tab label="All Messages" />
+          <Tab label="All Inbox" />
           <Tab label="Read" />
+          <Tab label="Sent" />
         </Tabs>
 
         {loading ? (
@@ -91,7 +144,7 @@ const Messages = () => {
           <Table size="small">
             <TableHead>
               <TableRow>
-                <TableCell>From</TableCell>
+                <TableCell>{tabValue === 2 ? 'To' : 'From'}</TableCell>
                 <TableCell>Subject</TableCell>
                 <TableCell>Date</TableCell>
                 <TableCell>Status</TableCell>
@@ -100,33 +153,29 @@ const Messages = () => {
             </TableHead>
             <TableBody>
               {filteredMessages.map((msg) => (
-                <TableRow
-                  key={msg._id}
-                  sx={{
-                    bgcolor: msg.read ? 'transparent' : 'action.hover',
-                    cursor: 'pointer',
-                    '&:hover': { bgcolor: 'action.selected' }
-                  }}
-                  onClick={() => handleViewMessage(msg)}
-                >
-                  <TableCell>{msg.from?.name || 'Unknown'}</TableCell>
+                <TableRow key={msg._id} sx={{ bgcolor: (!msg.read && tabValue !== 2) ? 'action.hover' : 'transparent' }}>
+                  <TableCell>{tabValue === 2 ? msg.to?.name || 'Unknown' : msg.from?.name || 'Unknown'}</TableCell>
                   <TableCell>{msg.subject || '(no subject)'}</TableCell>
                   <TableCell>{new Date(msg.createdAt).toLocaleDateString()}</TableCell>
                   <TableCell>
-                    {msg.read ? <Chip label="Read" size="small" color="success" /> : <Chip label="Unread" size="small" color="warning" />}
+                    {tabValue === 2 ? (
+                      <Chip label="Sent" size="small" color="info" />
+                    ) : msg.read ? (
+                      <Chip label="Read" size="small" color="success" />
+                    ) : (
+                      <Chip label="Unread" size="small" color="warning" />
+                    )}
                   </TableCell>
                   <TableCell>
-                    <IconButton
-                      size="small"
-                      onClick={(e) => { e.stopPropagation(); handleViewMessage(msg); }}
-                    >
+                    <IconButton size="small" onClick={() => handleViewMessage(msg)}>
                       <DoneAllIcon fontSize="small" />
                     </IconButton>
-                    <IconButton
-                      size="small"
-                      color="error"
-                      onClick={(e) => { e.stopPropagation(); handleDelete(msg._id); }}
-                    >
+                    {tabValue !== 2 && (
+                      <IconButton size="small" color="primary" onClick={() => handleReply(msg)}>
+                        <ReplyIcon fontSize="small" />
+                      </IconButton>
+                    )}
+                    <IconButton size="small" color="error" onClick={() => handleDelete(msg._id)}>
                       <DeleteIcon fontSize="small" />
                     </IconButton>
                   </TableCell>
@@ -137,6 +186,7 @@ const Messages = () => {
         )}
       </Paper>
 
+      {/* View Message Dialog */}
       <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} maxWidth="sm" fullWidth>
         <DialogTitle>{selectedMessage?.subject || 'Message'}</DialogTitle>
         <DialogContent>
@@ -147,8 +197,43 @@ const Messages = () => {
           <Box sx={{ mt: 2, p: 2, bgcolor: '#f5f5f5', borderRadius: 1 }}>
             {selectedMessage?.content}
           </Box>
+          <Box sx={{ mt: 2 }}>
+            <Button variant="outlined" startIcon={<ReplyIcon />} onClick={() => { setDialogOpen(false); handleReply(selectedMessage); }}>
+              Reply
+            </Button>
+          </Box>
         </DialogContent>
         <Button onClick={() => setDialogOpen(false)}>Close</Button>
+      </Dialog>
+
+      {/* Reply Dialog */}
+      <Dialog open={replyDialogOpen} onClose={() => setReplyDialogOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Reply to {replyTo?.from?.name}</DialogTitle>
+        <DialogContent>
+          {replyError && <Alert severity="error" sx={{ mb: 2 }}>{replyError}</Alert>}
+          {replySuccess && <Alert severity="success" sx={{ mb: 2 }}>Reply sent!</Alert>}
+          <TextField
+            label="Subject"
+            fullWidth
+            margin="normal"
+            value={replySubject}
+            onChange={(e) => setReplySubject(e.target.value)}
+          />
+          <TextField
+            label="Message"
+            fullWidth
+            margin="normal"
+            multiline
+            rows={4}
+            value={replyContent}
+            onChange={(e) => setReplyContent(e.target.value)}
+            required
+          />
+        </DialogContent>
+        <Button onClick={() => setReplyDialogOpen(false)} disabled={sending}>Cancel</Button>
+        <Button variant="contained" startIcon={<SendIcon />} onClick={handleSendReply} disabled={sending}>
+          {sending ? 'Sending...' : 'Send Reply'}
+        </Button>
       </Dialog>
     </Box>
   );

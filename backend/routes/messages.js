@@ -5,15 +5,29 @@ const User = require('../models/User');
 const auth = require('../middleware/auth');
 const { createNotification } = require('../utils/notificationHelper');
 
+// Inbox
 router.get('/', auth, async (req, res) => {
   try {
     const messages = await Message.find({ to: req.user.id })
       .populate('from', 'name role')
+      .populate('to', 'name role')
       .sort({ read: 1, createdAt: -1 });
     res.json(messages);
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// Sent messages
+router.get('/sent', auth, async (req, res) => {
+  try {
+    const messages = await Message.find({ from: req.user.id })
+      .populate('from', 'name role')
+      .populate('to', 'name role')
+      .sort({ createdAt: -1 });
+    res.json(messages);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// Send a message
 router.post('/', auth, async (req, res) => {
   try {
     const { to, subject, content } = req.body;
@@ -37,6 +51,7 @@ router.post('/', auth, async (req, res) => {
   } catch (err) { res.status(400).json({ error: err.message }); }
 });
 
+// Mark as read
 router.put('/:id/read', auth, async (req, res) => {
   try {
     const message = await Message.findOne({ _id: req.params.id, to: req.user.id });
@@ -47,15 +62,21 @@ router.put('/:id/read', auth, async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// Delete
 router.delete('/:id', auth, async (req, res) => {
   try {
-    const message = await Message.findOne({ _id: req.params.id, to: req.user.id });
+    const message = await Message.findOne({ _id: req.params.id });
     if (!message) return res.status(404).json({ error: 'Not found' });
+    // Allow delete if user is sender or receiver
+    if (message.from.toString() !== req.user.id && message.to.toString() !== req.user.id) {
+      return res.status(403).json({ error: 'Not authorized' });
+    }
     await Message.findByIdAndDelete(req.params.id);
     res.json({ message: 'Deleted' });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// Unread count
 router.get('/unread-count', auth, async (req, res) => {
   try {
     const count = await Message.countDocuments({ to: req.user.id, read: false });
