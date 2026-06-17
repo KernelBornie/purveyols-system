@@ -8,6 +8,7 @@ import Layout from './components/Layout';
 import ChangePassword from './pages/ChangePassword';
 import ForgotPassword from './pages/ForgotPassword';
 import Profile from './pages/Profile';
+import Messages from './pages/Messages';
 import Settings from './pages/Settings';
 import WorkerList from './pages/workers/WorkerList';
 import WorkerForm from './pages/workers/WorkerForm';
@@ -34,6 +35,7 @@ function App() {
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/change-password" element={<ChangePassword />} />
             <Route path="/profile" element={<Profile />} />
+            <Route path="/messages" element={<Messages />} />
             <Route path="/settings" element={<Settings />} />
             <Route path="/workers" element={<WorkerList />} />
             <Route path="/workers/new" element={<WorkerForm />} />
