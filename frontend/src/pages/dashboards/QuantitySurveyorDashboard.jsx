@@ -1,11 +1,12 @@
-import DashboardActions from '../../components/DashboardActions';
 import React, { useState, useEffect } from 'react';
 import {
   Box, Typography, Grid, Card, CardContent, Button, Table, TableHead, TableRow, TableCell, TableBody,
-  Chip, Paper, CircularProgress
+  Chip, Paper, CircularProgress, IconButton
 } from '@mui/material';
 import { Link } from 'react-router-dom';
 import RefreshIcon from '@mui/icons-material/Refresh';
+import EditIcon from '@mui/icons-material/Edit';
+import VisibilityIcon from '@mui/icons-material/Visibility';
 import api from '../../api/axios';
 
 const QuantitySurveyorDashboard = () => {
@@ -100,7 +101,10 @@ const QuantitySurveyorDashboard = () => {
           </Paper>
 
           <Paper sx={{ p: 2 }}>
-            <Typography variant="h6" gutterBottom>Recent BOQs</Typography>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+              <Typography variant="h6">Recent BOQs</Typography>
+              <Button component={Link} to="/boq" size="small">View All</Button>
+            </Box>
             <Table size="small">
               <TableHead>
                 <TableRow>

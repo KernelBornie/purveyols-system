@@ -1,11 +1,12 @@
-import DashboardActions from '../../components/DashboardActions';
 import React, { useState, useEffect } from 'react';
 import {
   Box, Typography, Grid, Card, CardContent, Button, Table, TableHead, TableRow, TableCell, TableBody,
-  Chip, Paper, CircularProgress
+  Chip, Paper, CircularProgress, IconButton
 } from '@mui/material';
 import { Link } from 'react-router-dom';
 import RefreshIcon from '@mui/icons-material/Refresh';
+import EditIcon from '@mui/icons-material/Edit';
+import VisibilityIcon from '@mui/icons-material/Visibility';
 import api from '../../api/axios';
 
 const EngineerDashboard = () => {
@@ -100,13 +101,17 @@ const EngineerDashboard = () => {
           </Paper>
 
           <Paper sx={{ p: 2 }}>
-            <Typography variant="h6" gutterBottom>My Projects</Typography>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+              <Typography variant="h6">My Projects</Typography>
+              <Button component={Link} to="/projects" size="small">View All</Button>
+            </Box>
             <Table size="small">
               <TableHead>
                 <TableRow>
                   <TableCell>Name</TableCell>
                   <TableCell>Location</TableCell>
                   <TableCell>Status</TableCell>
+                  <TableCell>Actions</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -114,7 +119,27 @@ const EngineerDashboard = () => {
                   <TableRow key={p._id}>
                     <TableCell>{p.name}</TableCell>
                     <TableCell>{p.location}</TableCell>
-                    <TableCell><Chip label={p.status} size="small" /></TableCell>
+                    <TableCell><Chip label={p.status} size="small" color={p.status === 'active' ? 'success' : 'default'} /></TableCell>
+                    <TableCell>
+                      <IconButton
+                        component={Link}
+                        to={`/projects/${p._id}`}
+                        size="small"
+                        color="primary"
+                        title="Edit Project"
+                      >
+                        <EditIcon fontSize="small" />
+                      </IconButton>
+                      <IconButton
+                        component={Link}
+                        to={`/projects/${p._id}`}
+                        size="small"
+                        color="info"
+                        title="View Details"
+                      >
+                        <VisibilityIcon fontSize="small" />
+                      </IconButton>
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>

@@ -1,4 +1,3 @@
-import DashboardActions from '../../components/DashboardActions';
 import React, { useState, useEffect } from 'react';
 import {
   Box, Typography, Grid, Card, CardContent, Button, Table, TableHead, TableRow, TableCell, TableBody,
@@ -84,7 +83,10 @@ const ForemanDashboard = () => {
           </Paper>
 
           <Paper sx={{ p: 2 }}>
-            <Typography variant="h6" gutterBottom>Workers on Site</Typography>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+              <Typography variant="h6">Workers on Site</Typography>
+              <Button component={Link} to="/workers" size="small">View All</Button>
+            </Box>
             <Table size="small">
               <TableHead>
                 <TableRow>
@@ -95,7 +97,7 @@ const ForemanDashboard = () => {
                 </TableRow>
               </TableHead>
               <TableBody>
-                {workers.map(w => (
+                {workers.slice(0, 5).map(w => (
                   <TableRow key={w._id}>
                     <TableCell>{w.name}</TableCell>
                     <TableCell>{w.nrc}</TableCell>
