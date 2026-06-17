@@ -87,7 +87,7 @@ const AccountantDashboard = () => {
       const projectSpending = {};
       paymentsData.forEach(p => {
         if (p.project) {
-          const key = p.project.toString();
+          const key = p.project._id || p.project;
           projectSpending[key] = (projectSpending[key] || 0) + p.amount;
         }
       });
@@ -101,30 +101,32 @@ const AccountantDashboard = () => {
       const workerEarnings = {};
       paymentsData.forEach(p => {
         if (p.worker) {
-          const key = p.worker.toString();
-          workerEarnings[key] = (workerEarnings[key] || 0) + p.amount;
+          // Get worker ID safely
+          const workerId = p.worker._id || p.worker;
+          if (workerId) {
+            workerEarnings[workerId] = (workerEarnings[workerId] || 0) + p.amount;
+          }
         }
       });
 
-      // Approval ratio
       const approvalRatio = [
         { name: 'Pending', value: fundingData.filter(f => f.status === 'pending').length },
         { name: 'Approved', value: fundingData.filter(f => f.status === 'approved').length },
         { name: 'Rejected', value: fundingData.filter(f => f.status === 'rejected').length },
       ].filter(item => item.value > 0);
 
-      // --- FIX: Properly map top workers ---
-      const topWorkers = Object.keys(workerEarnings).map((key) => {
-        const worker = workersData.find(w => w._id === key);
-        return {
-          name: worker ? worker.name : key,
-          amount: workerEarnings[key]
-        };
-      }).sort((a, b) => b.amount - a.amount).slice(0, 5);
+      // Top workers – map worker ID to name
+      const topWorkers = Object.entries(workerEarnings)
+        .map(([key, value]) => {
+          const worker = workersData.find(w => w._id === key);
+          return { name: worker?.name || key, amount: value };
+        })
+        .sort((a, b) => b.amount - a.amount)
+        .slice(0, 5);
 
       setChartData({
         projectSpending: Object.entries(projectSpending).map(([key, value]) => ({
-          name: projectsData.find(p => p._id === key)?.name || key,
+          name: projectsData.find(p => (p._id === key))?.name || key,
           amount: value
         })),
         paymentTrends: Object.entries(paymentTrends).map(([key, value]) => ({ date: key, amount: value })).sort((a, b) => a.date.localeCompare(b.date)),
@@ -227,7 +229,6 @@ const AccountantDashboard = () => {
     approved: fr.status === 'approved' ? fr.amount : 0,
   }));
 
-  // Export CSV
   const exportCSV = () => {
     const headers = ['Name', 'NRC', 'Phone', 'Site', 'Enrolled By', 'Pending'];
     const rows = workers.map(w => [

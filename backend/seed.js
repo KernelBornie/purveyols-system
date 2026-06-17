@@ -4,6 +4,7 @@ const User = require('./models/User');
 const Project = require('./models/Project');
 const Worker = require('./models/Worker');
 const FundingRequest = require('./models/FundingRequest');
+const Payment = require('./models/Payment');
 require('dotenv').config();
 
 const seed = async () => {
@@ -12,6 +13,7 @@ const seed = async () => {
   await Project.deleteMany();
   await Worker.deleteMany();
   await FundingRequest.deleteMany();
+  await Payment.deleteMany();
 
   const hash = await bcrypt.hash('123456', 10);
   const users = await User.insertMany([
@@ -27,9 +29,8 @@ const seed = async () => {
   ]);
 
   const engineer = users[1];
-  const qs = users[2];
+  const accountant = users[3];
 
-  // Create a project
   const project = await Project.create({
     name: 'Demo Housing Project',
     location: 'Lusaka',
@@ -41,38 +42,37 @@ const seed = async () => {
     description: 'Affordable housing units',
   });
 
-  // Enroll workers with unique NRCs
+  // Ensure unique NRCs
   const workers = await Worker.insertMany([
     {
-      name: 'Kenny Brown',
-      nrc: '131213/11/1',
-      phone: '0974674713',
-      dailyRate: 90,
-      site: 'UTH',
-      enrolledBy: qs._id,
+      name: 'John Mwansa',
+      nrc: '123456/78/1',
+      phone: '+260971234567',
+      dailyRate: 150,
+      site: 'Lusaka Site A',
+      enrolledBy: engineer._id,
       status: 'active',
     },
     {
-      name: 'Peter Chanda',
-      nrc: '131313/32/1',
-      phone: '0978654785',
-      dailyRate: 64,
-      site: 'ABSA',
+      name: 'Mary Banda',
+      nrc: '234567/89/2',
+      phone: '+260972345678',
+      dailyRate: 180,
+      site: 'Lusaka Site B',
       enrolledBy: engineer._id,
       status: 'active',
     },
     {
       name: 'Bornface Kangombe',
       nrc: '131213/18/1',
-      phone: '0974674713',
-      dailyRate: 80,
+      phone: '+260974674713',
+      dailyRate: 200,
       site: 'UTH',
       enrolledBy: engineer._id,
       status: 'active',
     },
   ]);
 
-  // Create a funding request
   await FundingRequest.create({
     project: project._id,
     amount: 25000,
