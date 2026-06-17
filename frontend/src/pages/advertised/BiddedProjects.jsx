@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import {
   Box, Typography, Paper, Grid, Card, CardContent, CardActions,
-  Button, Chip, CircularProgress, IconButton, Tooltip, Dialog,
-  DialogTitle, DialogContent, DialogActions, TextField, MenuItem,
+  Button, Chip, CircularProgress,
+  Dialog, DialogTitle, DialogContent, TextField, MenuItem,
   Alert, Snackbar
 } from '@mui/material';
+import DialogActions from '@mui/material/DialogActions';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import BusinessIcon from '@mui/icons-material/Business';
 import LocationOnIcon from '@mui/icons-material/LocationOn';
@@ -39,7 +40,6 @@ const BiddedProjects = () => {
       setBids(res.data.projects || []);
     } catch (err) {
       console.error(err);
-      setSnackbar({ open: true, message: 'Failed to fetch bids', severity: 'error' });
     } finally {
       setLoading(false);
     }

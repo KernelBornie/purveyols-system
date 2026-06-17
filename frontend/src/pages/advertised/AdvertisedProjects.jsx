@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
   Box, Typography, Paper, Grid, Card, CardContent, CardActions,
-  Button, Chip, TextField, InputAdornment, IconButton, CircularProgress,
-  Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions,
-  Link, Tooltip, Avatar, Alert, Snackbar
+  Button, Chip, TextField, InputAdornment, CircularProgress,
+  Dialog, DialogTitle, DialogContent, DialogContentText,
+  Link, Alert, Snackbar
 } from '@mui/material';
+import DialogActions from '@mui/material/DialogActions';
 import SearchIcon from '@mui/icons-material/Search';
 import BusinessIcon from '@mui/icons-material/Business';
 import LocationOnIcon from '@mui/icons-material/LocationOn';
@@ -52,10 +53,7 @@ const AdvertisedProjects = () => {
   useEffect(() => {
     fetchProjects();
     if (autoRefresh) {
-      refreshInterval.current = setInterval(() => {
-        console.log('🔄 Auto-refreshing advertised projects...');
-        fetchProjects();
-      }, 30000);
+      refreshInterval.current = setInterval(fetchProjects, 30000);
     }
     return () => {
       if (refreshInterval.current) clearInterval(refreshInterval.current);
@@ -76,7 +74,6 @@ const AdvertisedProjects = () => {
         message: res.data.message || '✅ Project marked as bidded! Check the Bidded Projects page.', 
         severity: 'success' 
       });
-      // Remove from list immediately
       setProjects(prev => prev.filter(p => p.id !== projectId));
       setDetailOpen(false);
     } catch (err) {
@@ -126,7 +123,6 @@ const AdvertisedProjects = () => {
         </Box>
       </Box>
 
-      {/* Search Bar */}
       <Paper sx={{ p: 2, mb: 3 }}>
         <form onSubmit={handleSearch} style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
           <TextField
@@ -156,7 +152,10 @@ const AdvertisedProjects = () => {
       {loading ? (
         <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}><CircularProgress /></Box>
       ) : error ? (
-        <Paper sx={{ p: 3, textAlign: 'center' }}><Typography color="error">{error}</Typography><Button variant="contained" onClick={fetchProjects} sx={{ mt: 2 }}>Retry</Button></Paper>
+        <Paper sx={{ p: 3, textAlign: 'center' }}>
+          <Typography color="error">{error}</Typography>
+          <Button variant="contained" onClick={fetchProjects} sx={{ mt: 2 }}>Retry</Button>
+        </Paper>
       ) : projects.length === 0 ? (
         <Paper sx={{ p: 3, textAlign: 'center' }}>
           <Typography variant="h6">No open projects available</Typography>
