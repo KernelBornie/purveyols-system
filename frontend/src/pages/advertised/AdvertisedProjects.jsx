@@ -1,18 +1,17 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Box, Typography, Paper, Grid, Card, CardContent, CardActions,
   Button, Chip, TextField, InputAdornment, IconButton, CircularProgress,
-  Divider, Dialog, DialogTitle, DialogContent, DialogContentText,
-  DialogActions, Link, Tooltip, Avatar
+  Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions,
+  Link, Tooltip, Avatar, Alert, Snackbar
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
-import FilterListIcon from '@mui/icons-material/FilterList';
 import BusinessIcon from '@mui/icons-material/Business';
 import LocationOnIcon from '@mui/icons-material/LocationOn';
 import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
-import PublicIcon from '@mui/icons-material/Public';
 import RefreshIcon from '@mui/icons-material/Refresh';
+import GavelIcon from '@mui/icons-material/Gavel';
 import { useNavigate } from 'react-router-dom';
 import api from '../../api/axios';
 import BackButton from '../../components/BackButton';
@@ -25,6 +24,10 @@ const AdvertisedProjects = () => {
   const [selectedProject, setSelectedProject] = useState(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const [error, setError] = useState(null);
+  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
+  const [autoRefresh, setAutoRefresh] = useState(true);
+  const [lastRefresh, setLastRefresh] = useState(null);
+  const refreshInterval = useRef(null);
 
   const fetchProjects = async () => {
     setLoading(true);
@@ -35,22 +38,41 @@ const AdvertisedProjects = () => {
       if (filterStatus !== 'all') params.append('status', filterStatus);
       const res = await api.get(`/api/advertised-projects?${params.toString()}`);
       setProjects(res.data.projects || []);
+      setLastRefresh(new Date());
     } catch (err) {
       console.error(err);
-      setError('Failed to fetch advertised projects. Using fallback data.');
-      setProjects([]);
+      setError('Failed to fetch advertised projects. Please try again.');
     } finally {
       setLoading(false);
     }
   };
 
+  // Auto-refresh every 30 seconds
   useEffect(() => {
     fetchProjects();
+    
+    if (autoRefresh) {
+      refreshInterval.current = setInterval(() => {
+        console.log('🔄 Auto-refreshing advertised projects...');
+        fetchProjects();
+      }, 30000); // Refresh every 30 seconds
+    }
+
+    return () => {
+      if (refreshInterval.current) {
+        clearInterval(refreshInterval.current);
+      }
+    };
   }, []);
 
   const handleSearch = (e) => {
     e.preventDefault();
     fetchProjects();
+  };
+
+  const handleRefresh = () => {
+    fetchProjects();
+    setSnackbar({ open: true, message: 'Projects refreshed!', severity: 'success' });
   };
 
   const handleOpenDetail = (project) => {
@@ -63,24 +85,60 @@ const AdvertisedProjects = () => {
     setSelectedProject(null);
   };
 
+  const handleBid = async (projectId) => {
+    try {
+      await api.post(`/api/advertised-projects/${projectId}/bid`);
+      setSnackbar({ 
+        open: true, 
+        message: '✅ Project marked as bidded! It will disappear from the feed.', 
+        severity: 'success' 
+      });
+      // Remove from list immediately
+      setProjects(prev => prev.filter(p => p.id !== projectId));
+      setDetailOpen(false);
+    } catch (err) {
+      setSnackbar({ 
+        open: true, 
+        message: '❌ Failed to mark as bidded. Please try again.', 
+        severity: 'error' 
+      });
+    }
+  };
+
   const getStatusColor = (status) => {
     if (status === 'open') return 'success';
     if (status === 'closed') return 'error';
     return 'warning';
   };
 
+  const handleCloseSnackbar = () => {
+    setSnackbar({ ...snackbar, open: false });
+  };
+
   return (
     <Box>
       <BackButton />
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2, flexWrap: 'wrap', gap: 2 }}>
-        <Typography variant="h4">🏗️ Advertised Projects & Tenders</Typography>
-        <Button variant="contained" startIcon={<RefreshIcon />} onClick={fetchProjects}>
-          Refresh
-        </Button>
+        <Box>
+          <Typography variant="h4">🏗️ Advertised Projects & Tenders</Typography>
+          <Typography variant="caption" color="textSecondary" display="block">
+            Live feed – updates every 30 seconds • {projects.length} open projects
+            {lastRefresh && ` • Last refresh: ${lastRefresh.toLocaleTimeString()}`}
+          </Typography>
+        </Box>
+        <Box sx={{ display: 'flex', gap: 1 }}>
+          <Button 
+            variant={autoRefresh ? 'contained' : 'outlined'} 
+            onClick={() => setAutoRefresh(!autoRefresh)}
+            size="small"
+          >
+            {autoRefresh ? '🔴 Auto-Refresh On' : '⏸️ Auto-Refresh Off'}
+          </Button>
+          <Button variant="contained" startIcon={<RefreshIcon />} onClick={handleRefresh}>
+            Refresh Now
+          </Button>
+        </Box>
       </Box>
-      <Typography variant="subtitle1" color="textSecondary" gutterBottom>
-        Fresh opportunities from social media, tender portals, and company announcements
-      </Typography>
 
       {/* Search Bar */}
       <Paper sx={{ p: 2, mb: 3 }}>
@@ -127,11 +185,15 @@ const AdvertisedProjects = () => {
       ) : error ? (
         <Paper sx={{ p: 3, textAlign: 'center' }}>
           <Typography color="error">{error}</Typography>
+          <Button variant="contained" onClick={fetchProjects} sx={{ mt: 2 }}>Retry</Button>
         </Paper>
       ) : projects.length === 0 ? (
         <Paper sx={{ p: 3, textAlign: 'center' }}>
-          <Typography variant="h6">No advertised projects found</Typography>
-          <Typography variant="body2" color="textSecondary">Check back later for new opportunities</Typography>
+          <Typography variant="h6">No open projects available</Typography>
+          <Typography variant="body2" color="textSecondary">
+            All projects may have been bidded or closed. Check back later for new opportunities.
+          </Typography>
+          <Button variant="contained" onClick={handleRefresh} sx={{ mt: 2 }}>Refresh</Button>
         </Paper>
       ) : (
         <Grid container spacing={3}>
@@ -165,8 +227,16 @@ const AdvertisedProjects = () => {
                 </CardContent>
                 <CardActions>
                   <Button size="small" onClick={() => handleOpenDetail(project)}>View Details</Button>
+                  <Button 
+                    size="small" 
+                    color="success" 
+                    startIcon={<GavelIcon />}
+                    onClick={() => handleBid(project.id)}
+                  >
+                    Bid Now
+                  </Button>
                   <Button size="small" href={project.sourceUrl} target="_blank" rel="noopener noreferrer">
-                    Source: {project.source}
+                    Source
                   </Button>
                 </CardActions>
               </Card>
@@ -175,7 +245,7 @@ const AdvertisedProjects = () => {
         </Grid>
       )}
 
-      {/* Detail Dialog */}
+      {/* Detail Dialog with Bid button */}
       <Dialog open={detailOpen} onClose={handleCloseDetail} maxWidth="md" fullWidth>
         {selectedProject && (
           <>
@@ -233,13 +303,32 @@ const AdvertisedProjects = () => {
             </DialogContent>
             <DialogActions>
               <Button onClick={handleCloseDetail}>Close</Button>
-              <Button variant="contained" href={selectedProject.sourceUrl} target="_blank">
-                View Original Source
+              <Button 
+                variant="contained" 
+                color="success" 
+                startIcon={<GavelIcon />}
+                onClick={() => handleBid(selectedProject.id)}
+              >
+                Bid Now
+              </Button>
+              <Button variant="outlined" href={selectedProject.sourceUrl} target="_blank">
+                View Original
               </Button>
             </DialogActions>
           </>
         )}
       </Dialog>
+
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={4000}
+        onClose={handleCloseSnackbar}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert onClose={handleCloseSnackbar} severity={snackbar.severity} variant="filled">
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 };
