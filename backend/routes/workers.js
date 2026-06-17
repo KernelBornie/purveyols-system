@@ -25,7 +25,6 @@ router.post('/', auth, async (req, res) => {
     const worker = new Worker({ ...req.body, enrolledBy: req.user.id });
     await worker.save();
     const populated = await Worker.findById(worker._id).populate('enrolledBy', 'name role');
-    // Notify accountant and director (or all admins)
     const User = require('../models/User');
     const accountants = await User.find({ role: 'accountant' });
     const directors = await User.find({ role: 'director' });
@@ -52,8 +51,47 @@ router.put('/:id', auth, async (req, res) => {
 
 router.delete('/:id', auth, async (req, res) => {
   try {
+    const worker = await Worker.findById(req.params.id);
+    if (!worker) return res.status(404).json({ error: 'Worker not found' });
+    // Only director and accountant can delete
+    if (!['director', 'accountant'].includes(req.user.role)) {
+      return res.status(403).json({ error: 'Not authorized to delete workers' });
+    }
     await Worker.findByIdAndDelete(req.params.id);
-    res.json({ message: 'Deleted' });
+    res.json({ message: 'Worker deleted' });
+  } catch (err) { res.status(400).json({ error: err.message }); }
+});
+
+router.put('/:id/activate', auth, async (req, res) => {
+  try {
+    const worker = await Worker.findById(req.params.id);
+    if (!worker) return res.status(404).json({ error: 'Worker not found' });
+    worker.status = 'active';
+    await worker.save();
+    const populated = await Worker.findById(worker._id).populate('enrolledBy', 'name role');
+    res.json(populated);
+  } catch (err) { res.status(400).json({ error: err.message }); }
+});
+
+router.put('/:id/deactivate', auth, async (req, res) => {
+  try {
+    const worker = await Worker.findById(req.params.id);
+    if (!worker) return res.status(404).json({ error: 'Worker not found' });
+    worker.status = 'inactive';
+    await worker.save();
+    const populated = await Worker.findById(worker._id).populate('enrolledBy', 'name role');
+    res.json(populated);
+  } catch (err) { res.status(400).json({ error: err.message }); }
+});
+
+router.put('/:id/suspend', auth, async (req, res) => {
+  try {
+    const worker = await Worker.findById(req.params.id);
+    if (!worker) return res.status(404).json({ error: 'Worker not found' });
+    worker.status = 'suspended';
+    await worker.save();
+    const populated = await Worker.findById(worker._id).populate('enrolledBy', 'name role');
+    res.json(populated);
   } catch (err) { res.status(400).json({ error: err.message }); }
 });
 
