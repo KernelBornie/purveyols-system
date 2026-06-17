@@ -20,7 +20,8 @@
     "react-router-dom": "^6.24.1",
     "recharts": "^2.12.7",
     "@rollup/rollup-linux-x64-gnu": "^4.0.0",
-    "vite-plugin-pwa": "^0.21.0"
+    "vite-plugin-pwa": "^0.21.0",
+    "localforage": "^1.10.0"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.3.1",

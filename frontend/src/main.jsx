@@ -10,20 +10,27 @@ import { initOfflineSync } from './utils/offlineSync';
 // Register service worker
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js')
-      .then((registration) => {
-        console.log('📡 Service Worker registered successfully');
-        // Check for updates
-        registration.update();
-      })
-      .catch((err) => {
-        console.log('📡 Service Worker registration failed:', err);
-      });
+    try {
+      navigator.serviceWorker.register('/sw.js')
+        .then((registration) => {
+          console.log('📡 Service Worker registered successfully');
+          registration.update();
+        })
+        .catch((err) => {
+          console.log('📡 Service Worker registration failed:', err);
+        });
+    } catch (e) {
+      console.log('📡 Service Worker not supported');
+    }
   });
 }
 
-// Initialize offline sync
-initOfflineSync();
+// Initialize offline sync (doesn't block rendering)
+try {
+  initOfflineSync();
+} catch (e) {
+  console.log('Offline sync not available:', e);
+}
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
