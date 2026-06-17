@@ -1,11 +1,14 @@
-import BackButton from '../../components/BackButton';
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { TextField, Button, Paper, Typography, MenuItem, IconButton, Box, Divider } from '@mui/material';
+import {
+  TextField, Button, Paper, Typography, MenuItem, IconButton, Box,
+  Table, TableHead, TableRow, TableCell, TableBody, Chip
+} from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
-import api from '../../api/axios';
 import { useAuth } from '../../context/AuthContext';
+import api from '../../api/axios';
+import BackButton from '../../components/BackButton';
 
 const ProcurementForm = () => {
   const { id } = useParams();
@@ -80,10 +83,7 @@ const ProcurementForm = () => {
   return (
     <Paper sx={{ p: 3 }}>
       <BackButton />
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-        <Typography variant="h5">{id ? 'Edit Order' : 'New Procurement Order (blank amounts)'}</Typography>
-        <Button variant="outlined" onClick={() => navigate(-1)}>Back</Button>
-      </Box>
+      <Typography variant="h5">{id ? 'Edit Order' : 'New Procurement Order (blank amounts)'}</Typography>
       {creator && (
         <Box sx={{ mt: 1, mb: 2, p: 1, bgcolor: '#f5f5f5', borderRadius: 1 }}>
           <Typography variant="body2" color="textSecondary">
@@ -91,6 +91,7 @@ const ProcurementForm = () => {
           </Typography>
         </Box>
       )}
+
       <form onSubmit={handleSubmit}>
         <TextField
           select
@@ -104,59 +105,96 @@ const ProcurementForm = () => {
           {projects.map(p => <MenuItem key={p._id} value={p._id}>{p.name}</MenuItem>)}
         </TextField>
 
-        <Typography variant="subtitle1" sx={{ mt: 2 }}>Items (unitPrice can be left blank initially)</Typography>
-        {form.items.map((item, idx) => (
-          <Box key={idx} sx={{ display: 'flex', gap: 1, mt: 1, alignItems: 'center', flexWrap: 'wrap' }}>
-            <TextField
-              label="Item"
-              value={item.name}
-              onChange={e => handleItemChange(idx, 'name', e.target.value)}
-              required
-              sx={{ minWidth: 120 }}
-            />
-            <TextField
-              label="Qty"
-              type="number"
-              value={item.quantity}
-              onChange={e => handleItemChange(idx, 'quantity', e.target.value)}
-              sx={{ width: 80 }}
-            />
-            <TextField
-              label="Unit Price"
-              type="number"
-              value={item.unitPrice}
-              onChange={e => handleItemChange(idx, 'unitPrice', e.target.value)}
-              placeholder="blank"
-              sx={{ width: 120 }}
-            />
-            <TextField
-              label="Total"
-              type="number"
-              value={item.total}
-              InputProps={{ readOnly: true }}
-              sx={{ width: 120, bgcolor: '#f0f0f0' }}
-            />
-            <TextField
-              label="Supplier"
-              value={item.supplier}
-              onChange={e => handleItemChange(idx, 'supplier', e.target.value)}
-              sx={{ width: 120 }}
-            />
-            <IconButton onClick={() => removeItem(idx)}><DeleteIcon /></IconButton>
-          </Box>
-        ))}
+        <Typography variant="subtitle1" sx={{ mt: 3, mb: 2 }}>Requested Materials/Items</Typography>
 
-        <Box sx={{ mt: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Button startIcon={<AddIcon />} onClick={addItem} variant="outlined">Add Item</Button>
+        {/* Items Table */}
+        <Table size="small" sx={{ mb: 2 }}>
+          <TableHead>
+            <TableRow>
+              <TableCell>Item Name</TableCell>
+              <TableCell>Quantity</TableCell>
+              <TableCell>Unit Price (ZMW)</TableCell>
+              <TableCell>Total</TableCell>
+              <TableCell>Supplier</TableCell>
+              <TableCell>Action</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {form.items.map((item, idx) => (
+              <TableRow key={idx}>
+                <TableCell>
+                  <TextField
+                    size="small"
+                    value={item.name}
+                    onChange={e => handleItemChange(idx, 'name', e.target.value)}
+                    placeholder="e.g., Cement"
+                    fullWidth
+                    required
+                  />
+                </TableCell>
+                <TableCell>
+                  <TextField
+                    size="small"
+                    type="number"
+                    value={item.quantity}
+                    onChange={e => handleItemChange(idx, 'quantity', e.target.value)}
+                    sx={{ width: 80 }}
+                  />
+                </TableCell>
+                <TableCell>
+                  <TextField
+                    size="small"
+                    type="number"
+                    value={item.unitPrice}
+                    onChange={e => handleItemChange(idx, 'unitPrice', e.target.value)}
+                    sx={{ width: 100 }}
+                    placeholder="blank"
+                  />
+                </TableCell>
+                <TableCell>
+                  <TextField
+                    size="small"
+                    type="number"
+                    value={item.total}
+                    InputProps={{ readOnly: true }}
+                    sx={{ width: 100, bgcolor: '#f0f0f0' }}
+                  />
+                </TableCell>
+                <TableCell>
+                  <TextField
+                    size="small"
+                    value={item.supplier}
+                    onChange={e => handleItemChange(idx, 'supplier', e.target.value)}
+                    placeholder="Supplier"
+                    sx={{ width: 120 }}
+                  />
+                </TableCell>
+                <TableCell>
+                  <IconButton size="small" onClick={() => removeItem(idx)} color="error">
+                    <DeleteIcon fontSize="small" />
+                  </IconButton>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 2 }}>
+          <Button startIcon={<AddIcon />} onClick={addItem} variant="outlined" size="small">
+            Add Item
+          </Button>
           <Typography variant="h6">
             Grand Total: <strong>{(grandTotal || 0).toFixed(2)}</strong>
           </Typography>
         </Box>
 
-        <Divider sx={{ my: 2 }} />
-        <Button type="submit" variant="contained" sx={{ mt: 2 }}>Save Order</Button>
+        <Box sx={{ mt: 3, display: 'flex', gap: 2 }}>
+          <Button type="submit" variant="contained">Save Order</Button>
+          <Button variant="outlined" onClick={() => navigate('/procurement')}>Cancel</Button>
+        </Box>
       </form>
     </Paper>
   );
 };
+
 export default ProcurementForm;
