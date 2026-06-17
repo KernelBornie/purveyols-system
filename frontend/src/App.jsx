@@ -5,10 +5,7 @@ import Dashboard from './pages/Dashboard';
 import { AuthProvider } from './context/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import Layout from './components/Layout';
-import ChangePassword from './pages/ChangePassword';
-import ForgotPassword from './pages/ForgotPassword';
 import Profile from './pages/Profile';
-import Messages from './pages/Messages';
 import Settings from './pages/Settings';
 import WorkerList from './pages/workers/WorkerList';
 import WorkerForm from './pages/workers/WorkerForm';
@@ -22,6 +19,8 @@ import SubcontractList from './pages/subcontracts/SubcontractList';
 import SubcontractForm from './pages/subcontracts/SubcontractForm';
 import BOQList from './pages/boq/BOQList';
 import BOQForm from './pages/boq/BOQForm';
+import Messages from './pages/Messages';
+import ForgotPassword from './pages/ForgotPassword';
 
 function App() {
   return (
@@ -31,12 +30,13 @@ function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/" element={<Navigate to="/login" />} />
+          {/* Redirect /change-password to /profile */}
+          <Route path="/change-password" element={<Navigate to="/profile" />} />
           <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>
             <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/change-password" element={<ChangePassword />} />
             <Route path="/profile" element={<Profile />} />
-            <Route path="/messages" element={<Messages />} />
             <Route path="/settings" element={<Settings />} />
+            <Route path="/messages" element={<Messages />} />
             <Route path="/workers" element={<WorkerList />} />
             <Route path="/workers/new" element={<WorkerForm />} />
             <Route path="/workers/:id" element={<WorkerForm />} />

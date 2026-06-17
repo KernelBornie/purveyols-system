@@ -3,10 +3,12 @@ import {
   Paper, Typography, Box, Switch, FormControlLabel, Divider, Button,
   Alert, CircularProgress, Tabs, Tab, Card, CardContent
 } from '@mui/material';
+import { useNavigate } from 'react-router-dom';
 import api from '../api/axios';
 import { useTheme } from '../context/ThemeContext';
 
 const Settings = () => {
+  const navigate = useNavigate();
   const { darkMode, toggleDarkMode } = useTheme();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -78,6 +80,7 @@ const Settings = () => {
         <Tab label="Notifications" />
         <Tab label="Appearance" />
         <Tab label="Data" />
+        <Tab label="Security" />
       </Tabs>
 
       {tabValue === 0 && (
@@ -181,6 +184,22 @@ const Settings = () => {
           </Box>
           <Typography variant="caption" color="textSecondary" sx={{ mt: 2, display: 'block' }}>
             All exports are downloaded as JSON files.
+          </Typography>
+        </Box>
+      )}
+
+      {tabValue === 4 && (
+        <Box>
+          <Typography variant="h6">Security</Typography>
+          <Divider sx={{ my: 2 }} />
+          <Typography variant="body2" color="textSecondary" sx={{ mb: 2 }}>
+            Manage your password and account security.
+          </Typography>
+          <Button variant="contained" onClick={() => navigate('/profile')}>
+            Change Password
+          </Button>
+          <Typography variant="caption" color="textSecondary" sx={{ display: 'block', mt: 1 }}>
+            You will be redirected to your profile page to change your password.
           </Typography>
         </Box>
       )}

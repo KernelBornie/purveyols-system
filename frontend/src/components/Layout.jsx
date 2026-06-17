@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Outlet, useNavigate } from 'react-router-dom';
+import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import {
   AppBar, Toolbar, Typography, Button, Box, Container, Menu, MenuItem, IconButton, Fab,
   Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions, TextField,
@@ -9,6 +9,7 @@ import AccountCircle from '@mui/icons-material/AccountCircle';
 import MessageIcon from '@mui/icons-material/Message';
 import DescriptionIcon from '@mui/icons-material/Description';
 import FileDownloadIcon from '@mui/icons-material/FileDownload';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { useAuth } from '../context/AuthContext';
 import NotificationBell from './NotificationBell';
 import ReportModal from './ReportModal';
@@ -18,6 +19,7 @@ import api from '../api/axios';
 const Layout = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [anchorEl, setAnchorEl] = useState(null);
   const [msgOpen, setMsgOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
@@ -100,17 +102,33 @@ const Layout = () => {
   const handleMsgOpen = () => setMsgOpen(true);
   const handleMsgClose = () => setMsgOpen(false);
 
+  const handleBack = () => {
+    // If on dashboard or login, do nothing; else go back or to dashboard
+    if (location.pathname === '/dashboard') return;
+    if (window.history.length > 2) {
+      navigate(-1);
+    } else {
+      navigate('/dashboard');
+    }
+  };
+
+  const showBack = location.pathname !== '/dashboard' && location.pathname !== '/login';
+
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', bgcolor: 'background.default' }}>
       <AppBar position="static">
         <Toolbar>
+          {showBack && (
+            <IconButton color="inherit" onClick={handleBack} edge="start" sx={{ mr: 1 }}>
+              <ArrowBackIcon />
+            </IconButton>
+          )}
           <Typography variant="h6" sx={{ flexGrow: 1, cursor: 'pointer' }} onClick={() => navigate('/dashboard')}>
             PURVEYOLS CMS
           </Typography>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
             <NotificationBell />
             <Button color="inherit" onClick={() => navigate('/dashboard')}>Dashboard</Button>
-            <Button color="inherit" onClick={() => navigate('/change-password')}>Change Password</Button>
             <Tooltip title="Export Data">
               <IconButton color="inherit" onClick={handleExportOpen}>
                 <FileDownloadIcon />
