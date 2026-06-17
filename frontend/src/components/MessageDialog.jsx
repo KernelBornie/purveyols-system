@@ -7,8 +7,10 @@ import {
 import PersonIcon from '@mui/icons-material/Person';
 import SendIcon from '@mui/icons-material/Send';
 import api from '../api/axios';
+import { useAuth } from '../context/AuthContext';
 
 const MessageDialog = ({ open, onClose, onSent }) => {
+  const { user } = useAuth();
   const [users, setUsers] = useState([]);
   const [to, setTo] = useState('');
   const [subject, setSubject] = useState('');
@@ -19,9 +21,15 @@ const MessageDialog = ({ open, onClose, onSent }) => {
 
   useEffect(() => {
     if (open) {
-      api.get('/api/users').then(res => setUsers(res.data)).catch(() => {});
+      api.get('/api/users')
+        .then(res => {
+          // Filter out current user so they don't message themselves
+          const filtered = res.data.filter(u => u._id !== user?.id);
+          setUsers(filtered);
+        })
+        .catch(err => console.error('Failed to fetch users', err));
     }
-  }, [open]);
+  }, [open, user]);
 
   const handleSend = async () => {
     if (!to || !content) {
@@ -62,16 +70,20 @@ const MessageDialog = ({ open, onClose, onSent }) => {
               onChange={(e) => setTo(e.target.value)}
               label="Recipient"
             >
-              {users.map((u) => (
-                <MenuItem key={u._id} value={u._id}>
-                  <ListItemIcon>
-                    <Avatar sx={{ width: 24, height: 24 }}>
-                      <PersonIcon fontSize="small" />
-                    </Avatar>
-                  </ListItemIcon>
-                  <Typography variant="body2">{u.name} ({u.role})</Typography>
-                </MenuItem>
-              ))}
+              {users.length === 0 ? (
+                <MenuItem disabled>No other users found</MenuItem>
+              ) : (
+                users.map((u) => (
+                  <MenuItem key={u._id} value={u._id}>
+                    <ListItemIcon>
+                      <Avatar sx={{ width: 24, height: 24 }}>
+                        <PersonIcon fontSize="small" />
+                      </Avatar>
+                    </ListItemIcon>
+                    <Typography variant="body2">{u.name} ({u.role})</Typography>
+                  </MenuItem>
+                ))
+              )}
             </Select>
           </FormControl>
           <TextField
