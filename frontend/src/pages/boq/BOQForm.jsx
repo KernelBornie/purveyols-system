@@ -1,3 +1,4 @@
+import BackButton from '../../components/BackButton';
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { TextField, Button, Paper, Typography, MenuItem, IconButton, Box, Divider } from '@mui/material';
@@ -78,6 +79,7 @@ const BOQForm = () => {
 
   return (
     <Paper sx={{ p: 3 }}>
+      <BackButton />
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
         <Typography variant="h5">{id ? 'Edit BOQ' : 'Create BOQ'}</Typography>
         <Button variant="outlined" onClick={() => navigate(-1)}>Back</Button>

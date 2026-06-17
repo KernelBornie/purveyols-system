@@ -8,6 +8,7 @@ import MoreVertIcon from '@mui/icons-material/MoreVert';
 import api from '../../api/axios';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import BackButton from '../../components/BackButton';
 
 const WorkerList = () => {
   const { user } = useAuth();
@@ -53,6 +54,7 @@ const WorkerList = () => {
 
   return (
     <Paper sx={{ p: 2 }}>
+      <BackButton />
       <Typography variant="h5" gutterBottom>Workers</Typography>
       <Button component={Link} to="/workers/new" variant="contained" sx={{ mb: 2 }}>Enroll Worker</Button>
       <Table>
