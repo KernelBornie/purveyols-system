@@ -11,6 +11,7 @@ const UserSchema = new mongoose.Schema({
   },
   phone: { type: String, default: '' },
   nrc: { type: String, default: '' },
+  mobileMoneyNumber: { type: String, default: '' }, // Airtel Money number for accountant
   reportsTo: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   resetPasswordToken: String,
   resetPasswordExpires: Date,

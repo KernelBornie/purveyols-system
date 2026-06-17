@@ -3,7 +3,6 @@ const router = express.Router();
 const User = require('../models/User');
 const auth = require('../middleware/auth');
 
-// Get all users
 router.get('/', auth, async (req, res) => {
   try {
     const users = await User.find({}, 'name email role _id');
@@ -11,7 +10,6 @@ router.get('/', auth, async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// Get current user settings
 router.get('/settings', auth, async (req, res) => {
   try {
     const user = await User.findById(req.user.id);
@@ -19,7 +17,6 @@ router.get('/settings', auth, async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// Update settings
 router.put('/settings', auth, async (req, res) => {
   try {
     const { emailNotifications, pushNotifications, darkMode } = req.body;
@@ -44,7 +41,7 @@ router.get('/me', auth, async (req, res) => {
 
 router.put('/profile', auth, async (req, res) => {
   try {
-    const { name, email, phone, nrc } = req.body;
+    const { name, email, phone, nrc, mobileMoneyNumber } = req.body;
     const user = await User.findById(req.user.id);
     if (!user) return res.status(404).json({ message: 'User not found' });
     if (email && email !== user.email) {
@@ -55,8 +52,9 @@ router.put('/profile', auth, async (req, res) => {
     user.email = email || user.email;
     user.phone = phone || '';
     user.nrc = nrc || '';
+    user.mobileMoneyNumber = mobileMoneyNumber || '';
     await user.save();
-    res.json({ user: { id: user._id, name: user.name, email: user.email, role: user.role, phone: user.phone, nrc: user.nrc } });
+    res.json({ user: { id: user._id, name: user.name, email: user.email, role: user.role, phone: user.phone, nrc: user.nrc, mobileMoneyNumber: user.mobileMoneyNumber } });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 

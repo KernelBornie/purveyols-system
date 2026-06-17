@@ -4,24 +4,20 @@ const auth = require('../middleware/auth');
 const crypto = require('crypto');
 const Payment = require('../models/Payment');
 const Worker = require('../models/Worker');
+const User = require('../models/User');
 const { createNotification } = require('../utils/notificationHelper');
 
-// Simulate Airtel Money payment
-router.post('/pay', auth, async (req, res) => {
+// Initiate payment – sends USSD prompt to accountant's phone
+router.post('/initiate', auth, async (req, res) => {
   try {
-    const { recipientPhone, amount, pin, workerId } = req.body;
-    if (!recipientPhone || !amount || !pin) {
+    const { recipientPhone, amount, workerId, note } = req.body;
+    if (!recipientPhone || !amount) {
       return res.status(400).json({ error: 'Missing required fields' });
     }
-    if (pin.length < 4) {
-      return res.status(400).json({ error: 'PIN must be at least 4 digits' });
-    }
 
-    // In real implementation, you'd call Airtel Money API here.
-    // For simulation, we'll just validate the PIN (mock)
-    if (pin !== '1234') {
-      // In real, you'd validate against the account holder's PIN via API.
-      return res.status(401).json({ error: 'Invalid PIN' });
+    const accountant = await User.findById(req.user.id);
+    if (!accountant.mobileMoneyNumber) {
+      return res.status(400).json({ error: 'Accountant mobile money number not set. Please update your profile.' });
     }
 
     // Find worker if provided
@@ -31,8 +27,10 @@ router.post('/pay', auth, async (req, res) => {
       if (!worker) return res.status(404).json({ error: 'Worker not found' });
     }
 
-    // Create payment record
+    // Generate a unique reference
     const reference = `MOB-${Date.now()}-${crypto.randomBytes(4).toString('hex').toUpperCase()}`;
+
+    // Store pending payment (status: pending)
     const payment = new Payment({
       type: 'worker',
       recipientName: worker ? worker.name : 'Mobile Money Recipient',
@@ -41,25 +39,20 @@ router.post('/pay', auth, async (req, res) => {
       reference,
       paidBy: req.user.id,
       worker: worker ? worker._id : null,
-      status: 'completed',
-      notes: 'Airtel Money payment',
+      status: 'pending', // awaiting confirmation on phone
+      notes: note || 'Airtel Money payment initiated',
     });
     await payment.save();
 
-    // Notify accountant (and others)
-    const notif = await createNotification(
-      req.user.id,
-      'payment_made',
-      'Mobile Money Payment Sent',
-      `You sent ZMW ${amount} to ${recipientPhone}${worker ? ' for ' + worker.name : ''}`,
-      `/payments/${payment._id}`
-    );
+    // Simulate USSD prompt: In real life, you'd call Airtel Money API here.
+    // For simulation, we'll return a message that the USSD prompt has been sent.
+    // The accountant will confirm on their phone (simulated by a button in the frontend).
 
     res.status(201).json({
-      message: 'Payment successful',
+      message: 'Airtel Money USSD prompt sent to your phone.',
       reference,
       payment,
-      notification: notif,
+      requiresConfirmation: true,
     });
   } catch (err) {
     console.error(err);
@@ -67,7 +60,34 @@ router.post('/pay', auth, async (req, res) => {
   }
 });
 
-// Get transaction status (for UI polling – simulated)
+// Confirm payment (after accountant confirms on phone)
+router.post('/confirm', auth, async (req, res) => {
+  try {
+    const { reference } = req.body;
+    const payment = await Payment.findOne({ reference });
+    if (!payment) return res.status(404).json({ error: 'Transaction not found' });
+    if (payment.status !== 'pending') {
+      return res.status(400).json({ error: 'Payment already processed' });
+    }
+    // Update status to completed
+    payment.status = 'completed';
+    await payment.save();
+
+    // Notify
+    const user = await User.findById(req.user.id);
+    await createNotification(
+      req.user.id,
+      'payment_made',
+      'Payment Confirmed',
+      `You confirmed payment of ZMW ${payment.amount} to ${payment.recipientName}`,
+      `/payments/${payment._id}`
+    );
+
+    res.json({ message: 'Payment confirmed successfully', payment });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// Get payment status
 router.get('/status/:reference', auth, async (req, res) => {
   try {
     const payment = await Payment.findOne({ reference: req.params.reference });
