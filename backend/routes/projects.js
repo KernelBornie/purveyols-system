@@ -26,10 +26,18 @@ router.post('/', auth, async (req, res) => {
 
 router.put('/:id', auth, async (req, res) => {
   try {
-    const project = await Project.findByIdAndUpdate(req.params.id, req.body, { new: true })
+    const project = await Project.findById(req.params.id);
+    if (!project) return res.status(404).json({ error: 'Project not found' });
+    // Allow director, accountant, or the creator to edit
+    const allowedRoles = ['director', 'accountant', 'admin'];
+    const isCreator = project.createdBy.toString() === req.user.id;
+    if (!allowedRoles.includes(req.user.role) && !isCreator) {
+      return res.status(403).json({ error: 'Not authorized to edit this project' });
+    }
+    const updated = await Project.findByIdAndUpdate(req.params.id, req.body, { new: true })
       .populate('manager', 'name role')
       .populate('createdBy', 'name role');
-    res.json(project);
+    res.json(updated);
   } catch (err) { res.status(400).json({ error: err.message }); }
 });
 
