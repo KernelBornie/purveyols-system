@@ -23,13 +23,10 @@ const ProcurementOrderForm = () => {
     project: '',
     items: [],
     status: 'pending',
-    orderNumber: '3151',
+    orderNumber: '',
     preparedBy: '',
     approvedBy: '',
     authorisedBy: '',
-    preparedSign: '',
-    approvedSign: '',
-    authorisedSign: '',
   });
   const [creator, setCreator] = useState(null);
   const [message, setMessage] = useState(null);
@@ -54,7 +51,7 @@ const ProcurementOrderForm = () => {
             ...prev,
             preparedBy: user?.name || '',
             items: [
-              { description: '', unit: '', quantity: 1, unitPrice: 0, total: 0, supplier: '' }
+              { description: '', quantity: 1, unitPrice: 0, total: 0, supplier: '' }
             ]
           }));
         }
@@ -106,7 +103,7 @@ const ProcurementOrderForm = () => {
       ...form,
       items: [
         ...items,
-        { description: '', unit: '', quantity: 1, unitPrice: 0, total: 0, supplier: '' }
+        { description: '', quantity: 1, unitPrice: 0, total: 0, supplier: '' }
       ]
     });
   };
@@ -130,8 +127,11 @@ const ProcurementOrderForm = () => {
       const payload = {
         ...form,
         items: items.map(item => ({
-          ...item,
-          total: (parseFloat(item.quantity) || 0) * (parseFloat(item.unitPrice) || 0)
+          description: item.description,
+          quantity: parseFloat(item.quantity) || 0,
+          unitPrice: parseFloat(item.unitPrice) || 0,
+          total: (parseFloat(item.quantity) || 0) * (parseFloat(item.unitPrice) || 0),
+          supplier: item.supplier || '',
         })),
         grandTotal: totals.grandTotal,
       };
@@ -162,55 +162,16 @@ const ProcurementOrderForm = () => {
   const items = Array.isArray(form.items) ? form.items : [];
 
   return (
-    <Paper sx={{ p: 3, maxWidth: '1000px', mx: 'auto' }}>
+    <Paper sx={{ p: 3, maxWidth: '900px', mx: 'auto' }}>
       <BackButton />
       
       {message && <Alert severity={message.type} sx={{ mb: 2 }}>{message.text}</Alert>}
 
       <form onSubmit={handleSubmit}>
-        {/* Company Header - Exact Match to Physical Note */}
-        <Box sx={{ 
-          textAlign: 'center', 
-          borderBottom: '2px solid #000', 
-          pb: 2, 
-          mb: 2,
-          '@media print': {
-            borderBottom: '2px solid #000',
-          }
-        }}>
-          <Typography variant="h4" component="div" sx={{ fontWeight: 'bold', letterSpacing: 2 }}>
-            PURVEYOLS
-          </Typography>
-          <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>
-            Building and Civil Construction
-          </Typography>
-          <Typography variant="body2">
-            Plot No. 8, Buchi Road - Northmead, P.O. Box NH 87 Lucknow, Zanzibar
-          </Typography>
-          <Typography variant="body2">
-            Tel: +260 211 235354 | Mobile: +260 977 393879 / +260 965 393879
-          </Typography>
-          <Typography variant="body2">
-            Email: purveyols@gmail.com
-          </Typography>
-        </Box>
-
-        {/* Document Title - Exact Match */}
-        <Box sx={{ 
-          display: 'flex', 
-          justifyContent: 'space-between', 
-          alignItems: 'center',
-          mb: 3,
-          borderBottom: '1px solid #000',
-          pb: 1
-        }}>
-          <Typography variant="h5" sx={{ fontWeight: 'bold', letterSpacing: 1 }}>
-            MATERIAL REQUISITION NOTE
-          </Typography>
-          <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
-            No. {form.orderNumber}
-          </Typography>
-        </Box>
+        {/* Header */}
+        <Typography variant="h5" gutterBottom sx={{ fontWeight: 'bold' }}>
+          New Procurement Order {id ? '(Edit)' : '(blank amounts)'}
+        </Typography>
         
         {/* Creator Info */}
         {creator && (
@@ -240,77 +201,42 @@ const ProcurementOrderForm = () => {
           </Grid>
         </Grid>
 
-        {/* Requested Materials/Items Table - Exact Match to Physical Note with Supplier column */}
+        {/* Requested Materials/Items Table - Simple Layout */}
         <Box sx={{ mt: 2, overflowX: 'auto' }}>
-          <Table size="small" sx={{ border: '1px solid #000' }}>
+          <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 1 }}>
+            Requested Materials/Items
+          </Typography>
+          <Table size="small">
             <TableHead>
               <TableRow sx={{ bgcolor: '#f5f5f5' }}>
-                <TableCell sx={{ fontWeight: 'bold', border: '1px solid #000', textAlign: 'center' }}>
-                  DESCRIPTION
-                </TableCell>
-                <TableCell sx={{ fontWeight: 'bold', border: '1px solid #000', textAlign: 'center', width: '80px' }}>
-                  UNIT
-                </TableCell>
-                <TableCell sx={{ fontWeight: 'bold', border: '1px solid #000', textAlign: 'center', width: '70px' }}>
-                  QTY
-                </TableCell>
-                <TableCell sx={{ fontWeight: 'bold', border: '1px solid #000', textAlign: 'center', width: '120px' }}>
-                  UNIT PRICE
-                </TableCell>
-                <TableCell sx={{ fontWeight: 'bold', border: '1px solid #000', textAlign: 'center', width: '120px' }}>
-                  TOTAL
-                </TableCell>
-                <TableCell sx={{ fontWeight: 'bold', border: '1px solid #000', textAlign: 'center', width: '130px' }}>
-                  SUPPLIER
-                </TableCell>
-                <TableCell sx={{ fontWeight: 'bold', border: '1px solid #000', textAlign: 'center', width: '60px' }}>
-                  Action
-                </TableCell>
+                <TableCell sx={{ fontWeight: 'bold' }}>Item Name</TableCell>
+                <TableCell sx={{ fontWeight: 'bold', width: '100px' }}>Quantity</TableCell>
+                <TableCell sx={{ fontWeight: 'bold', width: '150px' }}>Unit Price (ZMW)</TableCell>
+                <TableCell sx={{ fontWeight: 'bold', width: '120px' }}>Total</TableCell>
+                <TableCell sx={{ fontWeight: 'bold', width: '150px' }}>Supplier</TableCell>
+                <TableCell sx={{ fontWeight: 'bold', width: '60px' }}>Action</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
               {items.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} sx={{ textAlign: 'center', py: 3, border: '1px solid #000' }}>
+                  <TableCell colSpan={6} sx={{ textAlign: 'center', py: 3 }}>
                     No items added yet. Click "Add Row" to add items.
                   </TableCell>
                 </TableRow>
               ) : (
                 totals.itemsWithTotal.map((item, idx) => (
                   <TableRow key={idx}>
-                    <TableCell sx={{ border: '1px solid #000', p: 1 }}>
+                    <TableCell>
                       <TextField
                         size="small"
                         fullWidth
                         value={item.description || ''}
                         onChange={e => handleItemChange(idx, 'description', e.target.value)}
-                        placeholder=""
-                        sx={{ 
-                          '& .MuiInputBase-root': { 
-                            border: 'none', 
-                            '&:before': { borderBottom: 'none' },
-                            '&:after': { borderBottom: 'none' }
-                          }
-                        }}
+                        placeholder="e.g., Cement"
                       />
                     </TableCell>
-                    <TableCell sx={{ border: '1px solid #000', p: 1 }}>
-                      <TextField
-                        size="small"
-                        fullWidth
-                        value={item.unit || ''}
-                        onChange={e => handleItemChange(idx, 'unit', e.target.value)}
-                        placeholder=""
-                        sx={{ 
-                          '& .MuiInputBase-root': { 
-                            border: 'none', 
-                            '&:before': { borderBottom: 'none' },
-                            '&:after': { borderBottom: 'none' }
-                          }
-                        }}
-                      />
-                    </TableCell>
-                    <TableCell sx={{ border: '1px solid #000', p: 1 }}>
+                    <TableCell>
                       <TextField
                         size="small"
                         type="number"
@@ -318,16 +244,9 @@ const ProcurementOrderForm = () => {
                         value={item.quantity || 0}
                         onChange={e => handleItemChange(idx, 'quantity', e.target.value)}
                         inputProps={{ min: 0 }}
-                        sx={{ 
-                          '& .MuiInputBase-root': { 
-                            border: 'none', 
-                            '&:before': { borderBottom: 'none' },
-                            '&:after': { borderBottom: 'none' }
-                          }
-                        }}
                       />
                     </TableCell>
-                    <TableCell sx={{ border: '1px solid #000', p: 1 }}>
+                    <TableCell>
                       <TextField
                         size="small"
                         type="number"
@@ -335,49 +254,28 @@ const ProcurementOrderForm = () => {
                         value={item.unitPrice || 0}
                         onChange={e => handleItemChange(idx, 'unitPrice', e.target.value)}
                         inputProps={{ min: 0, step: 0.01 }}
-                        sx={{ 
-                          '& .MuiInputBase-root': { 
-                            border: 'none', 
-                            '&:before': { borderBottom: 'none' },
-                            '&:after': { borderBottom: 'none' }
-                          }
-                        }}
                       />
                     </TableCell>
-                    <TableCell sx={{ border: '1px solid #000', p: 1, bgcolor: '#fafafa' }}>
+                    <TableCell>
                       <TextField
                         size="small"
                         type="number"
                         fullWidth
                         value={item.total || 0}
                         InputProps={{ readOnly: true }}
-                        sx={{ 
-                          '& .MuiInputBase-root': { 
-                            border: 'none', 
-                            bgcolor: '#fafafa',
-                            '&:before': { borderBottom: 'none' },
-                            '&:after': { borderBottom: 'none' }
-                          }
-                        }}
+                        sx={{ bgcolor: '#f5f5f5' }}
                       />
                     </TableCell>
-                    <TableCell sx={{ border: '1px solid #000', p: 1 }}>
+                    <TableCell>
                       <TextField
                         size="small"
                         fullWidth
                         value={item.supplier || ''}
                         onChange={e => handleItemChange(idx, 'supplier', e.target.value)}
                         placeholder="Supplier"
-                        sx={{ 
-                          '& .MuiInputBase-root': { 
-                            border: 'none', 
-                            '&:before': { borderBottom: 'none' },
-                            '&:after': { borderBottom: 'none' }
-                          }
-                        }}
                       />
                     </TableCell>
-                    <TableCell sx={{ border: '1px solid #000', p: 1, textAlign: 'center' }}>
+                    <TableCell>
                       <IconButton size="small" onClick={() => removeItem(idx)} color="error">
                         <DeleteIcon fontSize="small" />
                       </IconButton>
@@ -403,147 +301,15 @@ const ProcurementOrderForm = () => {
 
         {/* Grand Total */}
         <Box sx={{ 
-          mt: 2, 
+          mt: 3, 
           display: 'flex', 
           justifyContent: 'flex-end',
-          borderTop: '2px solid #000',
+          borderTop: '1px solid #e0e0e0',
           pt: 2
         }}>
           <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
-            GRAND TOTAL: {formatCurrency(totals.grandTotal)}
+            Grand Total: {formatCurrency(totals.grandTotal)}
           </Typography>
-        </Box>
-
-        {/* Approval Section - Exact Match to Physical Note */}
-        <Box sx={{ 
-          mt: 4,
-          borderTop: '1px solid #000',
-          pt: 3,
-        }}>
-          <Grid container spacing={2}>
-            {/* Prepared By */}
-            <Grid item xs={12} md={4}>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <Typography variant="body1" sx={{ fontWeight: 'bold' }}>
-                  PREPARED BY:
-                </Typography>
-                <TextField
-                  size="small"
-                  fullWidth
-                  value={form.preparedBy || ''}
-                  onChange={e => setForm({ ...form, preparedBy: e.target.value })}
-                  sx={{ 
-                    '& .MuiInputBase-root': { 
-                      borderBottom: '1px solid #000',
-                      borderRadius: 0,
-                      '&:before': { borderBottom: 'none' },
-                      '&:after': { borderBottom: 'none' }
-                    }
-                  }}
-                />
-              </Box>
-              <Box sx={{ mt: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
-                <Typography variant="body2">SIGN:</Typography>
-                <TextField
-                  size="small"
-                  fullWidth
-                  value={form.preparedSign || ''}
-                  onChange={e => setForm({ ...form, preparedSign: e.target.value })}
-                  placeholder="_______________"
-                  sx={{ 
-                    '& .MuiInputBase-root': { 
-                      borderBottom: '1px solid #000',
-                      borderRadius: 0,
-                      '&:before': { borderBottom: 'none' },
-                      '&:after': { borderBottom: 'none' }
-                    }
-                  }}
-                />
-              </Box>
-            </Grid>
-            
-            {/* Approved By */}
-            <Grid item xs={12} md={4}>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <Typography variant="body1" sx={{ fontWeight: 'bold' }}>
-                  APPROVED BY:
-                </Typography>
-                <TextField
-                  size="small"
-                  fullWidth
-                  value={form.approvedBy || ''}
-                  onChange={e => setForm({ ...form, approvedBy: e.target.value })}
-                  sx={{ 
-                    '& .MuiInputBase-root': { 
-                      borderBottom: '1px solid #000',
-                      borderRadius: 0,
-                      '&:before': { borderBottom: 'none' },
-                      '&:after': { borderBottom: 'none' }
-                    }
-                  }}
-                />
-              </Box>
-              <Box sx={{ mt: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
-                <Typography variant="body2">SIGN:</Typography>
-                <TextField
-                  size="small"
-                  fullWidth
-                  value={form.approvedSign || ''}
-                  onChange={e => setForm({ ...form, approvedSign: e.target.value })}
-                  placeholder="_______________"
-                  sx={{ 
-                    '& .MuiInputBase-root': { 
-                      borderBottom: '1px solid #000',
-                      borderRadius: 0,
-                      '&:before': { borderBottom: 'none' },
-                      '&:after': { borderBottom: 'none' }
-                    }
-                  }}
-                />
-              </Box>
-            </Grid>
-            
-            {/* Authorised By */}
-            <Grid item xs={12} md={4}>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <Typography variant="body1" sx={{ fontWeight: 'bold' }}>
-                  AUTHORISED BY:
-                </Typography>
-                <TextField
-                  size="small"
-                  fullWidth
-                  value={form.authorisedBy || ''}
-                  onChange={e => setForm({ ...form, authorisedBy: e.target.value })}
-                  sx={{ 
-                    '& .MuiInputBase-root': { 
-                      borderBottom: '1px solid #000',
-                      borderRadius: 0,
-                      '&:before': { borderBottom: 'none' },
-                      '&:after': { borderBottom: 'none' }
-                    }
-                  }}
-                />
-              </Box>
-              <Box sx={{ mt: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
-                <Typography variant="body2">SIGN:</Typography>
-                <TextField
-                  size="small"
-                  fullWidth
-                  value={form.authorisedSign || ''}
-                  onChange={e => setForm({ ...form, authorisedSign: e.target.value })}
-                  placeholder="_______________"
-                  sx={{ 
-                    '& .MuiInputBase-root': { 
-                      borderBottom: '1px solid #000',
-                      borderRadius: 0,
-                      '&:before': { borderBottom: 'none' },
-                      '&:after': { borderBottom: 'none' }
-                    }
-                  }}
-                />
-              </Box>
-            </Grid>
-          </Grid>
         </Box>
 
         {/* Status and Actions */}
