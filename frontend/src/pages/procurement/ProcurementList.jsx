@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import {
   Table, TableHead, TableRow, TableCell, TableBody, Button, Paper, Typography,
-  Chip, IconButton, Tooltip, Box
+  Chip, IconButton, Tooltip
 } from '@mui/material';
 import VisibilityIcon from '@mui/icons-material/Visibility';
+import PrintIcon from '@mui/icons-material/Print';
 import api from '../../api/axios';
 import { Link } from 'react-router-dom';
 import BackButton from '../../components/BackButton';
@@ -15,62 +16,62 @@ const ProcurementList = () => {
     api.get('/api/procurement').then(res => setOrders(res.data));
   }, []);
 
-  const getItemSummary = (items) => {
-    if (!items || items.length === 0) return 'No items';
-    const names = items.map(i => i.name).filter(Boolean);
-    if (names.length === 0) return `${items.length} item(s)`;
-    return names.slice(0, 3).join(', ') + (names.length > 3 ? '...' : '');
+  const getStatusColor = (status) => {
+    const colors = {
+      pending: 'warning',
+      funded: 'info',
+      purchased: 'success',
+      delivered: 'primary'
+    };
+    return colors[status] || 'default';
   };
 
-  const getGrandTotal = (items) => {
-    return items.reduce((sum, i) => sum + (parseFloat(i.total) || 0), 0);
+  const formatCurrency = (amount) => {
+    return new Intl.NumberFormat('en-ZM', { style: 'currency', currency: 'ZMW' }).format(amount || 0);
   };
 
   return (
     <Paper sx={{ p: 2 }}>
       <BackButton />
-      <Typography variant="h5" gutterBottom>Procurement Orders</Typography>
+      <Typography variant="h5" gutterBottom>Material Requisition Notes</Typography>
       <Button component={Link} to="/procurement/new" variant="contained" sx={{ mb: 2 }}>
-        New Order (blank amounts)
+        Create Requisition
       </Button>
+      
       <Table size="small">
         <TableHead>
           <TableRow>
+            <TableCell>Order No.</TableCell>
             <TableCell>Project</TableCell>
             <TableCell>Items</TableCell>
-            <TableCell>Total</TableCell>
+            <TableCell>Grand Total</TableCell>
             <TableCell>Status</TableCell>
-            <TableCell>Created By</TableCell>
+            <TableCell>Prepared By</TableCell>
             <TableCell>Actions</TableCell>
           </TableRow>
         </TableHead>
         <TableBody>
           {orders.map(o => (
             <TableRow key={o._id}>
-              <TableCell>{o.project?.name || 'N/A'}</TableCell>
+              <TableCell sx={{ fontWeight: 'bold' }}>{o.orderNumber}</TableCell>
+              <TableCell>{o.project?.name}</TableCell>
+              <TableCell>{o.items?.length || 0}</TableCell>
+              <TableCell>{formatCurrency(o.grandTotal)}</TableCell>
               <TableCell>
-                <Tooltip title={o.items?.map(i => `${i.name} (${i.quantity})`).join(', ') || 'No items'}>
-                  <span>{getItemSummary(o.items)}</span>
+                <Chip label={o.status} size="small" color={getStatusColor(o.status)} />
+              </TableCell>
+              <TableCell>{o.preparedBy || o.createdBy?.name}</TableCell>
+              <TableCell>
+                <Tooltip title="View/Edit">
+                  <IconButton component={Link} to={`/procurement/${o._id}`} size="small">
+                    <VisibilityIcon fontSize="small" />
+                  </IconButton>
                 </Tooltip>
-              </TableCell>
-              <TableCell>{getGrandTotal(o.items).toFixed(2)}</TableCell>
-              <TableCell>
-                <Chip
-                  label={o.status}
-                  color={o.status === 'funded' ? 'success' : o.status === 'purchased' ? 'info' : 'warning'}
-                  size="small"
-                />
-              </TableCell>
-              <TableCell>{o.createdBy?.name || 'N/A'}</TableCell>
-              <TableCell>
-                <IconButton
-                  component={Link}
-                  to={`/procurement/${o._id}`}
-                  size="small"
-                  color="primary"
-                >
-                  <VisibilityIcon fontSize="small" />
-                </IconButton>
+                <Tooltip title="Print">
+                  <IconButton size="small" onClick={() => window.print()}>
+                    <PrintIcon fontSize="small" />
+                  </IconButton>
+                </Tooltip>
               </TableCell>
             </TableRow>
           ))}
