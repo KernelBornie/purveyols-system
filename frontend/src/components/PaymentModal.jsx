@@ -12,11 +12,10 @@ import {
   Stepper,
   Step,
   StepLabel,
-  Paper,
-  Divider
 } from '@mui/material';
 import PhoneIcon from '@mui/icons-material/Phone';
 import api from '../api/axios';
+import PhoneSimulator from './PhoneSimulator';
 
 const PaymentModal = ({ open, onClose, worker, onSuccess }) => {
   const [amount, setAmount] = useState('');
@@ -26,7 +25,7 @@ const PaymentModal = ({ open, onClose, worker, onSuccess }) => {
   const [step, setStep] = useState(0);
   const [reference, setReference] = useState('');
   const [confirmed, setConfirmed] = useState(false);
-  const [ussdMessage, setUssdMessage] = useState('');
+  const [phoneSimOpen, setPhoneSimOpen] = useState(false);
 
   useEffect(() => {
     if (worker) {
@@ -38,7 +37,6 @@ const PaymentModal = ({ open, onClose, worker, onSuccess }) => {
     setStatus(null);
     setReference('');
     setConfirmed(false);
-    setUssdMessage('');
   }, [worker, open]);
 
   const handlePayPending = () => {
@@ -68,35 +66,13 @@ const PaymentModal = ({ open, onClose, worker, onSuccess }) => {
       };
       const res = await api.post('/api/mobile-money/initiate', payload);
       setReference(res.data.reference);
-      
-      // Generate simulated USSD prompt
-      const simulatedUssd = `
-📱 Airtel Money USSD Prompt
-
-*182# - Airtel Money
-
-1. Send Money
-2. Airtel Money Balance
-3. Pay Bill
-4. Buy Airtime
-
-Select: 1
-
-Enter Recipient: ${recipientPhone}
-Amount: ZMW ${parseFloat(amount).toFixed(2)}
-Reference: ${res.data.reference}
-
-Enter PIN: [ENTER ON YOUR PHONE]
-
-Press 1 to Confirm
-      `;
-      setUssdMessage(simulatedUssd);
-      
       setStatus({ 
         type: 'success', 
-        message: `📱 USSD prompt sent to your phone (${res.data.message})` 
+        message: `📱 USSD prompt sent to your phone` 
       });
       setStep(1);
+      // Open phone simulator after short delay
+      setTimeout(() => setPhoneSimOpen(true), 500);
     } catch (err) {
       setStatus({ 
         type: 'error', 
@@ -107,14 +83,14 @@ Press 1 to Confirm
     }
   };
 
-  const handleConfirm = async () => {
+  const handlePhoneConfirm = async () => {
     setLoading(true);
     setStatus(null);
     try {
       const res = await api.post('/api/mobile-money/confirm', { reference });
       setStatus({ 
         type: 'success', 
-        message: `✅ Payment of ZMW ${amount} confirmed successfully! Reference: ${res.data.reference}` 
+        message: `✅ Payment confirmed! Reference: ${res.data.reference}` 
       });
       setConfirmed(true);
       setTimeout(() => {
@@ -133,102 +109,102 @@ Press 1 to Confirm
   };
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
-      <DialogTitle>Pay Worker via Airtel Money</DialogTitle>
-      <DialogContent>
-        <Stepper activeStep={step} sx={{ my: 2 }}>
-          <Step><StepLabel>Initiate</StepLabel></Step>
-          <Step><StepLabel>Confirm on Phone</StepLabel></Step>
-        </Stepper>
+    <>
+      <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+        <DialogTitle>Pay Worker via Airtel Money</DialogTitle>
+        <DialogContent>
+          <Stepper activeStep={step} sx={{ my: 2 }}>
+            <Step><StepLabel>Initiate</StepLabel></Step>
+            <Step><StepLabel>Confirm on Phone</StepLabel></Step>
+          </Stepper>
 
-        {worker && step === 0 && (
-          <Box sx={{ mb: 2 }}>
-            <Typography><strong>Worker:</strong> {worker.name}</Typography>
-            <Typography><strong>Phone:</strong> {worker.phone}</Typography>
-            <Typography><strong>NRC:</strong> {worker.nrc}</Typography>
-            <Typography><strong>Pending Balance:</strong> ZMW {(worker.balance || 0).toFixed(2)}</Typography>
-          </Box>
-        )}
-
-        {step === 0 && (
-          <>
-            <TextField
-              label="Amount (ZMW)"
-              type="number"
-              fullWidth
-              margin="normal"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-              required
-            />
-            <Button variant="outlined" size="small" onClick={handlePayPending} sx={{ mt: 1 }}>
-              Pay Pending Balance
-            </Button>
-            <TextField
-              label="Recipient Phone Number"
-              fullWidth
-              margin="normal"
-              value={recipientPhone}
-              onChange={(e) => setRecipientPhone(e.target.value)}
-              placeholder="e.g., 0971234567"
-              required
-            />
-            {status && <Alert severity={status.type} sx={{ mt: 2 }}>{status.message}</Alert>}
-            <Box sx={{ display: 'flex', gap: 2, mt: 3 }}>
-              <Button variant="outlined" onClick={onClose} disabled={loading}>Cancel</Button>
-              <Button variant="contained" onClick={handleInitiate} disabled={loading}>
-                {loading ? <CircularProgress size={24} /> : 'Send Request to Phone'}
-              </Button>
+          {worker && step === 0 && (
+            <Box sx={{ mb: 2 }}>
+              <Typography><strong>Worker:</strong> {worker.name}</Typography>
+              <Typography><strong>Phone:</strong> {worker.phone}</Typography>
+              <Typography><strong>NRC:</strong> {worker.nrc}</Typography>
+              <Typography><strong>Pending Balance:</strong> ZMW {(worker.balance || 0).toFixed(2)}</Typography>
             </Box>
-          </>
-        )}
+          )}
 
-        {step === 1 && (
-          <Box sx={{ mt: 2 }}>
-            <Alert severity="info" sx={{ mb: 2 }}>
-              <Typography variant="subtitle2" gutterBottom>📱 Airtel Money USSD Prompt</Typography>
-              <Typography variant="body2">
-                1. Check your phone for the USSD prompt from Airtel Money
-              </Typography>
-              <Typography variant="body2">
-                2. Enter your Airtel Money PIN on your phone
-              </Typography>
-              <Typography variant="body2">
-                3. Confirm the transaction on your phone
-              </Typography>
-            </Alert>
+          {step === 0 && (
+            <>
+              <TextField
+                label="Amount (ZMW)"
+                type="number"
+                fullWidth
+                margin="normal"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                required
+              />
+              <Button variant="outlined" size="small" onClick={handlePayPending} sx={{ mt: 1 }}>
+                Pay Pending Balance
+              </Button>
+              <TextField
+                label="Recipient Phone Number"
+                fullWidth
+                margin="normal"
+                value={recipientPhone}
+                onChange={(e) => setRecipientPhone(e.target.value)}
+                placeholder="e.g., 0971234567"
+                required
+              />
+              {status && <Alert severity={status.type} sx={{ mt: 2 }}>{status.message}</Alert>}
+              <Box sx={{ display: 'flex', gap: 2, mt: 3 }}>
+                <Button variant="outlined" onClick={onClose} disabled={loading}>Cancel</Button>
+                <Button variant="contained" onClick={handleInitiate} disabled={loading}>
+                  {loading ? <CircularProgress size={24} /> : 'Send Request to Phone'}
+                </Button>
+              </Box>
+            </>
+          )}
 
-            {/* Simulated USSD Screen */}
-            {ussdMessage && (
-              <Paper sx={{ p: 2, bgcolor: 'black', color: 'lime', fontFamily: 'monospace', mt: 2, borderRadius: 2 }}>
-                <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', color: 'lime' }}>
-                  {ussdMessage}
+          {step === 1 && (
+            <Box sx={{ mt: 2 }}>
+              <Alert severity="info" sx={{ mb: 2 }}>
+                <Typography variant="subtitle2" gutterBottom>📱 Airtel Money USSD Prompt Sent</Typography>
+                <Typography variant="body2">
+                  1. Check your phone for the USSD prompt
                 </Typography>
-              </Paper>
-            )}
-
-            <Typography variant="body2" color="textSecondary" sx={{ mt: 2 }}>
-              Reference: <strong>{reference}</strong>
-            </Typography>
-            {status && <Alert severity={status.type} sx={{ mt: 2 }}>{status.message}</Alert>}
-            <Box sx={{ display: 'flex', gap: 2, mt: 3 }}>
-              <Button variant="outlined" onClick={() => setStep(0)} disabled={loading}>
-                Back
-              </Button>
-              <Button 
-                variant="contained" 
-                color="success"
-                onClick={handleConfirm} 
-                disabled={loading || confirmed}
-                startIcon={<PhoneIcon />}
-              >
-                {loading ? <CircularProgress size={24} /> : '✅ I Have Confirmed on Phone'}
-              </Button>
+                <Typography variant="body2">
+                  2. Enter your PIN on your phone
+                </Typography>
+                <Typography variant="body2">
+                  3. Confirm the transaction
+                </Typography>
+              </Alert>
+              <Typography variant="body2" color="textSecondary">
+                Reference: <strong>{reference}</strong>
+              </Typography>
+              <Box sx={{ display: 'flex', gap: 2, mt: 3 }}>
+                <Button 
+                  variant="contained" 
+                  color="success"
+                  startIcon={<PhoneIcon />}
+                  onClick={() => setPhoneSimOpen(true)}
+                  fullWidth
+                >
+                  📱 View on Phone
+                </Button>
+              </Box>
+              {status && <Alert severity={status.type} sx={{ mt: 2 }}>{status.message}</Alert>}
             </Box>
-          </Box>
-        )}
-      </DialogContent>
-    </Dialog>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Phone Simulator */}
+      <PhoneSimulator
+        open={phoneSimOpen}
+        onClose={() => setPhoneSimOpen(false)}
+        onConfirm={handlePhoneConfirm}
+        reference={reference}
+        amount={amount}
+        recipientPhone={recipientPhone}
+        workerName={worker?.name}
+      />
+    </>
   );
 };
 
