@@ -11,8 +11,11 @@ import {
   CircularProgress,
   Stepper,
   Step,
-  StepLabel
+  StepLabel,
+  Paper,
+  Divider
 } from '@mui/material';
+import PhoneIcon from '@mui/icons-material/Phone';
 import api from '../api/axios';
 
 const PaymentModal = ({ open, onClose, worker, onSuccess }) => {
@@ -23,6 +26,7 @@ const PaymentModal = ({ open, onClose, worker, onSuccess }) => {
   const [step, setStep] = useState(0);
   const [reference, setReference] = useState('');
   const [confirmed, setConfirmed] = useState(false);
+  const [ussdMessage, setUssdMessage] = useState('');
 
   useEffect(() => {
     if (worker) {
@@ -34,6 +38,7 @@ const PaymentModal = ({ open, onClose, worker, onSuccess }) => {
     setStatus(null);
     setReference('');
     setConfirmed(false);
+    setUssdMessage('');
   }, [worker, open]);
 
   const handlePayPending = () => {
@@ -63,6 +68,30 @@ const PaymentModal = ({ open, onClose, worker, onSuccess }) => {
       };
       const res = await api.post('/api/mobile-money/initiate', payload);
       setReference(res.data.reference);
+      
+      // Generate simulated USSD prompt
+      const simulatedUssd = `
+📱 Airtel Money USSD Prompt
+
+*182# - Airtel Money
+
+1. Send Money
+2. Airtel Money Balance
+3. Pay Bill
+4. Buy Airtime
+
+Select: 1
+
+Enter Recipient: ${recipientPhone}
+Amount: ZMW ${parseFloat(amount).toFixed(2)}
+Reference: ${res.data.reference}
+
+Enter PIN: [ENTER ON YOUR PHONE]
+
+Press 1 to Confirm
+      `;
+      setUssdMessage(simulatedUssd);
+      
       setStatus({ 
         type: 'success', 
         message: `📱 USSD prompt sent to your phone (${res.data.message})` 
@@ -168,7 +197,17 @@ const PaymentModal = ({ open, onClose, worker, onSuccess }) => {
                 3. Confirm the transaction on your phone
               </Typography>
             </Alert>
-            <Typography variant="body2" color="textSecondary">
+
+            {/* Simulated USSD Screen */}
+            {ussdMessage && (
+              <Paper sx={{ p: 2, bgcolor: 'black', color: 'lime', fontFamily: 'monospace', mt: 2, borderRadius: 2 }}>
+                <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', color: 'lime' }}>
+                  {ussdMessage}
+                </Typography>
+              </Paper>
+            )}
+
+            <Typography variant="body2" color="textSecondary" sx={{ mt: 2 }}>
               Reference: <strong>{reference}</strong>
             </Typography>
             {status && <Alert severity={status.type} sx={{ mt: 2 }}>{status.message}</Alert>}
@@ -181,6 +220,7 @@ const PaymentModal = ({ open, onClose, worker, onSuccess }) => {
                 color="success"
                 onClick={handleConfirm} 
                 disabled={loading || confirmed}
+                startIcon={<PhoneIcon />}
               >
                 {loading ? <CircularProgress size={24} /> : '✅ I Have Confirmed on Phone'}
               </Button>
