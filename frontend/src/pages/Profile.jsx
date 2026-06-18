@@ -13,6 +13,8 @@ const Profile = () => {
   const [loading, setLoading] = useState(false);
   const [trackingInfo, setTrackingInfo] = useState(null);
 
+  const isAccountant = user?.role === 'accountant';
+
   useEffect(() => {
     if (user) {
       setForm({
@@ -106,17 +108,29 @@ const Profile = () => {
           <Grid item xs={12} sm={6}>
             <TextField label="NRC" fullWidth margin="normal" value={form.nrc || ''} onChange={(e) => setForm({ ...form, nrc: e.target.value })} />
           </Grid>
-          <Grid item xs={12}>
-            <TextField
-              label="Mobile Money Number (Airtel Money)"
-              fullWidth
-              margin="normal"
-              value={form.mobileMoneyNumber || ''}
-              onChange={(e) => setForm({ ...form, mobileMoneyNumber: e.target.value })}
-              placeholder="e.g., 0971234567"
-              helperText="Used for mobile money payments (accountant only)"
-            />
-          </Grid>
+          {/* Mobile Money Number – ONLY for Accountant */}
+          {isAccountant && (
+            <Grid item xs={12}>
+              <TextField
+                label="Mobile Money Number (Airtel Money)"
+                fullWidth
+                margin="normal"
+                value={form.mobileMoneyNumber || ''}
+                onChange={(e) => setForm({ ...form, mobileMoneyNumber: e.target.value })}
+                placeholder="e.g., 0971234567"
+                helperText="Used for mobile money payments (accountant only)"
+              />
+            </Grid>
+          )}
+          {!isAccountant && (
+            <Grid item xs={12}>
+              <Box sx={{ p: 2, bgcolor: 'action.disabledBackground', borderRadius: 1, mt: 1 }}>
+                <Typography variant="caption" color="textSecondary">
+                  Mobile Money Number is only available for Accountant role.
+                </Typography>
+              </Box>
+            </Grid>
+          )}
         </Grid>
         <Button type="submit" variant="contained" sx={{ mt: 2 }} disabled={loading}>
           {loading ? 'Saving...' : 'Update Profile'}
