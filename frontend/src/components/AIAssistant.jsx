@@ -1,47 +1,95 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Fab, Dialog, DialogTitle, DialogContent, DialogActions,
   TextField, Button, Box, Typography, Avatar, Paper, CircularProgress,
-  IconButton, Chip
+  IconButton, Chip, Alert
 } from '@mui/material';
 import SmartToyIcon from '@mui/icons-material/SmartToy';
 import SendIcon from '@mui/icons-material/Send';
 import CloseIcon from '@mui/icons-material/Close';
+import api from '../api/axios';
+import { useAuth } from '../context/AuthContext';
 
 const AIAssistant = () => {
+  const { user } = useAuth();
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState([
     { sender: 'ai', text: 'Hello! I\'m your PURVEYOLS ASSISTANT AI. Ask me about project planning, materials, costs, safety, or any construction-related topic!' }
   ]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    // Load chat history
+    const loadHistory = async () => {
+      try {
+        const res = await api.get('/api/chat-history');
+        const history = res.data;
+        if (history && history.messages && history.messages.length > 0) {
+          setMessages(history.messages);
+        }
+      } catch (err) {
+        // Silent fail for history
+        console.log('History load skipped');
+      }
+    };
+    if (open) {
+      loadHistory();
+    }
+  }, [open]);
 
   const handleSend = async () => {
     if (!input.trim()) return;
     
-    const userMsg = { sender: 'user', text: input };
+    const userMsg = { sender: 'user', text: input, timestamp: new Date() };
     setMessages(prev => [...prev, userMsg]);
     setInput('');
     setLoading(true);
+    setError(null);
 
-    // Simulate AI response (in production, call an actual AI API)
-    setTimeout(() => {
-      const responses = [
-        "Based on PURVEYOLS best practices, I recommend using reinforced concrete for the foundation. The typical mix ratio is 1:2:4 (cement:sand:aggregate).",
-        "According to current market data, the estimated cost per square meter is about ZMW 4,500 for standard finishing.",
-        "PURVEYOLS recommends using local suppliers for cement – it reduces lead time and supports the local economy. ZAMCEM and Larfarge are reliable.",
-        "For safety compliance, ensure you have proper PPE (helmets, boots, vests) and conduct regular safety briefings on site. This is a PURVEYOLS standard.",
-        "The project timeline seems feasible. PURVEYOLS suggests breaking it down into phases: foundation, structure, finishing, and landscaping.",
-        "Regarding procurement: get at least 3 quotes from different suppliers. Compare quality and delivery timelines, not just price.",
-        "Remember to factor in a 10-15% contingency for unexpected costs. It's always better to over-budget than under-budget.",
-        "For the electrical work, make sure the contractor is ERB registered. Check their references before hiring.",
-        "PURVEYOLS ASSISTANT AI recommends using sustainable materials where possible – it reduces long-term costs and environmental impact.",
-        "For site preparation, always conduct a soil test first. PURVEYOLS has a checklist available for site readiness."
-      ];
-      const response = responses[Math.floor(Math.random() * responses.length)];
-      setMessages(prev => [...prev, { sender: 'ai', text: response }]);
+    try {
+      const res = await api.post('/api/ai/chat', { message: input });
+      const aiResponse = res.data.response;
+      const aiMsg = { 
+        sender: 'ai', 
+        text: aiResponse.text, 
+        type: aiResponse.type || 'general',
+        timestamp: new Date()
+      };
+      setMessages(prev => [...prev, aiMsg]);
+      
+      // Save to history
+      try {
+        await api.post('/api/chat-history/message', { 
+          sender: 'user', 
+          text: input,
+          type: 'user'
+        });
+        await api.post('/api/chat-history/message', { 
+          sender: 'ai', 
+          text: aiResponse.text,
+          type: aiResponse.type || 'general'
+        });
+      } catch (e) {
+        console.log('History save skipped');
+      }
+    } catch (err) {
+      console.error('AI error:', err);
+      if (err.response && err.response.status === 401) {
+        setError('Session expired. Please log in again.');
+      } else {
+        setError('Sorry, I encountered an error. Please try again.');
+      }
+      setMessages(prev => [...prev, { 
+        sender: 'ai', 
+        text: 'Sorry, I encountered an error. Please try again later.',
+        type: 'error',
+        timestamp: new Date()
+      }]);
+    } finally {
       setLoading(false);
-    }, 1000);
+    }
   };
 
   return (
@@ -73,6 +121,7 @@ const AIAssistant = () => {
         </DialogTitle>
 
         <DialogContent dividers sx={{ display: 'flex', flexDirection: 'column', gap: 2, overflowY: 'auto' }}>
+          {error && <Alert severity="error">{error}</Alert>}
           {messages.map((msg, idx) => (
             <Box
               key={idx}
@@ -91,12 +140,20 @@ const AIAssistant = () => {
                 sx={{
                   p: 1.5,
                   maxWidth: '80%',
-                  bgcolor: msg.sender === 'user' ? 'primary.main' : 'grey.100',
+                  bgcolor: msg.sender === 'user' ? 'primary.main' : msg.type === 'error' ? 'error.light' : 'grey.100',
                   color: msg.sender === 'user' ? 'white' : 'text.primary',
                   borderRadius: 2,
+                  whiteSpace: 'pre-wrap',
                 }}
               >
-                <Typography variant="body2">{msg.text}</Typography>
+                <Typography variant="body2" style={{ whiteSpace: 'pre-wrap' }}>
+                  {msg.text}
+                </Typography>
+                {msg.timestamp && (
+                  <Typography variant="caption" display="block" sx={{ mt: 0.5, opacity: 0.6 }}>
+                    {new Date(msg.timestamp).toLocaleTimeString()}
+                  </Typography>
+                )}
               </Paper>
               {msg.sender === 'user' && (
                 <Avatar sx={{ width: 32, height: 32, bgcolor: 'grey.400' }}>U</Avatar>
@@ -118,11 +175,12 @@ const AIAssistant = () => {
         <DialogActions sx={{ p: 2 }}>
           <TextField
             fullWidth
-            placeholder="Ask PURVEYOLS ASSISTANT AI about construction..."
+            placeholder="Ask PURVEYOLS ASSISTANT AI about construction or system data..."
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyPress={(e) => e.key === 'Enter' && handleSend()}
             size="small"
+            disabled={loading}
           />
           <Button
             variant="contained"
@@ -130,7 +188,7 @@ const AIAssistant = () => {
             disabled={loading || !input.trim()}
             startIcon={<SendIcon />}
           >
-            Send
+            {loading ? '...' : 'Send'}
           </Button>
         </DialogActions>
       </Dialog>
