@@ -3,13 +3,15 @@ const router = express.Router();
 const User = require('../models/User');
 const auth = require('../middleware/auth');
 
+// Get all users (for admin/director)
 router.get('/', auth, async (req, res) => {
   try {
-    const users = await User.find({}, 'name email role _id');
+    const users = await User.find({}, 'name email role phone nrc mobileMoneyNumber lastLogin createdAt');
     res.json(users);
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// Get current user settings
 router.get('/settings', auth, async (req, res) => {
   try {
     const user = await User.findById(req.user.id);
@@ -17,6 +19,7 @@ router.get('/settings', auth, async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// Update settings
 router.put('/settings', auth, async (req, res) => {
   try {
     const { emailNotifications, pushNotifications, darkMode } = req.body;
@@ -27,11 +30,13 @@ router.put('/settings', auth, async (req, res) => {
       pushNotifications: pushNotifications !== undefined ? pushNotifications : user.settings?.pushNotifications ?? true,
       darkMode: darkMode !== undefined ? darkMode : user.settings?.darkMode ?? false,
     };
+    user.updatedAt = new Date();
     await user.save();
     res.json(user.settings);
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// Get current user
 router.get('/me', auth, async (req, res) => {
   try {
     const user = await User.findById(req.user.id);
@@ -39,6 +44,7 @@ router.get('/me', auth, async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// Update profile
 router.put('/profile', auth, async (req, res) => {
   try {
     const { name, email, phone, nrc, mobileMoneyNumber } = req.body;
@@ -53,8 +59,21 @@ router.put('/profile', auth, async (req, res) => {
     user.phone = phone || '';
     user.nrc = nrc || '';
     user.mobileMoneyNumber = mobileMoneyNumber || '';
+    user.updatedAt = new Date();
     await user.save();
-    res.json({ user: { id: user._id, name: user.name, email: user.email, role: user.role, phone: user.phone, nrc: user.nrc, mobileMoneyNumber: user.mobileMoneyNumber } });
+    res.json({ 
+      user: { 
+        id: user._id, 
+        name: user.name, 
+        email: user.email, 
+        role: user.role, 
+        phone: user.phone, 
+        nrc: user.nrc, 
+        mobileMoneyNumber: user.mobileMoneyNumber,
+        lastLogin: user.lastLogin,
+        createdAt: user.createdAt,
+      } 
+    });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 

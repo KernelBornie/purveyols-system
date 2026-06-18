@@ -11,7 +11,7 @@ const UserSchema = new mongoose.Schema({
   },
   phone: { type: String, default: '' },
   nrc: { type: String, default: '' },
-  mobileMoneyNumber: { type: String, default: '' }, // Airtel Money number for accountant
+  mobileMoneyNumber: { type: String, default: '' },
   reportsTo: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   resetPasswordToken: String,
   resetPasswordExpires: Date,
@@ -20,6 +20,11 @@ const UserSchema = new mongoose.Schema({
     pushNotifications: { type: Boolean, default: true },
     darkMode: { type: Boolean, default: false },
   },
+  // Tracking fields
+  lastLogin: { type: Date },
+  lastLoginIP: { type: String },
+  createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   createdAt: { type: Date, default: Date.now },
+  updatedAt: { type: Date, default: Date.now },
 });
 module.exports = mongoose.model('User', UserSchema);

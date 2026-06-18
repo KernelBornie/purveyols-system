@@ -1,8 +1,8 @@
-import BackButton from '../components/BackButton';
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { Paper, Typography, TextField, Button, Box, Alert, Grid } from '@mui/material';
+import { Paper, Typography, TextField, Button, Box, Alert, Grid, Divider, Chip } from '@mui/material';
 import api from '../api/axios';
+import BackButton from '../components/BackButton';
 
 const Profile = () => {
   const { user, setUser } = useAuth();
@@ -11,6 +11,7 @@ const Profile = () => {
   const [message, setMessage] = useState(null);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [trackingInfo, setTrackingInfo] = useState(null);
 
   useEffect(() => {
     if (user) {
@@ -20,6 +21,11 @@ const Profile = () => {
         phone: user.phone || '',
         nrc: user.nrc || '',
         mobileMoneyNumber: user.mobileMoneyNumber || '',
+      });
+      setTrackingInfo({
+        lastLogin: user.lastLogin,
+        createdAt: user.createdAt,
+        role: user.role,
       });
     }
   }, [user]);
@@ -65,7 +71,24 @@ const Profile = () => {
 
   return (
     <Paper sx={{ p: 3, maxWidth: 700, mx: 'auto' }}>
+      <BackButton />
       <Typography variant="h4" gutterBottom>Edit Profile</Typography>
+      
+      {/* Tracking Info */}
+      {trackingInfo && (
+        <Box sx={{ mb: 3, p: 2, bgcolor: 'action.hover', borderRadius: 1 }}>
+          <Typography variant="subtitle2" color="textSecondary">
+            <Chip label={trackingInfo.role} size="small" color="primary" sx={{ mr: 1 }} />
+            {trackingInfo.createdAt && (
+              <span>Joined: {new Date(trackingInfo.createdAt).toLocaleDateString()} | </span>
+            )}
+            {trackingInfo.lastLogin && (
+              <span>Last Login: {new Date(trackingInfo.lastLogin).toLocaleString()}</span>
+            )}
+          </Typography>
+        </Box>
+      )}
+
       {message && <Alert severity="success" sx={{ mb: 2 }}>{message}</Alert>}
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
 
@@ -100,17 +123,17 @@ const Profile = () => {
         </Button>
       </form>
 
-      <Box sx={{ mt: 4 }}>
-        <Typography variant="h6" gutterBottom>Change Password</Typography>
-        <form onSubmit={handlePasswordChange}>
-          <TextField label="Current Password" type="password" fullWidth margin="normal" value={passwordForm.currentPassword} onChange={(e) => setPasswordForm({ ...passwordForm, currentPassword: e.target.value })} required />
-          <TextField label="New Password" type="password" fullWidth margin="normal" value={passwordForm.newPassword} onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })} required />
-          <TextField label="Confirm New Password" type="password" fullWidth margin="normal" value={passwordForm.confirmPassword} onChange={(e) => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })} required />
-          <Button type="submit" variant="outlined" sx={{ mt: 2 }} disabled={loading}>
-            {loading ? 'Changing...' : 'Change Password'}
-          </Button>
-        </form>
-      </Box>
+      <Divider sx={{ my: 4 }} />
+
+      <Typography variant="h6" gutterBottom>Change Password</Typography>
+      <form onSubmit={handlePasswordChange}>
+        <TextField label="Current Password" type="password" fullWidth margin="normal" value={passwordForm.currentPassword} onChange={(e) => setPasswordForm({ ...passwordForm, currentPassword: e.target.value })} required />
+        <TextField label="New Password" type="password" fullWidth margin="normal" value={passwordForm.newPassword} onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })} required />
+        <TextField label="Confirm New Password" type="password" fullWidth margin="normal" value={passwordForm.confirmPassword} onChange={(e) => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })} required />
+        <Button type="submit" variant="outlined" sx={{ mt: 2 }} disabled={loading}>
+          {loading ? 'Changing...' : 'Change Password'}
+        </Button>
+      </form>
     </Paper>
   );
 };
