@@ -3,15 +3,17 @@ import { useNavigate, useParams } from 'react-router-dom';
 import {
   Paper, Typography, Box, Grid, TextField, Button, IconButton,
   Table, TableHead, TableRow, TableCell, TableBody,
-  MenuItem, Alert, Chip
+  MenuItem, Alert, Chip, Avatar
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
 import SaveIcon from '@mui/icons-material/Save';
 import PrintIcon from '@mui/icons-material/Print';
+import EditIcon from '@mui/icons-material/Edit';
 import api from '../../api/axios';
 import { useAuth } from '../../context/AuthContext';
 import BackButton from '../../components/BackButton';
+import SignaturePad from '../../components/SignaturePad';
 
 const ProcurementForm = () => {
   const { id } = useParams();
@@ -33,6 +35,10 @@ const ProcurementForm = () => {
   });
   const [creator, setCreator] = useState(null);
   const [message, setMessage] = useState(null);
+  const [signatureModal, setSignatureModal] = useState({
+    open: false,
+    field: '', // 'prepared', 'approved', 'authorised'
+  });
 
   // Generate order number if new
   const generateOrderNumber = () => {
@@ -192,6 +198,52 @@ const ProcurementForm = () => {
 
   const items = Array.isArray(form.items) ? form.items : [];
 
+  // Open signature modal
+  const openSignatureModal = (field) => {
+    setSignatureModal({ open: true, field });
+  };
+
+  // Save signature from modal
+  const saveSignature = (dataUrl) => {
+    const fieldMap = {
+      prepared: 'preparedSign',
+      approved: 'approvedSign',
+      authorised: 'authorisedSign',
+    };
+    const stateKey = fieldMap[signatureModal.field];
+    if (stateKey) {
+      setForm({ ...form, [stateKey]: dataUrl });
+    }
+  };
+
+  // Render signature preview or button
+  const renderSignatureField = (field, label, signKey) => {
+    const signature = form[signKey];
+    return (
+      <Box sx={{ mt: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
+        <Typography variant="body2" sx={{ fontWeight: 'bold', minWidth: '50px' }}>
+          {label}:
+        </Typography>
+        {signature ? (
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Avatar
+              src={signature}
+              sx={{ width: 80, height: 40, borderRadius: 1, border: '1px solid #ccc' }}
+              variant="square"
+            />
+            <IconButton size="small" onClick={() => openSignatureModal(field)}>
+              <EditIcon fontSize="small" />
+            </IconButton>
+          </Box>
+        ) : (
+          <Button variant="outlined" size="small" onClick={() => openSignatureModal(field)}>
+            Sign
+          </Button>
+        )}
+      </Box>
+    );
+  };
+
   return (
     <Paper sx={{ p: 3, maxWidth: '1000px', mx: 'auto' }}>
       <BackButton />
@@ -199,7 +251,7 @@ const ProcurementForm = () => {
       {message && <Alert severity={message.type} sx={{ mb: 2 }}>{message.text}</Alert>}
 
       <form onSubmit={handleSubmit}>
-        {/* ===== COMPANY HEADER (Matches physical note) ===== */}
+        {/* Company Header */}
         <Box sx={{
           textAlign: 'center',
           borderBottom: '2px solid #000',
@@ -224,7 +276,7 @@ const ProcurementForm = () => {
           </Typography>
         </Box>
 
-        {/* ===== DOCUMENT TITLE & ORDER NUMBER ===== */}
+        {/* Document Title & Order Number */}
         <Box sx={{
           display: 'flex',
           justifyContent: 'space-between',
@@ -241,7 +293,7 @@ const ProcurementForm = () => {
           </Typography>
         </Box>
 
-        {/* ===== CREATOR INFO ===== */}
+        {/* Creator Info */}
         {creator && (
           <Box sx={{ mb: 2 }}>
             <Typography variant="body2">
@@ -250,7 +302,7 @@ const ProcurementForm = () => {
           </Box>
         )}
 
-        {/* ===== PROJECT SELECTION ===== */}
+        {/* Project Selection */}
         <Grid container spacing={2} sx={{ mb: 3 }}>
           <Grid item xs={12}>
             <TextField
@@ -269,32 +321,18 @@ const ProcurementForm = () => {
           </Grid>
         </Grid>
 
-        {/* ===== MATERIALS TABLE (with Supplier column) ===== */}
+        {/* Materials Table */}
         <Box sx={{ mt: 2, overflowX: 'auto' }}>
           <Table size="small" sx={{ border: '1px solid #000' }}>
             <TableHead>
               <TableRow sx={{ bgcolor: '#f5f5f5' }}>
-                <TableCell sx={{ fontWeight: 'bold', border: '1px solid #000', textAlign: 'center' }}>
-                  DESCRIPTION
-                </TableCell>
-                <TableCell sx={{ fontWeight: 'bold', border: '1px solid #000', textAlign: 'center', width: '80px' }}>
-                  UNIT
-                </TableCell>
-                <TableCell sx={{ fontWeight: 'bold', border: '1px solid #000', textAlign: 'center', width: '70px' }}>
-                  QTY
-                </TableCell>
-                <TableCell sx={{ fontWeight: 'bold', border: '1px solid #000', textAlign: 'center', width: '120px' }}>
-                  UNIT PRICE
-                </TableCell>
-                <TableCell sx={{ fontWeight: 'bold', border: '1px solid #000', textAlign: 'center', width: '120px' }}>
-                  TOTAL
-                </TableCell>
-                <TableCell sx={{ fontWeight: 'bold', border: '1px solid #000', textAlign: 'center', width: '130px' }}>
-                  SUPPLIER
-                </TableCell>
-                <TableCell sx={{ fontWeight: 'bold', border: '1px solid #000', textAlign: 'center', width: '60px' }}>
-                  Action
-                </TableCell>
+                <TableCell sx={{ fontWeight: 'bold', border: '1px solid #000', textAlign: 'center' }}>DESCRIPTION</TableCell>
+                <TableCell sx={{ fontWeight: 'bold', border: '1px solid #000', textAlign: 'center', width: '80px' }}>UNIT</TableCell>
+                <TableCell sx={{ fontWeight: 'bold', border: '1px solid #000', textAlign: 'center', width: '70px' }}>QTY</TableCell>
+                <TableCell sx={{ fontWeight: 'bold', border: '1px solid #000', textAlign: 'center', width: '120px' }}>UNIT PRICE</TableCell>
+                <TableCell sx={{ fontWeight: 'bold', border: '1px solid #000', textAlign: 'center', width: '120px' }}>TOTAL</TableCell>
+                <TableCell sx={{ fontWeight: 'bold', border: '1px solid #000', textAlign: 'center', width: '130px' }}>SUPPLIER</TableCell>
+                <TableCell sx={{ fontWeight: 'bold', border: '1px solid #000', textAlign: 'center', width: '60px' }}>Action</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -308,71 +346,25 @@ const ProcurementForm = () => {
                 totals.itemsWithTotal.map((item, idx) => (
                   <TableRow key={idx}>
                     <TableCell sx={{ border: '1px solid #000', p: 1 }}>
-                      <TextField
-                        size="small"
-                        fullWidth
-                        value={item.description || ''}
-                        onChange={e => handleItemChange(idx, 'description', e.target.value)}
-                        placeholder=""
-                        sx={{ '& .MuiInputBase-root': { border: 'none', '&:before': { borderBottom: 'none' }, '&:after': { borderBottom: 'none' } } }}
-                      />
+                      <TextField size="small" fullWidth value={item.description || ''} onChange={e => handleItemChange(idx, 'description', e.target.value)} placeholder="" sx={{ '& .MuiInputBase-root': { border: 'none', '&:before': { borderBottom: 'none' }, '&:after': { borderBottom: 'none' } } }} />
                     </TableCell>
                     <TableCell sx={{ border: '1px solid #000', p: 1 }}>
-                      <TextField
-                        size="small"
-                        fullWidth
-                        value={item.unit || ''}
-                        onChange={e => handleItemChange(idx, 'unit', e.target.value)}
-                        placeholder=""
-                        sx={{ '& .MuiInputBase-root': { border: 'none', '&:before': { borderBottom: 'none' }, '&:after': { borderBottom: 'none' } } }}
-                      />
+                      <TextField size="small" fullWidth value={item.unit || ''} onChange={e => handleItemChange(idx, 'unit', e.target.value)} placeholder="" sx={{ '& .MuiInputBase-root': { border: 'none', '&:before': { borderBottom: 'none' }, '&:after': { borderBottom: 'none' } } }} />
                     </TableCell>
                     <TableCell sx={{ border: '1px solid #000', p: 1 }}>
-                      <TextField
-                        size="small"
-                        type="number"
-                        fullWidth
-                        value={item.quantity || 0}
-                        onChange={e => handleItemChange(idx, 'quantity', e.target.value)}
-                        inputProps={{ min: 0 }}
-                        sx={{ '& .MuiInputBase-root': { border: 'none', '&:before': { borderBottom: 'none' }, '&:after': { borderBottom: 'none' } } }}
-                      />
+                      <TextField size="small" type="number" fullWidth value={item.quantity || 0} onChange={e => handleItemChange(idx, 'quantity', e.target.value)} inputProps={{ min: 0 }} sx={{ '& .MuiInputBase-root': { border: 'none', '&:before': { borderBottom: 'none' }, '&:after': { borderBottom: 'none' } } }} />
                     </TableCell>
                     <TableCell sx={{ border: '1px solid #000', p: 1 }}>
-                      <TextField
-                        size="small"
-                        type="number"
-                        fullWidth
-                        value={item.unitPrice || 0}
-                        onChange={e => handleItemChange(idx, 'unitPrice', e.target.value)}
-                        inputProps={{ min: 0, step: 0.01 }}
-                        sx={{ '& .MuiInputBase-root': { border: 'none', '&:before': { borderBottom: 'none' }, '&:after': { borderBottom: 'none' } } }}
-                      />
+                      <TextField size="small" type="number" fullWidth value={item.unitPrice || 0} onChange={e => handleItemChange(idx, 'unitPrice', e.target.value)} inputProps={{ min: 0, step: 0.01 }} sx={{ '& .MuiInputBase-root': { border: 'none', '&:before': { borderBottom: 'none' }, '&:after': { borderBottom: 'none' } } }} />
                     </TableCell>
                     <TableCell sx={{ border: '1px solid #000', p: 1, bgcolor: '#fafafa' }}>
-                      <TextField
-                        size="small"
-                        type="number"
-                        fullWidth
-                        value={item.total || 0}
-                        InputProps={{ readOnly: true }}
-                        sx={{ '& .MuiInputBase-root': { border: 'none', bgcolor: '#fafafa', '&:before': { borderBottom: 'none' }, '&:after': { borderBottom: 'none' } } }}
-                      />
+                      <TextField size="small" type="number" fullWidth value={item.total || 0} InputProps={{ readOnly: true }} sx={{ '& .MuiInputBase-root': { border: 'none', bgcolor: '#fafafa', '&:before': { borderBottom: 'none' }, '&:after': { borderBottom: 'none' } } }} />
                     </TableCell>
                     <TableCell sx={{ border: '1px solid #000', p: 1 }}>
-                      <TextField
-                        size="small"
-                        fullWidth
-                        value={item.supplier || ''}
-                        onChange={e => handleItemChange(idx, 'supplier', e.target.value)}
-                        placeholder="Supplier"
-                        sx={{ '& .MuiInputBase-root': { border: 'none', '&:before': { borderBottom: 'none' }, '&:after': { borderBottom: 'none' } } }}
-                      />
+                      <TextField size="small" fullWidth value={item.supplier || ''} onChange={e => handleItemChange(idx, 'supplier', e.target.value)} placeholder="Supplier" sx={{ '& .MuiInputBase-root': { border: 'none', '&:before': { borderBottom: 'none' }, '&:after': { borderBottom: 'none' } } }} />
                     </TableCell>
                     <TableCell sx={{ border: '1px solid #000', p: 1, textAlign: 'center' }}>
-                      <IconButton size="small" onClick={() => removeItem(idx)} color="error">
-                        <DeleteIcon fontSize="small" />
-                      </IconButton>
+                      <IconButton size="small" onClick={() => removeItem(idx)} color="error"><DeleteIcon fontSize="small" /></IconButton>
                     </TableCell>
                   </TableRow>
                 ))
@@ -381,120 +373,46 @@ const ProcurementForm = () => {
           </Table>
         </Box>
 
-        {/* ===== ADD ROW BUTTON ===== */}
+        {/* Add Row */}
         <Box sx={{ mt: 2 }}>
-          <Button variant="outlined" startIcon={<AddIcon />} onClick={addItem} size="small">
-            Add Row
-          </Button>
+          <Button variant="outlined" startIcon={<AddIcon />} onClick={addItem} size="small">Add Row</Button>
         </Box>
 
-        {/* ===== GRAND TOTAL ===== */}
-        <Box sx={{
-          mt: 2,
-          display: 'flex',
-          justifyContent: 'flex-end',
-          borderTop: '2px solid #000',
-          pt: 2
-        }}>
-          <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
-            GRAND TOTAL: {formatCurrency(totals.grandTotal)}
-          </Typography>
+        {/* Grand Total */}
+        <Box sx={{ mt: 2, display: 'flex', justifyContent: 'flex-end', borderTop: '2px solid #000', pt: 2 }}>
+          <Typography variant="h6" sx={{ fontWeight: 'bold' }}>GRAND TOTAL: {formatCurrency(totals.grandTotal)}</Typography>
         </Box>
 
-        {/* ===== APPROVAL SECTION (Matches physical note) ===== */}
-        <Box sx={{
-          mt: 4,
-          borderTop: '1px solid #000',
-          pt: 3,
-        }}>
+        {/* Approval Section with Digital Signatures */}
+        <Box sx={{ mt: 4, borderTop: '1px solid #000', pt: 3 }}>
           <Grid container spacing={2}>
-            {/* Prepared By */}
             <Grid item xs={12} md={4}>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                 <Typography variant="body1" sx={{ fontWeight: 'bold' }}>PREPARED BY:</Typography>
-                <TextField
-                  size="small"
-                  fullWidth
-                  value={form.preparedBy || ''}
-                  onChange={e => setForm({ ...form, preparedBy: e.target.value })}
-                  sx={{ '& .MuiInputBase-root': { borderBottom: '1px solid #000', borderRadius: 0, '&:before': { borderBottom: 'none' }, '&:after': { borderBottom: 'none' } } }}
-                />
+                <TextField size="small" fullWidth value={form.preparedBy || ''} onChange={e => setForm({ ...form, preparedBy: e.target.value })} sx={{ '& .MuiInputBase-root': { borderBottom: '1px solid #000', borderRadius: 0, '&:before': { borderBottom: 'none' }, '&:after': { borderBottom: 'none' } } }} />
               </Box>
-              <Box sx={{ mt: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
-                <Typography variant="body2">SIGN:</Typography>
-                <TextField
-                  size="small"
-                  fullWidth
-                  value={form.preparedSign || ''}
-                  onChange={e => setForm({ ...form, preparedSign: e.target.value })}
-                  placeholder="_______________"
-                  sx={{ '& .MuiInputBase-root': { borderBottom: '1px solid #000', borderRadius: 0, '&:before': { borderBottom: 'none' }, '&:after': { borderBottom: 'none' } } }}
-                />
-              </Box>
+              {renderSignatureField('prepared', 'SIGN', 'preparedSign')}
             </Grid>
-
-            {/* Approved By */}
             <Grid item xs={12} md={4}>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                 <Typography variant="body1" sx={{ fontWeight: 'bold' }}>APPROVED BY:</Typography>
-                <TextField
-                  size="small"
-                  fullWidth
-                  value={form.approvedBy || ''}
-                  onChange={e => setForm({ ...form, approvedBy: e.target.value })}
-                  sx={{ '& .MuiInputBase-root': { borderBottom: '1px solid #000', borderRadius: 0, '&:before': { borderBottom: 'none' }, '&:after': { borderBottom: 'none' } } }}
-                />
+                <TextField size="small" fullWidth value={form.approvedBy || ''} onChange={e => setForm({ ...form, approvedBy: e.target.value })} sx={{ '& .MuiInputBase-root': { borderBottom: '1px solid #000', borderRadius: 0, '&:before': { borderBottom: 'none' }, '&:after': { borderBottom: 'none' } } }} />
               </Box>
-              <Box sx={{ mt: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
-                <Typography variant="body2">SIGN:</Typography>
-                <TextField
-                  size="small"
-                  fullWidth
-                  value={form.approvedSign || ''}
-                  onChange={e => setForm({ ...form, approvedSign: e.target.value })}
-                  placeholder="_______________"
-                  sx={{ '& .MuiInputBase-root': { borderBottom: '1px solid #000', borderRadius: 0, '&:before': { borderBottom: 'none' }, '&:after': { borderBottom: 'none' } } }}
-                />
-              </Box>
+              {renderSignatureField('approved', 'SIGN', 'approvedSign')}
             </Grid>
-
-            {/* Authorised By */}
             <Grid item xs={12} md={4}>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                 <Typography variant="body1" sx={{ fontWeight: 'bold' }}>AUTHORISED BY:</Typography>
-                <TextField
-                  size="small"
-                  fullWidth
-                  value={form.authorisedBy || ''}
-                  onChange={e => setForm({ ...form, authorisedBy: e.target.value })}
-                  sx={{ '& .MuiInputBase-root': { borderBottom: '1px solid #000', borderRadius: 0, '&:before': { borderBottom: 'none' }, '&:after': { borderBottom: 'none' } } }}
-                />
+                <TextField size="small" fullWidth value={form.authorisedBy || ''} onChange={e => setForm({ ...form, authorisedBy: e.target.value })} sx={{ '& .MuiInputBase-root': { borderBottom: '1px solid #000', borderRadius: 0, '&:before': { borderBottom: 'none' }, '&:after': { borderBottom: 'none' } } }} />
               </Box>
-              <Box sx={{ mt: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
-                <Typography variant="body2">SIGN:</Typography>
-                <TextField
-                  size="small"
-                  fullWidth
-                  value={form.authorisedSign || ''}
-                  onChange={e => setForm({ ...form, authorisedSign: e.target.value })}
-                  placeholder="_______________"
-                  sx={{ '& .MuiInputBase-root': { borderBottom: '1px solid #000', borderRadius: 0, '&:before': { borderBottom: 'none' }, '&:after': { borderBottom: 'none' } } }}
-                />
-              </Box>
+              {renderSignatureField('authorised', 'SIGN', 'authorisedSign')}
             </Grid>
           </Grid>
         </Box>
 
-        {/* ===== STATUS & ACTIONS ===== */}
+        {/* Status & Actions */}
         <Box sx={{ mt: 3, display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
-          <TextField
-            select
-            label="Status"
-            size="small"
-            sx={{ width: 150 }}
-            value={form.status || 'pending'}
-            onChange={e => setForm({ ...form, status: e.target.value })}
-          >
+          <TextField select label="Status" size="small" sx={{ width: 150 }} value={form.status || 'pending'} onChange={e => setForm({ ...form, status: e.target.value })}>
             <MenuItem value="pending">Pending</MenuItem>
             <MenuItem value="funded">Funded</MenuItem>
             <MenuItem value="purchased">Purchased</MenuItem>
@@ -510,14 +428,18 @@ const ProcurementForm = () => {
           <Button type="submit" variant="contained" startIcon={<SaveIcon />} disabled={loading}>
             {loading ? 'Saving...' : 'Save Order'}
           </Button>
-          <Button variant="outlined" startIcon={<PrintIcon />} onClick={handlePrint}>
-            Print
-          </Button>
-          <Button variant="outlined" onClick={() => navigate('/procurement')}>
-            Cancel
-          </Button>
+          <Button variant="outlined" startIcon={<PrintIcon />} onClick={handlePrint}>Print</Button>
+          <Button variant="outlined" onClick={() => navigate('/procurement')}>Cancel</Button>
         </Box>
       </form>
+
+      {/* Signature Modal */}
+      <SignaturePad
+        open={signatureModal.open}
+        onClose={() => setSignatureModal({ open: false, field: '' })}
+        onSave={saveSignature}
+        existingSignature={form[signatureModal.field === 'prepared' ? 'preparedSign' : signatureModal.field === 'approved' ? 'approvedSign' : 'authorisedSign']}
+      />
     </Paper>
   );
 };
