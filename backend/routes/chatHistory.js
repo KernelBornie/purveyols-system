@@ -13,6 +13,7 @@ router.get('/', auth, async (req, res) => {
     }
     res.json(history);
   } catch (err) {
+    console.error('Get history error:', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -25,11 +26,17 @@ router.post('/message', auth, async (req, res) => {
     if (!history) {
       history = new ChatHistory({ user: req.user.id, messages: [] });
     }
-    history.messages.push({ sender, text, type, timestamp: new Date() });
+    history.messages.push({ 
+      sender, 
+      text, 
+      type: type || 'general', 
+      timestamp: new Date() 
+    });
     history.updatedAt = new Date();
     await history.save();
     res.json(history);
   } catch (err) {
+    console.error('Save message error:', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -37,9 +44,13 @@ router.post('/message', auth, async (req, res) => {
 // Clear chat history
 router.delete('/', auth, async (req, res) => {
   try {
-    await ChatHistory.findOneAndDelete({ user: req.user.id });
+    const result = await ChatHistory.findOneAndDelete({ user: req.user.id });
+    if (!result) {
+      return res.status(404).json({ message: 'No history found' });
+    }
     res.json({ message: 'Chat history cleared' });
   } catch (err) {
+    console.error('Clear history error:', err);
     res.status(500).json({ error: err.message });
   }
 });
