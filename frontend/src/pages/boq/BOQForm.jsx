@@ -3,12 +3,14 @@ import { useNavigate, useParams } from 'react-router-dom';
 import {
   Paper, Typography, Box, Grid, TextField, Button, IconButton,
   Table, TableHead, TableRow, TableCell, TableBody,
-  MenuItem, Divider, Alert, Chip
+  MenuItem, Divider, Alert, Chip, Card, CardContent,
+  FormControlLabel, Switch
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
 import SaveIcon from '@mui/icons-material/Save';
 import PrintIcon from '@mui/icons-material/Print';
+import FileDownloadIcon from '@mui/icons-material/FileDownload';
 import api from '../../api/axios';
 import { useAuth } from '../../context/AuthContext';
 import BackButton from '../../components/BackButton';
@@ -30,6 +32,7 @@ const BOQForm = () => {
   });
   const [creator, setCreator] = useState(null);
   const [message, setMessage] = useState(null);
+  const [showSummary, setShowSummary] = useState(true);
 
   // BOQ Section templates
   const sectionTemplates = [
@@ -39,16 +42,27 @@ const BOQForm = () => {
         { description: 'Site Establishment', quantity: 1, unit: 'Lump Sum', rate: 0 },
         { description: 'Site Clearance', quantity: 1, unit: 'Lump Sum', rate: 0 },
         { description: 'Temporary Works', quantity: 1, unit: 'Lump Sum', rate: 0 },
+        { description: 'Security & Fencing', quantity: 1, unit: 'Lump Sum', rate: 0 },
+        { description: 'Welfare Facilities', quantity: 1, unit: 'Lump Sum', rate: 0 },
       ]
     },
     {
-      name: 'Boundary Fence',
+      name: 'Boundary Fence Works',
       items: [
         { description: 'Excavation for posts', quantity: 400, unit: 'm³', rate: 0 },
         { description: 'Concrete for posts (C25)', quantity: 80, unit: 'm³', rate: 0 },
         { description: 'Reinforcement steel', quantity: 4000, unit: 'kg', rate: 0 },
         { description: 'Chain link fencing', quantity: 2000, unit: 'm', rate: 0 },
         { description: 'Gates and fittings', quantity: 4, unit: 'No.', rate: 0 },
+        { description: 'Painting and finishing', quantity: 2000, unit: 'm', rate: 0 },
+      ]
+    },
+    {
+      name: 'Earthworks & Site Preparation',
+      items: [
+        { description: 'Bulk earthworks', quantity: 500, unit: 'm³', rate: 0 },
+        { description: 'Site levelling', quantity: 500, unit: 'm³', rate: 0 },
+        { description: 'Drainage works', quantity: 200, unit: 'm', rate: 0 },
       ]
     }
   ];
@@ -62,12 +76,16 @@ const BOQForm = () => {
       });
     } else {
       setCreator(user);
-      // Add default sections
+      // Add default sections with headers
       setForm(prev => ({
         ...prev,
         items: [
+          { isSection: true, sectionName: 'PRELIMINARIES AND GENERAL ITEMS' },
           ...sectionTemplates[0].items,
+          { isSection: true, sectionName: 'BOUNDARY FENCE WORKS' },
           ...sectionTemplates[1].items,
+          { isSection: true, sectionName: 'EARTHWORKS & SITE PREPARATION' },
+          ...sectionTemplates[2].items,
         ]
       }));
     }
@@ -75,27 +93,54 @@ const BOQForm = () => {
 
   // Calculate totals
   const calculateTotals = () => {
-    const itemsWithAmount = form.items.map(item => {
+    let itemsWithAmount = [];
+    let subtotal = 0;
+    
+    // Calculate total of all items (excluding sections)
+    form.items.forEach(item => {
+      if (item.isSection) {
+        itemsWithAmount.push(item);
+        return;
+      }
       const quantity = parseFloat(item.quantity) || 0;
       const rate = parseFloat(item.rate) || 0;
       const amount = quantity * rate;
-      return { ...item, amount };
+      itemsWithAmount.push({ ...item, amount });
+      subtotal += amount;
     });
     
-    const subtotal = itemsWithAmount.reduce((sum, item) => sum + (item.amount || 0), 0);
     const preliminaries = parseFloat(form.preliminaries) || 0;
-    const contingency = (subtotal + preliminaries) * (parseFloat(form.contingency) / 100);
-    const vat = (subtotal + preliminaries + contingency) * (parseFloat(form.vat) / 100);
-    const grandTotal = subtotal + preliminaries + contingency + vat;
+    const preliminariesAmount = (subtotal * preliminaries) / 100;
+    const contingency = (subtotal + preliminariesAmount) * (parseFloat(form.contingency) / 100);
+    const vat = (subtotal + preliminariesAmount + contingency) * (parseFloat(form.vat) / 100);
+    const grandTotal = subtotal + preliminariesAmount + contingency + vat;
     
-    return { itemsWithAmount, subtotal, preliminaries, contingency, vat, grandTotal };
+    return { 
+      itemsWithAmount, 
+      subtotal, 
+      preliminariesAmount,
+      preliminaries: form.preliminaries,
+      contingency: form.contingency,
+      vat: form.vat,
+      contingencyAmount: contingency,
+      vatAmount: vat,
+      grandTotal 
+    };
   };
 
   const totals = calculateTotals();
 
   const handleItemChange = (index, field, value) => {
     const items = [...form.items];
-    items[index][field] = value;
+    if (field === 'isSection') {
+      items[index][field] = value;
+    } else {
+      items[index][field] = value;
+      // Auto-calculate amount when quantity or rate changes
+      const quantity = parseFloat(items[index].quantity) || 0;
+      const rate = parseFloat(items[index].rate) || 0;
+      items[index].amount = quantity * rate;
+    }
     setForm({ ...form, items });
   };
 
@@ -113,7 +158,11 @@ const BOQForm = () => {
     }));
     setForm({
       ...form,
-      items: [...form.items, ...newItems]
+      items: [
+        ...form.items,
+        { isSection: true, sectionName: sectionName.toUpperCase() },
+        ...newItems
+      ]
     });
   };
 
@@ -137,9 +186,9 @@ const BOQForm = () => {
       const payload = {
         ...form,
         items: itemsToSubmit,
-        preliminaries: totals.preliminaries,
-        contingency: totals.contingency,
-        vat: totals.vat,
+        preliminaries: form.preliminaries,
+        contingency: form.contingency,
+        vat: form.vat,
         grandTotal: totals.grandTotal,
       };
       
@@ -162,10 +211,48 @@ const BOQForm = () => {
     window.print();
   };
 
+  const exportCSV = () => {
+    let csv = 'Description,Qty,Unit,Rate,Amount\n';
+    form.items.forEach(item => {
+      if (!item.isSection) {
+        csv += `${item.description},${item.quantity},${item.unit},${item.rate},${item.amount}\n`;
+      }
+    });
+    csv += `\nSub-Total,,,${totals.subtotal}`;
+    csv += `\nPreliminaries (${totals.preliminaries}%),,,"${totals.preliminariesAmount}"`;
+    csv += `\nContingency (${totals.contingency}%),,,"${totals.contingencyAmount}"`;
+    csv += `\nVAT (${totals.vat}%),,,"${totals.vatAmount}"`;
+    csv += `\nGRAND TOTAL,,,${totals.grandTotal}`;
+    
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'BOQ.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const formatCurrency = (amount) => {
+    return new Intl.NumberFormat('en-ZM', { style: 'currency', currency: 'ZMW' }).format(amount || 0);
+  };
+
   return (
     <Paper sx={{ p: 3 }}>
       <BackButton />
-      <Typography variant="h4" gutterBottom>Bill of Quantities (BOQ)</Typography>
+      
+      {/* Header */}
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+        <Typography variant="h4">Bill of Quantities (BOQ)</Typography>
+        <Box sx={{ display: 'flex', gap: 1 }}>
+          <Button variant="outlined" startIcon={<PrintIcon />} onClick={handlePrint}>
+            Print
+          </Button>
+          <Button variant="outlined" startIcon={<FileDownloadIcon />} onClick={exportCSV}>
+            Export CSV
+          </Button>
+        </Box>
+      </Box>
       
       {creator && (
         <Box sx={{ mt: 1, mb: 2, p: 1, bgcolor: '#f5f5f5', borderRadius: 1 }}>
@@ -178,8 +265,8 @@ const BOQForm = () => {
       {message && <Alert severity={message.type} sx={{ mb: 2 }}>{message.text}</Alert>}
 
       <form onSubmit={handleSubmit}>
-        {/* Project Selection */}
-        <Grid container spacing={2}>
+        {/* Project and Description */}
+        <Grid container spacing={2} sx={{ mb: 3 }}>
           <Grid item xs={12} md={6}>
             <TextField
               select
@@ -204,7 +291,7 @@ const BOQForm = () => {
         </Grid>
 
         {/* Quick Add Sections */}
-        <Box sx={{ mt: 2, display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+        <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 2 }}>
           <Button
             variant="outlined"
             size="small"
@@ -225,6 +312,14 @@ const BOQForm = () => {
             variant="outlined"
             size="small"
             startIcon={<AddIcon />}
+            onClick={() => addSection('Earthworks', sectionTemplates[2].items)}
+          >
+            Add Earthworks
+          </Button>
+          <Button
+            variant="contained"
+            size="small"
+            startIcon={<AddIcon />}
             onClick={addItem}
           >
             Add Custom Item
@@ -236,7 +331,7 @@ const BOQForm = () => {
           <Typography variant="h6" gutterBottom>BOQ Items</Typography>
           <Table size="small" sx={{ minWidth: 800 }}>
             <TableHead>
-              <TableRow>
+              <TableRow sx={{ bgcolor: '#f5f5f5' }}>
                 <TableCell sx={{ fontWeight: 'bold' }}>#</TableCell>
                 <TableCell sx={{ fontWeight: 'bold' }}>Description</TableCell>
                 <TableCell sx={{ fontWeight: 'bold' }}>Qty</TableCell>
@@ -247,61 +342,74 @@ const BOQForm = () => {
               </TableRow>
             </TableHead>
             <TableBody>
-              {totals.itemsWithAmount.map((item, idx) => (
-                <TableRow key={idx}>
-                  <TableCell>{idx + 1}</TableCell>
-                  <TableCell>
-                    <TextField
-                      size="small"
-                      fullWidth
-                      value={item.description}
-                      onChange={e => handleItemChange(idx, 'description', e.target.value)}
-                      placeholder="Item description..."
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <TextField
-                      size="small"
-                      type="number"
-                      value={item.quantity}
-                      onChange={e => handleItemChange(idx, 'quantity', e.target.value)}
-                      sx={{ width: 80 }}
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <TextField
-                      size="small"
-                      value={item.unit}
-                      onChange={e => handleItemChange(idx, 'unit', e.target.value)}
-                      sx={{ width: 80 }}
-                      placeholder="m², m³, No."
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <TextField
-                      size="small"
-                      type="number"
-                      value={item.rate}
-                      onChange={e => handleItemChange(idx, 'rate', e.target.value)}
-                      sx={{ width: 120 }}
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <TextField
-                      size="small"
-                      type="number"
-                      value={item.amount || 0}
-                      InputProps={{ readOnly: true }}
-                      sx={{ width: 120, bgcolor: '#f5f5f5' }}
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <IconButton size="small" onClick={() => removeItem(idx)} color="error">
-                      <DeleteIcon fontSize="small" />
-                    </IconButton>
-                  </TableCell>
-                </TableRow>
-              ))}
+              {totals.itemsWithAmount.map((item, idx) => {
+                if (item.isSection) {
+                  return (
+                    <TableRow key={idx}>
+                      <TableCell colSpan={7}>
+                        <Typography variant="subtitle1" fontWeight="bold" sx={{ bgcolor: '#e3f2fd', p: 1 }}>
+                          {item.sectionName}
+                        </Typography>
+                      </TableCell>
+                    </TableRow>
+                  );
+                }
+                return (
+                  <TableRow key={idx}>
+                    <TableCell>{idx + 1}</TableCell>
+                    <TableCell>
+                      <TextField
+                        size="small"
+                        fullWidth
+                        value={item.description}
+                        onChange={e => handleItemChange(idx, 'description', e.target.value)}
+                        placeholder="Item description..."
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <TextField
+                        size="small"
+                        type="number"
+                        value={item.quantity}
+                        onChange={e => handleItemChange(idx, 'quantity', e.target.value)}
+                        sx={{ width: 80 }}
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <TextField
+                        size="small"
+                        value={item.unit}
+                        onChange={e => handleItemChange(idx, 'unit', e.target.value)}
+                        sx={{ width: 80 }}
+                        placeholder="m², m³, No."
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <TextField
+                        size="small"
+                        type="number"
+                        value={item.rate}
+                        onChange={e => handleItemChange(idx, 'rate', e.target.value)}
+                        sx={{ width: 120 }}
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <TextField
+                        size="small"
+                        type="number"
+                        value={item.amount || 0}
+                        InputProps={{ readOnly: true }}
+                        sx={{ width: 120, bgcolor: '#f5f5f5' }}
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <IconButton size="small" onClick={() => removeItem(idx)} color="error">
+                        <DeleteIcon fontSize="small" />
+                      </IconButton>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
         </Box>
@@ -309,74 +417,89 @@ const BOQForm = () => {
         <Divider sx={{ my: 3 }} />
 
         {/* Summary Section */}
-        <Grid container spacing={2}>
-          <Grid item xs={12} md={6}>
+        <Box sx={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
+          <Box sx={{ flex: 1, minWidth: 300 }}>
             <Typography variant="h6" gutterBottom>Summary</Typography>
             
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', py: 1 }}>
-              <Typography variant="body1">Sub-Total:</Typography>
-              <Typography variant="body1" fontWeight="bold">
-                ZMW {totals.subtotal.toFixed(2)}
-              </Typography>
-            </Box>
+            <Card sx={{ p: 2, bgcolor: '#f9f9f9' }}>
+              <Grid container spacing={1}>
+                <Grid item xs={6}>
+                  <Typography variant="body2" color="textSecondary">Sub-Total:</Typography>
+                </Grid>
+                <Grid item xs={6} sx={{ textAlign: 'right' }}>
+                  <Typography variant="body2" fontWeight="bold">{formatCurrency(totals.subtotal)}</Typography>
+                </Grid>
 
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, py: 1 }}>
-              <Typography variant="body1">Preliminaries (%):</Typography>
+                <Grid item xs={6}>
+                  <Typography variant="body2" color="textSecondary">Preliminaries ({totals.preliminaries}%):</Typography>
+                </Grid>
+                <Grid item xs={6} sx={{ textAlign: 'right' }}>
+                  <Typography variant="body2">{formatCurrency(totals.preliminariesAmount)}</Typography>
+                </Grid>
+
+                <Grid item xs={6}>
+                  <Typography variant="body2" color="textSecondary">Contingency ({totals.contingency}%):</Typography>
+                </Grid>
+                <Grid item xs={6} sx={{ textAlign: 'right' }}>
+                  <Typography variant="body2">{formatCurrency(totals.contingencyAmount)}</Typography>
+                </Grid>
+
+                <Grid item xs={6}>
+                  <Typography variant="body2" color="textSecondary">VAT ({totals.vat}%):</Typography>
+                </Grid>
+                <Grid item xs={6} sx={{ textAlign: 'right' }}>
+                  <Typography variant="body2">{formatCurrency(totals.vatAmount)}</Typography>
+                </Grid>
+
+                <Grid item xs={12}>
+                  <Divider sx={{ my: 1 }} />
+                </Grid>
+
+                <Grid item xs={6}>
+                  <Typography variant="h6">GRAND TOTAL:</Typography>
+                </Grid>
+                <Grid item xs={6} sx={{ textAlign: 'right' }}>
+                  <Typography variant="h6" fontWeight="bold" color="primary">
+                    {formatCurrency(totals.grandTotal)}
+                  </Typography>
+                </Grid>
+              </Grid>
+            </Card>
+          </Box>
+
+          <Box sx={{ flex: 1, minWidth: 250 }}>
+            <Typography variant="h6" gutterBottom>Settings</Typography>
+            <Box sx={{ p: 2, bgcolor: '#f5f5f5', borderRadius: 1 }}>
               <TextField
-                size="small"
+                label="Preliminaries (%)"
                 type="number"
+                size="small"
+                fullWidth
+                sx={{ mb: 2 }}
                 value={form.preliminaries}
                 onChange={e => setForm({ ...form, preliminaries: e.target.value })}
-                sx={{ width: 100 }}
               />
-              <Typography variant="body1" fontWeight="bold">
-                ZMW {totals.preliminaries.toFixed(2)}
-              </Typography>
-            </Box>
-
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, py: 1 }}>
-              <Typography variant="body1">Contingency (%):</Typography>
               <TextField
-                size="small"
+                label="Contingency (%)"
                 type="number"
+                size="small"
+                fullWidth
+                sx={{ mb: 2 }}
                 value={form.contingency}
                 onChange={e => setForm({ ...form, contingency: e.target.value })}
-                sx={{ width: 100 }}
               />
-              <Typography variant="body1" fontWeight="bold">
-                ZMW {totals.contingency.toFixed(2)}
-              </Typography>
-            </Box>
-
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, py: 1 }}>
-              <Typography variant="body1">VAT (%):</Typography>
               <TextField
-                size="small"
+                label="VAT (%)"
                 type="number"
+                size="small"
+                fullWidth
+                sx={{ mb: 2 }}
                 value={form.vat}
                 onChange={e => setForm({ ...form, vat: e.target.value })}
-                sx={{ width: 100 }}
               />
-              <Typography variant="body1" fontWeight="bold">
-                ZMW {totals.vat.toFixed(2)}
-              </Typography>
-            </Box>
-
-            <Divider sx={{ my: 1 }} />
-
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', py: 2 }}>
-              <Typography variant="h5">GRAND TOTAL:</Typography>
-              <Typography variant="h5" fontWeight="bold" color="primary">
-                ZMW {totals.grandTotal.toFixed(2)}
-              </Typography>
-            </Box>
-          </Grid>
-
-          <Grid item xs={12} md={6}>
-            <Box sx={{ p: 2, bgcolor: '#f5f5f5', borderRadius: 1 }}>
-              <Typography variant="subtitle2" gutterBottom>Status</Typography>
               <TextField
                 select
+                label="Status"
                 size="small"
                 fullWidth
                 value={form.status}
@@ -386,7 +509,6 @@ const BOQForm = () => {
                 <MenuItem value="submitted">Submitted</MenuItem>
                 <MenuItem value="approved">Approved</MenuItem>
               </TextField>
-              
               {form.status === 'submitted' && (
                 <Chip label="Pending Approval" color="warning" sx={{ mt: 2 }} />
               )}
@@ -394,8 +516,8 @@ const BOQForm = () => {
                 <Chip label="Approved" color="success" sx={{ mt: 2 }} />
               )}
             </Box>
-          </Grid>
-        </Grid>
+          </Box>
+        </Box>
 
         <Box sx={{ mt: 3, display: 'flex', gap: 2 }}>
           <Button
@@ -405,13 +527,6 @@ const BOQForm = () => {
             disabled={loading}
           >
             {loading ? 'Saving...' : 'Save BOQ'}
-          </Button>
-          <Button
-            variant="outlined"
-            startIcon={<PrintIcon />}
-            onClick={handlePrint}
-          >
-            Print
           </Button>
           <Button variant="outlined" onClick={() => navigate('/boq')}>
             Cancel
