@@ -6,8 +6,18 @@ import BackButton from '../components/BackButton';
 
 const Profile = () => {
   const { user, setUser } = useAuth();
-  const [form, setForm] = useState({ name: '', email: '', phone: '', nrc: '', mobileMoneyNumber: '' });
-  const [passwordForm, setPasswordForm] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' });
+  const [form, setForm] = useState({ 
+    name: '', 
+    email: '', 
+    phone: '', 
+    nrc: '', 
+    mobileMoneyNumber: '' 
+  });
+  const [passwordForm, setPasswordForm] = useState({ 
+    currentPassword: '', 
+    newPassword: '', 
+    confirmPassword: '' 
+  });
   const [message, setMessage] = useState(null);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -40,7 +50,14 @@ const Profile = () => {
     try {
       const res = await api.put('/api/users/profile', form);
       setMessage('Profile updated successfully');
-      setUser(res.data.user);
+      // Update the user context with the new data
+      if (res.data.user) {
+        setUser(res.data.user);
+        // Also update session storage
+        const storedUser = JSON.parse(sessionStorage.getItem('user') || '{}');
+        const updatedUser = { ...storedUser, ...res.data.user };
+        sessionStorage.setItem('user', JSON.stringify(updatedUser));
+      }
     } catch (err) {
       setError(err.response?.data?.message || 'Update failed');
     } finally {
@@ -97,18 +114,44 @@ const Profile = () => {
       <form onSubmit={handleProfileUpdate}>
         <Grid container spacing={2}>
           <Grid item xs={12} sm={6}>
-            <TextField label="Name" fullWidth margin="normal" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
+            <TextField 
+              label="Name" 
+              fullWidth 
+              margin="normal" 
+              value={form.name} 
+              onChange={(e) => setForm({ ...form, name: e.target.value })} 
+              required 
+            />
           </Grid>
           <Grid item xs={12} sm={6}>
-            <TextField label="Email" fullWidth margin="normal" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required type="email" />
+            <TextField 
+              label="Email" 
+              fullWidth 
+              margin="normal" 
+              value={form.email} 
+              onChange={(e) => setForm({ ...form, email: e.target.value })} 
+              required 
+              type="email" 
+            />
           </Grid>
           <Grid item xs={12} sm={6}>
-            <TextField label="Phone" fullWidth margin="normal" value={form.phone || ''} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+            <TextField 
+              label="Phone" 
+              fullWidth 
+              margin="normal" 
+              value={form.phone || ''} 
+              onChange={(e) => setForm({ ...form, phone: e.target.value })} 
+            />
           </Grid>
           <Grid item xs={12} sm={6}>
-            <TextField label="NRC" fullWidth margin="normal" value={form.nrc || ''} onChange={(e) => setForm({ ...form, nrc: e.target.value })} />
+            <TextField 
+              label="NRC" 
+              fullWidth 
+              margin="normal" 
+              value={form.nrc || ''} 
+              onChange={(e) => setForm({ ...form, nrc: e.target.value })} 
+            />
           </Grid>
-          {/* Mobile Money Number – ONLY for Accountant */}
           {isAccountant && (
             <Grid item xs={12}>
               <TextField
@@ -122,7 +165,6 @@ const Profile = () => {
               />
             </Grid>
           )}
-          {/* No placeholder for non-accountants - just empty space */}
         </Grid>
         <Button type="submit" variant="contained" sx={{ mt: 2 }} disabled={loading}>
           {loading ? 'Saving...' : 'Update Profile'}
@@ -133,9 +175,33 @@ const Profile = () => {
 
       <Typography variant="h6" gutterBottom>Change Password</Typography>
       <form onSubmit={handlePasswordChange}>
-        <TextField label="Current Password" type="password" fullWidth margin="normal" value={passwordForm.currentPassword} onChange={(e) => setPasswordForm({ ...passwordForm, currentPassword: e.target.value })} required />
-        <TextField label="New Password" type="password" fullWidth margin="normal" value={passwordForm.newPassword} onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })} required />
-        <TextField label="Confirm New Password" type="password" fullWidth margin="normal" value={passwordForm.confirmPassword} onChange={(e) => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })} required />
+        <TextField 
+          label="Current Password" 
+          type="password" 
+          fullWidth 
+          margin="normal" 
+          value={passwordForm.currentPassword} 
+          onChange={(e) => setPasswordForm({ ...passwordForm, currentPassword: e.target.value })} 
+          required 
+        />
+        <TextField 
+          label="New Password" 
+          type="password" 
+          fullWidth 
+          margin="normal" 
+          value={passwordForm.newPassword} 
+          onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })} 
+          required 
+        />
+        <TextField 
+          label="Confirm New Password" 
+          type="password" 
+          fullWidth 
+          margin="normal" 
+          value={passwordForm.confirmPassword} 
+          onChange={(e) => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })} 
+          required 
+        />
         <Button type="submit" variant="outlined" sx={{ mt: 2 }} disabled={loading}>
           {loading ? 'Changing...' : 'Change Password'}
         </Button>

@@ -3,7 +3,7 @@ const router = express.Router();
 const User = require('../models/User');
 const auth = require('../middleware/auth');
 
-// Get all users (for admin/director)
+// Get all users
 router.get('/', auth, async (req, res) => {
   try {
     const users = await User.find({}, 'name email role phone nrc mobileMoneyNumber lastLogin createdAt');
@@ -44,23 +44,30 @@ router.get('/me', auth, async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// Update profile
+// Update profile – properly saves all fields
 router.put('/profile', auth, async (req, res) => {
   try {
     const { name, email, phone, nrc, mobileMoneyNumber } = req.body;
     const user = await User.findById(req.user.id);
     if (!user) return res.status(404).json({ message: 'User not found' });
+    
+    // Check email uniqueness
     if (email && email !== user.email) {
       const existing = await User.findOne({ email });
       if (existing) return res.status(400).json({ message: 'Email already taken' });
     }
+    
+    // Update all fields
     user.name = name || user.name;
     user.email = email || user.email;
     user.phone = phone || '';
     user.nrc = nrc || '';
     user.mobileMoneyNumber = mobileMoneyNumber || '';
     user.updatedAt = new Date();
+    
     await user.save();
+    
+    // Return full user data
     res.json({ 
       user: { 
         id: user._id, 
@@ -74,7 +81,10 @@ router.put('/profile', auth, async (req, res) => {
         createdAt: user.createdAt,
       } 
     });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { 
+    console.error('Profile update error:', err);
+    res.status(500).json({ error: err.message }); 
+  }
 });
 
 module.exports = router;
