@@ -15,7 +15,6 @@ import {
 } from '@mui/material';
 import PhoneIcon from '@mui/icons-material/Phone';
 import api from '../api/axios';
-import PhoneSimulator from './PhoneSimulator';
 
 const PaymentModal = ({ open, onClose, worker, onSuccess }) => {
   const [amount, setAmount] = useState('');
@@ -25,7 +24,6 @@ const PaymentModal = ({ open, onClose, worker, onSuccess }) => {
   const [step, setStep] = useState(0);
   const [reference, setReference] = useState('');
   const [confirmed, setConfirmed] = useState(false);
-  const [phoneSimOpen, setPhoneSimOpen] = useState(false);
 
   useEffect(() => {
     if (worker) {
@@ -68,11 +66,19 @@ const PaymentModal = ({ open, onClose, worker, onSuccess }) => {
       setReference(res.data.reference);
       setStatus({ 
         type: 'success', 
-        message: `📱 USSD prompt sent to your phone` 
+        message: res.data.payment.status === 'completed' 
+          ? `✅ Payment sent successfully! Reference: ${res.data.reference}` 
+          : `📱 Payment initiated. Check your phone for USSD prompt.` 
       });
       setStep(1);
-      // Open phone simulator after short delay
-      setTimeout(() => setPhoneSimOpen(true), 500);
+      if (res.data.payment.status === 'completed') {
+        setConfirmed(true);
+        setTimeout(() => {
+          onClose();
+          if (onSuccess) onSuccess();
+          window.location.reload();
+        }, 2000);
+      }
     } catch (err) {
       setStatus({ 
         type: 'error', 
@@ -83,7 +89,7 @@ const PaymentModal = ({ open, onClose, worker, onSuccess }) => {
     }
   };
 
-  const handlePhoneConfirm = async () => {
+  const handleConfirm = async () => {
     setLoading(true);
     setStatus(null);
     try {
@@ -109,102 +115,88 @@ const PaymentModal = ({ open, onClose, worker, onSuccess }) => {
   };
 
   return (
-    <>
-      <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
-        <DialogTitle>Pay Worker via Airtel Money</DialogTitle>
-        <DialogContent>
-          <Stepper activeStep={step} sx={{ my: 2 }}>
-            <Step><StepLabel>Initiate</StepLabel></Step>
-            <Step><StepLabel>Confirm on Phone</StepLabel></Step>
-          </Stepper>
+    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+      <DialogTitle>Pay Worker via Airtel Money</DialogTitle>
+      <DialogContent>
+        <Stepper activeStep={step} sx={{ my: 2 }}>
+          <Step><StepLabel>Initiate</StepLabel></Step>
+          <Step><StepLabel>Confirm</StepLabel></Step>
+        </Stepper>
 
-          {worker && step === 0 && (
-            <Box sx={{ mb: 2 }}>
-              <Typography><strong>Worker:</strong> {worker.name}</Typography>
-              <Typography><strong>Phone:</strong> {worker.phone}</Typography>
-              <Typography><strong>NRC:</strong> {worker.nrc}</Typography>
-              <Typography><strong>Pending Balance:</strong> ZMW {(worker.balance || 0).toFixed(2)}</Typography>
-            </Box>
-          )}
+        {worker && step === 0 && (
+          <Box sx={{ mb: 2 }}>
+            <Typography><strong>Worker:</strong> {worker.name}</Typography>
+            <Typography><strong>Phone:</strong> {worker.phone}</Typography>
+            <Typography><strong>NRC:</strong> {worker.nrc}</Typography>
+            <Typography><strong>Pending Balance:</strong> ZMW {(worker.balance || 0).toFixed(2)}</Typography>
+          </Box>
+        )}
 
-          {step === 0 && (
-            <>
-              <TextField
-                label="Amount (ZMW)"
-                type="number"
-                fullWidth
-                margin="normal"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-                required
-              />
-              <Button variant="outlined" size="small" onClick={handlePayPending} sx={{ mt: 1 }}>
-                Pay Pending Balance
+        {step === 0 && (
+          <>
+            <TextField
+              label="Amount (ZMW)"
+              type="number"
+              fullWidth
+              margin="normal"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              required
+            />
+            <Button variant="outlined" size="small" onClick={handlePayPending} sx={{ mt: 1 }}>
+              Pay Pending Balance
+            </Button>
+            <TextField
+              label="Recipient Phone Number"
+              fullWidth
+              margin="normal"
+              value={recipientPhone}
+              onChange={(e) => setRecipientPhone(e.target.value)}
+              placeholder="e.g., 0971234567"
+              required
+            />
+            {status && <Alert severity={status.type} sx={{ mt: 2 }}>{status.message}</Alert>}
+            <Box sx={{ display: 'flex', gap: 2, mt: 3 }}>
+              <Button variant="outlined" onClick={onClose} disabled={loading}>Cancel</Button>
+              <Button variant="contained" onClick={handleInitiate} disabled={loading}>
+                {loading ? <CircularProgress size={24} /> : 'Send Money'}
               </Button>
-              <TextField
-                label="Recipient Phone Number"
-                fullWidth
-                margin="normal"
-                value={recipientPhone}
-                onChange={(e) => setRecipientPhone(e.target.value)}
-                placeholder="e.g., 0971234567"
-                required
-              />
-              {status && <Alert severity={status.type} sx={{ mt: 2 }}>{status.message}</Alert>}
-              <Box sx={{ display: 'flex', gap: 2, mt: 3 }}>
-                <Button variant="outlined" onClick={onClose} disabled={loading}>Cancel</Button>
-                <Button variant="contained" onClick={handleInitiate} disabled={loading}>
-                  {loading ? <CircularProgress size={24} /> : 'Send Request to Phone'}
-                </Button>
-              </Box>
-            </>
-          )}
-
-          {step === 1 && (
-            <Box sx={{ mt: 2 }}>
-              <Alert severity="info" sx={{ mb: 2 }}>
-                <Typography variant="subtitle2" gutterBottom>📱 Airtel Money USSD Prompt Sent</Typography>
-                <Typography variant="body2">
-                  1. Check your phone for the USSD prompt
-                </Typography>
-                <Typography variant="body2">
-                  2. Enter your PIN on your phone
-                </Typography>
-                <Typography variant="body2">
-                  3. Confirm the transaction
-                </Typography>
-              </Alert>
-              <Typography variant="body2" color="textSecondary">
-                Reference: <strong>{reference}</strong>
-              </Typography>
-              <Box sx={{ display: 'flex', gap: 2, mt: 3 }}>
-                <Button 
-                  variant="contained" 
-                  color="success"
-                  startIcon={<PhoneIcon />}
-                  onClick={() => setPhoneSimOpen(true)}
-                  fullWidth
-                >
-                  📱 View on Phone
-                </Button>
-              </Box>
-              {status && <Alert severity={status.type} sx={{ mt: 2 }}>{status.message}</Alert>}
             </Box>
-          )}
-        </DialogContent>
-      </Dialog>
+          </>
+        )}
 
-      {/* Phone Simulator */}
-      <PhoneSimulator
-        open={phoneSimOpen}
-        onClose={() => setPhoneSimOpen(false)}
-        onConfirm={handlePhoneConfirm}
-        reference={reference}
-        amount={amount}
-        recipientPhone={recipientPhone}
-        workerName={worker?.name}
-      />
-    </>
+        {step === 1 && (
+          <Box sx={{ mt: 2 }}>
+            <Alert severity="info" sx={{ mb: 2 }}>
+              <Typography variant="subtitle2" gutterBottom>
+                {confirmed ? '✅ Payment Completed' : '📱 Airtel Money Processing'}
+              </Typography>
+              <Typography variant="body2">
+                {confirmed 
+                  ? 'Payment has been sent successfully!' 
+                  : 'Please check your phone for the Airtel Money USSD prompt or wait for processing.'}
+              </Typography>
+            </Alert>
+            <Typography variant="body2" color="textSecondary">
+              Reference: <strong>{reference}</strong>
+            </Typography>
+            {status && <Alert severity={status.type} sx={{ mt: 2 }}>{status.message}</Alert>}
+            {!confirmed && (
+              <Button 
+                variant="contained" 
+                color="success"
+                onClick={handleConfirm}
+                disabled={loading}
+                fullWidth
+                sx={{ mt: 3 }}
+              >
+                {loading ? <CircularProgress size={24} /> : 'I Have Confirmed on Phone'}
+              </Button>
+            )}
+          </Box>
+        )}
+      </DialogContent>
+    </Dialog>
   );
 };
 
