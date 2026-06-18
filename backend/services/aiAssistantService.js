@@ -9,7 +9,10 @@ const Subcontract = require('../models/Subcontract');
 const Attendance = require('../models/Attendance');
 const Notification = require('../models/Notification');
 
-// System query handlers
+// ============================================================
+// SYSTEM QUERY HANDLERS
+// ============================================================
+
 const systemHandlers = {
   workers: async () => {
     const workers = await Worker.find().populate('enrolledBy', 'name');
@@ -184,7 +187,10 @@ const systemHandlers = {
   }
 };
 
-// System keywords
+// ============================================================
+// SYSTEM KEYWORDS
+// ============================================================
+
 const SYSTEM_KEYWORDS = {
   workers: ['workers', 'employee', 'staff', 'personnel', 'labor', 'labour', 'how many workers', 'worker count'],
   balances: ['owing', 'owe', 'balance', 'bal', 'remaining', 'pending payment', 'how much are we owing', 'how much do we owe'],
@@ -196,8 +202,66 @@ const SYSTEM_KEYWORDS = {
   summary: ['summary', 'overview', 'dashboard', 'what is happening', 'tell me everything', 'system status']
 };
 
-// Construction knowledge
+// ============================================================
+// COMPREHENSIVE CONSTRUCTION KNOWLEDGE
+// ============================================================
+
 const constructionKnowledge = [
+  {
+    keywords: ['construction company', 'what is a construction company', 'construction industry', 'contractor', 'building company'],
+    response: `🏗️ **WHAT IS A CONSTRUCTION COMPANY?**
+
+**Definition:**
+A construction company is a business entity that specializes in the planning, design, and execution of building and infrastructure projects. They manage the entire construction process from conception to completion.
+
+**Types of Construction Companies:**
+
+1. **General Contractors**
+   • Manage entire projects from start to finish
+   • Hire and coordinate subcontractors
+   • Responsible for quality, budget, and timeline
+   • Example: Building a school or hospital
+
+2. **Specialty Contractors**
+   • Focus on specific trades
+   • Examples: Electrical, plumbing, roofing, painting
+   • Subcontracted by general contractors
+
+3. **Design-Build Firms**
+   • Provide both design and construction services
+   • Single point of contact for clients
+   • Streamlined process
+
+4. **Construction Management Firms**
+   • Oversee projects for clients
+   • Ensure quality and compliance
+   • May not do actual construction work
+
+**What Construction Companies Do:**
+
+| Service | Description |
+|---------|-------------|
+| Project Planning | Feasibility studies, budgeting, scheduling |
+| Design | Architectural and engineering design |
+| Procurement | Sourcing materials and equipment |
+| Construction | Site work, building, and installation |
+| Quality Control | Inspections and testing |
+| Project Management | Coordination and communication |
+
+**Key Sectors:**
+
+🏠 **Residential** – Houses, apartments, estates
+🏢 **Commercial** – Offices, retail, hotels
+🏥 **Institutional** – Schools, hospitals, government buildings
+🛣️ **Infrastructure** – Roads, bridges, utilities
+
+**Zambia Context:**
+• Companies must be registered with ERB (Engineering Registration Board)
+• ZPPA regulates public procurement
+• Local content is encouraged in projects
+
+💡 **Pro Tip:** When choosing a construction company, check their ERB registration and past project experience!`
+  },
   {
     keywords: ['foundation', 'footing', 'base', 'soil', 'pile', 'raft'],
     response: `🏗️ **FOUNDATION DESIGN & SOIL ANALYSIS**
@@ -218,8 +282,6 @@ const constructionKnowledge = [
 • Minimum depth: 1.0m (Zambia)
 • Include damp-proof course (DPC) 150mm above ground
 • Use reinforced concrete (1:2:4 mix)
-• For clay soil: use raft foundation
-• For sandy soil: strip footing is sufficient
 
 💡 **Pro Tip:** Always conduct a soil test before designing foundations!`
   },
@@ -243,10 +305,6 @@ const constructionKnowledge = [
 • Minimum: 7 days
 • Recommended: 14 days for high-strength
 
-**Quality Control:**
-• Slump test – Measures workability (75-100mm ideal)
-• Cube test – Tests compressive strength at 7, 14, 28 days
-
 💡 **Pro Tip:** Use clean, potable water and quality cement from ZAMCEM or Larfarge.`
   },
   {
@@ -268,13 +326,6 @@ const constructionKnowledge = [
 ☑️ Fire extinguisher presence
 ☑️ First aid kit supplies
 
-**Emergency Response:**
-1. Stop all work immediately
-2. Alert all nearby workers
-3. Call emergency services (999 in Zambia)
-4. Administer first aid if trained
-5. Report incident to management
-
 💡 **Pro Tip:** Conduct daily safety briefings before work starts!`
   },
   {
@@ -294,12 +345,6 @@ const constructionKnowledge = [
 • Subcontracts: 10-15%
 • Overheads: 5-10%
 • Profit: 5-10%
-
-**Cost-Saving Tips:**
-💰 Bulk discounts
-💰 Local materials
-💰 Reduce waste
-💰 Local labor
 
 💡 **Pro Tip:** Always add 10-15% contingency for unexpected costs!`
   },
@@ -322,15 +367,14 @@ const constructionKnowledge = [
 ☑️ 90%: Finishing
 ☑️ 100%: Handover
 
-**Zambia Context:**
-• Rainy season (Nov-Mar): Plan outdoor work accordingly
-• Material delivery: Allow 2-3 weeks for delays
-
 💡 **Pro Tip:** Use project management software like MS Project or Trello!`
   }
 ];
 
-// Main AI function
+// ============================================================
+// MAIN AI FUNCTION
+// ============================================================
+
 const getAIResponse = async (userQuestion, userId) => {
   const lower = userQuestion.toLowerCase().trim();
   console.log('🤖 AI Question:', userQuestion);
@@ -377,6 +421,7 @@ I can answer questions about:
 • "Tell me everything" – Full system overview
 
 🏗️ **Construction Knowledge:**
+• "What is a construction company?" – Full definition with types and services
 • "What's the best foundation for clay soil?" – Detailed explanation
 • "How to design a concrete mix for C25?" – Mix ratios
 • "What are the safety requirements on site?" – PPE & safety
