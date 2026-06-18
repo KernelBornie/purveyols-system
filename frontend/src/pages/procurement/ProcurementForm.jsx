@@ -23,9 +23,26 @@ const ProcurementForm = () => {
     project: '',
     items: [],
     status: 'pending',
+    orderNumber: '',
+    preparedBy: '',
+    approvedBy: '',
+    authorisedBy: '',
+    preparedSign: '',
+    approvedSign: '',
+    authorisedSign: '',
   });
   const [creator, setCreator] = useState(null);
   const [message, setMessage] = useState(null);
+
+  // Generate order number if new
+  const generateOrderNumber = () => {
+    const date = new Date();
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    const rand = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
+    return `${y}${m}${d}-${rand}`;
+  };
 
   useEffect(() => {
     const fetchData = async () => {
@@ -40,14 +57,23 @@ const ProcurementForm = () => {
             project: data.project || '',
             items: Array.isArray(data.items) ? data.items : [],
             status: data.status || 'pending',
+            orderNumber: data.orderNumber || '',
+            preparedBy: data.preparedBy || '',
+            approvedBy: data.approvedBy || '',
+            authorisedBy: data.authorisedBy || '',
+            preparedSign: data.preparedSign || '',
+            approvedSign: data.approvedSign || '',
+            authorisedSign: data.authorisedSign || '',
           });
           setCreator(data.createdBy);
         } else {
           setCreator(user);
           setForm(prev => ({
             ...prev,
+            orderNumber: generateOrderNumber(),
+            preparedBy: user?.name || '',
             items: [
-              { description: '', quantity: 1, unitPrice: 0, total: 0, supplier: '' }
+              { description: '', unit: '', quantity: 1, unitPrice: 0, total: 0, supplier: '' }
             ]
           }));
         }
@@ -99,7 +125,7 @@ const ProcurementForm = () => {
       ...form,
       items: [
         ...items,
-        { description: '', quantity: 1, unitPrice: 0, total: 0, supplier: '' }
+        { description: '', unit: '', quantity: 1, unitPrice: 0, total: 0, supplier: '' }
       ]
     });
   };
@@ -124,12 +150,20 @@ const ProcurementForm = () => {
         project: form.project,
         items: items.map(item => ({
           description: item.description,
+          unit: item.unit || '',
           quantity: parseFloat(item.quantity) || 0,
           unitPrice: parseFloat(item.unitPrice) || 0,
           total: (parseFloat(item.quantity) || 0) * (parseFloat(item.unitPrice) || 0),
           supplier: item.supplier || '',
         })),
         status: form.status,
+        orderNumber: form.orderNumber,
+        preparedBy: form.preparedBy,
+        approvedBy: form.approvedBy,
+        authorisedBy: form.authorisedBy,
+        preparedSign: form.preparedSign,
+        approvedSign: form.approvedSign,
+        authorisedSign: form.authorisedSign,
         grandTotal: totals.grandTotal,
       };
 
@@ -159,18 +193,55 @@ const ProcurementForm = () => {
   const items = Array.isArray(form.items) ? form.items : [];
 
   return (
-    <Paper sx={{ p: 3, maxWidth: '900px', mx: 'auto' }}>
+    <Paper sx={{ p: 3, maxWidth: '1000px', mx: 'auto' }}>
       <BackButton />
 
       {message && <Alert severity={message.type} sx={{ mb: 2 }}>{message.text}</Alert>}
 
       <form onSubmit={handleSubmit}>
-        {/* Header */}
-        <Typography variant="h5" gutterBottom sx={{ fontWeight: 'bold' }}>
-          New Procurement Order {id ? '(Edit)' : '(blank amounts)'}
-        </Typography>
+        {/* ===== COMPANY HEADER (Matches physical note) ===== */}
+        <Box sx={{
+          textAlign: 'center',
+          borderBottom: '2px solid #000',
+          pb: 2,
+          mb: 2,
+          '@media print': { borderBottom: '2px solid #000' }
+        }}>
+          <Typography variant="h4" component="div" sx={{ fontWeight: 'bold', letterSpacing: 2 }}>
+            PURVEYOLS
+          </Typography>
+          <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>
+            Building and Civil Construction
+          </Typography>
+          <Typography variant="body2">
+            Plot No. 8, Buchi Road - Northmead, P.O. Box NH 87 Lucknow, Zanzibar
+          </Typography>
+          <Typography variant="body2">
+            Tel: +260 211 235354 | Mobile: +260 977 393879 / +260 965 393879
+          </Typography>
+          <Typography variant="body2">
+            Email: purveyols@gmail.com
+          </Typography>
+        </Box>
 
-        {/* Creator Info */}
+        {/* ===== DOCUMENT TITLE & ORDER NUMBER ===== */}
+        <Box sx={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          mb: 3,
+          borderBottom: '1px solid #000',
+          pb: 1
+        }}>
+          <Typography variant="h5" sx={{ fontWeight: 'bold', letterSpacing: 1 }}>
+            MATERIAL REQUISITION NOTE
+          </Typography>
+          <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
+            No. {form.orderNumber || 'NEW'}
+          </Typography>
+        </Box>
+
+        {/* ===== CREATOR INFO ===== */}
         {creator && (
           <Box sx={{ mb: 2 }}>
             <Typography variant="body2">
@@ -179,7 +250,7 @@ const ProcurementForm = () => {
           </Box>
         )}
 
-        {/* Project Selection */}
+        {/* ===== PROJECT SELECTION ===== */}
         <Grid container spacing={2} sx={{ mb: 3 }}>
           <Grid item xs={12}>
             <TextField
@@ -198,42 +269,65 @@ const ProcurementForm = () => {
           </Grid>
         </Grid>
 
-        {/* Requested Materials/Items Table */}
+        {/* ===== MATERIALS TABLE (with Supplier column) ===== */}
         <Box sx={{ mt: 2, overflowX: 'auto' }}>
-          <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 1 }}>
-            Requested Materials/Items
-          </Typography>
-          <Table size="small">
+          <Table size="small" sx={{ border: '1px solid #000' }}>
             <TableHead>
               <TableRow sx={{ bgcolor: '#f5f5f5' }}>
-                <TableCell sx={{ fontWeight: 'bold' }}>Item Name</TableCell>
-                <TableCell sx={{ fontWeight: 'bold', width: '100px' }}>Quantity</TableCell>
-                <TableCell sx={{ fontWeight: 'bold', width: '150px' }}>Unit Price (ZMW)</TableCell>
-                <TableCell sx={{ fontWeight: 'bold', width: '120px' }}>Total</TableCell>
-                <TableCell sx={{ fontWeight: 'bold', width: '150px' }}>Supplier</TableCell>
-                <TableCell sx={{ fontWeight: 'bold', width: '60px' }}>Action</TableCell>
+                <TableCell sx={{ fontWeight: 'bold', border: '1px solid #000', textAlign: 'center' }}>
+                  DESCRIPTION
+                </TableCell>
+                <TableCell sx={{ fontWeight: 'bold', border: '1px solid #000', textAlign: 'center', width: '80px' }}>
+                  UNIT
+                </TableCell>
+                <TableCell sx={{ fontWeight: 'bold', border: '1px solid #000', textAlign: 'center', width: '70px' }}>
+                  QTY
+                </TableCell>
+                <TableCell sx={{ fontWeight: 'bold', border: '1px solid #000', textAlign: 'center', width: '120px' }}>
+                  UNIT PRICE
+                </TableCell>
+                <TableCell sx={{ fontWeight: 'bold', border: '1px solid #000', textAlign: 'center', width: '120px' }}>
+                  TOTAL
+                </TableCell>
+                <TableCell sx={{ fontWeight: 'bold', border: '1px solid #000', textAlign: 'center', width: '130px' }}>
+                  SUPPLIER
+                </TableCell>
+                <TableCell sx={{ fontWeight: 'bold', border: '1px solid #000', textAlign: 'center', width: '60px' }}>
+                  Action
+                </TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
               {items.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} sx={{ textAlign: 'center', py: 3 }}>
+                  <TableCell colSpan={7} sx={{ textAlign: 'center', py: 3, border: '1px solid #000' }}>
                     No items added yet. Click "Add Row" to add items.
                   </TableCell>
                 </TableRow>
               ) : (
                 totals.itemsWithTotal.map((item, idx) => (
                   <TableRow key={idx}>
-                    <TableCell>
+                    <TableCell sx={{ border: '1px solid #000', p: 1 }}>
                       <TextField
                         size="small"
                         fullWidth
                         value={item.description || ''}
                         onChange={e => handleItemChange(idx, 'description', e.target.value)}
-                        placeholder="e.g., Cement"
+                        placeholder=""
+                        sx={{ '& .MuiInputBase-root': { border: 'none', '&:before': { borderBottom: 'none' }, '&:after': { borderBottom: 'none' } } }}
                       />
                     </TableCell>
-                    <TableCell>
+                    <TableCell sx={{ border: '1px solid #000', p: 1 }}>
+                      <TextField
+                        size="small"
+                        fullWidth
+                        value={item.unit || ''}
+                        onChange={e => handleItemChange(idx, 'unit', e.target.value)}
+                        placeholder=""
+                        sx={{ '& .MuiInputBase-root': { border: 'none', '&:before': { borderBottom: 'none' }, '&:after': { borderBottom: 'none' } } }}
+                      />
+                    </TableCell>
+                    <TableCell sx={{ border: '1px solid #000', p: 1 }}>
                       <TextField
                         size="small"
                         type="number"
@@ -241,9 +335,10 @@ const ProcurementForm = () => {
                         value={item.quantity || 0}
                         onChange={e => handleItemChange(idx, 'quantity', e.target.value)}
                         inputProps={{ min: 0 }}
+                        sx={{ '& .MuiInputBase-root': { border: 'none', '&:before': { borderBottom: 'none' }, '&:after': { borderBottom: 'none' } } }}
                       />
                     </TableCell>
-                    <TableCell>
+                    <TableCell sx={{ border: '1px solid #000', p: 1 }}>
                       <TextField
                         size="small"
                         type="number"
@@ -251,28 +346,30 @@ const ProcurementForm = () => {
                         value={item.unitPrice || 0}
                         onChange={e => handleItemChange(idx, 'unitPrice', e.target.value)}
                         inputProps={{ min: 0, step: 0.01 }}
+                        sx={{ '& .MuiInputBase-root': { border: 'none', '&:before': { borderBottom: 'none' }, '&:after': { borderBottom: 'none' } } }}
                       />
                     </TableCell>
-                    <TableCell>
+                    <TableCell sx={{ border: '1px solid #000', p: 1, bgcolor: '#fafafa' }}>
                       <TextField
                         size="small"
                         type="number"
                         fullWidth
                         value={item.total || 0}
                         InputProps={{ readOnly: true }}
-                        sx={{ bgcolor: '#f5f5f5' }}
+                        sx={{ '& .MuiInputBase-root': { border: 'none', bgcolor: '#fafafa', '&:before': { borderBottom: 'none' }, '&:after': { borderBottom: 'none' } } }}
                       />
                     </TableCell>
-                    <TableCell>
+                    <TableCell sx={{ border: '1px solid #000', p: 1 }}>
                       <TextField
                         size="small"
                         fullWidth
                         value={item.supplier || ''}
                         onChange={e => handleItemChange(idx, 'supplier', e.target.value)}
                         placeholder="Supplier"
+                        sx={{ '& .MuiInputBase-root': { border: 'none', '&:before': { borderBottom: 'none' }, '&:after': { borderBottom: 'none' } } }}
                       />
                     </TableCell>
-                    <TableCell>
+                    <TableCell sx={{ border: '1px solid #000', p: 1, textAlign: 'center' }}>
                       <IconButton size="small" onClick={() => removeItem(idx)} color="error">
                         <DeleteIcon fontSize="small" />
                       </IconButton>
@@ -284,32 +381,111 @@ const ProcurementForm = () => {
           </Table>
         </Box>
 
-        {/* Add Item Button */}
+        {/* ===== ADD ROW BUTTON ===== */}
         <Box sx={{ mt: 2 }}>
-          <Button
-            variant="outlined"
-            startIcon={<AddIcon />}
-            onClick={addItem}
-            size="small"
-          >
+          <Button variant="outlined" startIcon={<AddIcon />} onClick={addItem} size="small">
             Add Row
           </Button>
         </Box>
 
-        {/* Grand Total */}
+        {/* ===== GRAND TOTAL ===== */}
         <Box sx={{
-          mt: 3,
+          mt: 2,
           display: 'flex',
           justifyContent: 'flex-end',
-          borderTop: '1px solid #e0e0e0',
+          borderTop: '2px solid #000',
           pt: 2
         }}>
           <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
-            Grand Total: {formatCurrency(totals.grandTotal)}
+            GRAND TOTAL: {formatCurrency(totals.grandTotal)}
           </Typography>
         </Box>
 
-        {/* Status and Actions */}
+        {/* ===== APPROVAL SECTION (Matches physical note) ===== */}
+        <Box sx={{
+          mt: 4,
+          borderTop: '1px solid #000',
+          pt: 3,
+        }}>
+          <Grid container spacing={2}>
+            {/* Prepared By */}
+            <Grid item xs={12} md={4}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Typography variant="body1" sx={{ fontWeight: 'bold' }}>PREPARED BY:</Typography>
+                <TextField
+                  size="small"
+                  fullWidth
+                  value={form.preparedBy || ''}
+                  onChange={e => setForm({ ...form, preparedBy: e.target.value })}
+                  sx={{ '& .MuiInputBase-root': { borderBottom: '1px solid #000', borderRadius: 0, '&:before': { borderBottom: 'none' }, '&:after': { borderBottom: 'none' } } }}
+                />
+              </Box>
+              <Box sx={{ mt: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Typography variant="body2">SIGN:</Typography>
+                <TextField
+                  size="small"
+                  fullWidth
+                  value={form.preparedSign || ''}
+                  onChange={e => setForm({ ...form, preparedSign: e.target.value })}
+                  placeholder="_______________"
+                  sx={{ '& .MuiInputBase-root': { borderBottom: '1px solid #000', borderRadius: 0, '&:before': { borderBottom: 'none' }, '&:after': { borderBottom: 'none' } } }}
+                />
+              </Box>
+            </Grid>
+
+            {/* Approved By */}
+            <Grid item xs={12} md={4}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Typography variant="body1" sx={{ fontWeight: 'bold' }}>APPROVED BY:</Typography>
+                <TextField
+                  size="small"
+                  fullWidth
+                  value={form.approvedBy || ''}
+                  onChange={e => setForm({ ...form, approvedBy: e.target.value })}
+                  sx={{ '& .MuiInputBase-root': { borderBottom: '1px solid #000', borderRadius: 0, '&:before': { borderBottom: 'none' }, '&:after': { borderBottom: 'none' } } }}
+                />
+              </Box>
+              <Box sx={{ mt: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Typography variant="body2">SIGN:</Typography>
+                <TextField
+                  size="small"
+                  fullWidth
+                  value={form.approvedSign || ''}
+                  onChange={e => setForm({ ...form, approvedSign: e.target.value })}
+                  placeholder="_______________"
+                  sx={{ '& .MuiInputBase-root': { borderBottom: '1px solid #000', borderRadius: 0, '&:before': { borderBottom: 'none' }, '&:after': { borderBottom: 'none' } } }}
+                />
+              </Box>
+            </Grid>
+
+            {/* Authorised By */}
+            <Grid item xs={12} md={4}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Typography variant="body1" sx={{ fontWeight: 'bold' }}>AUTHORISED BY:</Typography>
+                <TextField
+                  size="small"
+                  fullWidth
+                  value={form.authorisedBy || ''}
+                  onChange={e => setForm({ ...form, authorisedBy: e.target.value })}
+                  sx={{ '& .MuiInputBase-root': { borderBottom: '1px solid #000', borderRadius: 0, '&:before': { borderBottom: 'none' }, '&:after': { borderBottom: 'none' } } }}
+                />
+              </Box>
+              <Box sx={{ mt: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Typography variant="body2">SIGN:</Typography>
+                <TextField
+                  size="small"
+                  fullWidth
+                  value={form.authorisedSign || ''}
+                  onChange={e => setForm({ ...form, authorisedSign: e.target.value })}
+                  placeholder="_______________"
+                  sx={{ '& .MuiInputBase-root': { borderBottom: '1px solid #000', borderRadius: 0, '&:before': { borderBottom: 'none' }, '&:after': { borderBottom: 'none' } } }}
+                />
+              </Box>
+            </Grid>
+          </Grid>
+        </Box>
+
+        {/* ===== STATUS & ACTIONS ===== */}
         <Box sx={{ mt: 3, display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
           <TextField
             select
@@ -330,21 +506,11 @@ const ProcurementForm = () => {
           {form.status === 'delivered' && <Chip label="Delivered" color="primary" size="small" />}
         </Box>
 
-        {/* Action Buttons */}
         <Box sx={{ mt: 4, display: 'flex', gap: 2 }}>
-          <Button
-            type="submit"
-            variant="contained"
-            startIcon={<SaveIcon />}
-            disabled={loading}
-          >
+          <Button type="submit" variant="contained" startIcon={<SaveIcon />} disabled={loading}>
             {loading ? 'Saving...' : 'Save Order'}
           </Button>
-          <Button
-            variant="outlined"
-            startIcon={<PrintIcon />}
-            onClick={handlePrint}
-          >
+          <Button variant="outlined" startIcon={<PrintIcon />} onClick={handlePrint}>
             Print
           </Button>
           <Button variant="outlined" onClick={() => navigate('/procurement')}>
