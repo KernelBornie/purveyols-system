@@ -9,190 +9,197 @@ const Subcontract = require('../models/Subcontract');
 const Attendance = require('../models/Attendance');
 const Notification = require('../models/Notification');
 
-// ============================================================
-// SYSTEM QUERY DETECTION – EXACT PHRASE MATCHING
-// ============================================================
+// System query handlers
+const systemHandlers = {
+  workers: async () => {
+    const workers = await Worker.find().populate('enrolledBy', 'name');
+    const total = workers.length;
+    const active = workers.filter(w => w.status === 'active').length;
+    const suspended = workers.filter(w => w.status === 'suspended').length;
+    const inactive = workers.filter(w => w.status === 'inactive').length;
+    const details = workers.map(w => 
+      `  • **${w.name}** | NRC: ${w.nrc} | Site: ${w.site || 'N/A'} | Rate: ZMW ${w.dailyRate || 0} | Status: ${w.status}`
+    ).join('\n');
+    return {
+      text: `📊 **WORKERS SUMMARY**\n\n` +
+        `**Overview:**\n` +
+        `• Total Workers: **${total}**\n` +
+        `• Active: ${active} | Suspended: ${suspended} | Inactive: ${inactive}\n\n` +
+        `**Worker Details:**\n${details || 'No workers enrolled yet'}\n\n` +
+        `💡 *Tip: Enroll new workers from the Workers page.*`
+    };
+  },
+  
+  balances: async () => {
+    const workers = await Worker.find();
+    const balances = [];
+    let totalOwed = 0;
+    for (const w of workers) {
+      const payments = await Payment.find({ worker: w._id, status: 'completed' });
+      const totalPaid = payments.reduce((sum, p) => sum + p.amount, 0);
+      const attendance = await Attendance.find({ worker: w._id });
+      const totalEarned = attendance.reduce((sum, a) => sum + a.rate, 0);
+      const balance = totalEarned - totalPaid;
+      if (balance !== 0) {
+        balances.push({ name: w.name, earned: totalEarned, paid: totalPaid, balance });
+        totalOwed += balance;
+      }
+    }
+    if (balances.length === 0) {
+      return { text: `⚖️ **WORKER BALANCES**\n\n✅ **No outstanding balances!** All workers are fully paid.\n\n💡 *To create balances, check in workers from the Workers page.*` };
+    }
+    const details = balances.map(w => 
+      `  • **${w.name}** | Owing: ZMW ${w.balance.toFixed(2)} | Earned: ZMW ${w.earned} | Paid: ZMW ${w.paid}`
+    ).join('\n');
+    return {
+      text: `⚖️ **WORKER BALANCES (Owing)**\n\n` +
+        `**Summary:**\n` +
+        `• Total Owing: **ZMW ${totalOwed.toFixed(2)}**\n` +
+        `• Workers with Balance: ${balances.length}\n\n` +
+        `**Breakdown:**\n${details}\n\n` +
+        `💡 *Pay workers from the Accountant Dashboard using Airtel Money.*`
+    };
+  },
+  
+  projects: async () => {
+    const projects = await Project.find().populate('manager createdBy', 'name');
+    const total = projects.length;
+    const active = projects.filter(p => p.status === 'active').length;
+    const planning = projects.filter(p => p.status === 'planning').length;
+    const completed = projects.filter(p => p.status === 'completed').length;
+    const paused = projects.filter(p => p.status === 'paused').length;
+    const details = projects.map(p => 
+      `  • **${p.name}** | Location: ${p.location || 'N/A'} | Status: ${p.status} | Budget: ZMW ${p.budget || 0}`
+    ).join('\n');
+    return {
+      text: `📋 **PROJECTS SUMMARY**\n\n` +
+        `**Overview:**\n` +
+        `• Total Projects: **${total}**\n` +
+        `• Active: ${active} | Planning: ${planning} | Paused: ${paused} | Completed: ${completed}\n\n` +
+        `**Project Details:**\n${details || 'No projects found'}\n\n` +
+        `💡 *Create new projects from the Projects page.*`
+    };
+  },
+  
+  budget: async () => {
+    const projects = await Project.find();
+    const totalBudget = projects.reduce((sum, p) => sum + (p.budget || 0), 0);
+    const funding = await FundingRequest.find();
+    const totalFunding = funding.reduce((sum, f) => sum + f.amount, 0);
+    const payments = await Payment.find({ status: 'completed' });
+    const totalPaid = payments.reduce((sum, p) => sum + p.amount, 0);
+    const projectDetails = projects.map(p => `  • ${p.name}: ZMW ${p.budget?.toLocaleString() || 0}`).join('\n');
+    return {
+      text: `💰 **FINANCIAL SUMMARY**\n\n` +
+        `**Project Budgets:**\n` +
+        `• Total Budget: **ZMW ${totalBudget.toLocaleString()}**\n` +
+        `• Number of Projects: ${projects.length}\n\n` +
+        `**Breakdown:**\n${projectDetails || 'No projects'}\n\n` +
+        `**Funding:**\n` +
+        `• Total Funding Requests: ZMW ${totalFunding.toLocaleString()}\n\n` +
+        `**Payments:**\n` +
+        `• Total Paid to Workers: ZMW ${totalPaid.toLocaleString()}\n\n` +
+        `💡 *Manage budgets from the Projects and Funding pages.*`
+    };
+  },
+  
+  funding: async () => {
+    const funding = await FundingRequest.find().populate('project requestedBy', 'name');
+    const total = funding.length;
+    const pending = funding.filter(f => f.status === 'pending');
+    const approved = funding.filter(f => f.status === 'approved');
+    const rejected = funding.filter(f => f.status === 'rejected');
+    const totalAmount = funding.reduce((sum, f) => sum + f.amount, 0);
+    const details = funding.map(f => 
+      `  • ${f.project?.name || 'N/A'} | ZMW ${f.amount} | Status: ${f.status} | By: ${f.requestedBy?.name || 'N/A'}`
+    ).join('\n');
+    return {
+      text: `📌 **FUNDING REQUESTS**\n\n` +
+        `**Overview:**\n` +
+        `• Total Requests: **${total}**\n` +
+        `• Pending: ${pending.length} | Approved: ${approved.length} | Rejected: ${rejected.length}\n` +
+        `• Total Amount: ZMW ${totalAmount.toLocaleString()}\n\n` +
+        `**Details:**\n${details || 'No funding requests'}\n\n` +
+        `💡 *Approve/reject funding from the Funding page or Director Dashboard.*`
+    };
+  },
+  
+  payments: async () => {
+    const payments = await Payment.find().populate('worker paidBy', 'name');
+    const total = payments.length;
+    const totalAmount = payments.reduce((sum, p) => sum + p.amount, 0);
+    const recent = payments.slice(0, 5);
+    const details = recent.map(p => 
+      `  • ${p.worker?.name || 'Unknown'} | ZMW ${p.amount} | Status: ${p.status} | Paid by: ${p.paidBy?.name || 'N/A'}`
+    ).join('\n');
+    return {
+      text: `💳 **PAYMENT SUMMARY**\n\n` +
+        `**Overview:**\n` +
+        `• Total Payments: **${total}**\n` +
+        `• Total Amount: ZMW ${totalAmount.toLocaleString()}\n\n` +
+        `**Recent Payments:**\n${details || 'No payments recorded'}\n\n` +
+        `💡 *Process payments from the Accountant Dashboard.*`
+    };
+  },
+  
+  procurement: async () => {
+    const orders = await ProcurementOrder.find().populate('project createdBy', 'name');
+    const total = orders.length;
+    const pending = orders.filter(o => o.status === 'pending').length;
+    const funded = orders.filter(o => o.status === 'funded').length;
+    const purchased = orders.filter(o => o.status === 'purchased').length;
+    const totalItems = orders.reduce((sum, o) => sum + (o.items?.length || 0), 0);
+    const details = orders.map(o => 
+      `  • ${o.project?.name || 'N/A'} | ${o.items?.length || 0} items | Status: ${o.status} | By: ${o.createdBy?.name || 'N/A'}`
+    ).join('\n');
+    return {
+      text: `📦 **PROCUREMENT SUMMARY**\n\n` +
+        `**Overview:**\n` +
+        `• Total Orders: **${total}**\n` +
+        `• Pending: ${pending} | Funded: ${funded} | Purchased: ${purchased}\n` +
+        `• Total Items: ${totalItems}\n\n` +
+        `**Details:**\n${details || 'No procurement orders'}\n\n` +
+        `💡 *Create orders from Procurement page. Fund orders from Accountant Dashboard.*`
+    };
+  },
+  
+  summary: async (userId) => {
+    const [workers, projects, funding, payments, procurement] = await Promise.all([
+      Worker.find(),
+      Project.find(),
+      FundingRequest.find(),
+      Payment.find({ status: 'completed' }),
+      ProcurementOrder.find()
+    ]);
+    return {
+      text: `📊 **SYSTEM OVERVIEW**\n\n` +
+        `👥 **Workers:** ${workers.length} (${workers.filter(w => w.status === 'active').length} active)\n` +
+        `🏗️ **Projects:** ${projects.length} (${projects.filter(p => p.status === 'active').length} active)\n` +
+        `💰 **Funding Requests:** ${funding.length} (${funding.filter(f => f.status === 'pending').length} pending)\n` +
+        `💳 **Total Paid:** ZMW ${payments.reduce((sum, p) => sum + p.amount, 0).toLocaleString()}\n` +
+        `📦 **Procurement Orders:** ${procurement.length} (${procurement.filter(p => p.status === 'pending').length} pending)\n\n` +
+        `✅ **All systems operational.**\n\n` +
+        `💡 *Use the dashboard for detailed views and actions.*`
+    };
+  }
+};
 
-// Keywords that trigger system data queries
+// System keywords
 const SYSTEM_KEYWORDS = {
   workers: ['workers', 'employee', 'staff', 'personnel', 'labor', 'labour', 'how many workers', 'worker count'],
-  balances: ['owing', 'owe', 'balance', 'bal', 'remaining', 'pending payment', 'how much are we owing', 'how much do we owe', 'worker balance'],
+  balances: ['owing', 'owe', 'balance', 'bal', 'remaining', 'pending payment', 'how much are we owing', 'how much do we owe'],
   projects: ['projects', 'project count', 'how many projects', 'active projects', 'planning projects'],
   budget: ['budget', 'total budget', 'project budget', 'how much budget', 'financial'],
   funding: ['funding', 'fund request', 'funding requests', 'pending funding', 'fund approvals'],
   payments: ['payments', 'paid', 'salary', 'wage', 'earnings', 'total paid'],
   procurement: ['procurement', 'order', 'material', 'supplies', 'items', 'spare parts'],
-  boq: ['boq', 'bill of quantities', 'estimate', 'quantities'],
-  subcontracts: ['subcontract', 'subcontractor', 'vendor', 'supplier'],
-  notifications: ['notification', 'alert', 'unread', 'pending alerts'],
   summary: ['summary', 'overview', 'dashboard', 'what is happening', 'tell me everything', 'system status']
 };
 
-// ============================================================
-// SYSTEM QUERY HANDLERS
-// ============================================================
-
-const handleWorkers = async () => {
-  const workers = await Worker.find().populate('enrolledBy', 'name');
-  const total = workers.length;
-  const active = workers.filter(w => w.status === 'active').length;
-  const suspended = workers.filter(w => w.status === 'suspended').length;
-  const inactive = workers.filter(w => w.status === 'inactive').length;
-  const topText = workers.slice(0, 5).map(w => `  - ${w.name} (${w.nrc}) - ${w.status}`).join('\n');
-  return `📊 **Workers Summary**\n\n• Total Workers: ${total}\n• Active: ${active}\n• Suspended: ${suspended}\n• Inactive: ${inactive}\n\n**Recent Workers:**\n${topText || 'No workers enrolled yet'}`;
-};
-
-const handleBalances = async () => {
-  const workers = await Worker.find();
-  const balances = [];
-  let totalOwed = 0;
-  let totalEarnedAll = 0;
-  let totalPaidAll = 0;
-  
-  for (const w of workers) {
-    const payments = await Payment.find({ worker: w._id, status: 'completed' });
-    const totalPaid = payments.reduce((sum, p) => sum + p.amount, 0);
-    const attendance = await Attendance.find({ worker: w._id });
-    const totalEarned = attendance.reduce((sum, a) => sum + a.rate, 0);
-    const balance = totalEarned - totalPaid;
-    totalEarnedAll += totalEarned;
-    totalPaidAll += totalPaid;
-    if (balance !== 0) {
-      balances.push({ name: w.name, earned: totalEarned, paid: totalPaid, balance });
-      totalOwed += balance;
-    }
-  }
-  
-  if (balances.length === 0) {
-    return `⚖️ **Worker Balances**\n\n✅ No outstanding balances! All workers are fully paid.\n\n📊 Total Earned: ZMW ${totalEarnedAll.toFixed(2)}\n📊 Total Paid: ZMW ${totalPaidAll.toFixed(2)}`;
-  }
-  
-  const topText = balances.slice(0, 5).map(w => `  - ${w.name}: Owing ZMW ${w.balance.toFixed(2)}`).join('\n');
-  return `⚖️ **Worker Balances (Owing)**\n\n• Total Owing: ZMW ${totalOwed.toFixed(2)}\n• Workers with Balance: ${balances.length}\n\n**Top Outstanding:**\n${topText || 'No outstanding balances'}`;
-};
-
-const handleProjects = async () => {
-  const projects = await Project.find().populate('manager createdBy', 'name');
-  const total = projects.length;
-  const active = projects.filter(p => p.status === 'active').length;
-  const planning = projects.filter(p => p.status === 'planning').length;
-  const completed = projects.filter(p => p.status === 'completed').length;
-  const paused = projects.filter(p => p.status === 'paused').length;
-  const topText = projects.slice(0, 5).map(p => `  - ${p.name} (${p.location}) - Budget: ${p.budget}`).join('\n');
-  return `📋 **Projects Summary**\n\n• Total Projects: ${total}\n• Active: ${active}\n• Planning: ${planning}\n• Paused: ${paused}\n• Completed: ${completed}\n\n**Projects:**\n${topText || 'No projects found'}`;
-};
-
-const handleBudget = async () => {
-  const projects = await Project.find();
-  const totalBudget = projects.reduce((sum, p) => sum + (p.budget || 0), 0);
-  const funding = await FundingRequest.find();
-  const totalFunding = funding.reduce((sum, f) => sum + f.amount, 0);
-  const payments = await Payment.find({ status: 'completed' });
-  const totalPaid = payments.reduce((sum, p) => sum + p.amount, 0);
-  return `💰 **Financial Summary**\n\n• Total Project Budget: ZMW ${totalBudget.toLocaleString()}\n• Total Funding Requests: ZMW ${totalFunding.toLocaleString()}\n• Total Paid to Workers: ZMW ${totalPaid.toLocaleString()}\n• Number of Projects: ${projects.length}`;
-};
-
-const handleFunding = async () => {
-  const funding = await FundingRequest.find().populate('project requestedBy', 'name');
-  const total = funding.length;
-  const pending = funding.filter(f => f.status === 'pending');
-  const approved = funding.filter(f => f.status === 'approved');
-  const rejected = funding.filter(f => f.status === 'rejected');
-  const totalAmount = funding.reduce((sum, f) => sum + f.amount, 0);
-  const pendingText = pending.slice(0, 5).map(f => `  - ${f.project?.name} (ZMW ${f.amount}) - by ${f.requestedBy?.name}`).join('\n');
-  return `📌 **Funding Requests**\n\n• Total: ${total}\n• Pending: ${pending.length}\n• Approved: ${approved.length}\n• Rejected: ${rejected.length}\n• Total Amount: ZMW ${totalAmount.toLocaleString()}\n\n**Pending Requests:**\n${pendingText || 'No pending requests'}`;
-};
-
-const handlePayments = async () => {
-  const payments = await Payment.find().populate('worker paidBy', 'name');
-  const total = payments.length;
-  const totalAmount = payments.reduce((sum, p) => sum + p.amount, 0);
-  const recent = payments.slice(0, 5);
-  const topText = recent.map(p => `  - ${p.worker?.name || 'Unknown'} (ZMW ${p.amount})`).join('\n');
-  return `💳 **Payment Summary**\n\n• Total Payments: ${total}\n• Total Amount: ZMW ${totalAmount.toLocaleString()}\n\n**Recent Payments:**\n${topText || 'No payments recorded'}`;
-};
-
-const handleProcurement = async () => {
-  const orders = await ProcurementOrder.find().populate('project createdBy', 'name');
-  const total = orders.length;
-  const pending = orders.filter(o => o.status === 'pending').length;
-  const funded = orders.filter(o => o.status === 'funded').length;
-  const purchased = orders.filter(o => o.status === 'purchased').length;
-  const totalItems = orders.reduce((sum, o) => sum + (o.items?.length || 0), 0);
-  const pendingText = orders.filter(o => o.status === 'pending').slice(0, 5)
-    .map(o => `  - ${o.project?.name || 'N/A'} (${o.items?.length || 0} items)`).join('\n');
-  return `📦 **Procurement Summary**\n\n• Total Orders: ${total}\n• Pending: ${pending}\n• Funded: ${funded}\n• Purchased: ${purchased}\n• Total Items: ${totalItems}\n\n**Pending Orders:**\n${pendingText || 'No pending orders'}`;
-};
-
-const handleBOQ = async () => {
-  const boqs = await BOQ.find().populate('project createdBy', 'name');
-  const total = boqs.length;
-  const submitted = boqs.filter(b => b.status === 'submitted').length;
-  const approved = boqs.filter(b => b.status === 'approved').length;
-  const draft = boqs.filter(b => b.status === 'draft').length;
-  const totalItems = boqs.reduce((sum, b) => sum + (b.items?.length || 0), 0);
-  return `📋 **BOQ Summary**\n\n• Total BOQs: ${total}\n• Draft: ${draft}\n• Submitted: ${submitted}\n• Approved: ${approved}\n• Total Items: ${totalItems}`;
-};
-
-const handleSubcontracts = async () => {
-  const subs = await Subcontract.find().populate('project createdBy', 'name');
-  const total = subs.length;
-  const active = subs.filter(s => s.status === 'active').length;
-  const terminated = subs.filter(s => s.status === 'terminated').length;
-  const totalAmount = subs.reduce((sum, s) => sum + s.amount, 0);
-  const topText = subs.filter(s => s.status === 'active').slice(0, 5)
-    .map(s => `  - ${s.vendor} (${s.service}) - ZMW ${s.amount}`).join('\n');
-  return `🔧 **Subcontract Summary**\n\n• Total: ${total}\n• Active: ${active}\n• Terminated: ${terminated}\n• Total Value: ZMW ${totalAmount.toLocaleString()}\n\n**Active Subcontracts:**\n${topText || 'No active subcontracts'}`;
-};
-
-const handleNotifications = async (userId) => {
-  const notifications = await Notification.find({ user: userId, read: false }).sort({ createdAt: -1 });
-  const total = notifications.length;
-  const topText = notifications.slice(0, 5).map(n => `  - ${n.title}: ${n.message}`).join('\n');
-  return `🔔 **Notifications**\n\n• Unread: ${total}\n\n**Recent:**\n${topText || 'No unread notifications'}`;
-};
-
-const handleSummary = async (userId) => {
-  const [workers, projects, funding, payments, procurement] = await Promise.all([
-    Worker.find(),
-    Project.find(),
-    FundingRequest.find(),
-    Payment.find({ status: 'completed' }),
-    ProcurementOrder.find()
-  ]);
-  
-  const totalWorkers = workers.length;
-  const totalProjects = projects.length;
-  const activeProjects = projects.filter(p => p.status === 'active').length;
-  const pendingFunding = funding.filter(f => f.status === 'pending').length;
-  const totalPaid = payments.reduce((sum, p) => sum + p.amount, 0);
-  const pendingProcurement = procurement.filter(p => p.status === 'pending').length;
-  
-  return `📊 **System Overview**\n\n👥 **Workers:** ${totalWorkers}\n🏗️ **Projects:** ${totalProjects} (${activeProjects} active)\n💰 **Funding Requests:** ${funding.length} (${pendingFunding} pending)\n💳 **Total Paid:** ZMW ${totalPaid.toLocaleString()}\n📦 **Procurement Orders:** ${procurement.length} (${pendingProcurement} pending)\n\n✅ All systems operational.`;
-};
-
-// Map system keywords to handlers
-const systemHandlers = {
-  workers: handleWorkers,
-  balances: handleBalances,
-  projects: handleProjects,
-  budget: handleBudget,
-  funding: handleFunding,
-  payments: handlePayments,
-  procurement: handleProcurement,
-  boq: handleBOQ,
-  subcontracts: handleSubcontracts,
-  notifications: handleNotifications,
-  summary: handleSummary
-};
-
-// ============================================================
-// CONSTRUCTION KNOWLEDGE
-// ============================================================
-
+// Construction knowledge
 const constructionKnowledge = [
   {
-    keywords: ['foundation', 'footing', 'soil', 'pile', 'raft'],
+    keywords: ['foundation', 'footing', 'base', 'soil', 'pile', 'raft'],
     response: `🏗️ **FOUNDATION DESIGN & SOIL ANALYSIS**
 
 **Types of Foundations:**
@@ -201,11 +208,20 @@ const constructionKnowledge = [
 • **Pile Foundation** – For very weak soils or high-rise buildings.
 • **Pad Footing** – For individual columns.
 
+**Soil Testing:**
+• Standard Penetration Test (SPT) – Measures soil resistance
+• Plate Load Test – Determines bearing capacity
+• Atterberg Limits – Classifies soil type
+
 **Best Practices:**
-• Conduct a geotechnical investigation before design.
-• Minimum depth: 1.0m (Zambia climate).
-• Include a damp-proof course (DPC) 150mm above ground.
-• Use reinforced concrete (1:2:4 mix).`
+• Always consult a structural engineer
+• Minimum depth: 1.0m (Zambia)
+• Include damp-proof course (DPC) 150mm above ground
+• Use reinforced concrete (1:2:4 mix)
+• For clay soil: use raft foundation
+• For sandy soil: strip footing is sufficient
+
+💡 **Pro Tip:** Always conduct a soil test before designing foundations!`
   },
   {
     keywords: ['concrete', 'cement', 'mix', 'strength', 'curing'],
@@ -214,36 +230,56 @@ const constructionKnowledge = [
 **Concrete Mix Ratios:**
 | Grade | Mix (C:S:A) | Use |
 |-------|-------------|-----|
-| C15   | 1:3:6       | Mass concrete |
-| C20   | 1:2.5:5     | Ground floor |
-| C25   | 1:2:4       | Columns, beams |
-| C30   | 1:1.5:3     | High-strength |
+| C15   | 1:3:6       | Mass concrete, blinding |
+| C20   | 1:2.5:5     | Ground floor slabs, walls |
+| C25   | 1:2:4       | Columns, beams, structural slabs |
+| C30   | 1:1.5:3     | High-strength structures |
 
-**Curing:** Minimum 7 days (keep wet).
-**Water-Cement Ratio:** 0.45-0.50 for C25.`
+**Water-Cement Ratio:**
+• For C25: 0.45 – 0.50 (by weight)
+• Too much water = weak concrete
+
+**Curing:**
+• Minimum: 7 days
+• Recommended: 14 days for high-strength
+
+**Quality Control:**
+• Slump test – Measures workability (75-100mm ideal)
+• Cube test – Tests compressive strength at 7, 14, 28 days
+
+💡 **Pro Tip:** Use clean, potable water and quality cement from ZAMCEM or Larfarge.`
   },
   {
     keywords: ['safety', 'ppe', 'helmet', 'boots', 'vest', 'gloves'],
-    response: `🦺 **CONSTRUCTION SAFETY**
+    response: `🦺 **CONSTRUCTION SAFETY MANAGEMENT**
 
 **Mandatory PPE:**
 ✅ Hard hat (EN 397)
-✅ Safety boots (steel toe)
+✅ Safety boots (steel toe, EN 20345)
 ✅ High-vis vest (EN 471)
 ✅ Gloves (EN 388)
 ✅ Safety glasses (EN 166)
 ✅ Harness (for work >2m height)
 
-**Weekly Safety Checklist:**
+**Safety Checklist (Weekly):**
 ☑️ PPE inspections
 ☑️ Scaffolding stability
 ☑️ Electrical cable condition
 ☑️ Fire extinguisher presence
-☑️ First aid kit supplies`
+☑️ First aid kit supplies
+
+**Emergency Response:**
+1. Stop all work immediately
+2. Alert all nearby workers
+3. Call emergency services (999 in Zambia)
+4. Administer first aid if trained
+5. Report incident to management
+
+💡 **Pro Tip:** Conduct daily safety briefings before work starts!`
   },
   {
     keywords: ['cost', 'budget', 'estimate', 'price', 'quote', 'pricing'],
-    response: `💰 **COST ESTIMATION**
+    response: `💰 **CONSTRUCTION COST ESTIMATION**
 
 **Cost Per Square Meter (Zambia, 2026):**
 • Residential (standard): ZMW 3,500-5,500/m²
@@ -251,13 +287,27 @@ const constructionKnowledge = [
 • Commercial (standard): ZMW 4,500-6,500/m²
 • Commercial (premium): ZMW 7,000-10,000/m²
 
-**Contingency:** 10-15% for unexpected costs.`
+**Cost Breakdown (Typical):**
+• Materials: 40-50%
+• Labor: 20-30%
+• Equipment: 10-15%
+• Subcontracts: 10-15%
+• Overheads: 5-10%
+• Profit: 5-10%
+
+**Cost-Saving Tips:**
+💰 Bulk discounts
+💰 Local materials
+💰 Reduce waste
+💰 Local labor
+
+💡 **Pro Tip:** Always add 10-15% contingency for unexpected costs!`
   },
   {
     keywords: ['project management', 'planning', 'schedule', 'timeline', 'gantt'],
-    response: `📅 **PROJECT MANAGEMENT**
+    response: `📅 **PROJECT MANAGEMENT & PLANNING**
 
-**Project Phases:**
+**Project Lifecycle:**
 1. Initiation – feasibility, approvals
 2. Design – architect, engineer, BOQ
 3. Procurement – materials, contractors
@@ -270,128 +320,70 @@ const constructionKnowledge = [
 ☑️ 50%: Structure complete
 ☑️ 70%: Services installed
 ☑️ 90%: Finishing
-☑️ 100%: Handover`
-  },
-  {
-    keywords: ['plumbing', 'drainage', 'pipe', 'water', 'septic'],
-    response: `🚿 **PLUMBING & DRAINAGE**
+☑️ 100%: Handover
 
-**Pipe Materials:**
-• **UPVC** – cold water, drainage (cheap)
-• **Copper** – hot water (durable)
-• **HDPE** – underground, pressure (flexible)
+**Zambia Context:**
+• Rainy season (Nov-Mar): Plan outdoor work accordingly
+• Material delivery: Allow 2-3 weeks for delays
 
-**Septic Tank Design:**
-• Size based on number of users
-• Standard: 1.5-2.5m deep, 2-4m long
-• Soakaway: 1m from tank, gravel filled
-• Empty every 2-5 years`
-  },
-  {
-    keywords: ['electrical', 'wiring', 'cable', 'circuit', 'lighting'],
-    response: `⚡ **ELECTRICAL SYSTEMS**
-
-**Cable Sizing Guide:**
-| Application | Cable Size | Breaker |
-| Lighting | 1.5mm² | 6A |
-| Power (sockets) | 2.5mm² | 16A |
-| Cooker | 6mm² | 32A |
-| AC unit | 4mm² | 20A |
-| Main supply | 16mm² | 63A |
-
-**Zambia Context:** ZESCO supply: 230V single phase, 400V three phase.`
-  },
-  {
-    keywords: ['roofing', 'roof', 'truss', 'corrugated', 'tiles'],
-    response: `🏠 **ROOFING SYSTEMS**
-
-**Materials:**
-| Type | Lifespan | Cost |
-| Corrugated iron | 15-20 years | Low |
-| Colorbond | 20-30 years | Medium |
-| Clay tiles | 50+ years | High |
-| Concrete tiles | 40-50 years | Medium |
-
-**Installation Tips:**
-✓ Start from eaves to ridge
-✓ Overlap: 1.5 corrugations (side), 150mm (end)
-✓ Use pop-rivets or screws (not nails)`
+💡 **Pro Tip:** Use project management software like MS Project or Trello!`
   }
 ];
 
-// ============================================================
-// MAIN AI FUNCTION
-// ============================================================
-
+// Main AI function
 const getAIResponse = async (userQuestion, userId) => {
   const lower = userQuestion.toLowerCase().trim();
   console.log('🤖 AI Question:', userQuestion);
 
-  // 1. CHECK SYSTEM QUERIES FIRST
+  // Check system queries
   for (const [key, keywords] of Object.entries(SYSTEM_KEYWORDS)) {
     for (const keyword of keywords) {
       if (lower.includes(keyword)) {
-        console.log('🔍 Matched system query:', key, 'keyword:', keyword);
+        console.log('🔍 Matched system query:', key);
         try {
           const handler = systemHandlers[key];
           if (handler) {
-            let result;
-            if (key === 'notifications' || key === 'summary') {
-              result = await handler(userId);
-            } else {
-              result = await handler();
-            }
-            return {
-              type: 'system',
-              text: result,
-              data: null
-            };
+            const result = await handler(userId);
+            return { type: 'system', text: result.text };
           }
         } catch (err) {
           console.error('System query error:', err);
-          return {
-            type: 'error',
-            text: '⚠️ I encountered an error fetching system data. Please try again.'
-          };
+          return { type: 'error', text: '⚠️ Error fetching system data. Please try again.' };
         }
       }
     }
   }
 
-  // 2. CHECK CONSTRUCTION KNOWLEDGE
+  // Check construction knowledge
   for (const item of constructionKnowledge) {
     if (item.keywords.some(kw => lower.includes(kw))) {
       console.log('📚 Matched construction knowledge:', item.keywords[0]);
-      return {
-        type: 'knowledge',
-        text: item.response
-      };
+      return { type: 'knowledge', text: item.response };
     }
   }
 
-  // 3. DEFAULT FALLBACK
+  // Default
   return {
     type: 'general',
     text: `🤖 **PURVEYOLS ASSISTANT AI**
 
 I can answer questions about:
 
-📊 **System Data (Ask these exact questions):**
-• "How many workers do we have?" – Worker count
+📊 **System Data:**
+• "How many workers do we have?" – Worker count with details
 • "How much are we owing workers?" – Worker balances
 • "What's our total budget?" – Financial summary
 • "Show me pending funding requests" – Pending approvals
-• "What's the project status?" – Project overview
-• "Tell me everything" – System summary
+• "Tell me everything" – Full system overview
 
 🏗️ **Construction Knowledge:**
-• "What's the best foundation for clay soil?"
-• "How to design a concrete mix for C25?"
-• "What are the safety requirements on site?"
-• "How to estimate construction costs?"
-• "What are the project management phases?"
+• "What's the best foundation for clay soil?" – Detailed explanation
+• "How to design a concrete mix for C25?" – Mix ratios
+• "What are the safety requirements on site?" – PPE & safety
+• "How to estimate construction costs?" – Cost breakdown
+• "What are the project management phases?" – Project lifecycle
 
-💡 **Try asking one of the exact questions above!**`
+💡 **Ask a question and I'll give a detailed answer!**`
   };
 };
 

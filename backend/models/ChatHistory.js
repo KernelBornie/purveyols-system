@@ -12,7 +12,6 @@ const ChatHistorySchema = new mongoose.Schema({
   updatedAt: { type: Date, default: Date.now },
 });
 
-// Add middleware to update updatedAt on save
 ChatHistorySchema.pre('save', function(next) {
   this.updatedAt = new Date();
   next();

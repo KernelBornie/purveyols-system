@@ -3,7 +3,6 @@ const router = express.Router();
 const ChatHistory = require('../models/ChatHistory');
 const auth = require('../middleware/auth');
 
-// Get chat history for current user
 router.get('/', auth, async (req, res) => {
   try {
     let history = await ChatHistory.findOne({ user: req.user.id });
@@ -18,10 +17,12 @@ router.get('/', auth, async (req, res) => {
   }
 });
 
-// Save a message to history
 router.post('/message', auth, async (req, res) => {
   try {
     const { sender, text, type } = req.body;
+    if (!sender || !text) {
+      return res.status(400).json({ error: 'Sender and text are required' });
+    }
     let history = await ChatHistory.findOne({ user: req.user.id });
     if (!history) {
       history = new ChatHistory({ user: req.user.id, messages: [] });
@@ -41,13 +42,9 @@ router.post('/message', auth, async (req, res) => {
   }
 });
 
-// Clear chat history
 router.delete('/', auth, async (req, res) => {
   try {
-    const result = await ChatHistory.findOneAndDelete({ user: req.user.id });
-    if (!result) {
-      return res.status(404).json({ message: 'No history found' });
-    }
+    await ChatHistory.findOneAndDelete({ user: req.user.id });
     res.json({ message: 'Chat history cleared' });
   } catch (err) {
     console.error('Clear history error:', err);
