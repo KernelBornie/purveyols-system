@@ -122,15 +122,7 @@ const Profile = () => {
               />
             </Grid>
           )}
-          {!isAccountant && (
-            <Grid item xs={12}>
-              <Box sx={{ p: 2, bgcolor: 'action.disabledBackground', borderRadius: 1, mt: 1 }}>
-                <Typography variant="caption" color="textSecondary">
-                  Mobile Money Number is only available for Accountant role.
-                </Typography>
-              </Box>
-            </Grid>
-          )}
+          {/* No placeholder for non-accountants - just empty space */}
         </Grid>
         <Button type="submit" variant="contained" sx={{ mt: 2 }} disabled={loading}>
           {loading ? 'Saving...' : 'Update Profile'}
