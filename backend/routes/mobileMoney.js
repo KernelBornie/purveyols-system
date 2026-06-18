@@ -6,7 +6,6 @@ const Payment = require('../models/Payment');
 const Worker = require('../models/Worker');
 const User = require('../models/User');
 const { createNotification } = require('../utils/notificationHelper');
-const { sendEmail } = require('../services/emailService');
 
 // Initiate payment – sends USSD prompt to accountant's phone
 router.post('/initiate', auth, async (req, res) => {
@@ -27,7 +26,10 @@ router.post('/initiate', auth, async (req, res) => {
       if (!worker) return res.status(404).json({ error: 'Worker not found' });
     }
 
+    // Generate a unique reference
     const reference = `MOB-${Date.now()}-${crypto.randomBytes(4).toString('hex').toUpperCase()}`;
+
+    // Store pending payment
     const payment = new Payment({
       type: 'worker',
       recipientName: worker ? worker.name : 'Mobile Money Recipient',
@@ -41,25 +43,24 @@ router.post('/initiate', auth, async (req, res) => {
     });
     await payment.save();
 
-    // Log the USSD prompt (simulation)
-    console.log(`📱 [SIMULATION] Airtel Money USSD prompt sent to ${accountant.mobileMoneyNumber}`);
+    // In production: Call Airtel Money API to send USSD prompt to accountant's phone
+    // const airtelResponse = await callAirtelAPI({
+    //   phone: accountant.mobileMoneyNumber,
+    //   amount: parseFloat(amount),
+    //   reference: reference,
+    // });
+
+    // SIMULATION: Log the USSD prompt details
+    console.log(`📱 [AIRTEL MONEY] USSD prompt sent to: ${accountant.mobileMoneyNumber}`);
     console.log(`   Amount: ZMW ${amount}`);
     console.log(`   Recipient: ${recipientPhone} (${worker?.name || 'unknown'})`);
     console.log(`   Reference: ${reference}`);
-
-    // Send email to accountant with USSD prompt details (simulation)
-    await sendEmail(
-      accountant.email,
-      'Airtel Money Payment Request',
-      `
-        <h2>Payment Request</h2>
-        <p>You have initiated a payment of <strong>ZMW ${amount}</strong> to ${worker?.name || 'unknown worker'} (${recipientPhone}).</p>
-        <p>Please check your phone (${accountant.mobileMoneyNumber}) for the USSD prompt to complete the transaction.</p>
-        <p>Once you confirm on your phone, return to the app and click "I Have Confirmed".</p>
-        <p><strong>Reference:</strong> ${reference}</p>
-        <p>— Purveyols CMS</p>
-      `
-    );
+    console.log(`   Accountant: ${accountant.name} (${accountant.email})`);
+    console.log('');
+    console.log('📌 INSTRUCTIONS:');
+    console.log(`   1. Check phone ${accountant.mobileMoneyNumber} for USSD prompt`);
+    console.log('   2. Enter your Airtel Money PIN on your phone');
+    console.log('   3. Click "I Have Confirmed" button in the app after PIN entry');
 
     res.status(201).json({
       message: 'Airtel Money USSD prompt sent to your phone.',
@@ -73,7 +74,7 @@ router.post('/initiate', auth, async (req, res) => {
   }
 });
 
-// Confirm payment (after accountant confirms on phone)
+// Confirm payment (after accountant enters PIN on phone)
 router.post('/confirm', auth, async (req, res) => {
   try {
     const { reference } = req.body;
@@ -82,9 +83,20 @@ router.post('/confirm', auth, async (req, res) => {
     if (payment.status !== 'pending') {
       return res.status(400).json({ error: 'Payment already processed' });
     }
+
+    // In production: Verify with Airtel Money API
+    // const status = await checkAirtelStatus(reference);
+    // if (status === 'completed') {
+    //   payment.status = 'completed';
+    // } else {
+    //   return res.status(400).json({ error: 'Payment not confirmed on phone' });
+    // }
+
+    // For simulation: mark as completed
     payment.status = 'completed';
     await payment.save();
 
+    // Notify accountant
     await createNotification(
       req.user.id,
       'payment_made',
@@ -93,32 +105,18 @@ router.post('/confirm', auth, async (req, res) => {
       `/payments/${payment._id}`
     );
 
-    // Notify the worker if they have an email
-    if (payment.worker) {
-      const worker = await Worker.findById(payment.worker);
-      if (worker) {
-        // If worker has a user account, notify them
-        const workerUser = await User.findOne({ email: worker.phone }); // simplistic
-        if (workerUser) {
-          await createNotification(
-            workerUser._id,
-            'payment_made',
-            'Payment Received',
-            `You received ZMW ${payment.amount} from ${payment.paidBy?.name || 'accountant'}`,
-            `/payments/${payment._id}`
-          );
-        }
-      }
-    }
-
-    res.json({ message: 'Payment confirmed successfully', payment });
+    res.json({ 
+      message: 'Payment confirmed successfully', 
+      payment,
+      reference: payment.reference,
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: err.message });
   }
 });
 
-// Get payment status
+// Check payment status
 router.get('/status/:reference', auth, async (req, res) => {
   try {
     const payment = await Payment.findOne({ reference: req.params.reference });

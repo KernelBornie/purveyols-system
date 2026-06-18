@@ -63,10 +63,16 @@ const PaymentModal = ({ open, onClose, worker, onSuccess }) => {
       };
       const res = await api.post('/api/mobile-money/initiate', payload);
       setReference(res.data.reference);
-      setStatus({ type: 'info', message: res.data.message });
-      setStep(1); // move to confirmation step
+      setStatus({ 
+        type: 'success', 
+        message: `📱 USSD prompt sent to your phone (${res.data.message})` 
+      });
+      setStep(1);
     } catch (err) {
-      setStatus({ type: 'error', message: err.response?.data?.error || 'Initiation failed' });
+      setStatus({ 
+        type: 'error', 
+        message: err.response?.data?.error || 'Initiation failed' 
+      });
     } finally {
       setLoading(false);
     }
@@ -74,17 +80,24 @@ const PaymentModal = ({ open, onClose, worker, onSuccess }) => {
 
   const handleConfirm = async () => {
     setLoading(true);
+    setStatus(null);
     try {
       const res = await api.post('/api/mobile-money/confirm', { reference });
-      setStatus({ type: 'success', message: 'Payment confirmed successfully!' });
+      setStatus({ 
+        type: 'success', 
+        message: `✅ Payment of ZMW ${amount} confirmed successfully! Reference: ${res.data.reference}` 
+      });
       setConfirmed(true);
       setTimeout(() => {
         onClose();
         if (onSuccess) onSuccess();
         window.location.reload();
-      }, 1500);
+      }, 2000);
     } catch (err) {
-      setStatus({ type: 'error', message: err.response?.data?.error || 'Confirmation failed' });
+      setStatus({ 
+        type: 'error', 
+        message: err.response?.data?.error || 'Confirmation failed' 
+      });
     } finally {
       setLoading(false);
     }
@@ -144,18 +157,32 @@ const PaymentModal = ({ open, onClose, worker, onSuccess }) => {
         {step === 1 && (
           <Box sx={{ mt: 2 }}>
             <Alert severity="info" sx={{ mb: 2 }}>
-              📱 Airtel Money USSD prompt sent to your registered mobile number.
-              <br />
-              Please check your phone and confirm the transaction.
+              <Typography variant="subtitle2" gutterBottom>📱 Airtel Money USSD Prompt</Typography>
+              <Typography variant="body2">
+                1. Check your phone for the USSD prompt from Airtel Money
+              </Typography>
+              <Typography variant="body2">
+                2. Enter your Airtel Money PIN on your phone
+              </Typography>
+              <Typography variant="body2">
+                3. Confirm the transaction on your phone
+              </Typography>
             </Alert>
             <Typography variant="body2" color="textSecondary">
-              Reference: {reference}
+              Reference: <strong>{reference}</strong>
             </Typography>
             {status && <Alert severity={status.type} sx={{ mt: 2 }}>{status.message}</Alert>}
             <Box sx={{ display: 'flex', gap: 2, mt: 3 }}>
-              <Button variant="outlined" onClick={() => setStep(0)} disabled={loading}>Back</Button>
-              <Button variant="contained" onClick={handleConfirm} disabled={loading || confirmed}>
-                {loading ? <CircularProgress size={24} /> : 'I Have Confirmed on Phone'}
+              <Button variant="outlined" onClick={() => setStep(0)} disabled={loading}>
+                Back
+              </Button>
+              <Button 
+                variant="contained" 
+                color="success"
+                onClick={handleConfirm} 
+                disabled={loading || confirmed}
+              >
+                {loading ? <CircularProgress size={24} /> : '✅ I Have Confirmed on Phone'}
               </Button>
             </Box>
           </Box>
