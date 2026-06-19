@@ -18,7 +18,14 @@ const ProcurementDashboard = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [orders, setOrders] = useState([]);
-  const [stats, setStats] = useState({ total: 0, pending: 0, funded: 0, purchased: 0 });
+  const [stats, setStats] = useState({
+    total: 0,
+    pending: 0,
+    funded: 0,
+    purchased: 0,
+    totalSpent: 0,
+    averageOrder: 0,
+  });
   const [message, setMessage] = useState(null);
   const [editOpen, setEditOpen] = useState(false);
   const [editingOrder, setEditingOrder] = useState(null);
@@ -32,11 +39,27 @@ const ProcurementDashboard = () => {
       const data = Array.isArray(res.data) ? res.data : (res.data?.data || []);
       setOrders(data);
 
+      // Compute stats
       const total = data.length;
       const pending = data.filter(o => o.status === 'pending').length;
       const funded = data.filter(o => o.status === 'funded').length;
       const purchased = data.filter(o => o.status === 'purchased').length;
-      setStats({ total, pending, funded, purchased });
+      
+      // Total spent = sum of grandTotal of funded + purchased
+      const totalSpent = data
+        .filter(o => o.status === 'funded' || o.status === 'purchased')
+        .reduce((sum, o) => sum + (o.grandTotal || o.total || 0), 0);
+      
+      const averageOrder = total > 0 ? totalSpent / total : 0;
+
+      setStats({
+        total,
+        pending,
+        funded,
+        purchased,
+        totalSpent,
+        averageOrder,
+      });
     } catch (err) {
       setMessage({ type: 'error', text: err.response?.data?.error || 'Failed to load orders' });
     } finally {
@@ -126,29 +149,37 @@ const ProcurementDashboard = () => {
 
       <Typography variant="h6" gutterBottom>Acquire Materials & Services</Typography>
 
+      {/* Stats Cards – Extended */}
       <Grid container spacing={3} sx={{ mb: 3 }}>
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid item xs={12} sm={6} md={2.4}>
           <Card><CardContent>
             <Typography variant="body2" color="textSecondary">Total Orders</Typography>
             <Typography variant="h4">{stats.total}</Typography>
           </CardContent></Card>
         </Grid>
-        <Grid item xs={12} sm={6} md={3}>
-          <Card><CardContent>
+        <Grid item xs={12} sm={6} md={2.4}>
+          <Card sx={{ borderLeft: '4px solid #ff9800' }}><CardContent>
             <Typography variant="body2" color="textSecondary">Pending</Typography>
             <Typography variant="h4">{stats.pending}</Typography>
           </CardContent></Card>
         </Grid>
-        <Grid item xs={12} sm={6} md={3}>
-          <Card><CardContent>
+        <Grid item xs={12} sm={6} md={2.4}>
+          <Card sx={{ borderLeft: '4px solid #2196f3' }}><CardContent>
             <Typography variant="body2" color="textSecondary">Funded</Typography>
             <Typography variant="h4">{stats.funded}</Typography>
           </CardContent></Card>
         </Grid>
-        <Grid item xs={12} sm={6} md={3}>
-          <Card><CardContent>
+        <Grid item xs={12} sm={6} md={2.4}>
+          <Card sx={{ borderLeft: '4px solid #4caf50' }}><CardContent>
             <Typography variant="body2" color="textSecondary">Purchased</Typography>
             <Typography variant="h4">{stats.purchased}</Typography>
+          </CardContent></Card>
+        </Grid>
+        <Grid item xs={12} sm={6} md={2.4}>
+          <Card sx={{ borderLeft: '4px solid #9c27b0' }}><CardContent>
+            <Typography variant="body2" color="textSecondary">Total Spent</Typography>
+            <Typography variant="h4">{formatCurrency(stats.totalSpent)}</Typography>
+            <Typography variant="caption" display="block">Avg. Order: {formatCurrency(stats.averageOrder)}</Typography>
           </CardContent></Card>
         </Grid>
       </Grid>
@@ -159,6 +190,7 @@ const ProcurementDashboard = () => {
           <Table size="small">
             <TableHead>
               <TableRow>
+                <TableCell>Order No.</TableCell>
                 <TableCell>Project</TableCell>
                 <TableCell>Items</TableCell>
                 <TableCell>Total</TableCell>
@@ -170,6 +202,7 @@ const ProcurementDashboard = () => {
             <TableBody>
               {orders.map(order => (
                 <TableRow key={order._id}>
+                  <TableCell>{order.orderNumber || order._id.slice(-6)}</TableCell>
                   <TableCell>{order.project?.name || 'N/A'}</TableCell>
                   <TableCell>{order.items?.length || 0}</TableCell>
                   <TableCell>{formatCurrency(order.grandTotal || order.total || 0)}</TableCell>
@@ -206,7 +239,7 @@ const ProcurementDashboard = () => {
                 </TableRow>
               ))}
               {orders.length === 0 && (
-                <TableRow><TableCell colSpan={6} align="center">No procurement orders</TableCell></TableRow>
+                <TableRow><TableCell colSpan={7} align="center">No procurement orders</TableCell></TableRow>
               )}
             </TableBody>
           </Table>
