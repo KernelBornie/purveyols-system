@@ -1,142 +1,178 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import {
-  Box, Typography, Grid, Card, CardContent, Button, Table, TableHead, TableRow, TableCell, TableBody,
-  Chip, Paper, CircularProgress, Alert, Dialog, DialogTitle, DialogContent, DialogActions,
-  TextField, Switch, FormControlLabel, Divider
+  Box, Typography, Grid, Card, CardContent, Button,
+  Table, TableHead, TableRow, TableCell, TableBody,
+  Chip, Paper, CircularProgress, Alert, TextField,
+  FormControlLabel, Switch
 } from '@mui/material';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, PieChart, Pie, Cell, LineChart, Line } from 'recharts';
 import RefreshIcon from '@mui/icons-material/Refresh';
-import DescriptionIcon from '@mui/icons-material/Description';
-import api from '../../api/axios';
-import WorkerSearch from '../../components/WorkerSearch';
-import PaymentModal from '../../components/PaymentModal';
-import NotificationBell from '../../components/NotificationBell';
-import ReportModal from '../../components/ReportModal';
-import ExportButton from '../../components/ExportButton';
+import {
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip,
+  Legend, LineChart, Line, PieChart, Pie, Cell
+} from 'recharts';
+import api from '../api/axios';
 
 const AccountantDashboard = () => {
-  const navigate = useNavigate();
-  const [stats, setStats] = useState({ workers: 0, projects: 0, payments: 0, fundingRequests: 0, totalReleased: 0 });
-  const [projects, setProjects] = useState([]);
-  const [workers, setWorkers] = useState([]);
-  const [fundingRequests, setFundingRequests] = useState([]);
-  const [procurementOrders, setProcurementOrders] = useState([]);
-  const [payments, setPayments] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [period, setPeriod] = useState('week');
+  const [stats, setStats] = useState({
+    workers: 0,
+    projects: 0,
+    totalReleased: 0,
+    fundingRequests: 0,
+  });
+  const [workers, setWorkers] = useState([]);
+  const [projects, setProjects] = useState([]);
+  const [fundingRequests, setFundingRequests] = useState([]);
+  const [payments, setPayments] = useState([]);
+  const [attendance, setAttendance] = useState([]);
+  const [topWorkers, setTopWorkers] = useState([]);
+  const [paymentTrends, setPaymentTrends] = useState([]);
+  const [projectSpending, setProjectSpending] = useState([]);
+  const [approvalRatio, setApprovalRatio] = useState([]);
   const [reportData, setReportData] = useState(null);
-  const [searchOpen, setSearchOpen] = useState(false);
-  const [paymentOpen, setPaymentOpen] = useState(false);
-  const [selectedWorker, setSelectedWorker] = useState(null);
-  const [payAllOpen, setPayAllOpen] = useState(false);
-  const [payAllStatus, setPayAllStatus] = useState(null);
-  const [reportModalOpen, setReportModalOpen] = useState(false);
-  const [chartData, setChartData] = useState({ projectSpending: [], paymentTrends: [], approvalRatio: [], topWorkers: [] });
   const [showCharts, setShowCharts] = useState(true);
-  const [notificationCount, setNotificationCount] = useState(0);
-  const [error, setError] = useState(null);
-  const [pendingWorkers, setPendingWorkers] = useState([]);
-  const [totalPending, setTotalPending] = useState(0);
+  const [message, setMessage] = useState(null);
+  const [airtelStatus, setAirtelStatus] = useState(null);
+  const [payAmount, setPayAmount] = useState('');
+  const [workerPhone, setWorkerPhone] = useState('');
+
+  const COLORS = ['#8884d8', '#82ca9d', '#ffc658', '#ff8042', '#0088FE'];
+
+  const fetchProfile = async () => {
+    try {
+      const res = await api.get('/api/auth/me');
+      if (res.data && res.data.phone) setWorkerPhone(res.data.phone);
+    } catch (err) {
+      console.error('Profile fetch error:', err);
+    }
+  };
 
   const fetchData = async () => {
     setLoading(true);
-    setError(null);
+    setMessage(null);
     try {
-      const [workersRes, projectsRes, fundingRes, procRes, paymentsRes, reportRes] = await Promise.all([
-        api.get('/api/workers'),
-        api.get('/api/projects'),
-        api.get('/api/funding-requests'),
-        api.get('/api/procurement'),
-        api.get('/api/payments'),
-        api.get(`/api/reports/accountant/stats?period=${period}`)
-      ]);
+      // Workers
+      const workersRes = await api.get('/api/workers');
+      let workersData = Array.isArray(workersRes.data) ? workersRes.data : (workersRes.data?.data || []);
+      
+      // Attendance
+      const attendanceRes = await api.get('/api/attendance');
+      let attendanceData = Array.isArray(attendanceRes.data) ? attendanceRes.data : (attendanceRes.data?.data || []);
+      setAttendance(attendanceData);
 
-      const workersData = Array.isArray(workersRes.data) ? workersRes.data : [];
-      const projectsData = Array.isArray(projectsRes.data) ? projectsRes.data : [];
-      const fundingData = Array.isArray(fundingRes.data) ? fundingRes.data : [];
-      const procData = Array.isArray(procRes.data) ? procRes.data : [];
-      const paymentsData = Array.isArray(paymentsRes.data) ? paymentsRes.data : [];
+      // Payments (completed)
+      const paymentsRes = await api.get('/api/payments');
+      let paymentsData = Array.isArray(paymentsRes.data) ? paymentsRes.data : (paymentsRes.data?.data || []);
+      const completedPayments = paymentsData.filter(p => p.status === 'completed');
+      setPayments(completedPayments);
 
-      setWorkers(workersData);
+      // Compute worker balances (earned from attendance - paid)
+      const workersWithBalance = workersData.map(w => {
+        const workerAttendance = attendanceData.filter(a => a.worker === w._id || a.worker?._id === w._id);
+        const totalEarned = workerAttendance.reduce((sum, a) => sum + (a.rate || 0), 0);
+        const workerPayments = completedPayments.filter(p => p.worker === w._id || p.worker?._id === w._id);
+        const totalPaid = workerPayments.reduce((sum, p) => sum + (p.amount || 0), 0);
+        return { ...w, balance: totalEarned - totalPaid };
+      });
+      setWorkers(workersWithBalance);
+
+      // Projects
+      const projectsRes = await api.get('/api/projects');
+      let projectsData = Array.isArray(projectsRes.data) ? projectsRes.data : (projectsRes.data?.data || []);
       setProjects(projectsData);
+
+      // Funding requests
+      let fundingData = [];
+      try {
+        const fundRes = await api.get('/api/funding-requests');
+        fundingData = Array.isArray(fundRes.data) ? fundRes.data : (fundRes.data?.data || []);
+      } catch (e) {
+        const fundRes2 = await api.get('/api/funding');
+        fundingData = Array.isArray(fundRes2.data) ? fundRes2.data : (fundRes2.data?.data || []);
+      }
       setFundingRequests(fundingData);
-      setProcurementOrders(procData);
-      setPayments(paymentsData);
-      setReportData(reportRes.data);
 
-      const pending = workersData.filter(w => (w.balance || 0) > 0);
-      setPendingWorkers(pending);
-      setTotalPending(pending.reduce((sum, w) => sum + (w.balance || 0), 0));
+      // Stats
+      const totalWorkers = workersWithBalance.length;
+      const totalProjects = projectsData.length;
+      const totalReleased = completedPayments.reduce((sum, p) => sum + (p.amount || 0), 0);
+      const totalFunding = fundingData.length;
 
-      const projectSpending = {};
-      paymentsData.forEach(p => {
-        if (p.project) {
-          const key = p.project._id || p.project;
-          projectSpending[key] = (projectSpending[key] || 0) + p.amount;
-        }
+      setStats({
+        workers: totalWorkers,
+        projects: totalProjects,
+        totalReleased,
+        fundingRequests: totalFunding,
       });
 
-      const paymentTrends = {};
-      paymentsData.forEach(p => {
-        const date = p.paidAt ? new Date(p.paidAt).toISOString().split('T')[0] : 'unknown';
-        paymentTrends[date] = (paymentTrends[date] || 0) + p.amount;
-      });
-
+      // Top workers (by earnings)
       const workerEarnings = {};
-      paymentsData.forEach(p => {
-        if (p.worker) {
-          const workerId = p.worker._id || p.worker;
-          if (workerId) {
-            workerEarnings[workerId] = (workerEarnings[workerId] || 0) + p.amount;
-          }
+      completedPayments.forEach(p => {
+        const workerId = p.worker?._id || p.worker;
+        if (workerId) {
+          workerEarnings[workerId] = (workerEarnings[workerId] || 0) + p.amount;
         }
       });
-
-      const approvalRatio = [
-        { name: 'Pending', value: fundingData.filter(f => f.status === 'pending').length },
-        { name: 'Approved', value: fundingData.filter(f => f.status === 'approved').length },
-        { name: 'Rejected', value: fundingData.filter(f => f.status === 'rejected').length },
-      ].filter(item => item.value > 0);
-
-      const topWorkers = Object.entries(workerEarnings)
-        .map(([key, value]) => {
-          const worker = workersData.find(w => w._id === key);
-          return { name: worker?.name || key, amount: value };
+      const top = Object.entries(workerEarnings)
+        .map(([id, amount]) => {
+          const worker = workersWithBalance.find(w => w._id === id);
+          return { name: worker?.name || 'Unknown', amount };
         })
         .sort((a, b) => b.amount - a.amount)
         .slice(0, 5);
+      setTopWorkers(top);
 
-      setChartData({
-        projectSpending: Object.entries(projectSpending).map(([key, value]) => ({
-          name: projectsData.find(p => (p._id === key))?.name || key,
-          amount: value
-        })),
-        paymentTrends: Object.entries(paymentTrends).map(([key, value]) => ({ date: key, amount: value })).sort((a, b) => a.date.localeCompare(b.date)),
-        approvalRatio,
-        topWorkers,
+      // Payment trends (last 7 days)
+      const trends = {};
+      const now = new Date();
+      for (let i = 6; i >= 0; i--) {
+        const d = new Date(now);
+        d.setDate(d.getDate() - i);
+        const key = d.toISOString().split('T')[0];
+        trends[key] = 0;
+      }
+      completedPayments.forEach(p => {
+        const date = new Date(p.createdAt).toISOString().split('T')[0];
+        if (trends[date] !== undefined) trends[date] += p.amount;
       });
+      const trendData = Object.entries(trends).map(([date, amount]) => ({ date, amount }));
+      setPaymentTrends(trendData);
 
-      const totalReleased = paymentsData.reduce((sum, p) => sum + p.amount, 0);
-      setStats({
-        workers: workersData.length,
-        projects: projectsData.length,
-        payments: paymentsData.length,
-        fundingRequests: fundingData.length,
-        totalReleased,
+      // Project spending
+      const projectSpendingMap = {};
+      completedPayments.forEach(p => {
+        const projectId = p.project?._id || p.project;
+        if (projectId) {
+          const project = projectsData.find(pr => pr._id === projectId);
+          const name = project?.name || 'Unknown Project';
+          projectSpendingMap[name] = (projectSpendingMap[name] || 0) + p.amount;
+        }
       });
+      const spendingData = Object.entries(projectSpendingMap).map(([name, amount]) => ({ name, amount }));
+      setProjectSpending(spendingData);
 
-      const pendingFunding = fundingData.filter(f => f.status === 'pending').length;
-      setNotificationCount(pendingFunding);
+      // Approval ratio
+      const pending = fundingData.filter(f => f.status === 'pending').length;
+      const approved = fundingData.filter(f => f.status === 'approved').length;
+      const rejected = fundingData.filter(f => f.status === 'rejected').length;
+      const ratio = [
+        { name: 'Pending', value: pending },
+        { name: 'Approved', value: approved },
+        { name: 'Rejected', value: rejected },
+      ].filter(item => item.value > 0);
+      setApprovalRatio(ratio);
+
+      // Report data
+      setReportData({
+        workersEnrolled: totalWorkers,
+        projectsCreated: totalProjects,
+        payments: completedPayments.length,
+        totalAmountReleased: totalReleased,
+      });
 
     } catch (err) {
-      console.error('Fetch error:', err);
-      if (err.response && err.response.status === 401) {
-        setError('Session expired. Please log in again.');
-        setTimeout(() => navigate('/login'), 2000);
-      } else {
-        setError(err.response?.data?.error || err.message || 'Failed to load data');
-      }
+      console.error('Dashboard fetch error:', err);
+      setMessage({ type: 'error', text: 'Failed to load data. Check console.' });
     } finally {
       setLoading(false);
     }
@@ -144,201 +180,152 @@ const AccountantDashboard = () => {
 
   useEffect(() => {
     fetchData();
-  }, [period]);
+    fetchProfile();
+  }, []);
 
-  const handleApproveFunding = async (id) => {
-    try {
-      await api.put(`/api/funding-requests/${id}/approve`);
-      fetchData();
-    } catch (err) { alert('Approval failed'); }
-  };
-
-  const handleRejectFunding = async (id) => {
-    const reason = prompt('Rejection reason:');
-    if (reason === null) return;
-    try {
-      await api.put(`/api/funding-requests/${id}/reject`, { reason });
-      fetchData();
-    } catch (err) { alert('Rejection failed'); }
-  };
-
-  const handleFundProcurement = async (id) => {
-    try {
-      await api.put(`/api/procurement/${id}/fund`);
-      fetchData();
-    } catch (err) { alert('Failed to fund order'); }
-  };
-
-  const handleWorkerSelect = (worker) => {
-    setSelectedWorker(worker);
-    setSearchOpen(false);
-    setPaymentOpen(true);
-  };
-
-  const handlePaymentClose = () => {
-    setPaymentOpen(false);
-    setSelectedWorker(null);
-    fetchData();
-  };
-
-  const handlePayAll = () => {
-    if (pendingWorkers.length === 0) {
-      alert('No pending balances to pay.');
+  const handleAirtelPay = async () => {
+    if (!payAmount || parseFloat(payAmount) <= 0) {
+      alert('Enter a valid amount');
       return;
     }
-    setPayAllOpen(true);
-  };
-
-  const handlePayAllConfirm = async () => {
-    setPayAllStatus(null);
+    if (!workerPhone) {
+      alert('Your phone number is not set in your profile.');
+      return;
+    }
+    setAirtelStatus({ type: 'info', text: 'Initiating Airtel Money request...' });
     try {
-      const paymentsData = pendingWorkers.map(w => ({
-        workerId: w._id,
-        amount: w.balance || 0,
-      }));
-      await api.post('/api/payments/bulk', { payments: paymentsData });
-      setPayAllStatus({ type: 'success', message: 'All pending payments processed!' });
-      setTimeout(() => {
-        setPayAllOpen(false);
-        setPayAllStatus(null);
-        fetchData();
-      }, 1500);
+      const res = await api.post('/api/airtel/ussd', {
+        amount: parseFloat(payAmount),
+        phoneNumber: workerPhone,
+        reference: 'PAY-' + Date.now(),
+      });
+      setAirtelStatus({
+        type: 'success',
+        text: `📱 Airtel Money USSD prompt sent to ${workerPhone}. Ref: ${res.data.reference || 'N/A'}`
+      });
     } catch (err) {
-      setPayAllStatus({ type: 'error', message: err.response?.data?.error || 'Bulk payment failed' });
+      setAirtelStatus({
+        type: 'error',
+        text: err.response?.data?.error || 'Failed to send USSD. Check backend.'
+      });
     }
   };
 
-  const exportCSV = () => {
-    const headers = ['Name', 'NRC', 'Phone', 'Site', 'Enrolled By', 'Balance'];
-    const rows = workers.map(w => [
-      w.name, w.nrc, w.phone || '', w.site || '',
-      w.enrolledBy?.name || 'N/A', (w.balance || 0).toFixed(2)
-    ]);
-    const csv = [headers.join(','), ...rows.map(row => row.join(','))].join('\n');
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'workers_report.csv';
-    a.click();
-    URL.revokeObjectURL(url);
+  const formatCurrency = (amount) => {
+    return new Intl.NumberFormat('en-ZM', { style: 'currency', currency: 'ZMW' }).format(amount || 0);
   };
 
-  const exportPDF = () => {
-    alert('PDF export coming soon – you can use browser print (Ctrl+P) to save as PDF.');
-  };
-
-  const COLORS = ['#8884d8', '#82ca9d', '#ffc658', '#ff8042', '#0088FE'];
-
-  const statCards = [
-    { label: 'Workers', value: stats.workers, path: '/workers', color: 'primary' },
-    { label: 'Projects', value: stats.projects, path: '/projects', color: 'secondary' },
-    { label: 'Total Released', value: `ZMW ${stats.totalReleased.toFixed(2)}`, path: '/payments', color: 'success' },
-    { label: 'Funding Requests', value: stats.fundingRequests, path: '/funding', color: 'warning' },
-  ];
-
-  const fundingChartData = fundingRequests.map(fr => ({
-    name: fr.project?.name || 'N/A',
-    requested: fr.amount,
-    approved: fr.status === 'approved' ? fr.amount : 0,
-  }));
+  const pendingWorkers = workers.filter(w => (w.balance || 0) > 0);
+  const totalPending = pendingWorkers.reduce((sum, w) => sum + (w.balance || 0), 0);
 
   return (
     <Box>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
         <Typography variant="h4">Accountant Dashboard</Typography>
         <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-          <NotificationBell />
+          <FormControlLabel
+            control={<Switch checked={showCharts} onChange={(e) => setShowCharts(e.target.checked)} />}
+            label="Show Charts"
+          />
           <Button variant="contained" startIcon={<RefreshIcon />} onClick={fetchData}>
             Refresh
           </Button>
         </Box>
       </Box>
 
-      {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
-
-      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 2 }}>
-        <Button variant="contained" color="primary" onClick={() => setSearchOpen(true)}>
-          Pay Worker (Airtel Money)
-        </Button>
-        <Button variant="contained" color="secondary" onClick={handlePayAll}>
-          Pay All Pending
-        </Button>
-        <Button variant="outlined" onClick={() => setReportModalOpen(true)} startIcon={<DescriptionIcon />}>
-          Generate Report
-        </Button>
-        <ExportButton onExportCSV={exportCSV} onExportPDF={exportPDF} />
-        <Button variant="outlined" onClick={() => setPeriod(period === 'week' ? 'month' : 'week')}>
-          Switch to {period === 'week' ? 'Monthly' : 'Weekly'} Report
-        </Button>
-        <FormControlLabel
-          control={<Switch checked={showCharts} onChange={(e) => setShowCharts(e.target.checked)} />}
-          label="Show Charts"
-        />
-      </Box>
+      {message && <Alert severity={message.type} sx={{ mb: 2 }}>{message.text}</Alert>}
 
       <Typography variant="caption" display="block" sx={{ mb: 2 }}>
-        Total pending: ZMW {totalPending.toFixed(2)} ({pendingWorkers.length} workers)
-        {notificationCount > 0 && ` | ${notificationCount} pending funding requests`}
+        Total pending: {formatCurrency(totalPending)} ({pendingWorkers.length} workers)
       </Typography>
 
       <Grid container spacing={3} sx={{ mb: 3 }}>
-        {statCards.map((card, idx) => (
-          <Grid item xs={12} sm={6} md={3} key={idx}>
-            <Card sx={{ cursor: 'pointer', '&:hover': { boxShadow: 6, transform: 'scale(1.02)' }, transition: 'all 0.2s' }} onClick={() => navigate(card.path)}>
-              <CardContent>
-                <Typography variant="body2" color="textSecondary">{card.label}</Typography>
-                <Typography variant="h4">{card.value}</Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-        ))}
+        <Grid item xs={12} sm={6} md={3}>
+          <Card><CardContent>
+            <Typography variant="body2" color="textSecondary">Workers</Typography>
+            <Typography variant="h4">{stats.workers}</Typography>
+          </CardContent></Card>
+        </Grid>
+        <Grid item xs={12} sm={6} md={3}>
+          <Card><CardContent>
+            <Typography variant="body2" color="textSecondary">Projects</Typography>
+            <Typography variant="h4">{stats.projects}</Typography>
+          </CardContent></Card>
+        </Grid>
+        <Grid item xs={12} sm={6} md={3}>
+          <Card><CardContent>
+            <Typography variant="body2" color="textSecondary">Total Released</Typography>
+            <Typography variant="h4">{formatCurrency(stats.totalReleased)}</Typography>
+          </CardContent></Card>
+        </Grid>
+        <Grid item xs={12} sm={6} md={3}>
+          <Card><CardContent>
+            <Typography variant="body2" color="textSecondary">Funding Requests</Typography>
+            <Typography variant="h4">{stats.fundingRequests}</Typography>
+          </CardContent></Card>
+        </Grid>
       </Grid>
 
       {loading ? <CircularProgress /> : (
         <>
           {showCharts && (
             <Grid container spacing={3} sx={{ mb: 3 }}>
-              {chartData.paymentTrends.length > 0 && (
+              {paymentTrends.length > 0 && (
                 <Grid item xs={12} md={6}>
                   <Paper sx={{ p: 2 }}>
                     <Typography variant="h6">Payment Trends</Typography>
-                    <LineChart width={400} height={200} data={chartData.paymentTrends.slice(-10)}>
+                    <LineChart width={400} height={200} data={paymentTrends}>
                       <CartesianGrid strokeDasharray="3 3" />
                       <XAxis dataKey="date" />
                       <YAxis />
-                      <Tooltip />
+                      <RechartsTooltip />
                       <Legend />
                       <Line type="monotone" dataKey="amount" stroke="#82ca9d" />
                     </LineChart>
                   </Paper>
                 </Grid>
               )}
-              {chartData.approvalRatio.length > 0 && (
+              {projectSpending.length > 0 && (
+                <Grid item xs={12} md={6}>
+                  <Paper sx={{ p: 2 }}>
+                    <Typography variant="h6">Spending by Project</Typography>
+                    <BarChart width={400} height={200} data={projectSpending}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="name" />
+                      <YAxis />
+                      <RechartsTooltip />
+                      <Legend />
+                      <Bar dataKey="amount" fill="#8884d8" />
+                    </BarChart>
+                  </Paper>
+                </Grid>
+              )}
+              {approvalRatio.length > 0 && (
                 <Grid item xs={12} md={6}>
                   <Paper sx={{ p: 2 }}>
                     <Typography variant="h6">Funding Approval Ratio</Typography>
                     <PieChart width={300} height={200}>
-                      <Pie data={chartData.approvalRatio} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} label>
-                        {chartData.approvalRatio.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
+                      <Pie data={approvalRatio} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} label>
+                        {approvalRatio.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
                       </Pie>
-                      <Tooltip />
+                      <RechartsTooltip />
                       <Legend />
                     </PieChart>
                   </Paper>
                 </Grid>
               )}
-              {chartData.topWorkers.length > 0 && (
+              {topWorkers.length > 0 && (
                 <Grid item xs={12} md={6}>
                   <Paper sx={{ p: 2 }}>
                     <Typography variant="h6">Top Workers (Earnings)</Typography>
                     <Table size="small">
-                      <TableHead>
-                        <TableRow><TableCell>Worker</TableCell><TableCell>Total Earned</TableCell></TableRow>
-                      </TableHead>
+                      <TableHead><TableRow><TableCell>Worker</TableCell><TableCell>Total Earned</TableCell></TableRow></TableHead>
                       <TableBody>
-                        {chartData.topWorkers.map(w => (
-                          <TableRow key={w.name}><TableCell>{w.name}</TableCell><TableCell>ZMW {w.amount.toFixed(2)}</TableCell></TableRow>
+                        {topWorkers.map(w => (
+                          <TableRow key={w.name}>
+                            <TableCell>{w.name}</TableCell>
+                            <TableCell>{formatCurrency(w.amount)}</TableCell>
+                          </TableRow>
                         ))}
                       </TableBody>
                     </Table>
@@ -349,41 +336,31 @@ const AccountantDashboard = () => {
           )}
 
           <Paper sx={{ p: 2, mb: 3 }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <Typography variant="h6">Projects by Creator</Typography>
-              <Button size="small" onClick={() => navigate('/projects')}>View All</Button>
-            </Box>
+            <Typography variant="h6">Projects by Creator</Typography>
             <Table size="small">
               <TableHead>
-                <TableRow>
-                  <TableCell>Project</TableCell><TableCell>Location</TableCell><TableCell>Status</TableCell><TableCell>Budget</TableCell><TableCell>Created By</TableCell>
-                </TableRow>
+                <TableRow><TableCell>Project</TableCell><TableCell>Location</TableCell><TableCell>Status</TableCell><TableCell>Budget</TableCell><TableCell>Created By</TableCell></TableRow>
               </TableHead>
               <TableBody>
                 {projects.slice(0, 5).map(p => (
                   <TableRow key={p._id}>
                     <TableCell>{p.name}</TableCell>
-                    <TableCell>{p.location}</TableCell>
-                    <TableCell><Chip label={p.status} size="small" /></TableCell>
-                    <TableCell>{p.budget}</TableCell>
-                    <TableCell>{p.createdBy ? `${p.createdBy.name} (${p.createdBy.role})` : 'N/A'}</TableCell>
+                    <TableCell>{p.location || '—'}</TableCell>
+                    <TableCell><Chip label={p.status} size="small" color={p.status === 'active' ? 'success' : 'default'} /></TableCell>
+                    <TableCell>{formatCurrency(p.budget)}</TableCell>
+                    <TableCell>{p.createdBy?.name || 'N/A'}</TableCell>
                   </TableRow>
                 ))}
+                {projects.length === 0 && <TableRow><TableCell colSpan={5}>No projects</TableCell></TableRow>}
               </TableBody>
             </Table>
           </Paper>
 
           <Paper sx={{ p: 2, mb: 3 }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <Typography variant="h6">Enrolled Workers</Typography>
-              <Button size="small" onClick={() => navigate('/workers')}>View All</Button>
-            </Box>
+            <Typography variant="h6">Enrolled Workers</Typography>
             <Table size="small">
               <TableHead>
-                <TableRow>
-                  <TableCell>Name</TableCell><TableCell>NRC</TableCell><TableCell>Phone</TableCell><TableCell>Site</TableCell>
-                  <TableCell>Enrolled By</TableCell><TableCell>Pending</TableCell>
-                </TableRow>
+                <TableRow><TableCell>Name</TableCell><TableCell>NRC</TableCell><TableCell>Phone</TableCell><TableCell>Site</TableCell><TableCell>Enrolled By</TableCell><TableCell>Pending</TableCell></TableRow>
               </TableHead>
               <TableBody>
                 {workers.slice(0, 5).map(w => (
@@ -391,139 +368,86 @@ const AccountantDashboard = () => {
                     <TableCell>{w.name}</TableCell>
                     <TableCell>{w.nrc}</TableCell>
                     <TableCell>{w.phone}</TableCell>
-                    <TableCell>{w.site}</TableCell>
-                    <TableCell>{w.enrolledBy ? `${w.enrolledBy.name} (${w.enrolledBy.role})` : 'N/A'}</TableCell>
-                    <TableCell>{(w.balance || 0).toFixed(2)}</TableCell>
+                    <TableCell>{w.site || '—'}</TableCell>
+                    <TableCell>{w.enrolledBy?.name || 'N/A'}</TableCell>
+                    <TableCell>{formatCurrency(w.balance || 0)}</TableCell>
                   </TableRow>
                 ))}
+                {workers.length === 0 && <TableRow><TableCell colSpan={6}>No workers</TableCell></TableRow>}
               </TableBody>
             </Table>
           </Paper>
 
           <Paper sx={{ p: 2, mb: 3 }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <Typography variant="h6">Funding Requests</Typography>
-              <Button size="small" onClick={() => navigate('/funding')}>View All</Button>
-            </Box>
+            <Typography variant="h6">Funding Requests</Typography>
             <Table size="small">
               <TableHead>
-                <TableRow>
-                  <TableCell>Project</TableCell><TableCell>Amount</TableCell><TableCell>Status</TableCell>
-                  <TableCell>Requested By</TableCell><TableCell>Actions</TableCell>
-                </TableRow>
+                <TableRow><TableCell>Project</TableCell><TableCell>Amount</TableCell><TableCell>Status</TableCell><TableCell>Requested By</TableCell></TableRow>
               </TableHead>
               <TableBody>
                 {fundingRequests.slice(0, 5).map(fr => (
                   <TableRow key={fr._id}>
-                    <TableCell>{fr.project?.name}</TableCell>
-                    <TableCell>{fr.amount}</TableCell>
-                    <TableCell><Chip label={fr.status} color={fr.status==='approved'?'success':fr.status==='rejected'?'error':'warning'} /></TableCell>
-                    <TableCell>{fr.requestedBy?.name}</TableCell>
-                    <TableCell>
-                      {fr.status === 'pending' && (
-                        <>
-                          <Button size="small" color="success" onClick={() => handleApproveFunding(fr._id)}>Approve</Button>
-                          <Button size="small" color="error" onClick={() => handleRejectFunding(fr._id)}>Reject</Button>
-                        </>
-                      )}
-                    </TableCell>
+                    <TableCell>{fr.project?.name || 'N/A'}</TableCell>
+                    <TableCell>{formatCurrency(fr.amount)}</TableCell>
+                    <TableCell><Chip label={fr.status} color={fr.status === 'approved' ? 'success' : fr.status === 'rejected' ? 'error' : 'warning'} size="small" /></TableCell>
+                    <TableCell>{fr.requestedBy?.name || 'N/A'}</TableCell>
                   </TableRow>
                 ))}
+                {fundingRequests.length === 0 && <TableRow><TableCell colSpan={4}>No funding requests</TableCell></TableRow>}
               </TableBody>
             </Table>
           </Paper>
 
           <Paper sx={{ p: 2, mb: 3 }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <Typography variant="h6">Procurement Orders (Pending Funding)</Typography>
-              <Button size="small" onClick={() => navigate('/procurement')}>View All</Button>
-            </Box>
+            <Typography variant="h6">Procurement Orders (Pending Funding)</Typography>
             <Table size="small">
               <TableHead>
-                <TableRow>
-                  <TableCell>Project</TableCell><TableCell>Items</TableCell><TableCell>Status</TableCell>
-                  <TableCell>Created By</TableCell><TableCell>Action</TableCell>
-                </TableRow>
+                <TableRow><TableCell>Project</TableCell><TableCell>Items</TableCell><TableCell>Status</TableCell><TableCell>Created By</TableCell></TableRow>
               </TableHead>
               <TableBody>
-                {procurementOrders.filter(o => o.status !== 'funded').slice(0, 5).map(o => (
-                  <TableRow key={o._id}>
-                    <TableCell>{o.project?.name}</TableCell>
-                    <TableCell>{o.items?.length || 0}</TableCell>
-                    <TableCell><Chip label={o.status} /></TableCell>
-                    <TableCell>{o.createdBy?.name}</TableCell>
-                    <TableCell>
-                      {o.status === 'pending' && (
-                        <Button size="small" color="primary" onClick={() => handleFundProcurement(o._id)}>Fund</Button>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                ))}
+                <TableRow><TableCell colSpan={4}>No pending procurement orders</TableCell></TableRow>
               </TableBody>
             </Table>
           </Paper>
 
           <Paper sx={{ p: 2, mb: 3 }}>
-            <Typography variant="h6" gutterBottom>
-              {period === 'week' ? 'Weekly' : 'Monthly'} Report
-            </Typography>
+            <Typography variant="h6">Weekly Report</Typography>
             {reportData ? (
               <Grid container spacing={2}>
-                <Grid item xs={6} sm={3}>
-                  <Typography variant="body2">Workers Enrolled</Typography>
-                  <Typography variant="h6">{reportData.workers || 0}</Typography>
-                </Grid>
-                <Grid item xs={6} sm={3}>
-                  <Typography variant="body2">Projects Created</Typography>
-                  <Typography variant="h6">{reportData.projects || 0}</Typography>
-                </Grid>
-                <Grid item xs={6} sm={3}>
-                  <Typography variant="body2">Payments Made</Typography>
-                  <Typography variant="h6">{reportData.payments || 0}</Typography>
-                </Grid>
-                <Grid item xs={6} sm={3}>
-                  <Typography variant="body2">Total Released</Typography>
-                  <Typography variant="h6">ZMW {reportData.totalReleased?.toFixed(2) || '0.00'}</Typography>
-                </Grid>
+                <Grid item xs={6} sm={3}><Typography variant="body2">Workers Enrolled</Typography><Typography variant="h6">{reportData.workersEnrolled}</Typography></Grid>
+                <Grid item xs={6} sm={3}><Typography variant="body2">Projects Created</Typography><Typography variant="h6">{reportData.projectsCreated}</Typography></Grid>
+                <Grid item xs={6} sm={3}><Typography variant="body2">Payments Made</Typography><Typography variant="h6">{reportData.payments}</Typography></Grid>
+                <Grid item xs={6} sm={3}><Typography variant="body2">Total Released</Typography><Typography variant="h6">{formatCurrency(reportData.totalAmountReleased)}</Typography></Grid>
               </Grid>
-            ) : <Typography>No data</Typography>}
+            ) : <Typography>No report data.</Typography>}
           </Paper>
 
           <Paper sx={{ p: 2 }}>
-            <Typography variant="h6" gutterBottom>Funding Requests vs Approved</Typography>
-            {fundingChartData.length > 0 ? (
-              <BarChart width={600} height={300} data={fundingChartData.slice(0, 5)} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="name" />
-                <YAxis />
-                <Tooltip />
-                <Legend />
-                <Bar dataKey="requested" fill="#8884d8" />
-                <Bar dataKey="approved" fill="#82ca9d" />
-              </BarChart>
-            ) : <Typography>No funding requests to display.</Typography>}
+            <Typography variant="h6" gutterBottom>Pay Worker via Airtel Money</Typography>
+            <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap' }}>
+              <TextField
+                label="Amount (ZMW)"
+                type="number"
+                size="small"
+                value={payAmount}
+                onChange={e => setPayAmount(e.target.value)}
+                inputProps={{ min: 0, step: 0.01 }}
+                sx={{ width: 150 }}
+              />
+              <Button variant="contained" onClick={handleAirtelPay}>
+                Initiate
+              </Button>
+            </Box>
+            {airtelStatus && (
+              <Alert severity={airtelStatus.type} sx={{ mt: 2 }}>
+                {airtelStatus.text}
+              </Alert>
+            )}
           </Paper>
         </>
       )}
+    </Box>
+  );
+};
 
-      <WorkerSearch open={searchOpen} onClose={() => setSearchOpen(false)} onSelect={handleWorkerSelect} />
-      {selectedWorker && (
-        <PaymentModal open={paymentOpen} onClose={handlePaymentClose} worker={selectedWorker} onSuccess={fetchData} />
-      )}
-
-      <Dialog open={payAllOpen} onClose={() => setPayAllOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Pay All Pending Workers</DialogTitle>
-        <DialogContent>
-          <Typography>You are about to pay <strong>{pendingWorkers.length}</strong> workers a total of <strong>ZMW {totalPending.toFixed(2)}</strong>.</Typography>
-          {pendingWorkers.map(w => <Typography key={w._id} variant="body2">{w.name}: ZMW {(w.balance || 0).toFixed(2)}</Typography>)}
-          {payAllStatus && <Alert severity={payAllStatus.type} sx={{ mt: 2 }}>{payAllStatus.message}</Alert>}
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setPayAllOpen(false)}>Cancel</Button>
-          <Button variant="contained" onClick={handlePayAllConfirm}>Confirm Payment</Button>
-        </DialogActions>
-      </Dialog>
-
-      <ReportModal open={reportModalOpen} onClose={() => setReportModalOpen(false)} />
-
-      {/* Footer */}
+export default AccountantDashboard;
