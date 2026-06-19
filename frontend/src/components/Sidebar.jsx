@@ -23,6 +23,9 @@ import LocalShippingIcon from '@mui/icons-material/LocalShipping';
 import MessageIcon from '@mui/icons-material/Message';
 import PersonIcon from '@mui/icons-material/Person';
 import SettingsIcon from '@mui/icons-material/Settings';
+// NEW ICONS
+import ArchitectureIcon from '@mui/icons-material/Architecture';
+import StraightenIcon from '@mui/icons-material/Straighten';
 
 const drawerWidth = 240;
 
@@ -39,6 +42,9 @@ const Sidebar = () => {
     { text: 'Subcontracts', icon: <ConstructionIcon />, path: '/subcontracts' },
     { text: 'Advertised Projects', icon: <ConstructionIcon />, path: '/advertised-projects' },
     { text: 'Delivery Notes', icon: <LocalShippingIcon />, path: '/delivery' },
+    // NEW MENU ITEMS
+    { text: 'Site Plans', icon: <ArchitectureIcon />, path: '/site-plans' },
+    { text: 'Surveying', icon: <StraightenIcon />, path: '/site-plans' }, // reuses same list page
     { text: 'Messages', icon: <MessageIcon />, path: '/messages' },
     { text: 'Profile', icon: <PersonIcon />, path: '/profile' },
     { text: 'Settings', icon: <SettingsIcon />, path: '/settings' },
@@ -54,7 +60,6 @@ const Sidebar = () => {
       }}
     >
       <Toolbar>
-        {/* Only the image, no text – to avoid duplication */}
         <img
           src="/logo-branding.jpg"
           alt="PURVEYOLS"
