@@ -1,6 +1,3 @@
-cd ~/Desktop/purveyols-system
-
-cat > frontend/src/pages/dashboards/AccountantDashboard.jsx <<'EOF'
 import React, { useState, useEffect } from 'react';
 import {
   Box, Typography, Grid, Card, CardContent, Button,
@@ -532,4 +529,3 @@ const AccountantDashboard = () => {
 };
 
 export default AccountantDashboard;
-EOF
