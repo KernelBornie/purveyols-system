@@ -194,7 +194,7 @@ const Layout = () => {
       <MessageDialog open={msgOpen} onClose={handleMsgClose} onSent={() => {}} />
       <ReportModal open={reportOpen} onClose={() => setReportOpen(false)} />
 
-      {/* Footer - placed at the bottom of the page */}
+      {/* Footer */}
       <Footer />
     </Box>
   );
