@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import {
   Box, Typography, Grid, Card, CardContent, Button, Table, TableHead, TableRow, TableCell, TableBody,
   Chip, Paper, CircularProgress, Alert, Dialog, DialogTitle, DialogContent, DialogActions,
-  TextField, Switch, FormControlLabel
+  TextField, Switch, FormControlLabel, Divider
 } from '@mui/material';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, PieChart, Pie, Cell, LineChart, Line } from 'recharts';
 import RefreshIcon from '@mui/icons-material/Refresh';
@@ -65,12 +65,10 @@ const AccountantDashboard = () => {
       setPayments(paymentsData);
       setReportData(reportRes.data);
 
-      // Calculate pending workers (balance > 0)
       const pending = workersData.filter(w => (w.balance || 0) > 0);
       setPendingWorkers(pending);
       setTotalPending(pending.reduce((sum, w) => sum + (w.balance || 0), 0));
 
-      // Compute chart data
       const projectSpending = {};
       paymentsData.forEach(p => {
         if (p.project) {
@@ -527,6 +525,16 @@ const AccountantDashboard = () => {
       </Dialog>
 
       <ReportModal open={reportModalOpen} onClose={() => setReportModalOpen(false)} />
+
+      {/* Footer */}
+      <Box sx={{ mt: 4, py: 3, borderTop: '1px solid', borderColor: 'divider', textAlign: 'center' }}>
+        <Typography variant="body2" color="textSecondary">
+          © {new Date().getFullYear()} PURVEYOLS CMS – Construction Management System
+        </Typography>
+        <Typography variant="caption" color="textSecondary" display="block" sx={{ mt: 0.5 }}>
+          Built with ❤️ for construction professionals
+        </Typography>
+      </Box>
     </Box>
   );
 };
