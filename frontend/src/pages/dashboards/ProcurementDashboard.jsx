@@ -13,6 +13,7 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import CancelIcon from '@mui/icons-material/Cancel';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import api from '../../api/axios';
+import DeliveryNote from '../../components/DeliveryNote';
 
 const ProcurementDashboard = () => {
   const navigate = useNavigate();
@@ -39,13 +40,11 @@ const ProcurementDashboard = () => {
       const data = Array.isArray(res.data) ? res.data : (res.data?.data || []);
       setOrders(data);
 
-      // Compute stats
       const total = data.length;
       const pending = data.filter(o => o.status === 'pending').length;
       const funded = data.filter(o => o.status === 'funded').length;
       const purchased = data.filter(o => o.status === 'purchased').length;
       
-      // Total spent = sum of grandTotal of funded + purchased
       const totalSpent = data
         .filter(o => o.status === 'funded' || o.status === 'purchased')
         .reduce((sum, o) => sum + (o.grandTotal || o.total || 0), 0);
@@ -71,7 +70,6 @@ const ProcurementDashboard = () => {
     fetchOrders();
   }, [fetchOrders]);
 
-  // ─── Approve / Reject ──────────────────────────────────────────────
   const handleApprove = async (id) => {
     if (!window.confirm('Approve this procurement order?')) return;
     try {
@@ -94,7 +92,6 @@ const ProcurementDashboard = () => {
     }
   };
 
-  // ─── Edit ──────────────────────────────────────────────────────────
   const handleEditOpen = (order) => {
     setEditingOrder(order);
     setEditForm({
@@ -121,7 +118,6 @@ const ProcurementDashboard = () => {
     navigate(`/procurement/${id}`);
   };
 
-  // ─── Helpers ──────────────────────────────────────────────────────
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat('en-ZM', { style: 'currency', currency: 'ZMW' }).format(amount || 0);
   };
@@ -145,11 +141,12 @@ const ProcurementDashboard = () => {
         </Button>
       </Box>
 
+      <DeliveryNote />
+
       {message && <Alert severity={message.type} sx={{ mb: 2 }}>{message.text}</Alert>}
 
       <Typography variant="h6" gutterBottom>Acquire Materials & Services</Typography>
 
-      {/* Stats Cards – Extended */}
       <Grid container spacing={3} sx={{ mb: 3 }}>
         <Grid item xs={12} sm={6} md={2.4}>
           <Card><CardContent>
@@ -272,7 +269,6 @@ const ProcurementDashboard = () => {
             value={editForm.total}
             onChange={e => setEditForm({ ...editForm, total: parseFloat(e.target.value) || 0 })}
           />
-          {/* For real item editing, you would add a dynamic list – omitted for brevity */}
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setEditOpen(false)}>Cancel</Button>
