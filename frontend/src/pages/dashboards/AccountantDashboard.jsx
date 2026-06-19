@@ -1,20 +1,22 @@
+cd ~/Desktop/purveyols-system
+
+cat > frontend/src/pages/dashboards/AccountantDashboard.jsx <<'EOF'
 import React, { useState, useEffect } from 'react';
 import {
   Box, Typography, Grid, Card, CardContent, Button,
   Table, TableHead, TableRow, TableCell, TableBody,
   Chip, Paper, CircularProgress, Alert, TextField,
-  FormControlLabel, Switch, IconButton, Dialog,
-  DialogTitle, DialogContent, DialogActions
+  FormControlLabel, Switch, Dialog, DialogTitle,
+  DialogContent, DialogActions
 } from '@mui/material';
 import RefreshIcon from '@mui/icons-material/Refresh';
-import CheckIcon from '@mui/icons-material/Check';
-import CloseIcon from '@mui/icons-material/Close';
-import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip,
   Legend, LineChart, Line, PieChart, Pie, Cell
 } from 'recharts';
 import api from '../../api/axios';
+import WorkerSearch from '../../components/WorkerSearch';
+import PaymentModal from '../../components/PaymentModal';
 
 const AccountantDashboard = () => {
   const [loading, setLoading] = useState(true);
@@ -27,28 +29,28 @@ const AccountantDashboard = () => {
   const [workers, setWorkers] = useState([]);
   const [projects, setProjects] = useState([]);
   const [fundingRequests, setFundingRequests] = useState([]);
-  const [procurementOrders, setProcurementOrders] = useState([]);
   const [payments, setPayments] = useState([]);
   const [attendance, setAttendance] = useState([]);
   const [topWorkers, setTopWorkers] = useState([]);
   const [paymentTrends, setPaymentTrends] = useState([]);
   const [projectSpending, setProjectSpending] = useState([]);
   const [approvalRatio, setApprovalRatio] = useState([]);
-  const [fundingVsApproved, setFundingVsApproved] = useState([]);
   const [reportData, setReportData] = useState(null);
   const [showCharts, setShowCharts] = useState(true);
   const [message, setMessage] = useState(null);
   const [airtelStatus, setAirtelStatus] = useState(null);
   const [payAmount, setPayAmount] = useState('');
   const [workerPhone, setWorkerPhone] = useState('');
-  const [actionLoading, setActionLoading] = useState({});
-  const [fundDialogOpen, setFundDialogOpen] = useState(false);
-  const [selectedProcurement, setSelectedProcurement] = useState(null);
-  const [fundAmount, setFundAmount] = useState('');
+
+  // New states for Pay Worker & Pay All
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [paymentOpen, setPaymentOpen] = useState(false);
+  const [selectedWorker, setSelectedWorker] = useState(null);
+  const [payAllOpen, setPayAllOpen] = useState(false);
+  const [payAllStatus, setPayAllStatus] = useState(null);
 
   const COLORS = ['#8884d8', '#82ca9d', '#ffc658', '#ff8042', '#0088FE'];
 
-  // ─── Fetch profile (to get accountant's phone) ──────────────────────────────
   const fetchProfile = async () => {
     try {
       const res = await api.get('/api/auth/me');
@@ -58,27 +60,22 @@ const AccountantDashboard = () => {
     }
   };
 
-  // ─── Main data fetch ──────────────────────────────────────────────────────────
   const fetchData = async () => {
     setLoading(true);
     setMessage(null);
     try {
-      // Workers
       const workersRes = await api.get('/api/workers');
       let workersData = Array.isArray(workersRes.data) ? workersRes.data : (workersRes.data?.data || []);
       
-      // Attendance
       const attendanceRes = await api.get('/api/attendance');
       let attendanceData = Array.isArray(attendanceRes.data) ? attendanceRes.data : (attendanceRes.data?.data || []);
       setAttendance(attendanceData);
 
-      // Payments (completed)
       const paymentsRes = await api.get('/api/payments');
       let paymentsData = Array.isArray(paymentsRes.data) ? paymentsRes.data : (paymentsRes.data?.data || []);
       const completedPayments = paymentsData.filter(p => p.status === 'completed');
       setPayments(completedPayments);
 
-      // Compute worker balances
       const workersWithBalance = workersData.map(w => {
         const workerAttendance = attendanceData.filter(a => a.worker === w._id || a.worker?._id === w._id);
         const totalEarned = workerAttendance.reduce((sum, a) => sum + (a.rate || 0), 0);
@@ -88,12 +85,10 @@ const AccountantDashboard = () => {
       });
       setWorkers(workersWithBalance);
 
-      // Projects
       const projectsRes = await api.get('/api/projects');
       let projectsData = Array.isArray(projectsRes.data) ? projectsRes.data : (projectsRes.data?.data || []);
       setProjects(projectsData);
 
-      // Funding requests
       let fundingData = [];
       try {
         const fundRes = await api.get('/api/funding-requests');
@@ -104,17 +99,6 @@ const AccountantDashboard = () => {
       }
       setFundingRequests(fundingData);
 
-      // Procurement orders
-      let procurementData = [];
-      try {
-        const procRes = await api.get('/api/procurement');
-        procurementData = Array.isArray(procRes.data) ? procRes.data : (procRes.data?.data || []);
-      } catch (e) {
-        // fallback
-      }
-      setProcurementOrders(procurementData);
-
-      // Stats
       const totalWorkers = workersWithBalance.length;
       const totalProjects = projectsData.length;
       const totalReleased = completedPayments.reduce((sum, p) => sum + (p.amount || 0), 0);
@@ -144,7 +128,7 @@ const AccountantDashboard = () => {
         .slice(0, 5);
       setTopWorkers(top);
 
-      // Payment trends (last 7 days)
+      // Trends
       const trends = {};
       const now = new Date();
       for (let i = 6; i >= 0; i--) {
@@ -160,7 +144,7 @@ const AccountantDashboard = () => {
       const trendData = Object.entries(trends).map(([date, amount]) => ({ date, amount }));
       setPaymentTrends(trendData);
 
-      // Project spending
+      // Spending
       const projectSpendingMap = {};
       completedPayments.forEach(p => {
         const projectId = p.project?._id || p.project;
@@ -173,7 +157,7 @@ const AccountantDashboard = () => {
       const spendingData = Object.entries(projectSpendingMap).map(([name, amount]) => ({ name, amount }));
       setProjectSpending(spendingData);
 
-      // Approval ratio (pie chart)
+      // Approval ratio
       const pending = fundingData.filter(f => f.status === 'pending').length;
       const approved = fundingData.filter(f => f.status === 'approved').length;
       const rejected = fundingData.filter(f => f.status === 'rejected').length;
@@ -184,30 +168,6 @@ const AccountantDashboard = () => {
       ].filter(item => item.value > 0);
       setApprovalRatio(ratio);
 
-      // Funding Requests vs Approved (per project)
-      const projectMap = {};
-      fundingData.forEach(f => {
-        const projId = f.project?._id || f.project;
-        if (projId) {
-          const project = projectsData.find(p => p._id === projId);
-          const name = project?.name || 'Unknown Project';
-          if (!projectMap[name]) {
-            projectMap[name] = { requested: 0, approved: 0 };
-          }
-          projectMap[name].requested += f.amount || 0;
-          if (f.status === 'approved') {
-            projectMap[name].approved += f.amount || 0;
-          }
-        }
-      });
-      const vsData = Object.entries(projectMap).map(([name, data]) => ({
-        name,
-        requested: data.requested,
-        approved: data.approved,
-      }));
-      setFundingVsApproved(vsData);
-
-      // Report data
       setReportData({
         workersEnrolled: totalWorkers,
         projectsCreated: totalProjects,
@@ -228,7 +188,7 @@ const AccountantDashboard = () => {
     fetchProfile();
   }, []);
 
-  // ─── Airtel Money payment ─────────────────────────────────────────────────────
+  // ─── Handlers ────────────────────────────────────────────────────────────────
   const handleAirtelPay = async () => {
     if (!payAmount || parseFloat(payAmount) <= 0) {
       alert('Enter a valid amount');
@@ -257,55 +217,47 @@ const AccountantDashboard = () => {
     }
   };
 
-  // ─── Funding request actions ─────────────────────────────────────────────────
-  const handleApproveFunding = async (id) => {
-    setActionLoading(prev => ({ ...prev, [id]: true }));
+  const handleWorkerSelect = (worker) => {
+    setSelectedWorker(worker);
+    setSearchOpen(false);
+    setPaymentOpen(true);
+  };
+
+  const handlePaymentClose = () => {
+    setPaymentOpen(false);
+    setSelectedWorker(null);
+    fetchData();
+  };
+
+  const handlePayAll = () => {
+    const pending = workers.filter(w => (w.balance || 0) > 0);
+    if (pending.length === 0) {
+      alert('No pending balances to pay.');
+      return;
+    }
+    setPayAllOpen(true);
+  };
+
+  const handlePayAllConfirm = async () => {
+    setPayAllStatus(null);
+    const pending = workers.filter(w => (w.balance || 0) > 0);
     try {
-      await api.post(`/api/funding-requests/${id}/approve`);
-      setMessage({ type: 'success', text: 'Funding approved!' });
-      fetchData();
+      const paymentsData = pending.map(w => ({
+        workerId: w._id,
+        amount: w.balance || 0,
+      }));
+      await api.post('/api/payments/bulk', { payments: paymentsData });
+      setPayAllStatus({ type: 'success', message: 'All pending payments processed!' });
+      setTimeout(() => {
+        setPayAllOpen(false);
+        setPayAllStatus(null);
+        fetchData();
+      }, 1500);
     } catch (err) {
-      setMessage({ type: 'error', text: err.response?.data?.error || 'Approval failed' });
-    } finally {
-      setActionLoading(prev => ({ ...prev, [id]: false }));
+      setPayAllStatus({ type: 'error', message: err.response?.data?.error || 'Bulk payment failed' });
     }
   };
 
-  const handleRejectFunding = async (id) => {
-    setActionLoading(prev => ({ ...prev, [id]: true }));
-    try {
-      await api.post(`/api/funding-requests/${id}/reject`);
-      setMessage({ type: 'success', text: 'Funding rejected.' });
-      fetchData();
-    } catch (err) {
-      setMessage({ type: 'error', text: err.response?.data?.error || 'Rejection failed' });
-    } finally {
-      setActionLoading(prev => ({ ...prev, [id]: false }));
-    }
-  };
-
-  // ─── Procurement funding dialog ──────────────────────────────────────────────
-  const handleOpenFundDialog = (proc) => {
-    setSelectedProcurement(proc);
-    setFundAmount(proc.totalCost || '');
-    setFundDialogOpen(true);
-  };
-
-  const handleFundProcurement = async () => {
-    if (!selectedProcurement) return;
-    try {
-      await api.post(`/api/procurement/${selectedProcurement._id}/fund`, {
-        amount: parseFloat(fundAmount),
-      });
-      setFundDialogOpen(false);
-      setMessage({ type: 'success', text: 'Procurement funded successfully!' });
-      fetchData();
-    } catch (err) {
-      setMessage({ type: 'error', text: err.response?.data?.error || 'Funding failed' });
-    }
-  };
-
-  // ─── Helpers ──────────────────────────────────────────────────────────────────
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat('en-ZM', { style: 'currency', currency: 'ZMW' }).format(amount || 0);
   };
@@ -314,10 +266,8 @@ const AccountantDashboard = () => {
   const totalPending = pendingWorkers.reduce((sum, w) => sum + (w.balance || 0), 0);
   const pendingFunding = fundingRequests.filter(f => f.status === 'pending').length;
 
-  // ─── Render ────────────────────────────────────────────────────────────────────
   return (
     <Box>
-      {/* Header */}
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
         <Typography variant="h4">Accountant Dashboard</Typography>
         <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
@@ -333,12 +283,20 @@ const AccountantDashboard = () => {
 
       {message && <Alert severity={message.type} sx={{ mb: 2 }}>{message.text}</Alert>}
 
-      {/* Total pending summary */}
+      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 2 }}>
+        <Button variant="contained" color="primary" onClick={() => setSearchOpen(true)}>
+          Pay Worker (Airtel Money)
+        </Button>
+        <Button variant="contained" color="secondary" onClick={handlePayAll}>
+          Pay All Pending
+        </Button>
+        {/* additional buttons can go here */}
+      </Box>
+
       <Typography variant="caption" display="block" sx={{ mb: 2 }}>
         Total pending: {formatCurrency(totalPending)} ({pendingWorkers.length} workers) | {pendingFunding} pending funding requests
       </Typography>
 
-      {/* Stats Cards */}
       <Grid container spacing={3} sx={{ mb: 3 }}>
         <Grid item xs={12} sm={6} md={3}>
           <Card><CardContent>
@@ -368,7 +326,6 @@ const AccountantDashboard = () => {
 
       {loading ? <CircularProgress /> : (
         <>
-          {/* Charts */}
           {showCharts && (
             <Grid container spacing={3} sx={{ mb: 3 }}>
               {paymentTrends.length > 0 && (
@@ -386,6 +343,21 @@ const AccountantDashboard = () => {
                   </Paper>
                 </Grid>
               )}
+              {projectSpending.length > 0 && (
+                <Grid item xs={12} md={6}>
+                  <Paper sx={{ p: 2 }}>
+                    <Typography variant="h6">Spending by Project</Typography>
+                    <BarChart width={400} height={200} data={projectSpending}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="name" />
+                      <YAxis />
+                      <RechartsTooltip />
+                      <Legend />
+                      <Bar dataKey="amount" fill="#8884d8" />
+                    </BarChart>
+                  </Paper>
+                </Grid>
+              )}
               {approvalRatio.length > 0 && (
                 <Grid item xs={12} md={6}>
                   <Paper sx={{ p: 2 }}>
@@ -397,22 +369,6 @@ const AccountantDashboard = () => {
                       <RechartsTooltip />
                       <Legend />
                     </PieChart>
-                  </Paper>
-                </Grid>
-              )}
-              {fundingVsApproved.length > 0 && (
-                <Grid item xs={12} md={6}>
-                  <Paper sx={{ p: 2 }}>
-                    <Typography variant="h6">Funding Requests vs Approved</Typography>
-                    <BarChart width={400} height={200} data={fundingVsApproved}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="name" />
-                      <YAxis />
-                      <RechartsTooltip />
-                      <Legend />
-                      <Bar dataKey="requested" fill="#8884d8" name="Requested" />
-                      <Bar dataKey="approved" fill="#82ca9d" name="Approved" />
-                    </BarChart>
                   </Paper>
                 </Grid>
               )}
@@ -437,7 +393,6 @@ const AccountantDashboard = () => {
             </Grid>
           )}
 
-          {/* Projects Table */}
           <Paper sx={{ p: 2, mb: 3 }}>
             <Typography variant="h6">Projects by Creator</Typography>
             <Table size="small">
@@ -459,7 +414,6 @@ const AccountantDashboard = () => {
             </Table>
           </Paper>
 
-          {/* Enrolled Workers */}
           <Paper sx={{ p: 2, mb: 3 }}>
             <Typography variant="h6">Enrolled Workers</Typography>
             <Table size="small">
@@ -482,12 +436,11 @@ const AccountantDashboard = () => {
             </Table>
           </Paper>
 
-          {/* Funding Requests with Actions */}
           <Paper sx={{ p: 2, mb: 3 }}>
             <Typography variant="h6">Funding Requests</Typography>
             <Table size="small">
               <TableHead>
-                <TableRow><TableCell>Project</TableCell><TableCell>Amount</TableCell><TableCell>Status</TableCell><TableCell>Requested By</TableCell><TableCell>Actions</TableCell></TableRow>
+                <TableRow><TableCell>Project</TableCell><TableCell>Amount</TableCell><TableCell>Status</TableCell><TableCell>Requested By</TableCell></TableRow>
               </TableHead>
               <TableBody>
                 {fundingRequests.slice(0, 5).map(fr => (
@@ -496,70 +449,25 @@ const AccountantDashboard = () => {
                     <TableCell>{formatCurrency(fr.amount)}</TableCell>
                     <TableCell><Chip label={fr.status} color={fr.status === 'approved' ? 'success' : fr.status === 'rejected' ? 'error' : 'warning'} size="small" /></TableCell>
                     <TableCell>{fr.requestedBy?.name || 'N/A'}</TableCell>
-                    <TableCell>
-                      {fr.status === 'pending' && (
-                        <>
-                          <IconButton
-                            size="small"
-                            color="success"
-                            onClick={() => handleApproveFunding(fr._id)}
-                            disabled={actionLoading[fr._id]}
-                          >
-                            <CheckIcon />
-                          </IconButton>
-                          <IconButton
-                            size="small"
-                            color="error"
-                            onClick={() => handleRejectFunding(fr._id)}
-                            disabled={actionLoading[fr._id]}
-                          >
-                            <CloseIcon />
-                          </IconButton>
-                        </>
-                      )}
-                      {fr.status !== 'pending' && <Typography variant="caption">—</Typography>}
-                    </TableCell>
                   </TableRow>
                 ))}
-                {fundingRequests.length === 0 && <TableRow><TableCell colSpan={5}>No funding requests</TableCell></TableRow>}
+                {fundingRequests.length === 0 && <TableRow><TableCell colSpan={4}>No funding requests</TableCell></TableRow>}
               </TableBody>
             </Table>
           </Paper>
 
-          {/* Procurement Orders with Action */}
           <Paper sx={{ p: 2, mb: 3 }}>
             <Typography variant="h6">Procurement Orders (Pending Funding)</Typography>
             <Table size="small">
               <TableHead>
-                <TableRow><TableCell>Project</TableCell><TableCell>Items</TableCell><TableCell>Status</TableCell><TableCell>Created By</TableCell><TableCell>Action</TableCell></TableRow>
+                <TableRow><TableCell>Project</TableCell><TableCell>Items</TableCell><TableCell>Status</TableCell><TableCell>Created By</TableCell></TableRow>
               </TableHead>
               <TableBody>
-                {procurementOrders.filter(p => p.status !== 'funded').slice(0, 5).map(po => (
-                  <TableRow key={po._id}>
-                    <TableCell>{po.project?.name || 'N/A'}</TableCell>
-                    <TableCell>{po.items?.length || 0} items</TableCell>
-                    <TableCell><Chip label={po.status} size="small" color={po.status === 'pending' ? 'warning' : 'default'} /></TableCell>
-                    <TableCell>{po.createdBy?.name || 'N/A'}</TableCell>
-                    <TableCell>
-                      <Button
-                        size="small"
-                        variant="outlined"
-                        startIcon={<AttachMoneyIcon />}
-                        onClick={() => handleOpenFundDialog(po)}
-                      >
-                        Fund
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-                {procurementOrders.filter(p => p.status !== 'funded').length === 0 && (
-                  <TableRow><TableCell colSpan={5}>No pending procurement orders</TableCell></TableRow>
-                )}
+                <TableRow><TableCell colSpan={4}>No pending procurement orders</TableCell></TableRow>
               </TableBody>
             </Table>
           </Paper>
 
-          {/* Weekly Report */}
           <Paper sx={{ p: 2, mb: 3 }}>
             <Typography variant="h6">Weekly Report</Typography>
             {reportData ? (
@@ -572,7 +480,6 @@ const AccountantDashboard = () => {
             ) : <Typography>No report data.</Typography>}
           </Paper>
 
-          {/* Airtel Money Payment Card */}
           <Paper sx={{ p: 2 }}>
             <Typography variant="h6" gutterBottom>Pay Worker via Airtel Money</Typography>
             <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap' }}>
@@ -595,34 +502,34 @@ const AccountantDashboard = () => {
               </Alert>
             )}
           </Paper>
-
-          {/* Fund Procurement Dialog */}
-          <Dialog open={fundDialogOpen} onClose={() => setFundDialogOpen(false)}>
-            <DialogTitle>Fund Procurement Order</DialogTitle>
-            <DialogContent>
-              <Typography variant="body2" gutterBottom>
-                Project: {selectedProcurement?.project?.name || 'N/A'}
-              </Typography>
-              <TextField
-                autoFocus
-                margin="dense"
-                label="Amount to fund (ZMW)"
-                type="number"
-                fullWidth
-                value={fundAmount}
-                onChange={e => setFundAmount(e.target.value)}
-                inputProps={{ min: 0, step: 0.01 }}
-              />
-            </DialogContent>
-            <DialogActions>
-              <Button onClick={() => setFundDialogOpen(false)}>Cancel</Button>
-              <Button onClick={handleFundProcurement} variant="contained">Fund</Button>
-            </DialogActions>
-          </Dialog>
         </>
       )}
+
+      {/* Modals for Pay Worker & Pay All */}
+      <WorkerSearch open={searchOpen} onClose={() => setSearchOpen(false)} onSelect={handleWorkerSelect} />
+      {selectedWorker && (
+        <PaymentModal open={paymentOpen} onClose={handlePaymentClose} worker={selectedWorker} onSuccess={fetchData} />
+      )}
+
+      <Dialog open={payAllOpen} onClose={() => setPayAllOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Pay All Pending Workers</DialogTitle>
+        <DialogContent>
+          <Typography>
+            You are about to pay <strong>{pendingWorkers.length}</strong> workers a total of <strong>{formatCurrency(totalPending)}</strong>.
+          </Typography>
+          {pendingWorkers.map(w => (
+            <Typography key={w._id} variant="body2">{w.name}: {formatCurrency(w.balance)}</Typography>
+          ))}
+          {payAllStatus && <Alert severity={payAllStatus.type} sx={{ mt: 2 }}>{payAllStatus.message}</Alert>}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setPayAllOpen(false)}>Cancel</Button>
+          <Button variant="contained" onClick={handlePayAllConfirm}>Confirm Payment</Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };
 
 export default AccountantDashboard;
+EOF
