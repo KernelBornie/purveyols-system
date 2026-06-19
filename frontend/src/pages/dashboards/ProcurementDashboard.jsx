@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Box, Typography, Grid, Card, CardContent, Button,
@@ -77,7 +77,7 @@ const ProcurementDashboard = () => {
     setEditForm({
       project: order.project?._id || order.project || '',
       items: order.items || [],
-      total: order.total || 0,
+      total: order.grandTotal || order.total || 0,
       supplier: order.supplier || '',
     });
     setEditOpen(true);
@@ -172,7 +172,7 @@ const ProcurementDashboard = () => {
                 <TableRow key={order._id}>
                   <TableCell>{order.project?.name || 'N/A'}</TableCell>
                   <TableCell>{order.items?.length || 0}</TableCell>
-                  <TableCell>{formatCurrency(order.total || 0)}</TableCell>
+                  <TableCell>{formatCurrency(order.grandTotal || order.total || 0)}</TableCell>
                   <TableCell>
                     <Chip label={order.status} color={getStatusColor(order.status)} size="small" />
                   </TableCell>
