@@ -450,4 +450,5 @@ const AccountantDashboard = () => {
   );
 };
 
+      </Box>
 export default AccountantDashboard;
