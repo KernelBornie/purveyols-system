@@ -1,8 +1,7 @@
+import Footer from '../../components/Footer';
 import DashboardActions from '../../components/DashboardActions';
 import React, { useState, useEffect } from 'react';
 import {
-import Footer from '../../components/Footer';
-import Footer from '../../components/Footer';
   Box, Typography, Grid, Card, CardContent, Button, Table, TableHead, TableRow, TableCell, TableBody,
   Chip, Paper, TextField, Dialog, DialogTitle, DialogContent, DialogActions, IconButton,
   CircularProgress
@@ -10,7 +9,6 @@ import Footer from '../../components/Footer';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import EditIcon from '@mui/icons-material/Edit';
 import api from '../../api/axios';
-import Footer from '../../components/Footer';
 
 const ProcurementDashboard = () => {
   const [loading, setLoading] = useState(true);
@@ -93,7 +91,6 @@ const ProcurementDashboard = () => {
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
         <Typography variant="h4">Procurement Dashboard</Typography>
         <Button variant="contained" startIcon={<RefreshIcon />} onClick={fetchData}>Refresh</Button>
-      <Footer /><Footer />
 
       </Box>
       <Typography variant="subtitle1" gutterBottom>Acquire Materials & Services</Typography>
@@ -130,7 +127,6 @@ const ProcurementDashboard = () => {
                   </TableRow>
                 ))}
               </TableBody>
-            </Table><Footer />
 
           </Paper>
 
@@ -144,7 +140,6 @@ const ProcurementDashboard = () => {
                   <TextField label="Unit Price" type="number" size="small" value={item.unitPrice || ''} onChange={e => handleItemChange(idx, 'unitPrice', e.target.value)} sx={{ width: 120 }} />
                   <TextField label="Total" type="number" size="small" value={item.total || ''} InputProps={{ readOnly: true }} sx={{ width: 120, bgcolor: '#f5f5f5' }} />
                   <TextField label="Supplier" size="small" value={item.supplier || ''} onChange={e => handleItemChange(idx, 'supplier', e.target.value)} sx={{ width: 150 }} />
-      <Footer />
                 </Box>
               ))}
               <Typography variant="h6" sx={{ mt: 2 }}>Grand Total: {getGrandTotal(form.items).toFixed(2)}</Typography>
@@ -156,7 +151,6 @@ const ProcurementDashboard = () => {
           </Dialog>
         </>
       )}
-      <Footer />
     </Box>
   );
 };

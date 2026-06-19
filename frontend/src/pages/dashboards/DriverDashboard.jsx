@@ -1,8 +1,7 @@
+import Footer from '../../components/Footer';
 import DashboardActions from '../../components/DashboardActions';
 import React, { useState, useEffect } from 'react';
 import {
-import Footer from '../../components/Footer';
-import Footer from '../../components/Footer';
   Box, Typography, Grid, Card, CardContent, Button, Table, TableHead, TableRow, TableCell, TableBody,
   Chip, Paper, TextField, Dialog, DialogTitle, DialogContent, DialogActions,
   CircularProgress, Alert, IconButton, Divider
@@ -113,7 +112,6 @@ const DriverDashboard = () => {
         <Button variant="contained" startIcon={<RefreshIcon />} onClick={fetchData}>
           Refresh
         </Button>
-      <Footer /><Footer />
 
       </Box>
       <Typography variant="subtitle1" gutterBottom>Transport & Logistics</Typography>
@@ -148,7 +146,6 @@ const DriverDashboard = () => {
               Record trip and upload logbook
             </Typography>
           </Grid>
-        </Grid><Footer />
 
       </Paper>
 
@@ -309,7 +306,6 @@ const DriverDashboard = () => {
                 <input type="file" hidden accept="image/*,application/pdf" onChange={handleFileChange} />
               </Button>
               {form.file && <Typography variant="caption" sx={{ ml: 2 }}>{form.file.name}</Typography>}
-      <Footer />
             </Box>
           </DialogContent>
           <DialogActions>
@@ -318,7 +314,6 @@ const DriverDashboard = () => {
           </DialogActions>
         </form>
       </Dialog>
-      <Footer />
     </Box>
   );
 };

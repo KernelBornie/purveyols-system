@@ -1,8 +1,7 @@
+import Footer from '../../components/Footer';
 import DashboardActions from '../../components/DashboardActions';
 import React, { useState, useEffect } from 'react';
 import {
-import Footer from '../../components/Footer';
-import Footer from '../../components/Footer';
   Box, Typography, Grid, Card, CardContent, Button, Table, TableHead, TableRow, TableCell, TableBody,
   Chip, Paper, TextField, Dialog, DialogTitle, DialogContent, DialogActions,
   CircularProgress, Alert
@@ -10,7 +9,6 @@ import Footer from '../../components/Footer';
 import { Link } from 'react-router-dom';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import api from '../../api/axios';
-import Footer from '../../components/Footer';
 
 const SafetyDashboard = () => {
   const [loading, setLoading] = useState(true);
@@ -75,10 +73,8 @@ const SafetyDashboard = () => {
           <Button variant="contained" color="primary" onClick={() => setOpenModal(true)}>
             New Inspection
           </Button>
-      <Footer /><Footer />
 
         </Box>
-      <Footer />
       </Box>
       <Typography variant="subtitle1" gutterBottom>Workplace Safety & Compliance</Typography>
 
@@ -132,7 +128,6 @@ const SafetyDashboard = () => {
                   )}
                 </Grid>
               ))}
-            </Grid><Footer />
 
           </Paper>
 
@@ -176,7 +171,6 @@ const SafetyDashboard = () => {
           </DialogActions>
         </form>
       </Dialog>
-      <Footer />
     </Box>
   );
 };

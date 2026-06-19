@@ -1,6 +1,6 @@
+import Footer from '../../components/Footer';
 import React, { useState, useEffect } from 'react';
 import {
-import Footer from '../../components/Footer';
   Box, Typography, Grid, Card, CardContent, Button, Table, TableHead, TableRow, TableCell, TableBody,
   Chip, Paper, CircularProgress, IconButton
 } from '@mui/material';
@@ -9,7 +9,6 @@ import RefreshIcon from '@mui/icons-material/Refresh';
 import EditIcon from '@mui/icons-material/Edit';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import api from '../../api/axios';
-import Footer from '../../components/Footer';
 
 const QuantitySurveyorDashboard = () => {
   const [loading, setLoading] = useState(true);
@@ -55,7 +54,6 @@ const QuantitySurveyorDashboard = () => {
         <Button variant="contained" startIcon={<RefreshIcon />} onClick={fetchData}>
           Refresh
         </Button>
-      <Footer /><Footer />
 
       </Box>
       <Typography variant="subtitle1" gutterBottom>Cost Management & BOQ</Typography>
@@ -101,7 +99,6 @@ const QuantitySurveyorDashboard = () => {
                   </Button>
                 </Grid>
               ))}
-            </Grid><Footer />
 
           </Paper>
 
@@ -109,7 +106,6 @@ const QuantitySurveyorDashboard = () => {
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
               <Typography variant="h6">Recent BOQs</Typography>
               <Button component={Link} to="/boq" size="small">View All</Button>
-      <Footer />
             </Box>
             <Table size="small">
               <TableHead>
@@ -134,7 +130,6 @@ const QuantitySurveyorDashboard = () => {
           </Paper>
         </>
       )}
-      <Footer />
     </Box>
   );
 };
