@@ -25,6 +25,9 @@ import Messages from './pages/Messages';
 import ForgotPassword from './pages/ForgotPassword';
 import AdvertisedProjects from './pages/advertised/AdvertisedProjects';
 import BiddedProjects from './pages/advertised/BiddedProjects';
+// NEW IMPORTS
+import SitePlanList from './pages/site-plans/SitePlanList';
+import SitePlanForm from './pages/site-plans/SitePlanForm';
 
 const AuthRedirect = () => {
   const { user, loading } = useAuth();
@@ -71,14 +74,16 @@ function App() {
             <Route path="/delivery/new" element={<DeliveryNote />} />
             <Route path="/delivery/:id" element={<DeliveryNote />} />
             <Route path="/advertised-projects/bidded" element={<BiddedProjects />} />
-            <Route path="/delivery" element={<DeliveryNoteList />} />
-            <Route path="/delivery/new" element={<DeliveryNote />} />
-            <Route path="/delivery/:id" element={<DeliveryNote />} />
+            {/* NEW SITE PLANS & SURVEYING ROUTES */}
+            <Route path="/site-plans" element={<SitePlanList />} />
+            <Route path="/site-plans/new" element={<SitePlanForm />} />
+            <Route path="/site-plans/:id" element={<SitePlanForm />} />
+            <Route path="/site-plans/:id/edit" element={<SitePlanForm />} />
           </Route>
         </Routes>
       </BrowserRouter>
     </AuthProvider>
   );
 }
+
 export default App;
-// Deploy from clean 4ef5b56
