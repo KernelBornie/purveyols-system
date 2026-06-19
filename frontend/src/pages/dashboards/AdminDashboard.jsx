@@ -6,6 +6,7 @@ import {
 } from '@mui/material';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import api from '../../api/axios';
+import DeliveryNote from '../../components/DeliveryNote';
 
 const AdminDashboard = () => {
   const [loading, setLoading] = useState(true);
@@ -41,6 +42,9 @@ const AdminDashboard = () => {
           Refresh
         </Button>
       </Box>
+
+      <DeliveryNote />
+
       <Typography variant="subtitle1" gutterBottom>System Administration</Typography>
 
       {loading ? (
