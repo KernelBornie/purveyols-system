@@ -65,7 +65,6 @@ const Layout = () => {
   const exportData = async (type) => {
     setExportLoading(true);
     try {
-      let endpoint = '';
       let filename = '';
       let headers = [];
       let rows = [];
