@@ -1,3 +1,4 @@
+import DeliveryNote from "../../components/DeliveryNote";
 import DashboardActions from '../../components/DashboardActions';
 import React, { useState, useEffect } from 'react';
 import {
@@ -147,6 +148,7 @@ const DirectorDashboard = () => {
           </Paper>
 
           {/* Stats Cards */}
+      <DeliveryNote />
           <Grid container spacing={3} sx={{ mb: 3 }}>
             <Grid item xs={12} sm={6} md={3}>
               <Card><CardContent>
@@ -179,6 +181,7 @@ const DirectorDashboard = () => {
           </Grid>
 
           {/* Charts */}
+      <DeliveryNote />
           <Grid container spacing={3} sx={{ mb: 3 }}>
             <Grid item xs={12} md={6}>
               <Paper sx={{ p: 2 }}>

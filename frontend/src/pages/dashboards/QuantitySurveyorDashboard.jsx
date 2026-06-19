@@ -1,3 +1,4 @@
+import DeliveryNote from "../../components/DeliveryNote";
 import React, { useState, useEffect } from 'react';
 import {
   Box, Typography, Grid, Card, CardContent, Button, Table, TableHead, TableRow, TableCell, TableBody,
@@ -60,6 +61,7 @@ const QuantitySurveyorDashboard = () => {
         <CircularProgress />
       ) : (
         <>
+      <DeliveryNote />
           <Grid container spacing={3} sx={{ mb: 3 }}>
             <Grid item xs={12} sm={3}>
               <Card><CardContent>

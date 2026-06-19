@@ -1,3 +1,4 @@
+import DeliveryNote from "../../components/DeliveryNote";
 import DashboardActions from '../../components/DashboardActions';
 import React, { useState, useEffect } from 'react';
 import {
@@ -95,6 +96,7 @@ const ProcurementDashboard = () => {
 
       {loading ? <CircularProgress /> : (
         <>
+      <DeliveryNote />
           <Grid container spacing={3} sx={{ mb: 3 }}>
             <Grid item xs={12} sm={3}><Card><CardContent><Typography variant="body2" color="textSecondary">Total Orders</Typography><Typography variant="h4">{stats.total}</Typography></CardContent></Card></Grid>
             <Grid item xs={12} sm={3}><Card><CardContent><Typography variant="body2" color="textSecondary">Pending (blank)</Typography><Typography variant="h4" color="warning.main">{stats.pending}</Typography></CardContent></Card></Grid>

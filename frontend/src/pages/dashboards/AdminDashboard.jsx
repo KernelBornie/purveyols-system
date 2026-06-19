@@ -1,3 +1,4 @@
+import DeliveryNote from "../../components/DeliveryNote";
 import DashboardActions from '../../components/DashboardActions';
 import React, { useState, useEffect } from 'react';
 import {
@@ -47,6 +48,7 @@ const AdminDashboard = () => {
         <CircularProgress />
       ) : (
         <>
+      <DeliveryNote />
           <Grid container spacing={3} sx={{ mb: 3 }}>
             <Grid item xs={12} sm={6}>
               <Card><CardContent>
