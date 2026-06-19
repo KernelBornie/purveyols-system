@@ -6,6 +6,7 @@ import {
 import { Link } from 'react-router-dom';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import api from '../../api/axios';
+import DeliveryNote from '../../components/DeliveryNote';
 
 const ForemanDashboard = () => {
   const [loading, setLoading] = useState(true);
@@ -48,6 +49,9 @@ const ForemanDashboard = () => {
           Refresh
         </Button>
       </Box>
+
+      <DeliveryNote />
+
       <Typography variant="subtitle1" gutterBottom>Site Supervision & Workforce</Typography>
 
       {loading ? (
