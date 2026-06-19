@@ -121,7 +121,7 @@ const SubcontractForm = () => {
             Building and Civil Construction
           </Typography>
           <Typography variant="body2">
-            Plot No. 8, Buchi Road - Northmead, P.O. Box NH 87 Lucknow, Zanzibar
+            Plot No. 8, Buchi Road - Northmead, P.O. Box NH 87 Lusaka, Zambia
           </Typography>
           <Typography variant="body2">
             Tel: +260 211 235354 | Mobile: +260 977 393879 / +260 965 393879
