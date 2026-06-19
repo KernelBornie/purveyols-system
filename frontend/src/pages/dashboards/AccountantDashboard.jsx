@@ -69,7 +69,6 @@ const AccountantDashboard = () => {
     if (!force) {
       const cached = getCached(cacheKey);
       if (cached) {
-        // Restore all state from cache
         setStats(cached.stats);
         setWorkers(cached.workers);
         setProjects(cached.projects);
@@ -89,7 +88,6 @@ const AccountantDashboard = () => {
     setLoading(true);
     setMessage(null);
     try {
-      // ── Parallel fetch all endpoints ──
       const [
         workersRes, attendanceRes, paymentsRes, projectsRes, fundingRes
       ] = await Promise.all([
@@ -100,7 +98,6 @@ const AccountantDashboard = () => {
         api.get('/api/funding-requests').catch(() => api.get('/api/funding'))
       ]);
 
-      // Parse responses
       const workersData = Array.isArray(workersRes.data) ? workersRes.data : (workersRes.data?.data || []);
       const attendanceData = Array.isArray(attendanceRes.data) ? attendanceRes.data : (attendanceRes.data?.data || []);
       const paymentsData = Array.isArray(paymentsRes.data) ? paymentsRes.data : (paymentsRes.data?.data || []);
@@ -108,7 +105,6 @@ const AccountantDashboard = () => {
       const projectsData = Array.isArray(projectsRes.data) ? projectsRes.data : (projectsRes.data?.data || []);
       const fundingData = Array.isArray(fundingRes.data) ? fundingRes.data : (fundingRes.data?.data || []);
 
-      // ── Derived data (memoized later) ──
       const workersWithBalance = workersData.map(w => {
         const workerAttendance = attendanceData.filter(a => a.worker === w._id || a.worker?._id === w._id);
         const totalEarned = workerAttendance.reduce((sum, a) => sum + (a.rate || 0), 0);
@@ -117,13 +113,11 @@ const AccountantDashboard = () => {
         return { ...w, balance: totalEarned - totalPaid };
       });
 
-      // Stats
       const totalWorkers = workersWithBalance.length;
       const totalProjects = projectsData.length;
       const totalReleased = completedPayments.reduce((sum, p) => sum + (p.amount || 0), 0);
       const totalFunding = fundingData.length;
 
-      // Top workers
       const workerEarnings = {};
       completedPayments.forEach(p => {
         const workerId = p.worker?._id || p.worker;
@@ -139,7 +133,6 @@ const AccountantDashboard = () => {
         .sort((a, b) => b.amount - a.amount)
         .slice(0, 5);
 
-      // Payment trends (last 7 days)
       const trends = {};
       const now = new Date();
       for (let i = 6; i >= 0; i--) {
@@ -154,7 +147,6 @@ const AccountantDashboard = () => {
       });
       const trendData = Object.entries(trends).map(([date, amount]) => ({ date, amount }));
 
-      // Project spending
       const projectSpendingMap = {};
       completedPayments.forEach(p => {
         const projectId = p.project?._id || p.project;
@@ -166,7 +158,6 @@ const AccountantDashboard = () => {
       });
       const spendingData = Object.entries(projectSpendingMap).map(([name, amount]) => ({ name, amount }));
 
-      // Approval ratio
       const pending = fundingData.filter(f => f.status === 'pending').length;
       const approved = fundingData.filter(f => f.status === 'approved').length;
       const rejected = fundingData.filter(f => f.status === 'rejected').length;
@@ -183,7 +174,6 @@ const AccountantDashboard = () => {
         totalAmountReleased: totalReleased,
       };
 
-      // ── Update state ──
       const newStats = { workers: totalWorkers, projects: totalProjects, totalReleased, fundingRequests: totalFunding };
       setStats(newStats);
       setWorkers(workersWithBalance);
@@ -197,7 +187,6 @@ const AccountantDashboard = () => {
       setApprovalRatio(ratio);
       setReportData(report);
 
-      // ── Cache ──
       setCached(cacheKey, {
         stats: newStats,
         workers: workersWithBalance,
@@ -220,7 +209,6 @@ const AccountantDashboard = () => {
     }
   }, []);
 
-  // Fetch profile for phone number
   const fetchProfile = useCallback(async () => {
     try {
       const res = await api.get('/api/auth/me');
@@ -235,7 +223,7 @@ const AccountantDashboard = () => {
     fetchProfile();
   }, [fetchDashboardData, fetchProfile]);
 
-  // ── Handlers (memoized) ──────────────────────────────────────────────
+  // ── Handlers ──────────────────────────────────────────────────────────────
 
   const handleAirtelPay = useCallback(async () => {
     if (!payAmount || parseFloat(payAmount) <= 0) {
@@ -275,7 +263,7 @@ const AccountantDashboard = () => {
   const handlePaymentClose = useCallback(() => {
     setPaymentOpen(false);
     setSelectedWorker(null);
-    fetchDashboardData(true); // force refresh after payment
+    fetchDashboardData(true);
   }, [fetchDashboardData]);
 
   const handlePayAll = useCallback(() => {
@@ -311,7 +299,6 @@ const AccountantDashboard = () => {
     return new Intl.NumberFormat('en-ZM', { style: 'currency', currency: 'ZMW' }).format(amount || 0);
   }, []);
 
-  // ── Derived data (memoized) ──────────────────────────────────────────
   const pendingWorkers = useMemo(() => workers.filter(w => (w.balance || 0) > 0), [workers]);
   const totalPending = useMemo(() => pendingWorkers.reduce((sum, w) => sum + (w.balance || 0), 0), [pendingWorkers]);
   const pendingFunding = useMemo(() => fundingRequests.filter(f => f.status === 'pending').length, [fundingRequests]);
@@ -355,7 +342,7 @@ const AccountantDashboard = () => {
 
       {message && <Alert severity={message.type} sx={{ mb: 2 }}>{message.text}</Alert>}
 
-      {/* Action Buttons */}
+      {/* ─── PAYMENT BUTTONS ─── */}
       <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 2 }}>
         <Button variant="contained" color="primary" onClick={() => setSearchOpen(true)}>
           Pay Worker (Airtel Money)
@@ -397,7 +384,7 @@ const AccountantDashboard = () => {
         </Grid>
       </Grid>
 
-      {/* Charts (conditional) */}
+      {/* Charts */}
       {showCharts && (
         <Grid container spacing={3} sx={{ mb: 3 }}>
           {paymentTrends.length > 0 && (
@@ -553,7 +540,7 @@ const AccountantDashboard = () => {
         ) : <Typography>No report data.</Typography>}
       </Paper>
 
-      {/* Direct payment card */}
+      {/* Direct payment card (extra) */}
       <Paper sx={{ p: 2 }}>
         <Typography variant="h6" gutterBottom>Pay Worker via Airtel Money</Typography>
         <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap' }}>
