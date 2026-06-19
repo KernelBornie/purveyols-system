@@ -8,6 +8,7 @@ import RefreshIcon from '@mui/icons-material/Refresh';
 import EditIcon from '@mui/icons-material/Edit';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import api from '../../api/axios';
+import DeliveryNote from '../../components/DeliveryNote';
 
 const EngineerDashboard = () => {
   const [loading, setLoading] = useState(true);
@@ -59,6 +60,9 @@ const EngineerDashboard = () => {
           Refresh
         </Button>
       </Box>
+
+      <DeliveryNote />
+
       <Typography variant="subtitle1" gutterBottom>Technical Design & Site Supervision</Typography>
 
       {loading ? (
