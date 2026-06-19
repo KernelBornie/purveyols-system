@@ -11,6 +11,7 @@ import DescriptionIcon from '@mui/icons-material/Description';
 import FileDownloadIcon from '@mui/icons-material/FileDownload';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import ConstructionIcon from '@mui/icons-material/Construction';
+import LocalShippingIcon from '@mui/icons-material/LocalShipping';
 import { useAuth } from '../context/AuthContext';
 import NotificationBell from './NotificationBell';
 import ReportModal from './ReportModal';
@@ -51,6 +52,11 @@ const Layout = () => {
 
   const handleAdvertisedProjects = () => {
     navigate('/advertised-projects');
+    handleClose();
+  };
+
+  const handleDeliveryNotes = () => {
+    navigate('/delivery');
     handleClose();
   };
 
@@ -142,6 +148,11 @@ const Layout = () => {
                 <ConstructionIcon />
               </IconButton>
             </Tooltip>
+            <Tooltip title="Delivery Notes">
+              <IconButton color="inherit" onClick={() => navigate('/delivery')}>
+                <LocalShippingIcon />
+              </IconButton>
+            </Tooltip>
             <Tooltip title="Export Data">
               <IconButton color="inherit" onClick={handleExportOpen}>
                 <FileDownloadIcon />
@@ -171,6 +182,10 @@ const Layout = () => {
                 <ListItemIcon><ConstructionIcon fontSize="small" /></ListItemIcon>
                 <ListItemText>Advertised Projects</ListItemText>
               </MenuItem>
+              <MenuItem onClick={handleDeliveryNotes}>
+                <ListItemIcon><LocalShippingIcon fontSize="small" /></ListItemIcon>
+                <ListItemText>Delivery Notes</ListItemText>
+              </MenuItem>
               <MenuItem onClick={handleReports}>
                 <ListItemIcon><DescriptionIcon fontSize="small" /></ListItemIcon>
                 <ListItemText>Generate Report</ListItemText>
@@ -193,7 +208,6 @@ const Layout = () => {
       <MessageDialog open={msgOpen} onClose={handleMsgClose} onSent={() => {}} />
       <ReportModal open={reportOpen} onClose={() => setReportOpen(false)} />
 
-      {/* Footer - rendered once */}
       <Footer />
     </Box>
   );
