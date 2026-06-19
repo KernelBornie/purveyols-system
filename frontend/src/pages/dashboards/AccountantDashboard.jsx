@@ -527,16 +527,3 @@ const AccountantDashboard = () => {
       <ReportModal open={reportModalOpen} onClose={() => setReportModalOpen(false)} />
 
       {/* Footer */}
-      <Box sx={{ mt: 4, py: 3, borderTop: '1px solid', borderColor: 'divider', textAlign: 'center' }}>
-        <Typography variant="body2" color="textSecondary">
-          © {new Date().getFullYear()} PURVEYOLS CMS – Construction Management System
-        </Typography>
-        <Typography variant="caption" color="textSecondary" display="block" sx={{ mt: 0.5 }}>
-          Built with ❤️ for construction professionals
-        </Typography>
-      </Box>
-    </Box>
-  );
-};
-
-export default AccountantDashboard;

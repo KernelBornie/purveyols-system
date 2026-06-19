@@ -1,5 +1,7 @@
 import React, { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
+import DeliveryNoteList from './pages/delivery/DeliveryNoteList';
+import DeliveryNote from './pages/delivery/DeliveryNote';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -65,7 +67,13 @@ function App() {
             <Route path="/boq/new" element={<BOQForm />} />
             <Route path="/boq/:id" element={<BOQForm />} />
             <Route path="/advertised-projects" element={<AdvertisedProjects />} />
+            <Route path="/delivery" element={<DeliveryNoteList />} />
+            <Route path="/delivery/new" element={<DeliveryNote />} />
+            <Route path="/delivery/:id" element={<DeliveryNote />} />
             <Route path="/advertised-projects/bidded" element={<BiddedProjects />} />
+            <Route path="/delivery" element={<DeliveryNoteList />} />
+            <Route path="/delivery/new" element={<DeliveryNote />} />
+            <Route path="/delivery/:id" element={<DeliveryNote />} />
           </Route>
         </Routes>
       </BrowserRouter>
