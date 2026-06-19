@@ -4,7 +4,7 @@ const ProcurementOrder = require('../models/ProcurementOrder');
 const auth = require('../middleware/auth');
 const { createNotification } = require('../utils/notificationHelper');
 
-// GET all orders
+// ─── GET all orders with grandTotal fallback ──────────────────────────
 router.get('/', auth, async (req, res) => {
   try {
     const orders = await ProcurementOrder.find()
@@ -12,13 +12,28 @@ router.get('/', auth, async (req, res) => {
       .populate('createdBy', 'name role')
       .populate('fundedBy', 'name role')
       .populate('procurementOfficer', 'name role');
-    res.json(orders);
+
+    // Enrich with grandTotal if missing
+    const enriched = orders.map(order => {
+      const obj = order.toObject();
+      // If grandTotal is not set, compute from items
+      if (!obj.grandTotal && Array.isArray(obj.items)) {
+        obj.grandTotal = obj.items.reduce((sum, item) => {
+          const qty = Number(item.quantity) || 0;
+          const price = Number(item.unitPrice) || 0;
+          return sum + (qty * price);
+        }, 0);
+      }
+      return obj;
+    });
+
+    res.json(enriched);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// GET single order
+// ─── GET single order ──────────────────────────────────────────────────
 router.get('/:id', auth, async (req, res) => {
   try {
     const order = await ProcurementOrder.findById(req.params.id)
@@ -26,39 +41,66 @@ router.get('/:id', auth, async (req, res) => {
       .populate('createdBy', 'name role')
       .populate('fundedBy', 'name role')
       .populate('procurementOfficer', 'name role');
+
     if (!order) return res.status(404).json({ error: 'Order not found' });
-    res.json(order);
+
+    // Ensure grandTotal is present
+    const obj = order.toObject();
+    if (!obj.grandTotal && Array.isArray(obj.items)) {
+      obj.grandTotal = obj.items.reduce((sum, item) => {
+        const qty = Number(item.quantity) || 0;
+        const price = Number(item.unitPrice) || 0;
+        return sum + (qty * price);
+      }, 0);
+    }
+
+    res.json(obj);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// CREATE new order
+// ─── CREATE new order ──────────────────────────────────────────────────
 router.post('/', auth, async (req, res) => {
   try {
     const order = new ProcurementOrder({ ...req.body, createdBy: req.user.id });
     await order.save();
+
     const populated = await ProcurementOrder.findById(order._id)
       .populate('project', 'name')
       .populate('createdBy', 'name role')
       .populate('fundedBy', 'name role')
       .populate('procurementOfficer', 'name role');
+
     res.status(201).json(populated);
   } catch (err) {
     res.status(400).json({ error: err.message });
   }
 });
 
-// UPDATE (edit) - only if pending
+// ─── UPDATE (edit) – only if pending ──────────────────────────────────
 router.put('/:id', auth, async (req, res) => {
   try {
     const order = await ProcurementOrder.findById(req.params.id);
     if (!order) return res.status(404).json({ error: 'Order not found' });
+
     if (order.status !== 'pending') {
       return res.status(400).json({ error: 'Only pending orders can be edited' });
     }
-    // Update fields
-    const { project, items, supplier, grandTotal, preparedBy, approvedBy, authorisedBy, preparedSign, approvedSign, authorisedSign } = req.body;
+
+    const {
+      project,
+      items,
+      supplier,
+      grandTotal,
+      preparedBy,
+      approvedBy,
+      authorisedBy,
+      preparedSign,
+      approvedSign,
+      authorisedSign,
+    } = req.body;
+
     if (project !== undefined) order.project = project;
     if (items !== undefined) order.items = items;
     if (supplier !== undefined) order.supplier = supplier;
@@ -69,26 +111,31 @@ router.put('/:id', auth, async (req, res) => {
     if (preparedSign !== undefined) order.preparedSign = preparedSign;
     if (approvedSign !== undefined) order.approvedSign = approvedSign;
     if (authorisedSign !== undefined) order.authorisedSign = authorisedSign;
+
     await order.save();
+
     const populated = await ProcurementOrder.findById(order._id)
       .populate('project', 'name')
       .populate('createdBy', 'name role')
       .populate('fundedBy', 'name role')
       .populate('procurementOfficer', 'name role');
+
     res.json(populated);
   } catch (err) {
     res.status(400).json({ error: err.message });
   }
 });
 
-// APPROVE (set status to 'funded')
+// ─── APPROVE (set status → 'funded') ──────────────────────────────────
 router.put('/:id/approve', auth, async (req, res) => {
   try {
     const order = await ProcurementOrder.findById(req.params.id);
     if (!order) return res.status(404).json({ error: 'Order not found' });
+
     if (order.status !== 'pending') {
       return res.status(400).json({ error: 'Only pending orders can be approved' });
     }
+
     order.status = 'funded';
     order.fundedBy = req.user.id;
     order.fundedAt = new Date();
@@ -110,20 +157,23 @@ router.put('/:id/approve', auth, async (req, res) => {
       .populate('createdBy', 'name role')
       .populate('fundedBy', 'name role')
       .populate('procurementOfficer', 'name role');
+
     res.json(populated);
   } catch (err) {
     res.status(400).json({ error: err.message });
   }
 });
 
-// REJECT (set status to 'rejected')
+// ─── REJECT (set status → 'rejected') ──────────────────────────────────
 router.put('/:id/reject', auth, async (req, res) => {
   try {
     const order = await ProcurementOrder.findById(req.params.id);
     if (!order) return res.status(404).json({ error: 'Order not found' });
+
     if (order.status !== 'pending') {
       return res.status(400).json({ error: 'Only pending orders can be rejected' });
     }
+
     order.status = 'rejected';
     await order.save();
 
@@ -143,34 +193,37 @@ router.put('/:id/reject', auth, async (req, res) => {
       .populate('createdBy', 'name role')
       .populate('fundedBy', 'name role')
       .populate('procurementOfficer', 'name role');
+
     res.json(populated);
   } catch (err) {
     res.status(400).json({ error: err.message });
   }
 });
 
-// FUND (existing) – used for funding after approval? But we already use approve to set funded.
-// Keep for backward compatibility, but we'll map approve to fund logic.
+// ─── FUND (backward compatibility) ────────────────────────────────────
 router.put('/:id/fund', auth, async (req, res) => {
   try {
     const order = await ProcurementOrder.findById(req.params.id);
     if (!order) return res.status(404).json({ error: 'Order not found' });
+
     order.status = 'funded';
     order.fundedBy = req.user.id;
     order.fundedAt = new Date();
     await order.save();
+
     const populated = await ProcurementOrder.findById(order._id)
       .populate('project', 'name')
       .populate('createdBy', 'name role')
       .populate('fundedBy', 'name role')
       .populate('procurementOfficer', 'name role');
+
     res.json(populated);
   } catch (err) {
     res.status(400).json({ error: err.message });
   }
 });
 
-// DELETE
+// ─── DELETE ──────────────────────────────────────────────────────────────
 router.delete('/:id', auth, async (req, res) => {
   try {
     await ProcurementOrder.findByIdAndDelete(req.params.id);
