@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import {
   AppBar, Toolbar, Typography, Button, Box, Container, Menu, MenuItem, IconButton, Fab,
-  Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions, TextField,
   Tooltip, Menu as MuiMenu, ListItemIcon, ListItemText
 } from '@mui/material';
 import AccountCircle from '@mui/icons-material/AccountCircle';
@@ -11,6 +10,7 @@ import DescriptionIcon from '@mui/icons-material/Description';
 import FileDownloadIcon from '@mui/icons-material/FileDownload';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import ConstructionIcon from '@mui/icons-material/Construction';
+import LocalShippingIcon from '@mui/icons-material/LocalShipping';
 import { useAuth } from '../context/AuthContext';
 import NotificationBell from './NotificationBell';
 import ReportModal from './ReportModal';
@@ -19,6 +19,7 @@ import AIAssistant from './AIAssistant';
 import NetworkStatus from './NetworkStatus';
 import api from '../api/axios';
 import Footer from './Footer';
+import Sidebar from './Sidebar';
 
 const Layout = () => {
   const { user, logout } = useAuth();
@@ -51,6 +52,11 @@ const Layout = () => {
 
   const handleAdvertisedProjects = () => {
     navigate('/advertised-projects');
+    handleClose();
+  };
+
+  const handleDeliveryNotes = () => {
+    navigate('/delivery');
     handleClose();
   };
 
@@ -122,17 +128,30 @@ const Layout = () => {
   const showBack = location.pathname !== '/dashboard' && location.pathname !== '/login' && location.pathname !== '/';
 
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', bgcolor: 'background.default' }}>
-      <AppBar position="static">
+    <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
+      <AppBar position="static" sx={{ zIndex: (theme) => theme.zIndex.drawer + 1 }}>
         <Toolbar>
           {showBack && (
             <IconButton color="inherit" onClick={handleBack} edge="start" sx={{ mr: 1 }}>
               <ArrowBackIcon />
             </IconButton>
           )}
-          <Typography variant="h6" sx={{ flexGrow: 1, cursor: 'pointer' }} onClick={() => navigate('/dashboard')}>
-            PURVEYOLS CMS
-          </Typography>
+          {/* --- Logo + brand name --- */}
+          <Box sx={{ display: 'flex', alignItems: 'center', flexGrow: 1 }}>
+            <img
+              src="/logo-branding.jpg"
+              alt="PURVEYOLS"
+              height="40"
+              style={{ marginRight: 12, borderRadius: 4 }}
+            />
+            <Typography
+              variant="h6"
+              sx={{ cursor: 'pointer', fontWeight: 600 }}
+              onClick={() => navigate('/dashboard')}
+            >
+              PURVEYOLS CMS
+            </Typography>
+          </Box>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
             <NetworkStatus />
             <NotificationBell />
@@ -140,6 +159,11 @@ const Layout = () => {
             <Tooltip title="Advertised Projects & Tenders">
               <IconButton color="inherit" onClick={() => navigate('/advertised-projects')}>
                 <ConstructionIcon />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title="Delivery Notes">
+              <IconButton color="inherit" onClick={() => navigate('/delivery')}>
+                <LocalShippingIcon />
               </IconButton>
             </Tooltip>
             <Tooltip title="Export Data">
@@ -171,6 +195,10 @@ const Layout = () => {
                 <ListItemIcon><ConstructionIcon fontSize="small" /></ListItemIcon>
                 <ListItemText>Advertised Projects</ListItemText>
               </MenuItem>
+              <MenuItem onClick={handleDeliveryNotes}>
+                <ListItemIcon><LocalShippingIcon fontSize="small" /></ListItemIcon>
+                <ListItemText>Delivery Notes</ListItemText>
+              </MenuItem>
               <MenuItem onClick={handleReports}>
                 <ListItemIcon><DescriptionIcon fontSize="small" /></ListItemIcon>
                 <ListItemText>Generate Report</ListItemText>
@@ -180,21 +208,24 @@ const Layout = () => {
           </Box>
         </Toolbar>
       </AppBar>
-      <Container maxWidth="xl" sx={{ mt: 4, mb: 4, flex: 1, bgcolor: 'background.default' }}>
-        <Outlet />
-      </Container>
-
+      <Box sx={{ display: 'flex', flex: 1 }}>
+        <Sidebar />
+        {/* --- Main content with dashboard overlay --- */}
+        <Box component="main" sx={{ flexGrow: 1, p: 3 }}>
+          <Box className="dashboard-content">
+            <Container maxWidth="xl" sx={{ px: { xs: 0, sm: 2 } }}>
+              <Outlet />
+            </Container>
+          </Box>
+        </Box>
+      </Box>
+      <Footer />
       <Fab color="primary" aria-label="message" sx={{ position: 'fixed', bottom: 24, right: 24 }} onClick={handleMsgOpen}>
         <MessageIcon />
       </Fab>
-
       <AIAssistant />
-
       <MessageDialog open={msgOpen} onClose={handleMsgClose} onSent={() => {}} />
       <ReportModal open={reportOpen} onClose={() => setReportOpen(false)} />
-
-      {/* Footer - rendered once */}
-      <Footer />
     </Box>
   );
 };

@@ -12,6 +12,7 @@ import AttachFileIcon from '@mui/icons-material/AttachFile';
 import ImageIcon from '@mui/icons-material/Image';
 import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 import api from '../../api/axios';
+import DeliveryNote from '../../components/DeliveryNote';
 
 const DriverDashboard = () => {
   const [loading, setLoading] = useState(true);
@@ -29,14 +30,12 @@ const DriverDashboard = () => {
   const fetchData = async () => {
     setLoading(true);
     try {
-      // Fetch logbooks
       const logRes = await api.get('/api/logbooks');
       let logData = [];
       if (Array.isArray(logRes.data)) logData = logRes.data;
       else if (logRes.data?.data && Array.isArray(logRes.data.data)) logData = logRes.data.data;
       setLogbooks(logData);
 
-      // Fetch procurement orders created by this driver
       const procRes = await api.get('/api/procurement');
       let procData = [];
       if (Array.isArray(procRes.data)) procData = procRes.data;
@@ -47,7 +46,6 @@ const DriverDashboard = () => {
       }
       setProcurementOrders(procData);
 
-      // Fetch funding requests created by this driver
       const fundRes = await api.get('/api/funding-requests');
       let fundData = [];
       if (Array.isArray(fundRes.data)) fundData = fundRes.data;
@@ -113,6 +111,9 @@ const DriverDashboard = () => {
           Refresh
         </Button>
       </Box>
+
+      <DeliveryNote />
+
       <Typography variant="subtitle1" gutterBottom>Transport & Logistics</Typography>
 
       {message && <Alert severity={message.type} sx={{ mb: 2 }}>{message.text}</Alert>}

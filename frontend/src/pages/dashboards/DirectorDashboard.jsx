@@ -10,6 +10,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, PieChart, 
 import RefreshIcon from '@mui/icons-material/Refresh';
 import EditIcon from '@mui/icons-material/Edit';
 import api from '../../api/axios';
+import DeliveryNote from '../../components/DeliveryNote';
 
 const DirectorDashboard = () => {
   const [loading, setLoading] = useState(true);
@@ -63,7 +64,7 @@ const DirectorDashboard = () => {
         totalBOQs: boqData.length,
         pendingBOQs,
         totalWorkers: workersData.length,
-        totalSubcontracts: 0, // placeholder
+        totalSubcontracts: 0,
       });
     } catch (err) { console.error(err); } finally { setLoading(false); }
   };
@@ -110,6 +111,9 @@ const DirectorDashboard = () => {
           Refresh
         </Button>
       </Box>
+
+      <DeliveryNote />
+
       <Typography variant="subtitle1" gutterBottom>Strategic Leadership & Oversight</Typography>
 
       {loading ? (

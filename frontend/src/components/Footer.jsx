@@ -8,20 +8,27 @@ const Footer = () => {
       sx={{
         py: 3,
         px: 2,
-        mt: 4,
-        borderTop: '1px solid',
-        borderColor: 'divider',
-        backgroundColor: (theme) => theme.palette.background.paper,
+        mt: 'auto',
+        backgroundColor: (theme) => theme.palette.grey[800],
+        color: 'white',
+        textAlign: 'center',
       }}
     >
       <Container maxWidth="lg">
-        <Typography variant="body2" color="textSecondary" align="center">
+        {/* --- Footer brand image --- */}
+        <img
+          src="/footer.PNG"
+          alt="PURVEYOLS"
+          height="40"
+          style={{ marginBottom: 8 }}
+        />
+        <Typography variant="body2" sx={{ opacity: 0.8 }}>
           © {new Date().getFullYear()} PURVEYOLS CMS – Construction Management System
         </Typography>
-        <Typography variant="caption" color="textSecondary" align="center" display="block" sx={{ mt: 0.5 }}>
+        <Typography variant="caption" display="block" sx={{ opacity: 0.6, mt: 0.5 }}>
           Built with ❤️ for construction professionals
         </Typography>
-        <Typography variant="caption" color="textSecondary" align="center" display="block" sx={{ mt: 0.5 }}>
+        <Typography variant="caption" display="block" sx={{ opacity: 0.5, mt: 0.5 }}>
           Plot No. 8, Buchi Road - Northmead, P.O. Box NH 87 Lusaka, Zambia
         </Typography>
       </Container>

@@ -9,6 +9,7 @@ import {
 import RefreshIcon from '@mui/icons-material/Refresh';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import api from '../../api/axios';
+import DeliveryNote from '../../components/DeliveryNote';
 
 const ReceptionistDashboard = () => {
   const [loading, setLoading] = useState(true);
@@ -64,6 +65,9 @@ const ReceptionistDashboard = () => {
           </Button>
         </Box>
       </Box>
+
+      <DeliveryNote />
+
       <Typography variant="subtitle1" gutterBottom>Front Desk & Administrative Support</Typography>
 
       {message && <Alert severity={message.type} sx={{ mb: 2 }}>{message.text}</Alert>}
