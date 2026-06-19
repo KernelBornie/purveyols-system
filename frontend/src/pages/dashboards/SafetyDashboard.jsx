@@ -8,6 +8,7 @@ import {
 import { Link } from 'react-router-dom';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import api from '../../api/axios';
+import DeliveryNote from '../../components/DeliveryNote';
 
 const SafetyDashboard = () => {
   const [loading, setLoading] = useState(true);
@@ -58,7 +59,7 @@ const SafetyDashboard = () => {
   const quickActions = [
     { label: 'Create Procurement Order', path: '/procurement/new' },
     { label: 'Request Funding', path: '/funding/new' },
-    { label: 'New Inspection', action: 'modal' }, // we handle this separately
+    { label: 'New Inspection', action: 'modal' },
   ];
 
   return (
@@ -74,6 +75,9 @@ const SafetyDashboard = () => {
           </Button>
         </Box>
       </Box>
+
+      <DeliveryNote />
+
       <Typography variant="subtitle1" gutterBottom>Workplace Safety & Compliance</Typography>
 
       {message && <Alert severity={message.type} sx={{ mb: 2 }}>{message.text}</Alert>}
@@ -109,7 +113,6 @@ const SafetyDashboard = () => {
             </Grid>
           </Grid>
 
-          {/* Quick Actions */}
           <Paper sx={{ p: 2, mb: 3 }}>
             <Typography variant="h6" gutterBottom>Quick Actions</Typography>
             <Grid container spacing={2}>
