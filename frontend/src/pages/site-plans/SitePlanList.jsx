@@ -87,6 +87,7 @@ const SitePlanList = () => {
               <TableCell>Type</TableCell>
               <TableCell>Project</TableCell>
               <TableCell>Dimensions</TableCell>
+              <TableCell>Drawing</TableCell>
               <TableCell>Status</TableCell>
               <TableCell>Created By</TableCell>
               <TableCell>Actions</TableCell>
@@ -99,6 +100,17 @@ const SitePlanList = () => {
                 <TableCell>{getTypeLabel(plan.type)}</TableCell>
                 <TableCell>{plan.project?.name || 'N/A'}</TableCell>
                 <TableCell>{plan.dimensions || '—'}</TableCell>
+                <TableCell>
+                  {plan.drawingImage ? (
+                    <img
+                      src={plan.drawingImage}
+                      alt={plan.name}
+                      style={{ width: 60, height: 40, objectFit: 'cover', borderRadius: 4 }}
+                    />
+                  ) : (
+                    <Typography variant="caption" color="textSecondary">No drawing</Typography>
+                  )}
+                </TableCell>
                 <TableCell>
                   <Chip label={plan.status} color={getStatusColor(plan.status)} size="small" />
                 </TableCell>
@@ -124,7 +136,7 @@ const SitePlanList = () => {
             ))}
             {plans.length === 0 && (
               <TableRow>
-                <TableCell colSpan={7} align="center" sx={{ py: 3 }}>
+                <TableCell colSpan={8} align="center" sx={{ py: 3 }}>
                   <Typography variant="body2" color="textSecondary">
                     No plans yet. Click "New Drawing / Plan" to start.
                   </Typography>
