@@ -10,7 +10,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip,
   Legend, LineChart, Line, PieChart, Pie, Cell
 } from 'recharts';
-import api from '../api/axios';
+import api from '../../api/axios';   // ✅ fixed path: two levels up
 
 const AccountantDashboard = () => {
   const [loading, setLoading] = useState(true);
