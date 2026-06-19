@@ -41,8 +41,11 @@ const Sidebar = () => {
     { text: 'Subcontracts', icon: <ConstructionIcon />, path: '/subcontracts' },
     { text: 'Advertised Projects', icon: <ConstructionIcon />, path: '/advertised-projects' },
     { text: 'Delivery Notes', icon: <LocalShippingIcon />, path: '/delivery' },
+    // NEW SITE PLANS & SURVEYING
     { text: 'Site Plans', icon: <ArchitectureIcon />, path: '/site-plans' },
     { text: 'Surveying', icon: <StraightenIcon />, path: '/site-plans' },
+    // NEW DRAWINGS
+    { text: 'Drawings', icon: <DescriptionIcon />, path: '/drawings' },
     { text: 'Messages', icon: <MessageIcon />, path: '/messages' },
     { text: 'Profile', icon: <PersonIcon />, path: '/profile' },
     { text: 'Settings', icon: <SettingsIcon />, path: '/settings' },
