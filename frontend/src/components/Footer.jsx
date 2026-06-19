@@ -22,7 +22,7 @@ const Footer = () => {
           Built with ❤️ for construction professionals
         </Typography>
         <Typography variant="caption" color="textSecondary" align="center" display="block" sx={{ mt: 0.5 }}>
-          Plot No. 8, Buchi Road - Northmead, P.O. Box NH 87 Lucknow, Zanzibar
+          Plot No. 8, Buchi Road - Northmead, P.O. Box NH 87 Lusaka, Zambia
         </Typography>
       </Container>
     </Box>
