@@ -193,7 +193,7 @@ const Layout = () => {
       <MessageDialog open={msgOpen} onClose={handleMsgClose} onSent={() => {}} />
       <ReportModal open={reportOpen} onClose={() => setReportOpen(false)} />
 
-      {/* Footer */}
+      {/* Footer - rendered once */}
       <Footer />
     </Box>
   );
