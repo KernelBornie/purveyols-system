@@ -13,11 +13,16 @@ const SitePlanSchema = new mongoose.Schema({
   fileType: String, // e.g., 'image/png', 'application/pdf'
   dimensions: String, // e.g., "100m x 50m"
   scale: String, // e.g., "1:100"
-  status: { type: String, enum: ['draft', 'submitted', 'approved', 'rejected'], default: 'draft' },
+  status: {
+    type: String,
+    enum: ['draft', 'submitted', 'approved', 'rejected'],
+    default: 'draft',
+  },
   createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now },
-  // Survey-specific fields
+
+  // ─── Survey‑specific fields ──────────────────────────────────────
   surveyPoints: [{
     label: String,
     x: Number,
@@ -33,6 +38,10 @@ const SitePlanSchema = new mongoose.Schema({
   foundationType: String,
   soilType: String,
   waterTableLevel: Number,
+
+  // ─── Drawing canvas data (new) ──────────────────────────────────
+  drawingData: { type: String },   // JSON string from fabric.js canvas
+  drawingImage: { type: String },  // base64 PNG thumbnail for preview
 });
 
 module.exports = mongoose.model('SitePlan', SitePlanSchema);
