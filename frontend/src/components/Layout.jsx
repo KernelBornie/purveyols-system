@@ -173,10 +173,6 @@ const Layout = () => {
                 <ListItemText>Advertised Projects</ListItemText>
               </MenuItem>
               <MenuItem onClick={handleReports}>
-              <MenuItem onClick={() => navigate("/delivery")}>
-                <ListItemIcon><DescriptionIcon fontSize="small" /></ListItemIcon>
-                <ListItemText>Delivery Note</ListItemText>
-              </MenuItem>
                 <ListItemIcon><DescriptionIcon fontSize="small" /></ListItemIcon>
                 <ListItemText>Generate Report</ListItemText>
               </MenuItem>
@@ -185,7 +181,7 @@ const Layout = () => {
           </Box>
         </Toolbar>
       </AppBar>
-      <Container className="dashboard-background"  maxWidth="xl" sx={{ mt: 4, mb: 4, flex: 1, bgcolor: 'background.default' }}>
+      <Container maxWidth="xl" sx={{ mt: 4, mb: 4, flex: 1, bgcolor: 'background.default' }}>
         <Outlet />
       </Container>
 
@@ -198,7 +194,7 @@ const Layout = () => {
       <MessageDialog open={msgOpen} onClose={handleMsgClose} onSent={() => {}} />
       <ReportModal open={reportOpen} onClose={() => setReportOpen(false)} />
 
-      {/* Footer added here */}
+      {/* Footer - placed at the bottom of the page */}
       <Footer />
     </Box>
   );
