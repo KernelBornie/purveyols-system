@@ -1,4 +1,3 @@
-import Footer from '../../components/Footer';
 import DashboardActions from '../../components/DashboardActions';
 import React, { useState, useEffect } from 'react';
 import {
@@ -91,7 +90,6 @@ const ProcurementDashboard = () => {
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
         <Typography variant="h4">Procurement Dashboard</Typography>
         <Button variant="contained" startIcon={<RefreshIcon />} onClick={fetchData}>Refresh</Button>
-
       </Box>
       <Typography variant="subtitle1" gutterBottom>Acquire Materials & Services</Typography>
 
@@ -104,7 +102,7 @@ const ProcurementDashboard = () => {
             <Grid item xs={12} sm={3}><Card><CardContent><Typography variant="body2" color="textSecondary">Purchased</Typography><Typography variant="h4">{stats.purchased}</Typography></CardContent></Card></Grid>
           </Grid>
 
-          <Paper className="dashboard-background" sx={{ p: 2 }}>
+          <Paper sx={{ p: 2 }}>
             <Typography variant="h6" gutterBottom>Procurement Orders</Typography>
             <Table size="small">
               <TableHead>
@@ -127,7 +125,7 @@ const ProcurementDashboard = () => {
                   </TableRow>
                 ))}
               </TableBody>
-
+            </Table>
           </Paper>
 
           <Dialog open={openModal} onClose={() => setOpenModal(false)} maxWidth="md" fullWidth>

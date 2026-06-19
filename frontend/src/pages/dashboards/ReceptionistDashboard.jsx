@@ -1,4 +1,3 @@
-import Footer from '../../components/Footer';
 import DashboardActions from '../../components/DashboardActions';
 import React, { useState, useEffect } from 'react';
 import {
@@ -62,7 +61,6 @@ const ReceptionistDashboard = () => {
           <Button variant="contained" color="primary" startIcon={<PersonAddIcon />} onClick={() => setOpenModal(true)}>
             Log Visitor
           </Button>
-
         </Box>
       </Box>
       <Typography variant="subtitle1" gutterBottom>Front Desk & Administrative Support</Typography>
@@ -88,7 +86,7 @@ const ReceptionistDashboard = () => {
             </Grid>
           </Grid>
 
-          <Paper className="dashboard-background" sx={{ p: 2 }}>
+          <Paper sx={{ p: 2 }}>
             <Typography variant="h6" gutterBottom>Visitor Log</Typography>
             <Table size="small">
               <TableHead>
@@ -111,7 +109,7 @@ const ReceptionistDashboard = () => {
                   </TableRow>
                 ))}
               </TableBody>
-
+            </Table>
           </Paper>
         </>
       )}

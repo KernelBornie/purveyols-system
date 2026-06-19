@@ -1,4 +1,3 @@
-import Footer from '../../components/Footer';
 import DashboardActions from '../../components/DashboardActions';
 import React, { useState, useEffect } from 'react';
 import {
@@ -73,7 +72,6 @@ const SafetyDashboard = () => {
           <Button variant="contained" color="primary" onClick={() => setOpenModal(true)}>
             New Inspection
           </Button>
-
         </Box>
       </Box>
       <Typography variant="subtitle1" gutterBottom>Workplace Safety & Compliance</Typography>
@@ -112,7 +110,7 @@ const SafetyDashboard = () => {
           </Grid>
 
           {/* Quick Actions */}
-          <Paper className="dashboard-background" sx={{ p: 2, mb: 3 }}>
+          <Paper sx={{ p: 2, mb: 3 }}>
             <Typography variant="h6" gutterBottom>Quick Actions</Typography>
             <Grid container spacing={2}>
               {quickActions.map((action, i) => (
@@ -128,7 +126,7 @@ const SafetyDashboard = () => {
                   )}
                 </Grid>
               ))}
-
+            </Grid>
           </Paper>
 
           <Paper sx={{ p: 2 }}>

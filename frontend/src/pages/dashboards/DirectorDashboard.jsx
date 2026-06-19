@@ -1,4 +1,3 @@
-import Footer from '../../components/Footer';
 import DashboardActions from '../../components/DashboardActions';
 import React, { useState, useEffect } from 'react';
 import {
@@ -109,7 +108,6 @@ const DirectorDashboard = () => {
         <Button variant="contained" startIcon={<RefreshIcon />} onClick={fetchData}>
           Refresh
         </Button>
-
       </Box>
       <Typography variant="subtitle1" gutterBottom>Strategic Leadership & Oversight</Typography>
 
@@ -118,7 +116,7 @@ const DirectorDashboard = () => {
       ) : (
         <>
           {/* Quick Actions */}
-          <Paper className="dashboard-background" sx={{ p: 2, mb: 3 }}>
+          <Paper sx={{ p: 2, mb: 3 }}>
             <Typography variant="h6" gutterBottom>Quick Actions</Typography>
             <Grid container spacing={2}>
               <Grid item xs={12} sm={6} md={3}>
@@ -145,7 +143,7 @@ const DirectorDashboard = () => {
                 </Button>
                 <Typography variant="caption" color="textSecondary">Approve Bills of Quantities</Typography>
               </Grid>
-
+            </Grid>
           </Paper>
 
           {/* Stats Cards */}

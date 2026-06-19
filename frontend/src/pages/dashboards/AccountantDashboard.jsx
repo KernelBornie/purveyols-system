@@ -1,4 +1,3 @@
-import Footer from '../../components/Footer';
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -253,7 +252,6 @@ const AccountantDashboard = () => {
           <Button variant="contained" startIcon={<RefreshIcon />} onClick={fetchData}>
             Refresh
           </Button>
-
         </Box>
       </Box>
 
@@ -303,7 +301,7 @@ const AccountantDashboard = () => {
             <Grid container spacing={3} sx={{ mb: 3 }}>
               {chartData.paymentTrends.length > 0 && (
                 <Grid item xs={12} md={6}>
-                  <Paper className="dashboard-background" sx={{ p: 2 }}>
+                  <Paper sx={{ p: 2 }}>
                     <Typography variant="h6">Payment Trends</Typography>
                     <LineChart width={400} height={200} data={chartData.paymentTrends.slice(-10)}>
                       <CartesianGrid strokeDasharray="3 3" />
@@ -312,7 +310,7 @@ const AccountantDashboard = () => {
                       <Tooltip />
                       <Legend />
                       <Line type="monotone" dataKey="amount" stroke="#82ca9d" />
-
+                    </LineChart>
                   </Paper>
                 </Grid>
               )}

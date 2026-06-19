@@ -1,4 +1,3 @@
-import Footer from '../../components/Footer';
 import React, { useState, useEffect } from 'react';
 import {
   Box, Typography, Grid, Card, CardContent, Button, Table, TableHead, TableRow, TableCell, TableBody,
@@ -48,7 +47,6 @@ const ForemanDashboard = () => {
         <Button variant="contained" startIcon={<RefreshIcon />} onClick={fetchData}>
           Refresh
         </Button>
-
       </Box>
       <Typography variant="subtitle1" gutterBottom>Site Supervision & Workforce</Typography>
 
@@ -71,7 +69,7 @@ const ForemanDashboard = () => {
             </Grid>
           </Grid>
 
-          <Paper className="dashboard-background" sx={{ p: 2, mb: 3 }}>
+          <Paper sx={{ p: 2, mb: 3 }}>
             <Typography variant="h6" gutterBottom>Quick Actions</Typography>
             <Grid container spacing={2}>
               {actions.map((action, i) => (
@@ -81,7 +79,7 @@ const ForemanDashboard = () => {
                   </Button>
                 </Grid>
               ))}
-
+            </Grid>
           </Paper>
 
           <Paper sx={{ p: 2 }}>
