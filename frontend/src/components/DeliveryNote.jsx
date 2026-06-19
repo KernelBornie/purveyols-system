@@ -8,7 +8,7 @@ const DeliveryNote = () => {
   const navigate = useNavigate();
 
   const handleViewDeliveryNotes = () => {
-    navigate('/delivery-notes');
+    navigate('/delivery');   // ✅ matches your existing route
   };
 
   return (
