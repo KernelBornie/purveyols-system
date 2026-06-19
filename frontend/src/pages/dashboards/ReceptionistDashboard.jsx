@@ -1,13 +1,19 @@
 import DashboardActions from '../../components/DashboardActions';
+import Footer from '../../components/Footer';
 import React, { useState, useEffect } from 'react';
+import Footer from '../../components/Footer';
 import {
+import Footer from '../../components/Footer';
   Box, Typography, Grid, Card, CardContent, Button, Table, TableHead, TableRow, TableCell, TableBody,
   Chip, Paper, TextField, Dialog, DialogTitle, DialogContent, DialogActions,
   CircularProgress, Alert
 } from '@mui/material';
 import RefreshIcon from '@mui/icons-material/Refresh';
+import Footer from '../../components/Footer';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
+import Footer from '../../components/Footer';
 import api from '../../api/axios';
+import Footer from '../../components/Footer';
 
 const ReceptionistDashboard = () => {
   const [loading, setLoading] = useState(true);
@@ -61,7 +67,9 @@ const ReceptionistDashboard = () => {
           <Button variant="contained" color="primary" startIcon={<PersonAddIcon />} onClick={() => setOpenModal(true)}>
             Log Visitor
           </Button>
+      <Footer />
         </Box>
+      <Footer />
       </Box>
       <Typography variant="subtitle1" gutterBottom>Front Desk & Administrative Support</Typography>
 
@@ -86,7 +94,7 @@ const ReceptionistDashboard = () => {
             </Grid>
           </Grid>
 
-          <Paper sx={{ p: 2 }}>
+          <Paper className="dashboard-background" sx={{ p: 2 }}>
             <Typography variant="h6" gutterBottom>Visitor Log</Typography>
             <Table size="small">
               <TableHead>
@@ -130,6 +138,7 @@ const ReceptionistDashboard = () => {
           </DialogActions>
         </form>
       </Dialog>
+      <Footer />
     </Box>
   );
 };

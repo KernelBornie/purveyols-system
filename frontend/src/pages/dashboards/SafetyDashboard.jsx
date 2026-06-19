@@ -1,13 +1,19 @@
 import DashboardActions from '../../components/DashboardActions';
+import Footer from '../../components/Footer';
 import React, { useState, useEffect } from 'react';
+import Footer from '../../components/Footer';
 import {
+import Footer from '../../components/Footer';
   Box, Typography, Grid, Card, CardContent, Button, Table, TableHead, TableRow, TableCell, TableBody,
   Chip, Paper, TextField, Dialog, DialogTitle, DialogContent, DialogActions,
   CircularProgress, Alert
 } from '@mui/material';
 import { Link } from 'react-router-dom';
+import Footer from '../../components/Footer';
 import RefreshIcon from '@mui/icons-material/Refresh';
+import Footer from '../../components/Footer';
 import api from '../../api/axios';
+import Footer from '../../components/Footer';
 
 const SafetyDashboard = () => {
   const [loading, setLoading] = useState(true);
@@ -72,7 +78,9 @@ const SafetyDashboard = () => {
           <Button variant="contained" color="primary" onClick={() => setOpenModal(true)}>
             New Inspection
           </Button>
+      <Footer />
         </Box>
+      <Footer />
       </Box>
       <Typography variant="subtitle1" gutterBottom>Workplace Safety & Compliance</Typography>
 
@@ -110,7 +118,7 @@ const SafetyDashboard = () => {
           </Grid>
 
           {/* Quick Actions */}
-          <Paper sx={{ p: 2, mb: 3 }}>
+          <Paper className="dashboard-background" sx={{ p: 2, mb: 3 }}>
             <Typography variant="h6" gutterBottom>Quick Actions</Typography>
             <Grid container spacing={2}>
               {quickActions.map((action, i) => (
@@ -169,6 +177,7 @@ const SafetyDashboard = () => {
           </DialogActions>
         </form>
       </Dialog>
+      <Footer />
     </Box>
   );
 };

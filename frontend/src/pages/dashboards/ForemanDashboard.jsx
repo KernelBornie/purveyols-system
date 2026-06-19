@@ -1,11 +1,16 @@
 import React, { useState, useEffect } from 'react';
+import Footer from '../../components/Footer';
 import {
+import Footer from '../../components/Footer';
   Box, Typography, Grid, Card, CardContent, Button, Table, TableHead, TableRow, TableCell, TableBody,
   Chip, Paper, CircularProgress
 } from '@mui/material';
 import { Link } from 'react-router-dom';
+import Footer from '../../components/Footer';
 import RefreshIcon from '@mui/icons-material/Refresh';
+import Footer from '../../components/Footer';
 import api from '../../api/axios';
+import Footer from '../../components/Footer';
 
 const ForemanDashboard = () => {
   const [loading, setLoading] = useState(true);
@@ -47,6 +52,7 @@ const ForemanDashboard = () => {
         <Button variant="contained" startIcon={<RefreshIcon />} onClick={fetchData}>
           Refresh
         </Button>
+      <Footer />
       </Box>
       <Typography variant="subtitle1" gutterBottom>Site Supervision & Workforce</Typography>
 
@@ -69,7 +75,7 @@ const ForemanDashboard = () => {
             </Grid>
           </Grid>
 
-          <Paper sx={{ p: 2, mb: 3 }}>
+          <Paper className="dashboard-background" sx={{ p: 2, mb: 3 }}>
             <Typography variant="h6" gutterBottom>Quick Actions</Typography>
             <Grid container spacing={2}>
               {actions.map((action, i) => (
@@ -86,6 +92,7 @@ const ForemanDashboard = () => {
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
               <Typography variant="h6">Workers on Site</Typography>
               <Button component={Link} to="/workers" size="small">View All</Button>
+      <Footer />
             </Box>
             <Table size="small">
               <TableHead>
@@ -110,6 +117,7 @@ const ForemanDashboard = () => {
           </Paper>
         </>
       )}
+      <Footer />
     </Box>
   );
 };

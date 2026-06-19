@@ -1,14 +1,22 @@
 import DashboardActions from '../../components/DashboardActions';
+import Footer from '../../components/Footer';
 import React, { useState, useEffect } from 'react';
+import Footer from '../../components/Footer';
 import {
+import Footer from '../../components/Footer';
   Box, Typography, Grid, Card, CardContent, Button, Table, TableHead, TableRow, TableCell, TableBody,
   Chip, Paper, CircularProgress, Link as MuiLink
 } from '@mui/material';
 import { Link } from 'react-router-dom';
+import Footer from '../../components/Footer';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, PieChart, Pie, Cell } from 'recharts';
+import Footer from '../../components/Footer';
 import RefreshIcon from '@mui/icons-material/Refresh';
+import Footer from '../../components/Footer';
 import EditIcon from '@mui/icons-material/Edit';
+import Footer from '../../components/Footer';
 import api from '../../api/axios';
+import Footer from '../../components/Footer';
 
 const DirectorDashboard = () => {
   const [loading, setLoading] = useState(true);
@@ -108,6 +116,7 @@ const DirectorDashboard = () => {
         <Button variant="contained" startIcon={<RefreshIcon />} onClick={fetchData}>
           Refresh
         </Button>
+      <Footer />
       </Box>
       <Typography variant="subtitle1" gutterBottom>Strategic Leadership & Oversight</Typography>
 
@@ -116,7 +125,7 @@ const DirectorDashboard = () => {
       ) : (
         <>
           {/* Quick Actions */}
-          <Paper sx={{ p: 2, mb: 3 }}>
+          <Paper className="dashboard-background" sx={{ p: 2, mb: 3 }}>
             <Typography variant="h6" gutterBottom>Quick Actions</Typography>
             <Grid container spacing={2}>
               <Grid item xs={12} sm={6} md={3}>
@@ -214,6 +223,7 @@ const DirectorDashboard = () => {
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <Typography variant="h6">All Projects</Typography>
               <Button component={Link} to="/projects" size="small">View All</Button>
+      <Footer />
             </Box>
             <Table size="small">
               <TableHead>
@@ -244,6 +254,7 @@ const DirectorDashboard = () => {
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <Typography variant="h6">Funding Requests</Typography>
               <Button component={Link} to="/funding" size="small">View All</Button>
+      <Footer />
             </Box>
             <Table size="small">
               <TableHead>
@@ -281,6 +292,7 @@ const DirectorDashboard = () => {
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <Typography variant="h6">BOQs</Typography>
               <Button component={Link} to="/boq" size="small">View All</Button>
+      <Footer />
             </Box>
             <Table size="small">
               <TableHead>
@@ -315,6 +327,7 @@ const DirectorDashboard = () => {
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <Typography variant="h6">Procurement Orders (Oversight)</Typography>
               <Button component={Link} to="/procurement" size="small">View All</Button>
+      <Footer />
             </Box>
             <Typography variant="caption" color="textSecondary">Procurement Officer adds prices, Accountant funds</Typography>
             <Table size="small">
@@ -340,6 +353,7 @@ const DirectorDashboard = () => {
           </Paper>
         </>
       )}
+      <Footer />
     </Box>
   );
 };

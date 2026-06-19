@@ -1,19 +1,31 @@
 import React, { useState, useEffect } from 'react';
+import Footer from '../../components/Footer';
 import { useNavigate } from 'react-router-dom';
+import Footer from '../../components/Footer';
 import {
+import Footer from '../../components/Footer';
   Box, Typography, Grid, Card, CardContent, Button, Table, TableHead, TableRow, TableCell, TableBody,
   Chip, Paper, CircularProgress, Alert, Dialog, DialogTitle, DialogContent, DialogActions,
   TextField, Switch, FormControlLabel, Divider
 } from '@mui/material';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, PieChart, Pie, Cell, LineChart, Line } from 'recharts';
+import Footer from '../../components/Footer';
 import RefreshIcon from '@mui/icons-material/Refresh';
+import Footer from '../../components/Footer';
 import DescriptionIcon from '@mui/icons-material/Description';
+import Footer from '../../components/Footer';
 import api from '../../api/axios';
+import Footer from '../../components/Footer';
 import WorkerSearch from '../../components/WorkerSearch';
+import Footer from '../../components/Footer';
 import PaymentModal from '../../components/PaymentModal';
+import Footer from '../../components/Footer';
 import NotificationBell from '../../components/NotificationBell';
+import Footer from '../../components/Footer';
 import ReportModal from '../../components/ReportModal';
+import Footer from '../../components/Footer';
 import ExportButton from '../../components/ExportButton';
+import Footer from '../../components/Footer';
 
 const AccountantDashboard = () => {
   const navigate = useNavigate();
@@ -252,7 +264,9 @@ const AccountantDashboard = () => {
           <Button variant="contained" startIcon={<RefreshIcon />} onClick={fetchData}>
             Refresh
           </Button>
+      <Footer />
         </Box>
+      <Footer />
       </Box>
 
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
@@ -275,6 +289,7 @@ const AccountantDashboard = () => {
           control={<Switch checked={showCharts} onChange={(e) => setShowCharts(e.target.checked)} />}
           label="Show Charts"
         />
+      <Footer />
       </Box>
 
       <Typography variant="caption" display="block" sx={{ mb: 2 }}>
@@ -301,7 +316,7 @@ const AccountantDashboard = () => {
             <Grid container spacing={3} sx={{ mb: 3 }}>
               {chartData.paymentTrends.length > 0 && (
                 <Grid item xs={12} md={6}>
-                  <Paper sx={{ p: 2 }}>
+                  <Paper className="dashboard-background" sx={{ p: 2 }}>
                     <Typography variant="h6">Payment Trends</Typography>
                     <LineChart width={400} height={200} data={chartData.paymentTrends.slice(-10)}>
                       <CartesianGrid strokeDasharray="3 3" />
@@ -352,6 +367,7 @@ const AccountantDashboard = () => {
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <Typography variant="h6">Projects by Creator</Typography>
               <Button size="small" onClick={() => navigate('/projects')}>View All</Button>
+      <Footer />
             </Box>
             <Table size="small">
               <TableHead>
@@ -377,6 +393,7 @@ const AccountantDashboard = () => {
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <Typography variant="h6">Enrolled Workers</Typography>
               <Button size="small" onClick={() => navigate('/workers')}>View All</Button>
+      <Footer />
             </Box>
             <Table size="small">
               <TableHead>
@@ -404,6 +421,7 @@ const AccountantDashboard = () => {
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <Typography variant="h6">Funding Requests</Typography>
               <Button size="small" onClick={() => navigate('/funding')}>View All</Button>
+      <Footer />
             </Box>
             <Table size="small">
               <TableHead>
@@ -437,6 +455,7 @@ const AccountantDashboard = () => {
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <Typography variant="h6">Procurement Orders (Pending Funding)</Typography>
               <Button size="small" onClick={() => navigate('/procurement')}>View All</Button>
+      <Footer />
             </Box>
             <Table size="small">
               <TableHead>
@@ -534,7 +553,9 @@ const AccountantDashboard = () => {
         <Typography variant="caption" color="textSecondary" display="block" sx={{ mt: 0.5 }}>
           Built with ❤️ for construction professionals
         </Typography>
+      <Footer />
       </Box>
+      <Footer />
     </Box>
   );
 };
