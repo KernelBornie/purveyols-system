@@ -1,9 +1,16 @@
 import React from 'react';
 import { Box, Typography, Button, Stack } from '@mui/material';
+import { useNavigate } from 'react-router-dom';
 import DescriptionIcon from '@mui/icons-material/Description';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 
 const DeliveryNote = () => {
+  const navigate = useNavigate();
+
+  const handleViewDeliveryNotes = () => {
+    navigate('/delivery-notes');
+  };
+
   return (
     <Box
       sx={{
@@ -44,6 +51,7 @@ const DeliveryNote = () => {
         </Stack>
         <Button
           variant="contained"
+          onClick={handleViewDeliveryNotes}
           sx={{
             backgroundColor: '#ffd966',
             color: '#0b1a2e',
