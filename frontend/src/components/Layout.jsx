@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import {
-import Footer from '../../components/Footer';
   AppBar, Toolbar, Typography, Button, Box, Container, Menu, MenuItem, IconButton, Fab,
   Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions, TextField,
   Tooltip, Menu as MuiMenu, ListItemIcon, ListItemText
@@ -19,7 +18,7 @@ import MessageDialog from './MessageDialog';
 import AIAssistant from './AIAssistant';
 import NetworkStatus from './NetworkStatus';
 import api from '../api/axios';
-import Footer from '../../components/Footer';
+import Footer from './Footer';
 
 const Layout = () => {
   const { user, logout } = useAuth();
@@ -194,6 +193,9 @@ const Layout = () => {
 
       <MessageDialog open={msgOpen} onClose={handleMsgClose} onSent={() => {}} />
       <ReportModal open={reportOpen} onClose={() => setReportOpen(false)} />
+
+      {/* Footer added here */}
+      <Footer />
     </Box>
   );
 };
