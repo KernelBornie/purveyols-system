@@ -186,6 +186,8 @@ const AccountantDashboard = () => {
   }, []);
 
   // ─── Handlers ────────────────────────────────────────────────────────────────
+
+  // Fixed: use the correct endpoint and payload for Airtel payment
   const handleAirtelPay = async () => {
     if (!payAmount || parseFloat(payAmount) <= 0) {
       alert('Enter a valid amount');
@@ -197,19 +199,21 @@ const AccountantDashboard = () => {
     }
     setAirtelStatus({ type: 'info', text: 'Initiating Airtel Money request...' });
     try {
-      const res = await api.post('/api/airtel/ussd', {
+      // Now using /api/mobile-money/initiate with the correct fields
+      const res = await api.post('/api/mobile-money/initiate', {
+        recipientPhone: workerPhone,
         amount: parseFloat(payAmount),
-        phoneNumber: workerPhone,
-        reference: 'PAY-' + Date.now(),
+        workerId: null, // optional, if you want to link to a worker
+        note: 'Direct Airtel payment from dashboard',
       });
       setAirtelStatus({
         type: 'success',
-        text: `📱 Airtel Money USSD prompt sent to ${workerPhone}. Ref: ${res.data.reference || 'N/A'}`
+        text: `✅ Payment sent! Reference: ${res.data.reference || 'N/A'}`
       });
     } catch (err) {
       setAirtelStatus({
         type: 'error',
-        text: err.response?.data?.error || 'Failed to send USSD. Check backend.'
+        text: err.response?.data?.error || 'Payment failed. Check backend logs.'
       });
     }
   };
@@ -287,7 +291,6 @@ const AccountantDashboard = () => {
         <Button variant="contained" color="secondary" onClick={handlePayAll}>
           Pay All Pending
         </Button>
-        {/* additional buttons can go here */}
       </Box>
 
       <Typography variant="caption" display="block" sx={{ mb: 2 }}>
@@ -477,6 +480,7 @@ const AccountantDashboard = () => {
             ) : <Typography>No report data.</Typography>}
           </Paper>
 
+          {/* Keep the direct payment card, but with the corrected endpoint */}
           <Paper sx={{ p: 2 }}>
             <Typography variant="h6" gutterBottom>Pay Worker via Airtel Money</Typography>
             <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap' }}>
