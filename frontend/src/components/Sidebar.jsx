@@ -54,15 +54,13 @@ const Sidebar = () => {
       }}
     >
       <Toolbar>
+        {/* Only the image, no text – to avoid duplication */}
         <img
           src="/logo-branding.jpg"
           alt="PURVEYOLS"
           height="30"
-          style={{ marginRight: 8, borderRadius: 4 }}
+          style={{ marginRight: 0, borderRadius: 4 }}
         />
-        <Typography variant="h6" noWrap sx={{ fontWeight: 600 }}>
-          PURVEYOLS
-        </Typography>
       </Toolbar>
       <Divider />
       <Box sx={{ overflow: 'auto' }}>
