@@ -1,17 +1,14 @@
 import DashboardActions from '../../components/DashboardActions';
-import Footer from '../../components/Footer';
 import React, { useState, useEffect } from 'react';
-import Footer from '../../components/Footer';
 import {
+import Footer from '../../components/Footer';
 import Footer from '../../components/Footer';
   Box, Typography, Grid, Card, CardContent, Button, Table, TableHead, TableRow, TableCell, TableBody,
   Chip, Paper, TextField, Dialog, DialogTitle, DialogContent, DialogActions, IconButton,
   CircularProgress
 } from '@mui/material';
 import RefreshIcon from '@mui/icons-material/Refresh';
-import Footer from '../../components/Footer';
 import EditIcon from '@mui/icons-material/Edit';
-import Footer from '../../components/Footer';
 import api from '../../api/axios';
 import Footer from '../../components/Footer';
 
@@ -96,7 +93,8 @@ const ProcurementDashboard = () => {
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
         <Typography variant="h4">Procurement Dashboard</Typography>
         <Button variant="contained" startIcon={<RefreshIcon />} onClick={fetchData}>Refresh</Button>
-      <Footer />
+      <Footer /><Footer />
+
       </Box>
       <Typography variant="subtitle1" gutterBottom>Acquire Materials & Services</Typography>
 
@@ -132,7 +130,8 @@ const ProcurementDashboard = () => {
                   </TableRow>
                 ))}
               </TableBody>
-            </Table>
+            </Table><Footer />
+
           </Paper>
 
           <Dialog open={openModal} onClose={() => setOpenModal(false)} maxWidth="md" fullWidth>

@@ -1,17 +1,14 @@
 import DashboardActions from '../../components/DashboardActions';
-import Footer from '../../components/Footer';
 import React, { useState, useEffect } from 'react';
-import Footer from '../../components/Footer';
 import {
+import Footer from '../../components/Footer';
 import Footer from '../../components/Footer';
   Box, Typography, Grid, Card, CardContent, Button, Table, TableHead, TableRow, TableCell, TableBody,
   Chip, Paper, TextField, Dialog, DialogTitle, DialogContent, DialogActions,
   CircularProgress, Alert
 } from '@mui/material';
 import RefreshIcon from '@mui/icons-material/Refresh';
-import Footer from '../../components/Footer';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
-import Footer from '../../components/Footer';
 import api from '../../api/axios';
 import Footer from '../../components/Footer';
 
@@ -67,7 +64,8 @@ const ReceptionistDashboard = () => {
           <Button variant="contained" color="primary" startIcon={<PersonAddIcon />} onClick={() => setOpenModal(true)}>
             Log Visitor
           </Button>
-      <Footer />
+      <Footer /><Footer />
+
         </Box>
       <Footer />
       </Box>
@@ -117,7 +115,8 @@ const ReceptionistDashboard = () => {
                   </TableRow>
                 ))}
               </TableBody>
-            </Table>
+            </Table><Footer />
+
           </Paper>
         </>
       )}

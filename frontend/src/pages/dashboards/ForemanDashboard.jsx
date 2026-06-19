@@ -1,14 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import Footer from '../../components/Footer';
 import {
 import Footer from '../../components/Footer';
   Box, Typography, Grid, Card, CardContent, Button, Table, TableHead, TableRow, TableCell, TableBody,
   Chip, Paper, CircularProgress
 } from '@mui/material';
 import { Link } from 'react-router-dom';
-import Footer from '../../components/Footer';
 import RefreshIcon from '@mui/icons-material/Refresh';
-import Footer from '../../components/Footer';
 import api from '../../api/axios';
 import Footer from '../../components/Footer';
 
@@ -52,7 +49,8 @@ const ForemanDashboard = () => {
         <Button variant="contained" startIcon={<RefreshIcon />} onClick={fetchData}>
           Refresh
         </Button>
-      <Footer />
+      <Footer /><Footer />
+
       </Box>
       <Typography variant="subtitle1" gutterBottom>Site Supervision & Workforce</Typography>
 
@@ -85,7 +83,8 @@ const ForemanDashboard = () => {
                   </Button>
                 </Grid>
               ))}
-            </Grid>
+            </Grid><Footer />
+
           </Paper>
 
           <Paper sx={{ p: 2 }}>

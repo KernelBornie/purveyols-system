@@ -1,18 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import Footer from '../../components/Footer';
 import {
 import Footer from '../../components/Footer';
   Box, Typography, Grid, Card, CardContent, Button, Table, TableHead, TableRow, TableCell, TableBody,
   Chip, Paper, CircularProgress, IconButton
 } from '@mui/material';
 import { Link } from 'react-router-dom';
-import Footer from '../../components/Footer';
 import RefreshIcon from '@mui/icons-material/Refresh';
-import Footer from '../../components/Footer';
 import EditIcon from '@mui/icons-material/Edit';
-import Footer from '../../components/Footer';
 import VisibilityIcon from '@mui/icons-material/Visibility';
-import Footer from '../../components/Footer';
 import api from '../../api/axios';
 import Footer from '../../components/Footer';
 
@@ -60,7 +55,8 @@ const QuantitySurveyorDashboard = () => {
         <Button variant="contained" startIcon={<RefreshIcon />} onClick={fetchData}>
           Refresh
         </Button>
-      <Footer />
+      <Footer /><Footer />
+
       </Box>
       <Typography variant="subtitle1" gutterBottom>Cost Management & BOQ</Typography>
 
@@ -105,7 +101,8 @@ const QuantitySurveyorDashboard = () => {
                   </Button>
                 </Grid>
               ))}
-            </Grid>
+            </Grid><Footer />
+
           </Paper>
 
           <Paper sx={{ p: 2 }}>

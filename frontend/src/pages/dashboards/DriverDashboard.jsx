@@ -1,25 +1,18 @@
 import DashboardActions from '../../components/DashboardActions';
-import Footer from '../../components/Footer';
 import React, { useState, useEffect } from 'react';
-import Footer from '../../components/Footer';
 import {
+import Footer from '../../components/Footer';
 import Footer from '../../components/Footer';
   Box, Typography, Grid, Card, CardContent, Button, Table, TableHead, TableRow, TableCell, TableBody,
   Chip, Paper, TextField, Dialog, DialogTitle, DialogContent, DialogActions,
   CircularProgress, Alert, IconButton, Divider
 } from '@mui/material';
 import { Link } from 'react-router-dom';
-import Footer from '../../components/Footer';
 import RefreshIcon from '@mui/icons-material/Refresh';
-import Footer from '../../components/Footer';
 import AttachFileIcon from '@mui/icons-material/AttachFile';
-import Footer from '../../components/Footer';
 import ImageIcon from '@mui/icons-material/Image';
-import Footer from '../../components/Footer';
 import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
-import Footer from '../../components/Footer';
 import api from '../../api/axios';
-import Footer from '../../components/Footer';
 
 const DriverDashboard = () => {
   const [loading, setLoading] = useState(true);
@@ -120,7 +113,8 @@ const DriverDashboard = () => {
         <Button variant="contained" startIcon={<RefreshIcon />} onClick={fetchData}>
           Refresh
         </Button>
-      <Footer />
+      <Footer /><Footer />
+
       </Box>
       <Typography variant="subtitle1" gutterBottom>Transport & Logistics</Typography>
 
@@ -154,7 +148,8 @@ const DriverDashboard = () => {
               Record trip and upload logbook
             </Typography>
           </Grid>
-        </Grid>
+        </Grid><Footer />
+
       </Paper>
 
       {loading ? <CircularProgress /> : (

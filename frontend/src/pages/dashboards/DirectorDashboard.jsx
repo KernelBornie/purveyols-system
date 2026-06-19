@@ -1,20 +1,15 @@
 import DashboardActions from '../../components/DashboardActions';
-import Footer from '../../components/Footer';
 import React, { useState, useEffect } from 'react';
-import Footer from '../../components/Footer';
 import {
+import Footer from '../../components/Footer';
 import Footer from '../../components/Footer';
   Box, Typography, Grid, Card, CardContent, Button, Table, TableHead, TableRow, TableCell, TableBody,
   Chip, Paper, CircularProgress, Link as MuiLink
 } from '@mui/material';
 import { Link } from 'react-router-dom';
-import Footer from '../../components/Footer';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, PieChart, Pie, Cell } from 'recharts';
-import Footer from '../../components/Footer';
 import RefreshIcon from '@mui/icons-material/Refresh';
-import Footer from '../../components/Footer';
 import EditIcon from '@mui/icons-material/Edit';
-import Footer from '../../components/Footer';
 import api from '../../api/axios';
 import Footer from '../../components/Footer';
 
@@ -116,7 +111,8 @@ const DirectorDashboard = () => {
         <Button variant="contained" startIcon={<RefreshIcon />} onClick={fetchData}>
           Refresh
         </Button>
-      <Footer />
+      <Footer /><Footer />
+
       </Box>
       <Typography variant="subtitle1" gutterBottom>Strategic Leadership & Oversight</Typography>
 
@@ -152,7 +148,8 @@ const DirectorDashboard = () => {
                 </Button>
                 <Typography variant="caption" color="textSecondary">Approve Bills of Quantities</Typography>
               </Grid>
-            </Grid>
+            </Grid><Footer />
+
           </Paper>
 
           {/* Stats Cards */}

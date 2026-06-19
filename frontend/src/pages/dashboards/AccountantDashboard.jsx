@@ -1,29 +1,20 @@
 import React, { useState, useEffect } from 'react';
-import Footer from '../../components/Footer';
 import { useNavigate } from 'react-router-dom';
-import Footer from '../../components/Footer';
 import {
+import Footer from '../../components/Footer';
 import Footer from '../../components/Footer';
   Box, Typography, Grid, Card, CardContent, Button, Table, TableHead, TableRow, TableCell, TableBody,
   Chip, Paper, CircularProgress, Alert, Dialog, DialogTitle, DialogContent, DialogActions,
   TextField, Switch, FormControlLabel, Divider
 } from '@mui/material';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, PieChart, Pie, Cell, LineChart, Line } from 'recharts';
-import Footer from '../../components/Footer';
 import RefreshIcon from '@mui/icons-material/Refresh';
-import Footer from '../../components/Footer';
 import DescriptionIcon from '@mui/icons-material/Description';
-import Footer from '../../components/Footer';
 import api from '../../api/axios';
-import Footer from '../../components/Footer';
 import WorkerSearch from '../../components/WorkerSearch';
-import Footer from '../../components/Footer';
 import PaymentModal from '../../components/PaymentModal';
-import Footer from '../../components/Footer';
 import NotificationBell from '../../components/NotificationBell';
-import Footer from '../../components/Footer';
 import ReportModal from '../../components/ReportModal';
-import Footer from '../../components/Footer';
 import ExportButton from '../../components/ExportButton';
 import Footer from '../../components/Footer';
 
@@ -264,7 +255,8 @@ const AccountantDashboard = () => {
           <Button variant="contained" startIcon={<RefreshIcon />} onClick={fetchData}>
             Refresh
           </Button>
-      <Footer />
+      <Footer /><Footer />
+
         </Box>
       <Footer />
       </Box>
@@ -325,7 +317,8 @@ const AccountantDashboard = () => {
                       <Tooltip />
                       <Legend />
                       <Line type="monotone" dataKey="amount" stroke="#82ca9d" />
-                    </LineChart>
+                    </LineChart><Footer />
+
                   </Paper>
                 </Grid>
               )}
