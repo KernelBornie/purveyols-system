@@ -10,6 +10,8 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import SaveIcon from '@mui/icons-material/Save';
 import PrintIcon from '@mui/icons-material/Print';
 import EditIcon from '@mui/icons-material/Edit';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import CancelIcon from '@mui/icons-material/Cancel';
 import api from '../../api/axios';
 import { useAuth } from '../../context/AuthContext';
 import BackButton from '../../components/BackButton';
@@ -39,6 +41,7 @@ const ProcurementForm = () => {
     open: false,
     field: '', // 'prepared', 'approved', 'authorised'
   });
+  const [isEditMode, setIsEditMode] = useState(!!id);
 
   // Generate order number if new
   const generateOrderNumber = () => {
@@ -60,7 +63,7 @@ const ProcurementForm = () => {
           const orderRes = await api.get(`/api/procurement/${id}`);
           const data = orderRes.data;
           setForm({
-            project: data.project || '',
+            project: data.project?._id || data.project || '',
             items: Array.isArray(data.items) ? data.items : [],
             status: data.status || 'pending',
             orderNumber: data.orderNumber || '',
@@ -72,6 +75,7 @@ const ProcurementForm = () => {
             authorisedSign: data.authorisedSign || '',
           });
           setCreator(data.createdBy);
+          setIsEditMode(true);
         } else {
           setCreator(user);
           setForm(prev => ({
@@ -82,6 +86,7 @@ const ProcurementForm = () => {
               { description: '', unit: '', quantity: 1, unitPrice: 0, total: 0, supplier: '' }
             ]
           }));
+          setIsEditMode(false);
         }
       } catch (err) {
         console.error('Error fetching data:', err);
@@ -183,6 +188,69 @@ const ProcurementForm = () => {
       setTimeout(() => navigate('/procurement'), 1500);
     } catch (err) {
       setMessage({ type: 'error', text: err.response?.data?.error || 'Failed to save order' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ─── Approve & Reject handlers ──────────────────────────────────
+  const handleApprove = async () => {
+    if (!window.confirm('Approve this procurement order?')) return;
+    setLoading(true);
+    try {
+      await api.put(`/api/procurement/${id}/approve`);
+      setMessage({ type: 'success', text: 'Order approved!' });
+      // Refresh the order data
+      const orderRes = await api.get(`/api/procurement/${id}`);
+      const data = orderRes.data;
+      setForm({
+        ...form,
+        status: data.status,
+        project: data.project?._id || data.project || '',
+        items: data.items || [],
+        orderNumber: data.orderNumber || '',
+        preparedBy: data.preparedBy || '',
+        approvedBy: data.approvedBy || '',
+        authorisedBy: data.authorisedBy || '',
+        preparedSign: data.preparedSign || '',
+        approvedSign: data.approvedSign || '',
+        authorisedSign: data.authorisedSign || '',
+      });
+      setCreator(data.createdBy);
+      setTimeout(() => navigate('/procurement'), 1500);
+    } catch (err) {
+      setMessage({ type: 'error', text: err.response?.data?.error || 'Approval failed' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleReject = async () => {
+    if (!window.confirm('Reject this procurement order?')) return;
+    setLoading(true);
+    try {
+      await api.put(`/api/procurement/${id}/reject`);
+      setMessage({ type: 'success', text: 'Order rejected.' });
+      // Refresh
+      const orderRes = await api.get(`/api/procurement/${id}`);
+      const data = orderRes.data;
+      setForm({
+        ...form,
+        status: data.status,
+        project: data.project?._id || data.project || '',
+        items: data.items || [],
+        orderNumber: data.orderNumber || '',
+        preparedBy: data.preparedBy || '',
+        approvedBy: data.approvedBy || '',
+        authorisedBy: data.authorisedBy || '',
+        preparedSign: data.preparedSign || '',
+        approvedSign: data.approvedSign || '',
+        authorisedSign: data.authorisedSign || '',
+      });
+      setCreator(data.createdBy);
+      setTimeout(() => navigate('/procurement'), 1500);
+    } catch (err) {
+      setMessage({ type: 'error', text: err.response?.data?.error || 'Rejection failed' });
     } finally {
       setLoading(false);
     }
@@ -313,6 +381,7 @@ const ProcurementForm = () => {
               value={form.project || ''}
               onChange={e => setForm({ ...form, project: e.target.value })}
               required
+              disabled={isEditMode && form.status !== 'pending'} // disable if not pending
             >
               {Array.isArray(projects) && projects.map(p => (
                 <MenuItem key={p._id} value={p._id}>{p.name}</MenuItem>
@@ -346,25 +415,76 @@ const ProcurementForm = () => {
                 totals.itemsWithTotal.map((item, idx) => (
                   <TableRow key={idx}>
                     <TableCell sx={{ border: '1px solid #000', p: 1 }}>
-                      <TextField size="small" fullWidth value={item.description || ''} onChange={e => handleItemChange(idx, 'description', e.target.value)} placeholder="" sx={{ '& .MuiInputBase-root': { border: 'none', '&:before': { borderBottom: 'none' }, '&:after': { borderBottom: 'none' } } }} />
+                      <TextField
+                        size="small"
+                        fullWidth
+                        value={item.description || ''}
+                        onChange={e => handleItemChange(idx, 'description', e.target.value)}
+                        placeholder=""
+                        disabled={isEditMode && form.status !== 'pending'}
+                        sx={{ '& .MuiInputBase-root': { border: 'none', '&:before': { borderBottom: 'none' }, '&:after': { borderBottom: 'none' } } }}
+                      />
                     </TableCell>
                     <TableCell sx={{ border: '1px solid #000', p: 1 }}>
-                      <TextField size="small" fullWidth value={item.unit || ''} onChange={e => handleItemChange(idx, 'unit', e.target.value)} placeholder="" sx={{ '& .MuiInputBase-root': { border: 'none', '&:before': { borderBottom: 'none' }, '&:after': { borderBottom: 'none' } } }} />
+                      <TextField
+                        size="small"
+                        fullWidth
+                        value={item.unit || ''}
+                        onChange={e => handleItemChange(idx, 'unit', e.target.value)}
+                        placeholder=""
+                        disabled={isEditMode && form.status !== 'pending'}
+                        sx={{ '& .MuiInputBase-root': { border: 'none', '&:before': { borderBottom: 'none' }, '&:after': { borderBottom: 'none' } } }}
+                      />
                     </TableCell>
                     <TableCell sx={{ border: '1px solid #000', p: 1 }}>
-                      <TextField size="small" type="number" fullWidth value={item.quantity || 0} onChange={e => handleItemChange(idx, 'quantity', e.target.value)} inputProps={{ min: 0 }} sx={{ '& .MuiInputBase-root': { border: 'none', '&:before': { borderBottom: 'none' }, '&:after': { borderBottom: 'none' } } }} />
+                      <TextField
+                        size="small"
+                        type="number"
+                        fullWidth
+                        value={item.quantity || 0}
+                        onChange={e => handleItemChange(idx, 'quantity', e.target.value)}
+                        inputProps={{ min: 0 }}
+                        disabled={isEditMode && form.status !== 'pending'}
+                        sx={{ '& .MuiInputBase-root': { border: 'none', '&:before': { borderBottom: 'none' }, '&:after': { borderBottom: 'none' } } }}
+                      />
                     </TableCell>
                     <TableCell sx={{ border: '1px solid #000', p: 1 }}>
-                      <TextField size="small" type="number" fullWidth value={item.unitPrice || 0} onChange={e => handleItemChange(idx, 'unitPrice', e.target.value)} inputProps={{ min: 0, step: 0.01 }} sx={{ '& .MuiInputBase-root': { border: 'none', '&:before': { borderBottom: 'none' }, '&:after': { borderBottom: 'none' } } }} />
+                      <TextField
+                        size="small"
+                        type="number"
+                        fullWidth
+                        value={item.unitPrice || 0}
+                        onChange={e => handleItemChange(idx, 'unitPrice', e.target.value)}
+                        inputProps={{ min: 0, step: 0.01 }}
+                        disabled={isEditMode && form.status !== 'pending'}
+                        sx={{ '& .MuiInputBase-root': { border: 'none', '&:before': { borderBottom: 'none' }, '&:after': { borderBottom: 'none' } } }}
+                      />
                     </TableCell>
                     <TableCell sx={{ border: '1px solid #000', p: 1, bgcolor: '#fafafa' }}>
-                      <TextField size="small" type="number" fullWidth value={item.total || 0} InputProps={{ readOnly: true }} sx={{ '& .MuiInputBase-root': { border: 'none', bgcolor: '#fafafa', '&:before': { borderBottom: 'none' }, '&:after': { borderBottom: 'none' } } }} />
+                      <TextField
+                        size="small"
+                        type="number"
+                        fullWidth
+                        value={item.total || 0}
+                        InputProps={{ readOnly: true }}
+                        sx={{ '& .MuiInputBase-root': { border: 'none', bgcolor: '#fafafa', '&:before': { borderBottom: 'none' }, '&:after': { borderBottom: 'none' } } }}
+                      />
                     </TableCell>
                     <TableCell sx={{ border: '1px solid #000', p: 1 }}>
-                      <TextField size="small" fullWidth value={item.supplier || ''} onChange={e => handleItemChange(idx, 'supplier', e.target.value)} placeholder="Supplier" sx={{ '& .MuiInputBase-root': { border: 'none', '&:before': { borderBottom: 'none' }, '&:after': { borderBottom: 'none' } } }} />
+                      <TextField
+                        size="small"
+                        fullWidth
+                        value={item.supplier || ''}
+                        onChange={e => handleItemChange(idx, 'supplier', e.target.value)}
+                        placeholder="Supplier"
+                        disabled={isEditMode && form.status !== 'pending'}
+                        sx={{ '& .MuiInputBase-root': { border: 'none', '&:before': { borderBottom: 'none' }, '&:after': { borderBottom: 'none' } } }}
+                      />
                     </TableCell>
                     <TableCell sx={{ border: '1px solid #000', p: 1, textAlign: 'center' }}>
-                      <IconButton size="small" onClick={() => removeItem(idx)} color="error"><DeleteIcon fontSize="small" /></IconButton>
+                      <IconButton size="small" onClick={() => removeItem(idx)} color="error" disabled={isEditMode && form.status !== 'pending'}>
+                        <DeleteIcon fontSize="small" />
+                      </IconButton>
                     </TableCell>
                   </TableRow>
                 ))
@@ -375,7 +495,9 @@ const ProcurementForm = () => {
 
         {/* Add Row */}
         <Box sx={{ mt: 2 }}>
-          <Button variant="outlined" startIcon={<AddIcon />} onClick={addItem} size="small">Add Row</Button>
+          <Button variant="outlined" startIcon={<AddIcon />} onClick={addItem} size="small" disabled={isEditMode && form.status !== 'pending'}>
+            Add Row
+          </Button>
         </Box>
 
         {/* Grand Total */}
@@ -389,21 +511,42 @@ const ProcurementForm = () => {
             <Grid item xs={12} md={4}>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                 <Typography variant="body1" sx={{ fontWeight: 'bold' }}>PREPARED BY:</Typography>
-                <TextField size="small" fullWidth value={form.preparedBy || ''} onChange={e => setForm({ ...form, preparedBy: e.target.value })} sx={{ '& .MuiInputBase-root': { borderBottom: '1px solid #000', borderRadius: 0, '&:before': { borderBottom: 'none' }, '&:after': { borderBottom: 'none' } } }} />
+                <TextField
+                  size="small"
+                  fullWidth
+                  value={form.preparedBy || ''}
+                  onChange={e => setForm({ ...form, preparedBy: e.target.value })}
+                  disabled={isEditMode && form.status !== 'pending'}
+                  sx={{ '& .MuiInputBase-root': { borderBottom: '1px solid #000', borderRadius: 0, '&:before': { borderBottom: 'none' }, '&:after': { borderBottom: 'none' } } }}
+                />
               </Box>
               {renderSignatureField('prepared', 'SIGN', 'preparedSign')}
             </Grid>
             <Grid item xs={12} md={4}>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                 <Typography variant="body1" sx={{ fontWeight: 'bold' }}>APPROVED BY:</Typography>
-                <TextField size="small" fullWidth value={form.approvedBy || ''} onChange={e => setForm({ ...form, approvedBy: e.target.value })} sx={{ '& .MuiInputBase-root': { borderBottom: '1px solid #000', borderRadius: 0, '&:before': { borderBottom: 'none' }, '&:after': { borderBottom: 'none' } } }} />
+                <TextField
+                  size="small"
+                  fullWidth
+                  value={form.approvedBy || ''}
+                  onChange={e => setForm({ ...form, approvedBy: e.target.value })}
+                  disabled={isEditMode && form.status !== 'pending'}
+                  sx={{ '& .MuiInputBase-root': { borderBottom: '1px solid #000', borderRadius: 0, '&:before': { borderBottom: 'none' }, '&:after': { borderBottom: 'none' } } }}
+                />
               </Box>
               {renderSignatureField('approved', 'SIGN', 'approvedSign')}
             </Grid>
             <Grid item xs={12} md={4}>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                 <Typography variant="body1" sx={{ fontWeight: 'bold' }}>AUTHORISED BY:</Typography>
-                <TextField size="small" fullWidth value={form.authorisedBy || ''} onChange={e => setForm({ ...form, authorisedBy: e.target.value })} sx={{ '& .MuiInputBase-root': { borderBottom: '1px solid #000', borderRadius: 0, '&:before': { borderBottom: 'none' }, '&:after': { borderBottom: 'none' } } }} />
+                <TextField
+                  size="small"
+                  fullWidth
+                  value={form.authorisedBy || ''}
+                  onChange={e => setForm({ ...form, authorisedBy: e.target.value })}
+                  disabled={isEditMode && form.status !== 'pending'}
+                  sx={{ '& .MuiInputBase-root': { borderBottom: '1px solid #000', borderRadius: 0, '&:before': { borderBottom: 'none' }, '&:after': { borderBottom: 'none' } } }}
+                />
               </Box>
               {renderSignatureField('authorised', 'SIGN', 'authorisedSign')}
             </Grid>
@@ -412,7 +555,15 @@ const ProcurementForm = () => {
 
         {/* Status & Actions */}
         <Box sx={{ mt: 3, display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
-          <TextField select label="Status" size="small" sx={{ width: 150 }} value={form.status || 'pending'} onChange={e => setForm({ ...form, status: e.target.value })}>
+          <TextField
+            select
+            label="Status"
+            size="small"
+            sx={{ width: 150 }}
+            value={form.status || 'pending'}
+            onChange={e => setForm({ ...form, status: e.target.value })}
+            disabled={isEditMode && form.status !== 'pending'}
+          >
             <MenuItem value="pending">Pending</MenuItem>
             <MenuItem value="funded">Funded</MenuItem>
             <MenuItem value="purchased">Purchased</MenuItem>
@@ -424,12 +575,44 @@ const ProcurementForm = () => {
           {form.status === 'delivered' && <Chip label="Delivered" color="primary" size="small" />}
         </Box>
 
-        <Box sx={{ mt: 4, display: 'flex', gap: 2 }}>
-          <Button type="submit" variant="contained" startIcon={<SaveIcon />} disabled={loading}>
+        {/* Action Buttons */}
+        <Box sx={{ mt: 4, display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+          {isEditMode && form.status === 'pending' && (
+            <>
+              <Button
+                variant="contained"
+                color="success"
+                startIcon={<CheckCircleIcon />}
+                onClick={handleApprove}
+                disabled={loading}
+              >
+                Approve
+              </Button>
+              <Button
+                variant="contained"
+                color="error"
+                startIcon={<CancelIcon />}
+                onClick={handleReject}
+                disabled={loading}
+              >
+                Reject
+              </Button>
+            </>
+          )}
+          <Button
+            type="submit"
+            variant="contained"
+            startIcon={<SaveIcon />}
+            disabled={loading || (isEditMode && form.status !== 'pending')}
+          >
             {loading ? 'Saving...' : 'Save Order'}
           </Button>
-          <Button variant="outlined" startIcon={<PrintIcon />} onClick={handlePrint}>Print</Button>
-          <Button variant="outlined" onClick={() => navigate('/procurement')}>Cancel</Button>
+          <Button variant="outlined" startIcon={<PrintIcon />} onClick={handlePrint}>
+            Print
+          </Button>
+          <Button variant="outlined" onClick={() => navigate('/procurement')}>
+            Cancel
+          </Button>
         </Box>
       </form>
 
