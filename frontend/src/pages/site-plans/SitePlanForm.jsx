@@ -18,7 +18,7 @@ import ZoomOutIcon from '@mui/icons-material/ZoomOut';
 import GridOnIcon from '@mui/icons-material/GridOn';
 import api from '../../api/axios';
 import BackButton from '../../components/BackButton';
-import { fabric } from 'fabric';
+import * as fabric from 'fabric';   // ✅ fixed import
 
 const SitePlanForm = () => {
   const { id } = useParams();

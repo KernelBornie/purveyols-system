@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Offline - PURVEYOLS CMS</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #1a1a2e;
+      color: #fff;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      text-align: center;
+      padding: 20px;
+    }
+    .offline-container {
+      max-width: 500px;
+    }
+    .offline-icon {
+      font-size: 80px;
+      margin-bottom: 20px;
+    }
+    h1 { font-size: 28px; margin-bottom: 10px; }
+    p { color: #aaa; margin-bottom: 20px; line-height: 1.6; }
+    .button {
+      background: #1976d2;
+      color: white;
+      border: none;
+      padding: 12px 30px;
+      border-radius: 8px;
+      font-size: 16px;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+    .button:hover { background: #1565c0; }
+    .info {
+      margin-top: 20px;
+      padding: 15px;
+      background: #16213e;
+      border-radius: 8px;
+      font-size: 14px;
+      color: #888;
+    }
+    .status {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      margin-top: 10px;
+    }
+    .status.offline { background: #c62828; }
+    .status.online { background: #2e7d32; }
+  </style>
+</head>
+<body>
+  <div class="offline-container">
+    <div class="offline-icon">📡</div>
+    <h1>You're Offline</h1>
+    <p>
+      You are currently not connected to the internet.
+      Some features may be limited, but you can still:
+    </p>
+    <ul style="text-align:left;color:#aaa;margin-bottom:20px;list-style:none;padding:0;">
+      <li>✅ View cached data (workers, projects, etc.)</li>
+      <li>✅ Use the AI Assistant (offline mode)</li>
+      <li>✅ Access previously loaded pages</li>
+      <li>⚠️ Changes will sync when you're back online</li>
+    </ul>
+    <button class="button" onclick="window.location.reload()">🔄 Try Reconnecting</button>
+    <div class="info">
+      <span class="status offline">🔴 OFFLINE</span>
+      <br />
+      <span style="margin-top:10px;display:block;">
+        Data will automatically sync when connection is restored.
+      </span>
+    </div>
+  </div>
+  <script>
+    // Check if we're actually online and redirect if so
+    if (navigator.onLine) {
+      window.location.href = '/';
+    }
+    // Listen for online event
+    window.addEventListener('online', () => {
+      window.location.href = '/';
+    });
+  </script>
+</body>
+</html>
+
+
+
+
+
+
+
+component  code
+
+import React from 'react';
+import { Box, Typography, Stack, Divider } from '@mui/material';
+import PhoneIcon from '@mui/icons-material/Phone';
+import EmailIcon from '@mui/icons-material/Email';
+import LocationOnIcon from '@mui/icons-material/LocationOn';
+
+const CompanyHeader = () => {
+  return (
+    <Box
+      sx={{
+        background: 'linear-gradient(135deg, #0b1a2e 0%, #1a3450 100%)',
+        padding: '20px 32px 18px',
+        display: 'flex',
+        flexWrap: 'wrap',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: '16px 24px',
+        position: 'relative',
+        overflow: 'hidden',
+        minHeight: '120px',
+        '&::before': {
+          content: '""',
+          position: 'absolute',
+          inset: 0,
+          background: 'url(/hero-bg.jpg) center center / cover no-repeat',
+          opacity: 0.15,
+          mixBlendMode: 'overlay',
+          pointerEvents: 'none',
+        },
+      }}
+    >
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: '18px', zIndex: 1 }}>
+        <Box
+          component="img"
+          src="/P LOGO.PNG"
+          alt="Purveyols logo"
+          sx={{ height: 60, borderRadius: 2, background: '#fff', padding: '6px 10px' }}
+        />
+        <Box>
+          <Typography variant="h5" sx={{ color: '#fff', fontWeight: 700, lineHeight: 1.2 }}>
+            PURVEYOLS
+          </Typography>
+          <Typography variant="body2" sx={{ color: '#aac1dc' }}>
+            Building and Civil Construction
+          </Typography>
+        </Box>
+      </Box>
+
+      <Stack direction="row" spacing={2} divider={<Divider orientation="vertical" flexItem sx={{ bgcolor: 'rgba(255,255,255,0.12)' }} />} sx={{ zIndex: 1, flexWrap: 'wrap', gap: '8px 16px' }}>
+        <Stack direction="row" alignItems="center" spacing={1}>
+          <LocationOnIcon sx={{ color: '#6f9eff', fontSize: 18 }} />
+          <Typography variant="body2" sx={{ color: '#c9dcee' }}>
+            Plot No. 8, Buchi Road – Northmead, P.O. Box NH 87 Lusaka, Zambia
+          </Typography>
+        </Stack>
+        <Stack direction="row" alignItems="center" spacing={1}>
+          <PhoneIcon sx={{ color: '#6f9eff', fontSize: 18 }} />
+          <Typography variant="body2" sx={{ color: '#c9dcee' }}>
+            <a href="tel:+260211235354" style={{ color: '#c9dcee', textDecoration: 'none' }}>+260 211 235354</a>
+            {' / '}
+            <a href="tel:+260977393879" style={{ color: '#c9dcee', textDecoration: 'none' }}>+260 977 393879</a>
+          </Typography>
+        </Stack>
+        <Stack direction="row" alignItems="center" spacing={1}>
+          <EmailIcon sx={{ color: '#6f9eff', fontSize: 18 }} />
+          <Typography variant="body2">
+            <a href="mailto:purveyols@gmail.com" style={{ color: '#c9dcee', textDecoration: 'none' }}>purveyols@gmail.com</a>
+          </Typography>
+        </Stack>
+      </Stack>
+    </Box>
+  );
+};
+
+export default CompanyHeader;
+
+
+delivery note
+
+import React from 'react';
+import { Box, Typography, Button, Stack } from '@mui/material';
+import DescriptionIcon from '@mui/icons-material/Description';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+
+const DeliveryNote = () => {
+  return (
+    <Box
+      sx={{
+        borderRadius: 3,
+        padding: '22px 26px',
+        border: '1px solid #e9edf2',
+        boxShadow: '0 2px 8px rgba(0,0,0,0.03)',
+        marginBottom: 3,
+        backgroundImage: 'url(/Deliver note.jpeg)',
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        position: 'relative',
+        overflow: 'hidden',
+        minHeight: 140,
+        display: 'flex',
+        alignItems: 'center',
+        '&::before': {
+          content: '""',
+          position: 'absolute',
+          inset: 0,
+          background: 'rgba(11, 26, 46, 0.55)',
+          backdropFilter: 'blur(2px)',
+        },
+      }}
+    >
+      <Box sx={{ position: 'relative', zIndex: 1, width: '100%', color: '#fff', display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: '16px 24px' }}>
+        <Stack direction="row" alignItems="center" spacing={2}>
+          <DescriptionIcon sx={{ color: '#ffd966', fontSize: 28 }} />
+          <Box>
+            <Typography variant="h6" sx={{ fontWeight: 700 }}>
+              Delivery Note
+            </Typography>
+            <Typography variant="body2" sx={{ opacity: 0.9 }}>
+              <CheckCircleIcon sx={{ fontSize: 16, color: '#7ddfb0', verticalAlign: 'middle' }} />
+              You have <strong>3 pending</strong> delivery notes to complete. Review and confirm shipments.
+            </Typography>
+          </Box>
+        </Stack>
+        <Button
+          variant="contained"
+          sx={{
+            backgroundColor: '#ffd966',
+            color: '#0b1a2e',
+            fontWeight: 700,
+            '&:hover': { backgroundColor: '#f7d04a' },
+          }}
+          startIcon={<DescriptionIcon />}
+        >
+          View Delivery Notes
+        </Button>
+      </Box>
+    </Box>
+  );
+};
+
+export default DeliveryNote;
+
+
+
+
+app footer   
+
+import React from 'react';
+import { Box, Typography, Stack } from '@mui/material';
+
+const AppFooter = () => {
+  return (
+    <Box
+      sx={{
+        background: '#0b1a2e',
+        padding: '24px 32px 20px',
+        marginTop: 2,
+        borderTop: '1px solid rgba(255,255,255,0.06)',
+        display: 'flex',
+        flexWrap: 'wrap',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: '16px 24px',
+        position: 'relative',
+        overflow: 'hidden',
+        backgroundImage: 'url(/background 2.jpeg)',
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        '&::before': {
+          content: '""',
+          position: 'absolute',
+          inset: 0,
+          background: 'rgba(11, 26, 46, 0.8)',
+          backdropFilter: 'blur(3px)',
+        },
+      }}
+    >
+      <Box sx={{ position: 'relative', zIndex: 1, display: 'flex', alignItems: 'center', gap: 2 }}>
+        <Box component="img" src="/logo-branding.jpg" alt="Purveyols" sx={{ height: 38, borderRadius: 1, background: '#fff', padding: '4px 8px' }} />
+        <Typography sx={{ color: '#fff', fontWeight: 600, fontSize: 15 }}>
+          PURVEYOLS
+          <Typography component="span" sx={{ display: 'block', fontWeight: 400, fontSize: 11, color: '#8ba0b9' }}>
+            Building &amp; Civil Construction
+          </Typography>
+        </Typography>
+      </Box>
+      <Typography variant="body2" sx={{ color: '#aac1dc', position: 'relative', zIndex: 1 }}>
+        &copy; 2026 Purveyols Investments Limited &bull;
+        <a href="mailto:purveyols@gmail.com" style={{ color: '#6f9eff', textDecoration: 'none' }}> purveyols@gmail.com</a>
+        &bull; <a href="tel:+260211235354" style={{ color: '#6f9eff', textDecoration: 'none' }}>+260 211 235354</a>
+      </Typography>
+      <Stack direction="row" spacing={2} sx={{ color: '#aac1dc', fontSize: 13, position: 'relative', zIndex: 1 }}>
+        <span><i className="fas fa-tag"></i> v2.4</span>
+        <span><i className="fas fa-map-pin"></i> Lusaka, Zambia</span>
+      </Stack>
+    </Box>
+  );
+};
+
+export default AppFooter;
