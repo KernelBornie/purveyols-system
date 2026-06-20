@@ -4,8 +4,8 @@ import {
   Paper, Typography, Box, Grid, TextField, Button, MenuItem,
   Alert, CircularProgress, Chip, IconButton, Tooltip, Divider,
   Dialog, DialogTitle, DialogContent, DialogActions, List, ListItem,
-  ListItemText, ListItemSecondaryAction, Switch, FormControlLabel,
-  Tab, Tabs, Input, Select, FormControl, InputLabel
+  ListItemText, ListItemSecondaryAction,
+  Tab, Tabs, FormControl, InputLabel, Select
 } from '@mui/material';
 import SaveIcon from '@mui/icons-material/Save';
 import UndoIcon from '@mui/icons-material/Undo';
@@ -25,7 +25,6 @@ import api from '../../api/axios';
 import BackButton from '../../components/BackButton';
 import * as fabric from 'fabric';
 import { useDropzone } from 'react-dropzone';
-// Leaflet imports removed to avoid the error
 
 // ─── Layer definitions ──────────────────────────────────────────────────
 const LAYER_TYPES = [
@@ -422,7 +421,11 @@ const SitePlanForm = () => {
         if (id) {
           const planRes = await api.get(`/api/site-plans/${id}`);
           const data = planRes.data;
-          setForm(data);
+          setForm(prev => ({
+            ...prev,
+            ...data,
+            layers: data.layers || LAYER_TYPES.map(l => ({ ...l, visible: true, locked: false })),
+          }));
           setCoords(data.coordinates || []);
           if (data.drawingData && canvas) {
             canvas.loadFromJSON(JSON.parse(data.drawingData), () => {
@@ -520,7 +523,6 @@ const SitePlanForm = () => {
     }
     setCoords([...coords, { northing: parseFloat(northing), easting: parseFloat(easting), elevation: parseFloat(elevation || 0) }]);
     setNewCoord({ northing: '', easting: '', elevation: '' });
-    // Also add a point on canvas if available
     if (canvas) {
       const circle = new fabric.Circle({
         left: parseFloat(easting) * 10,
@@ -637,7 +639,12 @@ const SitePlanForm = () => {
               <Tooltip title="Line"><Button variant="outlined" size="small" onClick={() => addShape('line')}>╱</Button></Tooltip>
               <Tooltip title="Circle"><Button variant="outlined" size="small" onClick={() => addShape('circle')}>◯</Button></Tooltip>
               <Tooltip title="Rectangle"><Button variant="outlined" size="small" onClick={() => addShape('rect')}>▭</Button></Tooltip>
-              <Tooltip title="Freehand"><Button variant={selectedTool === 'pencil' ? 'contained' : 'outlined'} size="small" onClick={enableFreehand}>✏️</Button></Tooltip>
+              {/* Freehand button – now visible and functional */}
+              <Tooltip title="Freehand Pencil">
+                <Button variant={selectedTool === 'pencil' ? 'contained' : 'outlined'} size="small" onClick={enableFreehand}>
+                  ✏️
+                </Button>
+              </Tooltip>
               <Divider orientation="vertical" flexItem />
               <Tooltip title="Fence Line"><Button variant="outlined" size="small" onClick={addFenceLine}>🔲</Button></Tooltip>
               <Tooltip title="Building Footprint"><Button variant="outlined" size="small" onClick={addBuildingFootprint}>🏢</Button></Tooltip>
@@ -712,7 +719,7 @@ const SitePlanForm = () => {
               </Grid>
             </Grid>
 
-            {/* ─── Coordinate entry form ────────────────────────────────── */}
+            {/* ─── Coordinate entry ──────────────────────────────────── */}
             <Box sx={{ mt: 2 }}>
               <Typography variant="subtitle1" gutterBottom>Boundary Coordinates</Typography>
               <Grid container spacing={2} alignItems="center">
@@ -730,7 +737,7 @@ const SitePlanForm = () => {
                 </Grid>
               </Grid>
 
-              <Box sx={{ mt: 2, maxHeight: 200, overflow: 'auto' }}>
+              <Box sx={{ mt: 2, maxHeight: 200, overflow: 'auto', border: '1px solid #ddd', borderRadius: 1, p: 1 }}>
                 <List dense>
                   {coords.map((c, idx) => (
                     <ListItem key={idx} divider>
@@ -755,7 +762,7 @@ const SitePlanForm = () => {
           <Box>
             <Typography variant="h6" gutterBottom>Drawing Layers</Typography>
             <List>
-              {form.layers.map(layer => (
+              {form.layers && form.layers.map(layer => (
                 <ListItem key={layer.key}>
                   <ListItemText primary={layer.label} secondary={layer.key} />
                   <ListItemSecondaryAction>
@@ -773,6 +780,7 @@ const SitePlanForm = () => {
                 </ListItem>
               ))}
             </List>
+            {!form.layers && <Typography variant="body2" color="error">Layers not loaded. Please refresh.</Typography>}
           </Box>
         )}
 
