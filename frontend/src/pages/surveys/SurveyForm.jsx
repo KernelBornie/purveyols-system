@@ -2,32 +2,19 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   Paper, Typography, Box, Grid, TextField, Button, MenuItem,
-  Alert, CircularProgress, Chip, Divider
+  Alert, CircularProgress, Chip, IconButton, Tooltip, Divider,
+  List, ListItem, ListItemText, ListItemSecondaryAction,
+  FormControl, InputLabel, Select, Dialog, DialogTitle,
+  DialogContent, DialogActions
 } from '@mui/material';
 import SaveIcon from '@mui/icons-material/Save';
+import DeleteIcon from '@mui/icons-material/Delete';
+import AddIcon from '@mui/icons-material/Add';
+import RemoveIcon from '@mui/icons-material/Remove';
+import UploadFileIcon from '@mui/icons-material/UploadFile';
 import api from '../../api/axios';
 import BackButton from '../../components/BackButton';
-import { MapContainer, TileLayer, Marker, Popup, useMapEvents, Polyline, Polygon } from 'react-leaflet';
-import L from 'leaflet';
-import 'leaflet/dist/leaflet.css';
-
-// Fix for Leaflet default icon
-delete L.Icon.Default.prototype._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
-  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
-  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
-});
-
-// ─── Map click handler component ──────────────────────
-function MapClickHandler({ onMapClick }) {
-  useMapEvents({
-    click(e) {
-      onMapClick(e.latlng.lat, e.latlng.lng);
-    },
-  });
-  return null;
-}
+import { useDropzone } from 'react-dropzone';
 
 const SurveyForm = () => {
   const { id } = useParams();
@@ -53,11 +40,25 @@ const SurveyForm = () => {
     netVolume: 0,
   });
   const [coords, setCoords] = useState([]);
-  const [mapCenter, setMapCenter] = useState([-15.3875, 28.3228]); // Lusaka
+  const [newCoord, setNewCoord] = useState({ northing: '', easting: '', elevation: '' });
+  const [importDialog, setImportDialog] = useState(false);
+  const [uploadedFile, setUploadedFile] = useState(null);
 
-  const equipmentOptions = ['Total Station', 'RTK GPS', 'Drone', 'Automatic Level'];
+  const equipmentOptions = ['Total Station', 'RTK GPS', 'Drone', 'Automatic Level', 'Dumpy Level', 'Theodolite', 'Laser Level'];
+  const { getRootProps, getInputProps } = useDropzone({
+    onDrop: (files) => {
+      if (files.length) {
+        setUploadedFile(files[0]);
+        handleFileUpload(files[0]);
+      }
+    },
+    accept: {
+      'text/csv': ['.csv'],
+      'application/pdf': ['.pdf'],
+    },
+  });
 
-  // ─── Fetch data ──────────────────────────────────────
+  // ─── Fetch data ──────────────────────────────────────────────────────
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -71,12 +72,7 @@ const SurveyForm = () => {
           const surveyRes = await api.get(`/api/surveys/${id}`);
           const data = surveyRes.data;
           setForm(data);
-          setCoords(data.boundaryCoordinates.map(c => [c.northing, c.easting]));
-          if (data.boundaryCoordinates.length > 0) {
-            const avgLat = data.boundaryCoordinates.reduce((s, c) => s + c.northing, 0) / data.boundaryCoordinates.length;
-            const avgLng = data.boundaryCoordinates.reduce((s, c) => s + c.easting, 0) / data.boundaryCoordinates.length;
-            setMapCenter([avgLat, avgLng]);
-          }
+          setCoords(data.boundaryCoordinates.map(c => ({ northing: c.northing, easting: c.easting, elevation: c.elevation || 0 })));
         }
       } catch (err) {
         setMessage({ type: 'error', text: 'Failed to load data' });
@@ -85,59 +81,80 @@ const SurveyForm = () => {
     fetchData();
   }, [id]);
 
-  // ─── Map click handler ──────────────────────────────
-  const handleMapClick = (lat, lng) => {
-    setCoords([...coords, [lat, lng]]);
-    setForm(prev => ({
-      ...prev,
-      boundaryCoordinates: [...prev.boundaryCoordinates, { northing: lat, easting: lng, elevation: 0 }],
-    }));
+  // ─── Coordinate handlers ──────────────────────────────────────────
+  const addCoordinate = () => {
+    const { northing, easting, elevation } = newCoord;
+    if (!northing || !easting) {
+      alert('Northing and Easting are required.');
+      return;
+    }
+    const newPoint = {
+      northing: parseFloat(northing),
+      easting: parseFloat(easting),
+      elevation: parseFloat(elevation || 0),
+    };
+    setCoords([...coords, newPoint]);
+    setNewCoord({ northing: '', easting: '', elevation: '' });
   };
 
-  // ─── Remove last point ──────────────────────────────
-  const removeLastPoint = () => {
-    if (coords.length === 0) return;
-    const newCoords = coords.slice(0, -1);
-    setCoords(newCoords);
-    setForm(prev => ({
-      ...prev,
-      boundaryCoordinates: prev.boundaryCoordinates.slice(0, -1),
-    }));
+  const removeCoordinate = (index) => {
+    setCoords(coords.filter((_, i) => i !== index));
   };
 
-  // ─── Calculate area and perimeter (Shoelace formula) ──
+  const clearCoordinates = () => {
+    setCoords([]);
+  };
+
+  // ─── File upload ──────────────────────────────────────────────────
+  const handleFileUpload = (file) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const content = e.target.result;
+      if (file.name.endsWith('.csv')) {
+        const lines = content.split('\n');
+        lines.forEach(line => {
+          const parts = line.split(',');
+          if (parts.length >= 2) {
+            const northing = parseFloat(parts[0]);
+            const easting = parseFloat(parts[1]);
+            if (!isNaN(northing) && !isNaN(easting)) {
+              setCoords(prev => [...prev, { northing, easting, elevation: parseFloat(parts[2] || 0) }]);
+            }
+          }
+        });
+      }
+      setImportDialog(false);
+    };
+    reader.readAsText(file);
+  };
+
+  // ─── Calculate area/perimeter (Shoelace) ────────────────────────
   const calculateAreaPerimeter = () => {
     if (coords.length < 3) {
       setMessage({ type: 'warning', text: 'Need at least 3 points to calculate area.' });
       return;
     }
-    // Shoelace formula
     let area = 0;
     let perimeter = 0;
     const n = coords.length;
     for (let i = 0; i < n; i++) {
       const j = (i + 1) % n;
-      area += coords[i][0] * coords[j][1];
-      area -= coords[j][0] * coords[i][1];
-      const dx = coords[j][0] - coords[i][0];
-      const dy = coords[j][1] - coords[i][1];
-      perimeter += Math.sqrt(dx*dx + dy*dy);
+      area += coords[i].northing * coords[j].easting;
+      area -= coords[j].northing * coords[i].easting;
+      const dx = coords[j].northing - coords[i].northing;
+      const dy = coords[j].easting - coords[i].easting;
+      perimeter += Math.sqrt(dx * dx + dy * dy);
     }
     area = Math.abs(area) / 2;
-    // Convert lat/lng degrees to metres (approximate)
-    // 1 degree ~ 111,320 m
+    // Convert from degrees to metres (approximate)
     const scale = 111320;
     area = area * scale * scale;
     perimeter = perimeter * scale;
-    setForm(prev => ({
-      ...prev,
-      area: area,
-      perimeter: perimeter,
-    }));
+    setForm(prev => ({ ...prev, area, perimeter }));
     setMessage({ type: 'success', text: 'Area and perimeter calculated!' });
   };
 
-  // ─── Compute cut/fill ──────────────────────────────────
+  // ─── Compute cut/fill ─────────────────────────────────────────────
   const handleCalculateCutFill = async () => {
     if (!id) { alert('Save the survey first.'); return; }
     try {
@@ -154,17 +171,18 @@ const SurveyForm = () => {
     }
   };
 
-  // ─── Submit ──────────────────────────────────────────
+  // ─── Submit ────────────────────────────────────────────────────────
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     setMessage(null);
     try {
+      const payload = { ...form, boundaryCoordinates: coords };
       if (id) {
-        await api.put(`/api/surveys/${id}`, form);
+        await api.put(`/api/surveys/${id}`, payload);
         setMessage({ type: 'success', text: 'Survey updated!' });
       } else {
-        await api.post('/api/surveys', form);
+        await api.post('/api/surveys', payload);
         setMessage({ type: 'success', text: 'Survey created!' });
       }
       setTimeout(() => navigate('/surveys'), 1500);
@@ -180,12 +198,12 @@ const SurveyForm = () => {
     setForm({ ...form, [name]: value });
   };
 
-  const handleEquipmentToggle = (equipment) => {
+  const handleEquipmentToggle = (equip) => {
     const current = form.equipmentUsed || [];
-    if (current.includes(equipment)) {
-      setForm({ ...form, equipmentUsed: current.filter(e => e !== equipment) });
+    if (current.includes(equip)) {
+      setForm({ ...form, equipmentUsed: current.filter(e => e !== equip) });
     } else {
-      setForm({ ...form, equipmentUsed: [...current, equipment] });
+      setForm({ ...form, equipmentUsed: [...current, equip] });
     }
   };
 
@@ -224,7 +242,7 @@ const SurveyForm = () => {
           <Grid item xs={12} sm={6}>
             <TextField
               select
-              label="Project"
+              label="Project *"
               name="project"
               fullWidth
               value={form.project}
@@ -243,7 +261,7 @@ const SurveyForm = () => {
               label="Surveyor"
               name="surveyor"
               fullWidth
-              value={form.surveyor}
+              value={form.surveyor || ''}
               onChange={handleChange}
             >
               <MenuItem value="">Select Surveyor</MenuItem>
@@ -285,37 +303,65 @@ const SurveyForm = () => {
 
         <Divider sx={{ my: 3 }} />
 
-        {/* ─── Leaflet Map ──────────────────────────────────── */}
-        <Typography variant="h6" gutterBottom>
-          Boundary Coordinates (Click on map to add points)
-        </Typography>
-        <Box sx={{ height: 400, width: '100%', mb: 2 }}>
-          <MapContainer
-            center={mapCenter}
-            zoom={15}
-            style={{ height: '100%', width: '100%' }}
-          >
-            <TileLayer
-              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+        {/* ─── Coordinate entry ────────────────────────────────────── */}
+        <Typography variant="h6" gutterBottom>Boundary Coordinates</Typography>
+        <Grid container spacing={2} alignItems="center" sx={{ mb: 2 }}>
+          <Grid item xs={12} sm={3}>
+            <TextField
+              label="Northing"
+              type="number"
+              fullWidth
+              value={newCoord.northing}
+              onChange={e => setNewCoord({ ...newCoord, northing: e.target.value })}
             />
-            <MapClickHandler onMapClick={handleMapClick} />
-            {coords.map((point, idx) => (
-              <Marker key={idx} position={point}>
-                <Popup>Point {idx+1}: ({point[0].toFixed(4)}, {point[1].toFixed(4)})</Popup>
-              </Marker>
+          </Grid>
+          <Grid item xs={12} sm={3}>
+            <TextField
+              label="Easting"
+              type="number"
+              fullWidth
+              value={newCoord.easting}
+              onChange={e => setNewCoord({ ...newCoord, easting: e.target.value })}
+            />
+          </Grid>
+          <Grid item xs={12} sm={3}>
+            <TextField
+              label="Elevation (optional)"
+              type="number"
+              fullWidth
+              value={newCoord.elevation}
+              onChange={e => setNewCoord({ ...newCoord, elevation: e.target.value })}
+            />
+          </Grid>
+          <Grid item xs={12} sm={3}>
+            <Button variant="contained" startIcon={<AddIcon />} onClick={addCoordinate} fullWidth>Add Point</Button>
+          </Grid>
+        </Grid>
+
+        <Box sx={{ maxHeight: 200, overflow: 'auto', border: '1px solid #ddd', borderRadius: 1, p: 1 }}>
+          <List dense>
+            {coords.map((c, idx) => (
+              <ListItem key={idx} divider>
+                <ListItemText
+                  primary={`Point ${idx+1}`}
+                  secondary={`N: ${c.northing}, E: ${c.easting}, Z: ${c.elevation || 0}`}
+                />
+                <ListItemSecondaryAction>
+                  <IconButton edge="end" color="error" onClick={() => removeCoordinate(idx)}>
+                    <RemoveIcon />
+                  </IconButton>
+                </ListItemSecondaryAction>
+              </ListItem>
             ))}
-            {coords.length > 0 && (
-              <>
-                <Polyline positions={coords} color="blue" />
-                {coords.length > 2 && <Polygon positions={coords} color="green" fillOpacity={0.2} />}
-              </>
+            {coords.length === 0 && (
+              <Typography variant="body2" color="textSecondary" sx={{ p: 1 }}>No coordinates added yet.</Typography>
             )}
-          </MapContainer>
+          </List>
         </Box>
-        <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-          <Button variant="outlined" onClick={removeLastPoint} disabled={coords.length === 0}>
-            Remove Last Point
+
+        <Box sx={{ mt: 2, display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+          <Button variant="outlined" onClick={clearCoordinates} disabled={coords.length === 0} color="error">
+            Clear All
           </Button>
           <Button variant="outlined" onClick={calculateAreaPerimeter} disabled={coords.length < 3}>
             Calculate Area & Perimeter
@@ -323,7 +369,11 @@ const SurveyForm = () => {
           <Button variant="outlined" onClick={handleCalculateCutFill} disabled={!id}>
             Compute Cut/Fill
           </Button>
+          <Button variant="outlined" startIcon={<UploadFileIcon />} onClick={() => setImportDialog(true)}>
+            Import CSV
+          </Button>
         </Box>
+
         {form.area > 0 && (
           <Box sx={{ mt: 2 }}>
             <Typography variant="body2">Area: {form.area.toFixed(2)} m²</Typography>
@@ -345,6 +395,22 @@ const SurveyForm = () => {
           <Button variant="outlined" onClick={() => navigate('/surveys')}>Cancel</Button>
         </Box>
       </form>
+
+      {/* ─── Import Dialog ──────────────────────────────────────────── */}
+      <Dialog open={importDialog} onClose={() => setImportDialog(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Import Coordinates (CSV)</DialogTitle>
+        <DialogContent>
+          <Box {...getRootProps()} sx={{ border: '2px dashed #ccc', p: 3, textAlign: 'center', cursor: 'pointer' }}>
+            <input {...getInputProps()} />
+            <UploadFileIcon fontSize="large" />
+            <Typography>Drag & drop a CSV file, or click to select</Typography>
+            <Typography variant="caption">Format: Northing, Easting, Elevation (optional)</Typography>
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setImportDialog(false)}>Close</Button>
+        </DialogActions>
+      </Dialog>
     </Paper>
   );
 };
