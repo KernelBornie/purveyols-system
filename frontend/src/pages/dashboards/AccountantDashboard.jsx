@@ -1,9 +1,5 @@
-<<<<<<< HEAD
-import DeliveryNote from "../../components/DeliveryNote";
-import React, { useState, useEffect } from 'react';
-=======
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
->>>>>>> 14bf787a4684604a58716d3ac7911406a5cc6feb
+import DeliveryNote from "../../components/DeliveryNote";
 import {
   Box, Typography, Grid, Card, CardContent, Button,
   Table, TableHead, TableRow, TableCell, TableBody,
@@ -19,7 +15,6 @@ import {
 import api from '../../api/axios';
 import WorkerSearch from '../../components/WorkerSearch';
 import PaymentModal from '../../components/PaymentModal';
-import DeliveryNote from '../../components/DeliveryNote';
 
 // Simple in‑memory cache with TTL (5 minutes)
 const cache = {};
@@ -40,7 +35,6 @@ const setCached = (key, data) => {
 };
 
 const AccountantDashboard = () => {
-  // ── State ────────────────────────────────────────────────────────────────
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({ workers: 0, projects: 0, totalReleased: 0, fundingRequests: 0 });
   const [workers, setWorkers] = useState([]);
@@ -59,7 +53,6 @@ const AccountantDashboard = () => {
   const [payAmount, setPayAmount] = useState('');
   const [workerPhone, setWorkerPhone] = useState('');
 
-  // Pay Worker / Pay All
   const [searchOpen, setSearchOpen] = useState(false);
   const [paymentOpen, setPaymentOpen] = useState(false);
   const [selectedWorker, setSelectedWorker] = useState(null);
@@ -68,7 +61,6 @@ const AccountantDashboard = () => {
 
   const COLORS = ['#8884d8', '#82ca9d', '#ffc658', '#ff8042', '#0088FE'];
 
-  // ── Data fetching (parallel + cache) ──────────────────────────────────
   const fetchDashboardData = useCallback(async (force = false) => {
     const cacheKey = 'accountant_dashboard';
     if (!force) {
@@ -93,9 +85,7 @@ const AccountantDashboard = () => {
     setLoading(true);
     setMessage(null);
     try {
-      const [
-        workersRes, attendanceRes, paymentsRes, projectsRes, fundingRes
-      ] = await Promise.all([
+      const [workersRes, attendanceRes, paymentsRes, projectsRes, fundingRes] = await Promise.all([
         api.get('/api/workers'),
         api.get('/api/attendance'),
         api.get('/api/payments'),
@@ -228,8 +218,6 @@ const AccountantDashboard = () => {
     fetchProfile();
   }, [fetchDashboardData, fetchProfile]);
 
-  // ── Handlers ──────────────────────────────────────────────────────────────
-
   const handleAirtelPay = useCallback(async () => {
     if (!payAmount || parseFloat(payAmount) <= 0) {
       alert('Enter a valid amount');
@@ -308,7 +296,6 @@ const AccountantDashboard = () => {
   const totalPending = useMemo(() => pendingWorkers.reduce((sum, w) => sum + (w.balance || 0), 0), [pendingWorkers]);
   const pendingFunding = useMemo(() => fundingRequests.filter(f => f.status === 'pending').length, [fundingRequests]);
 
-  // ── Skeleton loader ──────────────────────────────────────────────────
   if (loading) {
     return (
       <Box>
@@ -326,10 +313,8 @@ const AccountantDashboard = () => {
     );
   }
 
-  // ── Render ─────────────────────────────────────────────────────────────
   return (
     <Box>
-      {/* Header */}
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
         <Typography variant="h4">Accountant Dashboard</Typography>
         <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
@@ -347,7 +332,6 @@ const AccountantDashboard = () => {
 
       {message && <Alert severity={message.type} sx={{ mb: 2 }}>{message.text}</Alert>}
 
-      {/* ─── PAYMENT BUTTONS ─── */}
       <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 2 }}>
         <Button variant="contained" color="primary" onClick={() => setSearchOpen(true)}>
           Pay Worker (Airtel Money)
@@ -361,11 +345,6 @@ const AccountantDashboard = () => {
         Total pending: {formatCurrency(totalPending)} ({pendingWorkers.length} workers) | {pendingFunding} pending funding requests
       </Typography>
 
-<<<<<<< HEAD
-      <DeliveryNote />
-=======
-      {/* Stats Cards */}
->>>>>>> 14bf787a4684604a58716d3ac7911406a5cc6feb
       <Grid container spacing={3} sx={{ mb: 3 }}>
         <Grid item xs={12} sm={6} md={3}>
           <Card><CardContent>
@@ -393,76 +372,6 @@ const AccountantDashboard = () => {
         </Grid>
       </Grid>
 
-<<<<<<< HEAD
-      {loading ? <CircularProgress /> : (
-        <>
-          {showCharts && (
-      <DeliveryNote />
-            <Grid container spacing={3} sx={{ mb: 3 }}>
-              {paymentTrends.length > 0 && (
-                <Grid item xs={12} md={6}>
-                  <Paper sx={{ p: 2 }}>
-                    <Typography variant="h6">Payment Trends</Typography>
-                    <LineChart width={400} height={200} data={paymentTrends}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="date" />
-                      <YAxis />
-                      <RechartsTooltip />
-                      <Legend />
-                      <Line type="monotone" dataKey="amount" stroke="#82ca9d" />
-                    </LineChart>
-                  </Paper>
-                </Grid>
-              )}
-              {projectSpending.length > 0 && (
-                <Grid item xs={12} md={6}>
-                  <Paper sx={{ p: 2 }}>
-                    <Typography variant="h6">Spending by Project</Typography>
-                    <BarChart width={400} height={200} data={projectSpending}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="name" />
-                      <YAxis />
-                      <RechartsTooltip />
-                      <Legend />
-                      <Bar dataKey="amount" fill="#8884d8" />
-                    </BarChart>
-                  </Paper>
-                </Grid>
-              )}
-              {approvalRatio.length > 0 && (
-                <Grid item xs={12} md={6}>
-                  <Paper sx={{ p: 2 }}>
-                    <Typography variant="h6">Funding Approval Ratio</Typography>
-                    <PieChart width={300} height={200}>
-                      <Pie data={approvalRatio} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} label>
-                        {approvalRatio.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
-                      </Pie>
-                      <RechartsTooltip />
-                      <Legend />
-                    </PieChart>
-                  </Paper>
-                </Grid>
-              )}
-              {topWorkers.length > 0 && (
-                <Grid item xs={12} md={6}>
-                  <Paper sx={{ p: 2 }}>
-                    <Typography variant="h6">Top Workers (Earnings)</Typography>
-                    <Table size="small">
-                      <TableHead><TableRow><TableCell>Worker</TableCell><TableCell>Total Earned</TableCell></TableRow></TableHead>
-                      <TableBody>
-                        {topWorkers.map(w => (
-                          <TableRow key={w.name}>
-                            <TableCell>{w.name}</TableCell>
-                            <TableCell>{formatCurrency(w.amount)}</TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </Paper>
-                </Grid>
-              )}
-=======
-      {/* Charts */}
       {showCharts && (
         <Grid container spacing={3} sx={{ mb: 3 }}>
           {paymentTrends.length > 0 && (
@@ -478,7 +387,6 @@ const AccountantDashboard = () => {
                   <Line type="monotone" dataKey="amount" stroke="#82ca9d" />
                 </LineChart>
               </Paper>
->>>>>>> 14bf787a4684604a58716d3ac7911406a5cc6feb
             </Grid>
           )}
           {projectSpending.length > 0 && (
@@ -531,7 +439,6 @@ const AccountantDashboard = () => {
         </Grid>
       )}
 
-      {/* Tables */}
       <Paper sx={{ p: 2, mb: 3 }}>
         <Typography variant="h6">Projects by Creator</Typography>
         <Table size="small">
@@ -619,7 +526,6 @@ const AccountantDashboard = () => {
         ) : <Typography>No report data.</Typography>}
       </Paper>
 
-      {/* Direct payment card (extra) */}
       <Paper sx={{ p: 2 }}>
         <Typography variant="h6" gutterBottom>Pay Worker via Airtel Money</Typography>
         <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap' }}>
@@ -643,7 +549,6 @@ const AccountantDashboard = () => {
         )}
       </Paper>
 
-      {/* Modals */}
       <WorkerSearch open={searchOpen} onClose={() => setSearchOpen(false)} onSelect={handleWorkerSelect} />
       {selectedWorker && (
         <PaymentModal open={paymentOpen} onClose={handlePaymentClose} worker={selectedWorker} onSuccess={() => fetchDashboardData(true)} />

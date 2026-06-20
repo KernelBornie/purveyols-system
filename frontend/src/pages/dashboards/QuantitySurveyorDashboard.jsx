@@ -1,5 +1,5 @@
-import DeliveryNote from "../../components/DeliveryNote";
 import React, { useState, useEffect } from 'react';
+import DeliveryNote from "../../components/DeliveryNote";
 import {
   Box, Typography, Grid, Card, CardContent, Button, Table, TableHead, TableRow, TableCell, TableBody,
   Chip, Paper, CircularProgress, IconButton
@@ -11,7 +11,6 @@ import VisibilityIcon from '@mui/icons-material/Visibility';
 import ArchitectureIcon from '@mui/icons-material/Architecture';
 import StraightenIcon from '@mui/icons-material/Straighten';
 import api from '../../api/axios';
-import DeliveryNote from '../../components/DeliveryNote';
 
 const QuantitySurveyorDashboard = () => {
   const [loading, setLoading] = useState(true);
@@ -67,7 +66,6 @@ const QuantitySurveyorDashboard = () => {
     { label: 'Request Funding', path: '/funding/new' },
     { label: 'Subcontract', path: '/subcontracts/new' },
     { label: 'Create BOQ', path: '/boq/new' },
-    // NEW ACTIONS
     { label: 'New Site Plan', path: '/site-plans/new', icon: <ArchitectureIcon /> },
     { label: 'New Survey', path: '/site-plans/new?type=survey_data', icon: <StraightenIcon /> },
   ];
@@ -89,11 +87,6 @@ const QuantitySurveyorDashboard = () => {
         <CircularProgress />
       ) : (
         <>
-<<<<<<< HEAD
-      <DeliveryNote />
-=======
-          {/* Stats Cards – extended */}
->>>>>>> 14bf787a4684604a58716d3ac7911406a5cc6feb
           <Grid container spacing={3} sx={{ mb: 3 }}>
             <Grid item xs={12} sm={6} md={2.4}>
               <Card><CardContent>
@@ -127,7 +120,6 @@ const QuantitySurveyorDashboard = () => {
             </Grid>
           </Grid>
 
-          {/* Quick Actions – updated with new buttons */}
           <Paper sx={{ p: 2, mb: 3 }}>
             <Typography variant="h6" gutterBottom>Quick Actions</Typography>
             <Grid container spacing={2}>
@@ -147,7 +139,6 @@ const QuantitySurveyorDashboard = () => {
             </Grid>
           </Paper>
 
-          {/* Recent BOQs Table */}
           <Paper sx={{ p: 2, mb: 3 }}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
               <Typography variant="h6">Recent BOQs</Typography>
@@ -175,7 +166,6 @@ const QuantitySurveyorDashboard = () => {
             </Table>
           </Paper>
 
-          {/* Recent Site Plans / Survey Data */}
           <Paper sx={{ p: 2 }}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
               <Typography variant="h6">Recent Site Plans & Survey Data</Typography>

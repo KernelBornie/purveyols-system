@@ -1,6 +1,6 @@
-import DeliveryNote from "../../components/DeliveryNote";
 import DashboardActions from '../../components/DashboardActions';
 import React, { useState, useEffect } from 'react';
+import DeliveryNote from "../../components/DeliveryNote";
 import {
   Box, Typography, Grid, Card, CardContent, Button, Table, TableHead, TableRow, TableCell, TableBody,
   Chip, Paper, CircularProgress, Link as MuiLink
@@ -10,7 +10,6 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, PieChart, 
 import RefreshIcon from '@mui/icons-material/Refresh';
 import EditIcon from '@mui/icons-material/Edit';
 import api from '../../api/axios';
-import DeliveryNote from '../../components/DeliveryNote';
 
 const DirectorDashboard = () => {
   const [loading, setLoading] = useState(true);

@@ -1,11 +1,6 @@
-<<<<<<< HEAD
-import DeliveryNote from "../../components/DeliveryNote";
-import DashboardActions from '../../components/DashboardActions';
-import React, { useState, useEffect } from 'react';
-=======
 import React, { useState, useEffect, useCallback } from 'react';
+import DeliveryNote from "../../components/DeliveryNote";
 import { useNavigate } from 'react-router-dom';
->>>>>>> 14bf787a4684604a58716d3ac7911406a5cc6feb
 import {
   Box, Typography, Grid, Card, CardContent, Button,
   Table, TableHead, TableRow, TableCell, TableBody,
@@ -19,7 +14,6 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import CancelIcon from '@mui/icons-material/Cancel';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import api from '../../api/axios';
-import DeliveryNote from '../../components/DeliveryNote';
 
 const ProcurementDashboard = () => {
   const navigate = useNavigate();
@@ -188,23 +182,6 @@ const ProcurementDashboard = () => {
       </Grid>
 
       {loading ? <CircularProgress /> : (
-<<<<<<< HEAD
-        <>
-      <DeliveryNote />
-          <Grid container spacing={3} sx={{ mb: 3 }}>
-            <Grid item xs={12} sm={3}><Card><CardContent><Typography variant="body2" color="textSecondary">Total Orders</Typography><Typography variant="h4">{stats.total}</Typography></CardContent></Card></Grid>
-            <Grid item xs={12} sm={3}><Card><CardContent><Typography variant="body2" color="textSecondary">Pending (blank)</Typography><Typography variant="h4" color="warning.main">{stats.pending}</Typography></CardContent></Card></Grid>
-            <Grid item xs={12} sm={3}><Card><CardContent><Typography variant="body2" color="textSecondary">Funded</Typography><Typography variant="h4" color="success.main">{stats.funded}</Typography></CardContent></Card></Grid>
-            <Grid item xs={12} sm={3}><Card><CardContent><Typography variant="body2" color="textSecondary">Purchased</Typography><Typography variant="h4">{stats.purchased}</Typography></CardContent></Card></Grid>
-          </Grid>
-
-          <Paper sx={{ p: 2 }}>
-            <Typography variant="h6" gutterBottom>Procurement Orders</Typography>
-            <Table size="small">
-              <TableHead>
-                <TableRow>
-                  <TableCell>Project</TableCell><TableCell>Items</TableCell><TableCell>Total</TableCell><TableCell>Status</TableCell><TableCell>Created By</TableCell><TableCell>Actions</TableCell>
-=======
         <Paper sx={{ p: 2 }}>
           <Typography variant="h6" gutterBottom>Procurement Orders</Typography>
           <Table size="small">
@@ -256,7 +233,6 @@ const ProcurementDashboard = () => {
                       </>
                     )}
                   </TableCell>
->>>>>>> 14bf787a4684604a58716d3ac7911406a5cc6feb
                 </TableRow>
               ))}
               {orders.length === 0 && (
@@ -267,7 +243,6 @@ const ProcurementDashboard = () => {
         </Paper>
       )}
 
-      {/* Edit Dialog */}
       <Dialog open={editOpen} onClose={() => setEditOpen(false)} maxWidth="md" fullWidth>
         <DialogTitle>Edit Procurement Order</DialogTitle>
         <DialogContent>
