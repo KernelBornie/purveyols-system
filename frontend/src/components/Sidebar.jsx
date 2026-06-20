@@ -25,14 +25,18 @@ import PersonIcon from '@mui/icons-material/Person';
 import SettingsIcon from '@mui/icons-material/Settings';
 import ArchitectureIcon from '@mui/icons-material/Architecture';
 import StraightenIcon from '@mui/icons-material/Straighten';
-import SurveyIcon from '@mui/icons-material/Map'; // NEW
+import SurveyIcon from '@mui/icons-material/Map';
+import { useAuth } from '../context/AuthContext';
 
 const drawerWidth = 240;
 
 const Sidebar = () => {
   const location = useLocation();
+  const { user } = useAuth();
+  const role = user?.role?.toLowerCase();
 
-  const menuItems = [
+  // ─── All menu items ──────────────────────────────────────────────
+  const allMenuItems = [
     { text: 'Dashboard', icon: <DashboardIcon />, path: '/dashboard' },
     { text: 'Projects', icon: <BusinessIcon />, path: '/projects' },
     { text: 'Workers', icon: <PeopleIcon />, path: '/workers' },
@@ -44,11 +48,24 @@ const Sidebar = () => {
     { text: 'Delivery Notes', icon: <LocalShippingIcon />, path: '/delivery' },
     { text: 'Site Plans', icon: <ArchitectureIcon />, path: '/site-plans' },
     { text: 'Drawings', icon: <DescriptionIcon />, path: '/drawings' },
-    { text: 'Surveys', icon: <SurveyIcon />, path: '/surveys' }, // NEW
+    { text: 'Surveys', icon: <SurveyIcon />, path: '/surveys' },
     { text: 'Messages', icon: <MessageIcon />, path: '/messages' },
     { text: 'Profile', icon: <PersonIcon />, path: '/profile' },
     { text: 'Settings', icon: <SettingsIcon />, path: '/settings' },
   ];
+
+  // ─── Roles that should NOT see BOQ, Subcontract, Site Plans, Drawings, Surveys ───
+  const restrictedRoles = ['receptionist', 'safety', 'driver'];
+
+  // ─── Hide specific items for restricted roles ──────────────────
+  const hiddenItems = ['BOQs', 'Subcontracts', 'Site Plans', 'Drawings', 'Surveys'];
+
+  const visibleMenuItems = allMenuItems.filter(item => {
+    if (restrictedRoles.includes(role) && hiddenItems.includes(item.text)) {
+      return false;
+    }
+    return true;
+  });
 
   return (
     <Drawer
@@ -70,7 +87,7 @@ const Sidebar = () => {
       <Divider />
       <Box sx={{ overflow: 'auto' }}>
         <List>
-          {menuItems.map((item) => (
+          {visibleMenuItems.map((item) => (
             <ListItem key={item.text} disablePadding>
               <ListItemButton
                 component={Link}
