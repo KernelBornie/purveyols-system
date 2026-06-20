@@ -18,7 +18,7 @@ import ZoomOutIcon from '@mui/icons-material/ZoomOut';
 import GridOnIcon from '@mui/icons-material/GridOn';
 import api from '../../api/axios';
 import BackButton from '../../components/BackButton';
-import * as fabric from 'fabric';   // ✅ fixed import
+import * as fabric from 'fabric';
 
 const drawingTypes = [
   { value: 'site_plan', label: 'Site Plan' },
@@ -89,9 +89,13 @@ const DrawingForm = () => {
   // ─── Canvas initialization ──────────────────────────
   useEffect(() => {
     if (!canvasRef.current) return;
-    const fabricCanvas = new fabric.Canvas(canvasRef.current, {
-      width: 900,
-      height: 600,
+    const canvasEl = canvasRef.current;
+    const width = canvasEl.clientWidth || 900;
+    const height = canvasEl.clientHeight || 500;
+
+    const fabricCanvas = new fabric.Canvas(canvasEl, {
+      width: width,
+      height: height,
       backgroundColor: '#f5f5f5',
     });
     if (showGrid) drawGrid(fabricCanvas);
@@ -108,6 +112,8 @@ const DrawingForm = () => {
     const gridSize = 20;
     const w = fabricCanvas.getWidth();
     const h = fabricCanvas.getHeight();
+    const oldLines = fabricCanvas.getObjects().filter(o => o.excludeFromExport);
+    oldLines.forEach(o => fabricCanvas.remove(o));
     for (let i = 0; i < w; i += gridSize) {
       fabricCanvas.add(new fabric.Line([i, 0, i, h], { stroke: '#ddd', strokeWidth: 0.5, selectable: false, evented: false, excludeFromExport: true }));
     }
@@ -197,7 +203,6 @@ const DrawingForm = () => {
   const addBoundaryTool = () => addShape('polygon');
   const addFenceTool = () => {
     if (!canvas) return;
-    // Draw a fence line with posts
     const line = new fabric.Line([50,50,300,50], { stroke: '#8B4513', strokeWidth: 4, selectable: true });
     const posts = [];
     for (let i = 0; i < 6; i++) {
@@ -400,8 +405,21 @@ const DrawingForm = () => {
           <Tooltip title="Save Drawing"><Button variant="contained" size="small" onClick={saveDrawingToForm}>Save Canvas</Button></Tooltip>
         </Box>
 
-        <Box sx={{ border: '2px solid #ccc', borderRadius: 2, overflow: 'auto', bgcolor: '#f5f5f5' }}>
-          <canvas ref={canvasRef} style={{ width: '100%', height: 'auto', display: 'block' }} />
+        {/* ─── Canvas with explicit height ────────────────────────────── */}
+        <Box
+          sx={{
+            border: '2px solid #ccc',
+            borderRadius: 2,
+            overflow: 'auto',
+            bgcolor: '#f5f5f5',
+            width: '100%',
+            minHeight: '500px',
+          }}
+        >
+          <canvas
+            ref={canvasRef}
+            style={{ width: '100%', height: '500px', display: 'block' }}
+          />
         </Box>
 
         {/* ─── Actions ──────────────────────────────────── */}

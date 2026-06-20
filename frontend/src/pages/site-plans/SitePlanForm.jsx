@@ -18,7 +18,7 @@ import ZoomOutIcon from '@mui/icons-material/ZoomOut';
 import GridOnIcon from '@mui/icons-material/GridOn';
 import api from '../../api/axios';
 import BackButton from '../../components/BackButton';
-import * as fabric from 'fabric';   // ✅ fixed import
+import * as fabric from 'fabric';
 
 const SitePlanForm = () => {
   const { id } = useParams();
@@ -52,16 +52,19 @@ const SitePlanForm = () => {
   const [surveyPointDialog, setSurveyPointDialog] = useState(false);
   const [surveyPoint, setSurveyPoint] = useState({ label: '', x: '', y: '', z: '', description: '' });
   const [imageUploadDialog, setImageUploadDialog] = useState(false);
-  const [imageFile, setImageFile] = useState(null);
-  const [imagePreview, setImagePreview] = useState('');
 
   // ─── Canvas initialization ──────────────────────────────────────────
   useEffect(() => {
     if (!canvasRef.current) return;
 
-    const fabricCanvas = new fabric.Canvas(canvasRef.current, {
-      width: 900,
-      height: 600,
+    // Use the explicit dimensions from the DOM
+    const canvasEl = canvasRef.current;
+    const width = canvasEl.clientWidth || 900;
+    const height = canvasEl.clientHeight || 500;
+
+    const fabricCanvas = new fabric.Canvas(canvasEl, {
+      width: width,
+      height: height,
       backgroundColor: '#f5f5f5',
       selection: true,
     });
@@ -98,6 +101,9 @@ const SitePlanForm = () => {
     const gridSize = 20;
     const width = fabricCanvas.getWidth();
     const height = fabricCanvas.getHeight();
+    // Remove old grid lines first (if any)
+    const oldLines = fabricCanvas.getObjects().filter(o => o.excludeFromExport);
+    oldLines.forEach(o => fabricCanvas.remove(o));
     for (let i = 0; i < width; i += gridSize) {
       const line = new fabric.Line([i, 0, i, height], {
         stroke: '#ddd',
@@ -563,6 +569,7 @@ const SitePlanForm = () => {
           </Tooltip>
         </Box>
 
+        {/* ─── Canvas with explicit height ────────────────────────────── */}
         <Box
           sx={{
             border: '2px solid #ccc',
@@ -570,12 +577,13 @@ const SitePlanForm = () => {
             overflow: 'auto',
             bgcolor: '#f5f5f5',
             width: '100%',
-            height: 'auto',
+            minHeight: '500px',
           }}
         >
           <canvas
             ref={canvasRef}
-            style={{ width: '100%', height: 'auto', display: 'block' }}
+            id="drawingCanvas"
+            style={{ width: '100%', height: '500px', display: 'block' }}
           />
         </Box>
 
