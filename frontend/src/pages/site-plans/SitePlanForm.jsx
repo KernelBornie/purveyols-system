@@ -33,14 +33,6 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { useDropzone } from 'react-dropzone';
 
-// ─── Leaflet icon fix ──────────────────────────────────────────────────
-delete L.Icon.Default.prototype._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
-  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
-  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
-});
-
 // ─── Map click handler ──────────────────────────────────────────────────
 function MapClickHandler({ onMapClick }) {
   useMapEvents({
@@ -142,6 +134,17 @@ const SitePlanForm = () => {
       'text/csv': ['.csv'],
     },
   });
+
+  // ─── Fix Leaflet icons once on mount ────────────────────────────────
+  useEffect(() => {
+    // This runs only once after the component mounts
+    delete L.Icon.Default.prototype._getIconUrl;
+    L.Icon.Default.mergeOptions({
+      iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
+      iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
+      shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+    });
+  }, []);
 
   // ─── Fabric.js canvas setup ──────────────────────────────────────────
   useEffect(() => {
@@ -331,7 +334,6 @@ const SitePlanForm = () => {
     const objects = canvas.getObjects();
     const fenceGroup = objects.find(o => o.type === 'group' && o._objects && o._objects.length > 1);
     if (fenceGroup) {
-      // Estimate fence length
       const length = 250; // dummy, in real we'd compute from line
       const postSpacing = 3;
       const posts = Math.floor(length / postSpacing) + 1;
@@ -347,7 +349,6 @@ const SitePlanForm = () => {
         razorWireQty: razorWire,
       }));
     }
-    // Road length
     const roadLines = objects.filter(o => o.type === 'line' && o.stroke === '#ff9800');
     if (roadLines.length) {
       const length = 200; // dummy
@@ -360,7 +361,6 @@ const SitePlanForm = () => {
         asphaltQty: length * 7 * 0.05,
       }));
     }
-    // Area/perimeter: use polygon or group of boundary points
     const polygons = objects.filter(o => o.type === 'polygon');
     if (polygons.length) {
       const area = 1500; // dummy
@@ -374,7 +374,6 @@ const SitePlanForm = () => {
     const reader = new FileReader();
     reader.onload = (e) => {
       const content = e.target.result;
-      // For CSV, parse and add points to canvas
       if (file.name.endsWith('.csv')) {
         const lines = content.split('\n');
         lines.forEach(line => {
@@ -391,7 +390,6 @@ const SitePlanForm = () => {
         canvas.renderAll();
         saveHistory(canvas);
       }
-      // For images, load as background
       if (file.type.startsWith('image/')) {
         const img = new Image();
         img.src = URL.createObjectURL(file);
@@ -425,7 +423,6 @@ const SitePlanForm = () => {
   const exportPDF = () => {
     if (!canvas) return;
     const dataUrl = canvas.toDataURL('image/png');
-    // In production, we'd use html2canvas or similar to generate PDF.
     alert('PDF export would be generated here.');
   };
 
@@ -545,7 +542,6 @@ const SitePlanForm = () => {
   // ─── Map click for coordinates ──────────────────────────────────────
   const handleMapClick = (lat, lng) => {
     setCoords([...coords, [lat, lng]]);
-    // Also add a point to canvas?
     if (canvas) {
       const circle = new fabric.Circle({
         left: lng * 10,
@@ -644,7 +640,6 @@ const SitePlanForm = () => {
         {/* ─── Tab 1: Drawing ────────────────────────────────────────────── */}
         {activeTab === 1 && (
           <Box>
-            {/* Toolbar */}
             <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 2 }}>
               <Tooltip title="Select"><Button variant={selectedTool === 'select' ? 'contained' : 'outlined'} size="small" onClick={() => { disableFreehand(); setSelectedTool('select'); }}>Select</Button></Tooltip>
               <Tooltip title="Move"><Button variant={selectedTool === 'move' ? 'contained' : 'outlined'} size="small" onClick={() => { disableFreehand(); setSelectedTool('move'); }}>Move</Button></Tooltip>
@@ -676,12 +671,10 @@ const SitePlanForm = () => {
               <Tooltip title="Upload"><IconButton onClick={() => setImportDialog(true)}><UploadFileIcon /></IconButton></Tooltip>
             </Box>
 
-            {/* Canvas */}
             <Box sx={{ border: '2px solid #ccc', borderRadius: 2, overflow: 'auto', bgcolor: '#f5f5f5', width: '100%', minHeight: '500px' }}>
               <canvas ref={canvasRef} style={{ width: '100%', height: '500px', display: 'block' }} />
             </Box>
 
-            {/* Auto-calculated quantities */}
             <Box sx={{ mt: 2, display: 'flex', flexWrap: 'wrap', gap: 2 }}>
               {form.area > 0 && <Chip label={`Area: ${form.area.toFixed(2)} m²`} color="primary" />}
               {form.perimeter > 0 && <Chip label={`Perimeter: ${form.perimeter.toFixed(2)} m`} color="primary" />}
@@ -690,7 +683,6 @@ const SitePlanForm = () => {
               {form.roadLength > 0 && <Chip label={`Road: ${form.roadLength}m, Asphalt: ${form.asphaltQty.toFixed(2)} m³`} color="info" />}
             </Box>
 
-            {/* Quick Actions */}
             <Box sx={{ mt: 2, display: 'flex', gap: 1, flexWrap: 'wrap' }}>
               <Button variant="contained" onClick={saveDrawingToForm} startIcon={<SaveIcon />}>Save Canvas</Button>
               <Button variant="outlined" onClick={exportPDF} startIcon={<PrintIcon />}>Export PDF</Button>
@@ -735,10 +727,30 @@ const SitePlanForm = () => {
               <Grid item xs={12}>
                 <Typography variant="subtitle2" gutterBottom>Boundary Coordinates (click map to add)</Typography>
                 <Box sx={{ height: 300, width: '100%', mb: 2 }}>
-                  <MapContainer center={mapCenter} zoom={14} style={{ height: '100%', width: '100%' }}>
-                    <TileLayer attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+                  <MapContainer
+                    center={mapCenter}
+                    zoom={14}
+                    style={{ height: '100%', width: '100%' }}
+                    whenReady={() => {
+                      // Ensure icons are fixed when the map is ready
+                      delete L.Icon.Default.prototype._getIconUrl;
+                      L.Icon.Default.mergeOptions({
+                        iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
+                        iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
+                        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+                      });
+                    }}
+                  >
+                    <TileLayer
+                      attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                      url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                    />
                     <MapClickHandler onMapClick={handleMapClick} />
-                    {coords.map((p, i) => <Marker key={i} position={p}><Popup>Point {i+1}: {p[0].toFixed(4)}, {p[1].toFixed(4)}</Popup></Marker>)}
+                    {coords.map((p, i) => (
+                      <Marker key={i} position={p}>
+                        <Popup>Point {i+1}: {p[0].toFixed(4)}, {p[1].toFixed(4)}</Popup>
+                      </Marker>
+                    ))}
                   </MapContainer>
                 </Box>
                 <Button variant="outlined" onClick={() => setCoords([])}>Clear Points</Button>
