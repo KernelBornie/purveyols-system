@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   Paper, Typography, Box, Grid, TextField, Button, MenuItem,
@@ -12,36 +12,20 @@ import UndoIcon from '@mui/icons-material/Undo';
 import RedoIcon from '@mui/icons-material/Redo';
 import DeleteIcon from '@mui/icons-material/Delete';
 import ClearIcon from '@mui/icons-material/Clear';
-import ImageIcon from '@mui/icons-material/Image';
-import AddIcon from '@mui/icons-material/Add';
 import ZoomInIcon from '@mui/icons-material/ZoomIn';
 import ZoomOutIcon from '@mui/icons-material/ZoomOut';
 import GridOnIcon from '@mui/icons-material/GridOn';
-import LayersIcon from '@mui/icons-material/Layers';
-import StraightenIcon from '@mui/icons-material/Straighten';
-import TextFieldsIcon from '@mui/icons-material/TextFields';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
-import MapIcon from '@mui/icons-material/Map';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import PrintIcon from '@mui/icons-material/Print';
 import FileDownloadIcon from '@mui/icons-material/FileDownload';
+import AddIcon from '@mui/icons-material/Add';
+import RemoveIcon from '@mui/icons-material/Remove';
 import api from '../../api/axios';
 import BackButton from '../../components/BackButton';
 import * as fabric from 'fabric';
-import { MapContainer, TileLayer, Marker, Popup, useMapEvents } from 'react-leaflet';
-import L from 'leaflet';
-import 'leaflet/dist/leaflet.css';
 import { useDropzone } from 'react-dropzone';
-
-// ─── Map click handler ──────────────────────────────────────────────────
-function MapClickHandler({ onMapClick }) {
-  useMapEvents({
-    click(e) {
-      onMapClick(e.latlng.lat, e.latlng.lng);
-    },
-  });
-  return null;
-}
+// Leaflet imports removed to avoid the error
 
 // ─── Layer definitions ──────────────────────────────────────────────────
 const LAYER_TYPES = [
@@ -82,7 +66,6 @@ const SitePlanForm = () => {
     approver: '',
     issueDate: new Date().toISOString().split('T')[0],
     drawingNumber: '',
-    // Survey data
     surveyNumber: '',
     surveyDate: new Date().toISOString().split('T')[0],
     surveyor: '',
@@ -90,7 +73,6 @@ const SitePlanForm = () => {
     coordinateSystem: 'UTM',
     datum: 'WGS84',
     coordinates: [],
-    // Calculated values
     area: 0,
     perimeter: 0,
     fenceLength: 0,
@@ -103,15 +85,15 @@ const SitePlanForm = () => {
     subbaseVol: 0,
     baseCourseVol: 0,
     asphaltQty: 0,
-    // Drawing data
     drawingData: '',
     drawingImage: '',
-    // Layers
     layers: LAYER_TYPES.map(l => ({ ...l, visible: true, locked: false })),
   });
 
+  // ─── Coordinate entry state ──────────────────────────────────────────
   const [coords, setCoords] = useState([]);
-  const [mapCenter, setMapCenter] = useState([-15.3875, 28.3228]); // Lusaka
+  const [newCoord, setNewCoord] = useState({ northing: '', easting: '', elevation: '' });
+
   const [activeTab, setActiveTab] = useState(0);
   const [selectedTool, setSelectedTool] = useState('select');
   const [showGrid, setShowGrid] = useState(true);
@@ -134,19 +116,6 @@ const SitePlanForm = () => {
       'text/csv': ['.csv'],
     },
   });
-
-  // ─── Create a custom icon to avoid default icon issues ──────────────
-  const customIcon = useMemo(() => {
-    return L.icon({
-      iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
-      iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
-      shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
-      iconSize: [25, 41],
-      iconAnchor: [12, 41],
-      popupAnchor: [1, -34],
-      shadowSize: [41, 41],
-    });
-  }, []);
 
   // ─── Fabric.js canvas setup ──────────────────────────────────────────
   useEffect(() => {
@@ -454,7 +423,7 @@ const SitePlanForm = () => {
           const planRes = await api.get(`/api/site-plans/${id}`);
           const data = planRes.data;
           setForm(data);
-          setCoords(data.boundaryCoordinates?.map(c => [c.northing, c.easting]) || []);
+          setCoords(data.coordinates || []);
           if (data.drawingData && canvas) {
             canvas.loadFromJSON(JSON.parse(data.drawingData), () => {
               canvas.renderAll();
@@ -480,11 +449,12 @@ const SitePlanForm = () => {
     setLoading(true);
     setMessage(null);
     try {
+      const payload = { ...form, coordinates: coords };
       if (id) {
-        await api.put(`/api/site-plans/${id}`, form);
+        await api.put(`/api/site-plans/${id}`, payload);
         setMessage({ type: 'success', text: 'Plan updated!' });
       } else {
-        await api.post('/api/site-plans', form);
+        await api.post('/api/site-plans', payload);
         setMessage({ type: 'success', text: 'Plan created!' });
       }
       setTimeout(() => navigate('/site-plans'), 1500);
@@ -541,13 +511,20 @@ const SitePlanForm = () => {
     }
   };
 
-  // ─── Map click for coordinates ──────────────────────────────────────
-  const handleMapClick = (lat, lng) => {
-    setCoords([...coords, [lat, lng]]);
+  // ─── Coordinate handlers ─────────────────────────────────────────────
+  const addCoordinate = () => {
+    const { northing, easting, elevation } = newCoord;
+    if (!northing || !easting) {
+      alert('Northing and Easting are required.');
+      return;
+    }
+    setCoords([...coords, { northing: parseFloat(northing), easting: parseFloat(easting), elevation: parseFloat(elevation || 0) }]);
+    setNewCoord({ northing: '', easting: '', elevation: '' });
+    // Also add a point on canvas if available
     if (canvas) {
       const circle = new fabric.Circle({
-        left: lng * 10,
-        top: lat * 10,
+        left: parseFloat(easting) * 10,
+        top: parseFloat(northing) * 10,
         radius: 4,
         fill: '#dc3545',
         selectable: true,
@@ -557,6 +534,14 @@ const SitePlanForm = () => {
       canvas.renderAll();
       saveHistory(canvas);
     }
+  };
+
+  const removeCoordinate = (index) => {
+    setCoords(coords.filter((_, i) => i !== index));
+  };
+
+  const clearCoordinates = () => {
+    setCoords([]);
   };
 
   // ─── Render ────────────────────────────────────────────────────────────
@@ -725,32 +710,43 @@ const SitePlanForm = () => {
               <Grid item xs={12} sm={6}>
                 <TextField label="Datum" name="datum" fullWidth value={form.datum} onChange={handleChange} />
               </Grid>
-              <Grid item xs={12}>
-                <Typography variant="subtitle2" gutterBottom>Boundary Coordinates (click map to add)</Typography>
-                <Box sx={{ height: 300, width: '100%', mb: 2 }}>
-                  <MapContainer
-                    center={mapCenter}
-                    zoom={14}
-                    style={{ height: '100%', width: '100%' }}
-                    whenReady={() => {
-                      // No need to fix default icon here – we use custom icon
-                    }}
-                  >
-                    <TileLayer
-                      attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-                      url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                    />
-                    <MapClickHandler onMapClick={handleMapClick} />
-                    {coords.map((p, i) => (
-                      <Marker key={i} position={p} icon={customIcon}>
-                        <Popup>Point {i+1}: {p[0].toFixed(4)}, {p[1].toFixed(4)}</Popup>
-                      </Marker>
-                    ))}
-                  </MapContainer>
-                </Box>
-                <Button variant="outlined" onClick={() => setCoords([])}>Clear Points</Button>
-              </Grid>
             </Grid>
+
+            {/* ─── Coordinate entry form ────────────────────────────────── */}
+            <Box sx={{ mt: 2 }}>
+              <Typography variant="subtitle1" gutterBottom>Boundary Coordinates</Typography>
+              <Grid container spacing={2} alignItems="center">
+                <Grid item xs={12} sm={3}>
+                  <TextField label="Northing" type="number" fullWidth value={newCoord.northing} onChange={e => setNewCoord({ ...newCoord, northing: e.target.value })} />
+                </Grid>
+                <Grid item xs={12} sm={3}>
+                  <TextField label="Easting" type="number" fullWidth value={newCoord.easting} onChange={e => setNewCoord({ ...newCoord, easting: e.target.value })} />
+                </Grid>
+                <Grid item xs={12} sm={3}>
+                  <TextField label="Elevation (optional)" type="number" fullWidth value={newCoord.elevation} onChange={e => setNewCoord({ ...newCoord, elevation: e.target.value })} />
+                </Grid>
+                <Grid item xs={12} sm={3}>
+                  <Button variant="contained" startIcon={<AddIcon />} onClick={addCoordinate} fullWidth>Add Point</Button>
+                </Grid>
+              </Grid>
+
+              <Box sx={{ mt: 2, maxHeight: 200, overflow: 'auto' }}>
+                <List dense>
+                  {coords.map((c, idx) => (
+                    <ListItem key={idx} divider>
+                      <ListItemText primary={`Point ${idx+1}`} secondary={`N: ${c.northing}, E: ${c.easting}, Z: ${c.elevation || 0}`} />
+                      <ListItemSecondaryAction>
+                        <IconButton edge="end" color="error" onClick={() => removeCoordinate(idx)}>
+                          <RemoveIcon />
+                        </IconButton>
+                      </ListItemSecondaryAction>
+                    </ListItem>
+                  ))}
+                  {coords.length === 0 && <Typography variant="body2" color="textSecondary">No coordinates added yet.</Typography>}
+                </List>
+              </Box>
+              <Button variant="outlined" color="error" onClick={clearCoordinates} sx={{ mt: 1 }} disabled={coords.length === 0}>Clear All</Button>
+            </Box>
           </Box>
         )}
 
