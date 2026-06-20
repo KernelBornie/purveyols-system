@@ -25,11 +25,13 @@ import Messages from './pages/Messages';
 import ForgotPassword from './pages/ForgotPassword';
 import AdvertisedProjects from './pages/advertised/AdvertisedProjects';
 import BiddedProjects from './pages/advertised/BiddedProjects';
-// NEW IMPORTS
 import SitePlanList from './pages/site-plans/SitePlanList';
 import SitePlanForm from './pages/site-plans/SitePlanForm';
 import DrawingList from './pages/drawings/DrawingList';
 import DrawingForm from './pages/drawings/DrawingForm';
+// NEW Survey imports
+import SurveyList from './pages/surveys/SurveyList';
+import SurveyForm from './pages/surveys/SurveyForm';
 
 const AuthRedirect = () => {
   const { user, loading } = useAuth();
@@ -76,22 +78,24 @@ function App() {
             <Route path="/delivery/new" element={<DeliveryNote />} />
             <Route path="/delivery/:id" element={<DeliveryNote />} />
             <Route path="/advertised-projects/bidded" element={<BiddedProjects />} />
-
-            {/* Existing site‑plans routes */}
             <Route path="/site-plans" element={<SitePlanList />} />
             <Route path="/site-plans/new" element={<SitePlanForm />} />
             <Route path="/site-plans/:id" element={<SitePlanForm />} />
             <Route path="/site-plans/:id/edit" element={<SitePlanForm />} />
-
-            {/* NEW DRAWING ROUTES */}
             <Route path="/drawings" element={<DrawingList />} />
             <Route path="/drawings/new" element={<DrawingForm />} />
             <Route path="/drawings/:id" element={<DrawingForm />} />
             <Route path="/drawings/:id/edit" element={<DrawingForm />} />
+            {/* NEW Survey routes */}
+            <Route path="/surveys" element={<SurveyList />} />
+            <Route path="/surveys/new" element={<SurveyForm />} />
+            <Route path="/surveys/:id" element={<SurveyForm />} />
+            <Route path="/surveys/:id/edit" element={<SurveyForm />} />
           </Route>
         </Routes>
       </BrowserRouter>
     </AuthProvider>
   );
 }
+
 export default App;

@@ -25,6 +25,7 @@ import PersonIcon from '@mui/icons-material/Person';
 import SettingsIcon from '@mui/icons-material/Settings';
 import ArchitectureIcon from '@mui/icons-material/Architecture';
 import StraightenIcon from '@mui/icons-material/Straighten';
+import SurveyIcon from '@mui/icons-material/Map'; // NEW
 
 const drawerWidth = 240;
 
@@ -41,11 +42,9 @@ const Sidebar = () => {
     { text: 'Subcontracts', icon: <ConstructionIcon />, path: '/subcontracts' },
     { text: 'Advertised Projects', icon: <ConstructionIcon />, path: '/advertised-projects' },
     { text: 'Delivery Notes', icon: <LocalShippingIcon />, path: '/delivery' },
-    // NEW SITE PLANS & SURVEYING
     { text: 'Site Plans', icon: <ArchitectureIcon />, path: '/site-plans' },
-    { text: 'Surveying', icon: <StraightenIcon />, path: '/site-plans' },
-    // NEW DRAWINGS
     { text: 'Drawings', icon: <DescriptionIcon />, path: '/drawings' },
+    { text: 'Surveys', icon: <SurveyIcon />, path: '/surveys' }, // NEW
     { text: 'Messages', icon: <MessageIcon />, path: '/messages' },
     { text: 'Profile', icon: <PersonIcon />, path: '/profile' },
     { text: 'Settings', icon: <SettingsIcon />, path: '/settings' },
