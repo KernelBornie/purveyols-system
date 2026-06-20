@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   Paper, Typography, Box, Grid, TextField, Button, MenuItem,
@@ -19,13 +19,12 @@ import UploadFileIcon from '@mui/icons-material/UploadFile';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import PrintIcon from '@mui/icons-material/Print';
 import FileDownloadIcon from '@mui/icons-material/FileDownload';
-import AddIcon from '@mui/icons-material/Add';
-import RemoveIcon from '@mui/icons-material/Remove';
 import api from '../../api/axios';
 import BackButton from '../../components/BackButton';
 import * as fabric from 'fabric';
 import { useDropzone } from 'react-dropzone';
 
+// ─── Layer definitions ──────────────────────────────────────────────────
 const LAYER_TYPES = [
   { key: 'survey', label: 'Survey', icon: '🌐' },
   { key: 'boundary', label: 'Boundary', icon: '📍' },
@@ -95,6 +94,7 @@ const DrawingForm = () => {
   // ─── Canvas setup ──────────────────────────────────────────────────
   useEffect(() => {
     if (!canvasRef.current) return;
+    console.log('🖌️ Initializing canvas...');
     const fabricCanvas = new fabric.Canvas(canvasRef.current, {
       width: 900,
       height: 600,
@@ -114,10 +114,11 @@ const DrawingForm = () => {
     fabricCanvas.on('object:modified', () => saveHistory(fabricCanvas));
     fabricCanvas.on('object:removed', () => saveHistory(fabricCanvas));
     setCanvas(fabricCanvas);
+    console.log('✅ Canvas ready');
     return () => fabricCanvas.dispose();
   }, []);
 
-  // ─── Grid ──────────────────────────────────────────────────────────
+  // ─── Grid helper ──────────────────────────────────────────────────
   const drawGrid = (fabricCanvas) => {
     const gridSize = 20;
     const w = fabricCanvas.getWidth();
@@ -158,9 +159,12 @@ const DrawingForm = () => {
     }
   };
 
-  // ─── Tool handlers ──────────────────────────────────────────────
-  const addShape = (type, props = {}) => {
-    if (!canvas) return;
+  // ─── Tool handlers (using useCallback to keep stable references) ──
+  const addShape = useCallback((type, props = {}) => {
+    if (!canvas) {
+      alert('Canvas not ready. Please refresh.');
+      return;
+    }
     let shape;
     const defaultProps = {
       left: 100 + Math.random() * 200,
@@ -193,24 +197,24 @@ const DrawingForm = () => {
     canvas.add(shape);
     canvas.setActiveObject(shape);
     canvas.renderAll();
-  };
+  }, [canvas]);
 
-  const enableFreehand = () => {
+  const enableFreehand = useCallback(() => {
     if (!canvas) return;
     canvas.isDrawingMode = true;
     canvas.freeDrawingBrush = new fabric.PencilBrush(canvas);
     canvas.freeDrawingBrush.color = '#000';
     canvas.freeDrawingBrush.width = 2;
     setSelectedTool('pencil');
-  };
+  }, [canvas]);
 
-  const disableFreehand = () => {
+  const disableFreehand = useCallback(() => {
     if (!canvas) return;
     canvas.isDrawingMode = false;
     setSelectedTool('select');
-  };
+  }, [canvas]);
 
-  const handleDeleteSelected = () => {
+  const handleDeleteSelected = useCallback(() => {
     if (!canvas) return;
     const active = canvas.getActiveObject();
     if (active) {
@@ -220,9 +224,9 @@ const DrawingForm = () => {
     } else {
       alert('Select an object first.');
     }
-  };
+  }, [canvas]);
 
-  const handleClearCanvas = () => {
+  const handleClearCanvas = useCallback(() => {
     if (!canvas) return;
     if (window.confirm('Clear all drawing?')) {
       canvas.clear();
@@ -231,10 +235,10 @@ const DrawingForm = () => {
       canvas.renderAll();
       saveHistory(canvas);
     }
-  };
+  }, [canvas, showGrid]);
 
   // ─── Specialised tools ──────────────────────────────────────────
-  const addFenceLine = () => {
+  const addFenceLine = useCallback(() => {
     if (!canvas) return;
     const line = new fabric.Line([50, 50, 300, 50], { stroke: '#8B4513', strokeWidth: 4, selectable: true });
     const posts = [];
@@ -246,19 +250,19 @@ const DrawingForm = () => {
     canvas.add(group);
     canvas.renderAll();
     saveHistory(canvas);
-  };
+  }, [canvas]);
 
-  const addBuildingFootprint = () => addShape('rect', { fill: 'rgba(255,0,0,0.1)', stroke: '#dc3545' });
-  const addRoadAlignment = () => addShape('line', { stroke: '#ff9800', strokeWidth: 6 });
-  const addDrainage = () => {
+  const addBuildingFootprint = useCallback(() => addShape('rect', { fill: 'rgba(255,0,0,0.1)', stroke: '#dc3545' }), [addShape]);
+  const addRoadAlignment = useCallback(() => addShape('line', { stroke: '#ff9800', strokeWidth: 6 }), [addShape]);
+  const addDrainage = useCallback(() => {
     if (!canvas) return;
     const line = new fabric.Line([50, 150, 350, 150], { stroke: '#007bff', strokeWidth: 6, strokeDashArray: [8, 4], selectable: true });
     canvas.add(line);
     canvas.renderAll();
     saveHistory(canvas);
-  };
-  const addGate = () => addShape('rect', { fill: 'transparent', stroke: '#28a745', strokeWidth: 4, width: 40, height: 60 });
-  const addCCTV = () => {
+  }, [canvas]);
+  const addGate = useCallback(() => addShape('rect', { fill: 'transparent', stroke: '#28a745', strokeWidth: 4, width: 40, height: 60 }), [addShape]);
+  const addCCTV = useCallback(() => {
     if (!canvas) return;
     const circle = new fabric.Circle({ left: 150, top: 150, radius: 12, fill: '#dc3545', stroke: '#fff', strokeWidth: 2, selectable: true });
     const text = new fabric.Text('CCTV', { left: 160, top: 140, fontSize: 12, fill: '#dc3545' });
@@ -266,13 +270,13 @@ const DrawingForm = () => {
     canvas.add(group);
     canvas.renderAll();
     saveHistory(canvas);
-  };
-  const addGuardHouse = () => addShape('rect', { fill: '#ffc107', stroke: '#333', strokeWidth: 2, width: 20, height: 30 });
+  }, [canvas]);
+  const addGuardHouse = useCallback(() => addShape('rect', { fill: '#ffc107', stroke: '#333', strokeWidth: 2, width: 20, height: 30 }), [addShape]);
 
-  const measureDistance = () => alert('Click two points to measure distance (simulated).');
+  const measureDistance = useCallback(() => alert('Click two points to measure distance (simulated).'), []);
 
   // ─── Save drawing ──────────────────────────────────────────────────
-  const saveDrawingToForm = () => {
+  const saveDrawingToForm = useCallback(() => {
     if (!canvas) return;
     const json = canvas.toJSON();
     const dataUrl = canvas.toDataURL('image/png');
@@ -282,10 +286,10 @@ const DrawingForm = () => {
       drawingImage: dataUrl,
     }));
     setMessage({ type: 'success', text: 'Drawing saved!' });
-  };
+  }, [canvas]);
 
   // ─── File upload ──────────────────────────────────────────────────
-  const handleFileUpload = (file) => {
+  const handleFileUpload = useCallback((file) => {
     const reader = new FileReader();
     reader.onload = (e) => {
       const content = e.target.result;
@@ -318,9 +322,9 @@ const DrawingForm = () => {
       setImportDialog(false);
     };
     reader.readAsText(file);
-  };
+  }, [canvas]);
 
-  const exportPDF = () => alert('PDF export would be generated here.');
+  const exportPDF = useCallback(() => alert('PDF export would be generated here.'), []);
 
   // ─── Fetch data ──────────────────────────────────────────────────
   useEffect(() => {
@@ -377,7 +381,7 @@ const DrawingForm = () => {
   };
 
   // ─── Layer controls ──────────────────────────────────────────────
-  const toggleLayerVisibility = (key) => {
+  const toggleLayerVisibility = useCallback((key) => {
     if (!canvas) return;
     const objects = canvas.getObjects();
     const layerObjects = objects.filter(o => o.layer === key);
@@ -391,9 +395,9 @@ const DrawingForm = () => {
       }));
       canvas.renderAll();
     }
-  };
+  }, [canvas, form.layers]);
 
-  const toggleLayerLock = (key) => {
+  const toggleLayerLock = useCallback((key) => {
     if (!canvas) return;
     const objects = canvas.getObjects();
     const layerObjects = objects.filter(o => o.layer === key);
@@ -406,7 +410,7 @@ const DrawingForm = () => {
         layers: prev.layers.map(l => l.key === key ? { ...l, locked: newLock } : l),
       }));
     }
-  };
+  }, [canvas, form.layers]);
 
   const submitForApproval = () => {
     const nextStep = approvalStep + 1;
@@ -528,7 +532,11 @@ const DrawingForm = () => {
               <Tooltip title="Line"><Button variant="outlined" size="small" onClick={() => addShape('line')}>╱</Button></Tooltip>
               <Tooltip title="Circle"><Button variant="outlined" size="small" onClick={() => addShape('circle')}>◯</Button></Tooltip>
               <Tooltip title="Rectangle"><Button variant="outlined" size="small" onClick={() => addShape('rect')}>▭</Button></Tooltip>
-              <Tooltip title="Freehand"><Button variant={selectedTool === 'pencil' ? 'contained' : 'outlined'} size="small" onClick={enableFreehand}>✏️</Button></Tooltip>
+              <Tooltip title="Freehand Pencil">
+                <Button variant={selectedTool === 'pencil' ? 'contained' : 'outlined'} size="small" onClick={enableFreehand}>
+                  ✏️
+                </Button>
+              </Tooltip>
               <Divider orientation="vertical" flexItem />
               <Tooltip title="Fence Line"><Button variant="outlined" size="small" onClick={addFenceLine}>🔲</Button></Tooltip>
               <Tooltip title="Building Footprint"><Button variant="outlined" size="small" onClick={addBuildingFootprint}>🏢</Button></Tooltip>
