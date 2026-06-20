@@ -29,9 +29,10 @@ import SitePlanList from './pages/site-plans/SitePlanList';
 import SitePlanForm from './pages/site-plans/SitePlanForm';
 import DrawingList from './pages/drawings/DrawingList';
 import DrawingForm from './pages/drawings/DrawingForm';
-// NEW Survey imports
 import SurveyList from './pages/surveys/SurveyList';
 import SurveyForm from './pages/surveys/SurveyForm';
+// NEW imports for Project Planning
+import ProjectPlanning from './pages/projects/ProjectPlanning';
 
 const AuthRedirect = () => {
   const { user, loading } = useAuth();
@@ -86,11 +87,12 @@ function App() {
             <Route path="/drawings/new" element={<DrawingForm />} />
             <Route path="/drawings/:id" element={<DrawingForm />} />
             <Route path="/drawings/:id/edit" element={<DrawingForm />} />
-            {/* NEW Survey routes */}
             <Route path="/surveys" element={<SurveyList />} />
             <Route path="/surveys/new" element={<SurveyForm />} />
             <Route path="/surveys/:id" element={<SurveyForm />} />
             <Route path="/surveys/:id/edit" element={<SurveyForm />} />
+            {/* NEW Project Planning route */}
+            <Route path="/projects/:projectId/planning" element={<ProjectPlanning />} />
           </Route>
         </Routes>
       </BrowserRouter>

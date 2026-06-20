@@ -8,24 +8,21 @@ import AddIcon from '@mui/icons-material/Add';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
-import TimelineIcon from '@mui/icons-material/Timeline'; // For planning
 import api from '../../api/axios';
 import BackButton from '../../components/BackButton';
 
-const projectImages = ['project-1.jpg', 'project-3.jpg', 'project-4.jpg', 'project-5.jpg'];
-
-const ProjectList = () => {
-  const [projects, setProjects] = useState([]);
+const SurveyList = () => {
+  const [surveys, setSurveys] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchProjects();
+    fetchData();
   }, []);
 
-  const fetchProjects = async () => {
+  const fetchData = async () => {
     try {
-      const res = await api.get('/api/projects');
-      setProjects(Array.isArray(res.data) ? res.data : []);
+      const res = await api.get('/api/surveys');
+      setSurveys(Array.isArray(res.data) ? res.data : []);
     } catch (err) {
       console.error(err);
     } finally {
@@ -34,10 +31,10 @@ const ProjectList = () => {
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm('Delete this project?')) return;
+    if (!window.confirm('Delete this survey?')) return;
     try {
-      await api.delete(`/api/projects/${id}`);
-      fetchProjects();
+      await api.delete(`/api/surveys/${id}`);
+      fetchData();
     } catch (err) {
       alert('Delete failed');
     }
@@ -45,10 +42,9 @@ const ProjectList = () => {
 
   const getStatusColor = (status) => {
     switch (status) {
-      case 'active': return 'success';
-      case 'planning': return 'info';
-      case 'paused': return 'warning';
-      case 'completed': return 'default';
+      case 'approved': return 'success';
+      case 'submitted': return 'warning';
+      case 'rejected': return 'error';
       default: return 'default';
     }
   };
@@ -58,15 +54,15 @@ const ProjectList = () => {
       <BackButton />
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
         <Typography variant="h5" sx={{ fontWeight: 'bold' }}>
-          Projects
+          Survey Records
         </Typography>
         <Button
           component={Link}
-          to="/projects/new"
+          to="/surveys/new"
           variant="contained"
           startIcon={<AddIcon />}
         >
-          New Project
+          New Survey
         </Button>
       </Box>
 
@@ -76,63 +72,58 @@ const ProjectList = () => {
         <Table size="small">
           <TableHead>
             <TableRow sx={{ bgcolor: '#f5f5f5' }}>
-              <TableCell>Image</TableCell>
-              <TableCell>Name</TableCell>
-              <TableCell>Location</TableCell>
+              <TableCell>Survey No.</TableCell>
+              <TableCell>Project</TableCell>
+              <TableCell>Date</TableCell>
+              <TableCell>Surveyor</TableCell>
               <TableCell>Status</TableCell>
-              <TableCell>Budget</TableCell>
-              <TableCell>Manager</TableCell>
+              <TableCell>Cut/Fill (m³)</TableCell>
               <TableCell>Actions</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
-            {projects.map((project, index) => (
-              <TableRow key={project._id}>
+            {surveys.map((s) => (
+              <TableRow key={s._id}>
+                <TableCell>{s.surveyNumber}</TableCell>
+                <TableCell>{s.project?.name || 'N/A'}</TableCell>
+                <TableCell>{new Date(s.surveyDate).toLocaleDateString()}</TableCell>
+                <TableCell>{s.surveyor?.name || 'N/A'}</TableCell>
                 <TableCell>
-                  <img
-                    src={`/${projectImages[index % projectImages.length]}`}
-                    alt={project.name}
-                    style={{ width: 60, height: 40, objectFit: 'cover', borderRadius: 4 }}
-                  />
-                </TableCell>
-                <TableCell>{project.name}</TableCell>
-                <TableCell>{project.location || '—'}</TableCell>
-                <TableCell>
-                  <Chip label={project.status} color={getStatusColor(project.status)} size="small" />
+                  <Chip label={s.status} color={getStatusColor(s.status)} size="small" />
                 </TableCell>
                 <TableCell>
-                  {new Intl.NumberFormat('en-ZM', { style: 'currency', currency: 'ZMW' }).format(project.budget || 0)}
+                  {s.cutVolume !== undefined && s.cutVolume > 0 ? (
+                    <>
+                      C: {s.cutVolume.toFixed(2)} / F: {s.fillVolume.toFixed(2)}
+                    </>
+                  ) : (
+                    <Typography variant="caption" color="textSecondary">Not calculated</Typography>
+                  )}
                 </TableCell>
-                <TableCell>{project.manager?.name || 'N/A'}</TableCell>
                 <TableCell>
                   <Tooltip title="View">
-                    <IconButton component={Link} to={`/projects/${project._id}`} size="small" color="info">
+                    <IconButton component={Link} to={`/surveys/${s._id}`} size="small" color="info">
                       <VisibilityIcon fontSize="small" />
                     </IconButton>
                   </Tooltip>
                   <Tooltip title="Edit">
-                    <IconButton component={Link} to={`/projects/${project._id}/edit`} size="small" color="primary">
+                    <IconButton component={Link} to={`/surveys/${s._id}/edit`} size="small" color="primary">
                       <EditIcon fontSize="small" />
                     </IconButton>
                   </Tooltip>
-                  <Tooltip title="Planning">
-                    <IconButton component={Link} to={`/projects/${project._id}/planning`} size="small" color="secondary">
-                      <TimelineIcon fontSize="small" />
-                    </IconButton>
-                  </Tooltip>
                   <Tooltip title="Delete">
-                    <IconButton size="small" color="error" onClick={() => handleDelete(project._id)}>
+                    <IconButton size="small" color="error" onClick={() => handleDelete(s._id)}>
                       <DeleteIcon fontSize="small" />
                     </IconButton>
                   </Tooltip>
                 </TableCell>
               </TableRow>
             ))}
-            {projects.length === 0 && (
+            {surveys.length === 0 && (
               <TableRow>
                 <TableCell colSpan={7} align="center" sx={{ py: 3 }}>
                   <Typography variant="body2" color="textSecondary">
-                    No projects yet. Click "New Project" to create one.
+                    No surveys yet. Click "New Survey" to start.
                   </Typography>
                 </TableCell>
               </TableRow>
@@ -144,4 +135,4 @@ const ProjectList = () => {
   );
 };
 
-export default ProjectList;
+export default SurveyList;

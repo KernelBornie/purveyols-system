@@ -7,7 +7,6 @@ dotenv.config();
 
 const app = express();
 
-// CORS
 const corsOptions = {
   origin: process.env.CORS_ORIGIN || '*',
   credentials: true,
@@ -47,15 +46,18 @@ app.use('/api/visitors', require('./routes/visitors'));
 app.use('/api/attendance', require('./routes/attendance'));
 app.use('/api/site-plans', require('./routes/sitePlans'));
 app.use('/api/drawings', require('./routes/drawings'));
+app.use('/api/surveys', require('./routes/surveys'));
 
-// ─── NEW Survey route ──────────────────────────────────────────────
-const surveyRoutes = require('./routes/surveys');
-app.use('/api/surveys', surveyRoutes);
+// ─── NEW routes for Project Planning ──────────────────────────────
+const projectPlanRoutes = require('./routes/projectPlans');
+app.use('/api/project-plans', projectPlanRoutes);
+
+const siteDiaryRoutes = require('./routes/siteDiary');
+app.use('/api/site-diary', siteDiaryRoutes);
 
 // ─── Health check ──────────────────────────────────────────────────
 app.get('/api/health', (req, res) => res.json({ status: 'OK', timestamp: new Date().toISOString() }));
 
-// ─── Start server ──────────────────────────────────────────────────
 const PORT = process.env.PORT || 5000;
 mongoose.connect(process.env.MONGO_URI)
   .then(() => { app.listen(PORT, () => console.log(`Server running on port ${PORT}`)); })
