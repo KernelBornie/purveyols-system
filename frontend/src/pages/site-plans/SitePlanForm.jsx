@@ -69,6 +69,7 @@ const SitePlanForm = () => {
   const [users, setUsers] = useState([]);
   const [message, setMessage] = useState(null);
   const [canvas, setCanvas] = useState(null);
+  const [mapReady, setMapReady] = useState(false);
 
   // ─── Form state ──────────────────────────────────────────────────────
   const [form, setForm] = useState({
@@ -137,13 +138,14 @@ const SitePlanForm = () => {
 
   // ─── Fix Leaflet icons once on mount ────────────────────────────────
   useEffect(() => {
-    // This runs only once after the component mounts
+    // This runs once after the component mounts
     delete L.Icon.Default.prototype._getIconUrl;
     L.Icon.Default.mergeOptions({
       iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
       iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
       shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
     });
+    setMapReady(true); // Map is now ready to render
   }, []);
 
   // ─── Fabric.js canvas setup ──────────────────────────────────────────
@@ -323,18 +325,18 @@ const SitePlanForm = () => {
   };
   const addGuardHouse = () => addShape('rect', { fill: '#ffc107', stroke: '#333', strokeWidth: 2, width: 20, height: 30 });
 
-  // ─── Measure tool (demo – shows distance) ──────────────────────────
+  // ─── Measure tool ────────────────────────────────────────────────────
   const measureDistance = () => {
     alert('Click two points to measure distance (simulated).');
   };
 
-  // ─── Auto calculations (triggered after drawing changes) ────────────
+  // ─── Auto calculations ──────────────────────────────────────────────
   const calculateQuantities = () => {
     if (!canvas) return;
     const objects = canvas.getObjects();
     const fenceGroup = objects.find(o => o.type === 'group' && o._objects && o._objects.length > 1);
     if (fenceGroup) {
-      const length = 250; // dummy, in real we'd compute from line
+      const length = 250; // dummy
       const postSpacing = 3;
       const posts = Math.floor(length / postSpacing) + 1;
       const concrete = posts * 0.15;
@@ -351,7 +353,7 @@ const SitePlanForm = () => {
     }
     const roadLines = objects.filter(o => o.type === 'line' && o.stroke === '#ff9800');
     if (roadLines.length) {
-      const length = 200; // dummy
+      const length = 200;
       setForm(prev => ({
         ...prev,
         roadLength: length,
@@ -363,7 +365,7 @@ const SitePlanForm = () => {
     }
     const polygons = objects.filter(o => o.type === 'polygon');
     if (polygons.length) {
-      const area = 1500; // dummy
+      const area = 1500;
       const perimeter = 200;
       setForm(prev => ({ ...prev, area, perimeter }));
     }
@@ -568,7 +570,6 @@ const SitePlanForm = () => {
       {message && <Alert severity={message.type} sx={{ mb: 2 }}>{message.text}</Alert>}
 
       <form onSubmit={handleSubmit}>
-        {/* ─── Tabs ────────────────────────────────────────────────────────── */}
         <Tabs value={activeTab} onChange={(e, v) => setActiveTab(v)} sx={{ mb: 2 }}>
           <Tab label="General" />
           <Tab label="Drawing" />
@@ -727,31 +728,25 @@ const SitePlanForm = () => {
               <Grid item xs={12}>
                 <Typography variant="subtitle2" gutterBottom>Boundary Coordinates (click map to add)</Typography>
                 <Box sx={{ height: 300, width: '100%', mb: 2 }}>
-                  <MapContainer
-                    center={mapCenter}
-                    zoom={14}
-                    style={{ height: '100%', width: '100%' }}
-                    whenReady={() => {
-                      // Ensure icons are fixed when the map is ready
-                      delete L.Icon.Default.prototype._getIconUrl;
-                      L.Icon.Default.mergeOptions({
-                        iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
-                        iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
-                        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
-                      });
-                    }}
-                  >
-                    <TileLayer
-                      attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-                      url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                    />
-                    <MapClickHandler onMapClick={handleMapClick} />
-                    {coords.map((p, i) => (
-                      <Marker key={i} position={p}>
-                        <Popup>Point {i+1}: {p[0].toFixed(4)}, {p[1].toFixed(4)}</Popup>
-                      </Marker>
-                    ))}
-                  </MapContainer>
+                  {/* Only render map if mapReady is true */}
+                  {mapReady && (
+                    <MapContainer
+                      center={mapCenter}
+                      zoom={14}
+                      style={{ height: '100%', width: '100%' }}
+                    >
+                      <TileLayer
+                        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                      />
+                      <MapClickHandler onMapClick={handleMapClick} />
+                      {coords.map((p, i) => (
+                        <Marker key={i} position={p}>
+                          <Popup>Point {i+1}: {p[0].toFixed(4)}, {p[1].toFixed(4)}</Popup>
+                        </Marker>
+                      ))}
+                    </MapContainer>
+                  )}
                 </Box>
                 <Button variant="outlined" onClick={() => setCoords([])}>Clear Points</Button>
               </Grid>
@@ -809,7 +804,6 @@ const SitePlanForm = () => {
           </Box>
         )}
 
-        {/* ─── Submit ────────────────────────────────────────────────────── */}
         <Box sx={{ mt: 4, display: 'flex', gap: 2 }}>
           <Button type="submit" variant="contained" startIcon={<SaveIcon />} disabled={loading}>
             {loading ? 'Saving...' : 'Save Plan'}
@@ -818,7 +812,6 @@ const SitePlanForm = () => {
         </Box>
       </form>
 
-      {/* ─── Import Dialog ──────────────────────────────────────────────── */}
       <Dialog open={importDialog} onClose={() => setImportDialog(false)} maxWidth="sm" fullWidth>
         <DialogTitle>Import Drawing</DialogTitle>
         <DialogContent>
