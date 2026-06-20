@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   Paper, Typography, Box, Grid, TextField, Button, MenuItem,
@@ -69,7 +69,6 @@ const SitePlanForm = () => {
   const [users, setUsers] = useState([]);
   const [message, setMessage] = useState(null);
   const [canvas, setCanvas] = useState(null);
-  const [mapReady, setMapReady] = useState(false);
 
   // ─── Form state ──────────────────────────────────────────────────────
   const [form, setForm] = useState({
@@ -136,16 +135,17 @@ const SitePlanForm = () => {
     },
   });
 
-  // ─── Fix Leaflet icons once on mount ────────────────────────────────
-  useEffect(() => {
-    // This runs once after the component mounts
-    delete L.Icon.Default.prototype._getIconUrl;
-    L.Icon.Default.mergeOptions({
-      iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
+  // ─── Create a custom icon to avoid default icon issues ──────────────
+  const customIcon = useMemo(() => {
+    return L.icon({
       iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
+      iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
       shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+      iconSize: [25, 41],
+      iconAnchor: [12, 41],
+      popupAnchor: [1, -34],
+      shadowSize: [41, 41],
     });
-    setMapReady(true); // Map is now ready to render
   }, []);
 
   // ─── Fabric.js canvas setup ──────────────────────────────────────────
@@ -728,25 +728,25 @@ const SitePlanForm = () => {
               <Grid item xs={12}>
                 <Typography variant="subtitle2" gutterBottom>Boundary Coordinates (click map to add)</Typography>
                 <Box sx={{ height: 300, width: '100%', mb: 2 }}>
-                  {/* Only render map if mapReady is true */}
-                  {mapReady && (
-                    <MapContainer
-                      center={mapCenter}
-                      zoom={14}
-                      style={{ height: '100%', width: '100%' }}
-                    >
-                      <TileLayer
-                        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-                        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                      />
-                      <MapClickHandler onMapClick={handleMapClick} />
-                      {coords.map((p, i) => (
-                        <Marker key={i} position={p}>
-                          <Popup>Point {i+1}: {p[0].toFixed(4)}, {p[1].toFixed(4)}</Popup>
-                        </Marker>
-                      ))}
-                    </MapContainer>
-                  )}
+                  <MapContainer
+                    center={mapCenter}
+                    zoom={14}
+                    style={{ height: '100%', width: '100%' }}
+                    whenReady={() => {
+                      // No need to fix default icon here – we use custom icon
+                    }}
+                  >
+                    <TileLayer
+                      attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                      url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                    />
+                    <MapClickHandler onMapClick={handleMapClick} />
+                    {coords.map((p, i) => (
+                      <Marker key={i} position={p} icon={customIcon}>
+                        <Popup>Point {i+1}: {p[0].toFixed(4)}, {p[1].toFixed(4)}</Popup>
+                      </Marker>
+                    ))}
+                  </MapContainer>
                 </Box>
                 <Button variant="outlined" onClick={() => setCoords([])}>Clear Points</Button>
               </Grid>
