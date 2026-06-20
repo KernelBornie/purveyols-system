@@ -4,7 +4,8 @@ import {
   Paper, Typography, Box, Grid, TextField, Button, MenuItem,
   Alert, CircularProgress, Chip, IconButton, Tooltip, Divider,
   Dialog, DialogTitle, DialogContent, DialogActions, List, ListItem,
-  ListItemText, ListItemSecondaryAction, Switch, Slider, FormControlLabel
+  ListItemText, ListItemSecondaryAction, Switch, FormControlLabel,
+  Tab, Tabs, Input, Select, FormControl, InputLabel
 } from '@mui/material';
 import SaveIcon from '@mui/icons-material/Save';
 import UndoIcon from '@mui/icons-material/Undo';
@@ -16,65 +17,142 @@ import AddIcon from '@mui/icons-material/Add';
 import ZoomInIcon from '@mui/icons-material/ZoomIn';
 import ZoomOutIcon from '@mui/icons-material/ZoomOut';
 import GridOnIcon from '@mui/icons-material/GridOn';
+import LayersIcon from '@mui/icons-material/Layers';
+import StraightenIcon from '@mui/icons-material/Straighten';
+import TextFieldsIcon from '@mui/icons-material/TextFields';
+import UploadFileIcon from '@mui/icons-material/UploadFile';
+import MapIcon from '@mui/icons-material/Map';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import PrintIcon from '@mui/icons-material/Print';
+import FileDownloadIcon from '@mui/icons-material/FileDownload';
 import api from '../../api/axios';
 import BackButton from '../../components/BackButton';
 import * as fabric from 'fabric';
+import { MapContainer, TileLayer, Marker, Popup, useMapEvents } from 'react-leaflet';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
+import { useDropzone } from 'react-dropzone';
 
+// ─── Leaflet icon fix ──────────────────────────────────────────────────
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
+  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+});
+
+// ─── Map click handler ──────────────────────────────────────────────────
+function MapClickHandler({ onMapClick }) {
+  useMapEvents({
+    click(e) {
+      onMapClick(e.latlng.lat, e.latlng.lng);
+    },
+  });
+  return null;
+}
+
+// ─── Layer definitions ──────────────────────────────────────────────────
+const LAYER_TYPES = [
+  { key: 'survey', label: 'Survey', icon: '🌐' },
+  { key: 'boundary', label: 'Boundary', icon: '📍' },
+  { key: 'road', label: 'Road', icon: '🛣️' },
+  { key: 'building', label: 'Building', icon: '🏢' },
+  { key: 'fence', label: 'Fence', icon: '🔲' },
+  { key: 'drainage', label: 'Drainage', icon: '💧' },
+  { key: 'electrical', label: 'Electrical', icon: '⚡' },
+  { key: 'water', label: 'Water', icon: '🚰' },
+  { key: 'security', label: 'Security', icon: '🔒' },
+  { key: 'annotation', label: 'Annotation', icon: '✏️' },
+];
+
+const APP_STEPS = ['draft', 'submitted', 'survey_review', 'engineering_review', 'qs_review', 'director_approval', 'issued', 'as_built'];
+
+// ─── Main component ──────────────────────────────────────────────────────
 const SitePlanForm = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const canvasRef = useRef(null);
   const [loading, setLoading] = useState(false);
   const [projects, setProjects] = useState([]);
+  const [users, setUsers] = useState([]);
+  const [message, setMessage] = useState(null);
+  const [canvas, setCanvas] = useState(null);
+
+  // ─── Form state ──────────────────────────────────────────────────────
   const [form, setForm] = useState({
     name: '',
     project: '',
     type: 'site_plan',
-    description: '',
-    dimensions: '',
-    scale: '',
     status: 'draft',
-    surveyPoints: [],
-    boundaryData: { perimeter: '', area: '', coordinates: [] },
-    foundationType: '',
-    soilType: '',
-    waterTableLevel: '',
+    revision: 1,
+    designer: '',
+    checker: '',
+    approver: '',
+    issueDate: new Date().toISOString().split('T')[0],
+    drawingNumber: '',
+    // Survey data
+    surveyNumber: '',
+    surveyDate: new Date().toISOString().split('T')[0],
+    surveyor: '',
+    equipmentUsed: [],
+    coordinateSystem: 'UTM',
+    datum: 'WGS84',
+    coordinates: [],
+    // Calculated values
+    area: 0,
+    perimeter: 0,
+    fenceLength: 0,
+    posts: 0,
+    concreteVolume: 0,
+    chainLinkQty: 0,
+    razorWireQty: 0,
+    roadLength: 0,
+    subgradeVol: 0,
+    subbaseVol: 0,
+    baseCourseVol: 0,
+    asphaltQty: 0,
+    // Drawing data
     drawingData: '',
     drawingImage: '',
+    // Layers
+    layers: LAYER_TYPES.map(l => ({ ...l, visible: true, locked: false })),
   });
-  const [message, setMessage] = useState(null);
-  const [canvas, setCanvas] = useState(null);
+
+  const [coords, setCoords] = useState([]);
+  const [mapCenter, setMapCenter] = useState([-15.3875, 28.3228]); // Lusaka
+  const [activeTab, setActiveTab] = useState(0);
   const [selectedTool, setSelectedTool] = useState('select');
   const [showGrid, setShowGrid] = useState(true);
-  const [zoomLevel, setZoomLevel] = useState(1);
   const [history, setHistory] = useState([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
-  const [surveyPointDialog, setSurveyPointDialog] = useState(false);
-  const [surveyPoint, setSurveyPoint] = useState({ label: '', x: '', y: '', z: '', description: '' });
-  const [imageUploadDialog, setImageUploadDialog] = useState(false);
+  const [approvalStep, setApprovalStep] = useState(0);
+  const [importDialog, setImportDialog] = useState(false);
+  const [uploadedFile, setUploadedFile] = useState(null);
+  const { getRootProps, getInputProps } = useDropzone({
+    onDrop: (files) => {
+      if (files.length) {
+        setUploadedFile(files[0]);
+        handleFileUpload(files[0]);
+      }
+    },
+    accept: {
+      'application/dwg': ['.dwg'],
+      'application/dxf': ['.dxf'],
+      'application/pdf': ['.pdf'],
+      'text/csv': ['.csv'],
+    },
+  });
 
-  // ─── Canvas initialization ──────────────────────────────────────────
+  // ─── Fabric.js canvas setup ──────────────────────────────────────────
   useEffect(() => {
     if (!canvasRef.current) return;
-
-    // Use the explicit dimensions from the DOM
-    const canvasEl = canvasRef.current;
-    const width = canvasEl.clientWidth || 900;
-    const height = canvasEl.clientHeight || 500;
-
-    const fabricCanvas = new fabric.Canvas(canvasEl, {
-      width: width,
-      height: height,
+    const fabricCanvas = new fabric.Canvas(canvasRef.current, {
+      width: 900,
+      height: 600,
       backgroundColor: '#f5f5f5',
       selection: true,
     });
-
-    // Grid
-    if (showGrid) {
-      drawGrid(fabricCanvas);
-    }
-
-    // Load existing drawing
+    if (showGrid) drawGrid(fabricCanvas);
     if (form.drawingData) {
       fabricCanvas.loadFromJSON(JSON.parse(form.drawingData), () => {
         fabricCanvas.renderAll();
@@ -83,51 +161,30 @@ const SitePlanForm = () => {
     } else {
       saveHistory(fabricCanvas);
     }
-
-    // Event listener for modifications
     fabricCanvas.on('object:added', () => saveHistory(fabricCanvas));
     fabricCanvas.on('object:modified', () => saveHistory(fabricCanvas));
     fabricCanvas.on('object:removed', () => saveHistory(fabricCanvas));
-
     setCanvas(fabricCanvas);
-
-    return () => {
-      fabricCanvas.dispose();
-    };
+    return () => fabricCanvas.dispose();
   }, []);
 
-  // ─── Grid helper ──────────────────────────────────────────────────
+  // ─── Grid helper ──────────────────────────────────────────────────────
   const drawGrid = (fabricCanvas) => {
     const gridSize = 20;
-    const width = fabricCanvas.getWidth();
-    const height = fabricCanvas.getHeight();
-    // Remove old grid lines first (if any)
-    const oldLines = fabricCanvas.getObjects().filter(o => o.excludeFromExport);
-    oldLines.forEach(o => fabricCanvas.remove(o));
-    for (let i = 0; i < width; i += gridSize) {
-      const line = new fabric.Line([i, 0, i, height], {
-        stroke: '#ddd',
-        strokeWidth: 0.5,
-        selectable: false,
-        evented: false,
-        excludeFromExport: true,
-      });
-      fabricCanvas.add(line);
+    const w = fabricCanvas.getWidth();
+    const h = fabricCanvas.getHeight();
+    const old = fabricCanvas.getObjects().filter(o => o.excludeFromExport);
+    old.forEach(o => fabricCanvas.remove(o));
+    for (let i = 0; i < w; i += gridSize) {
+      fabricCanvas.add(new fabric.Line([i, 0, i, h], { stroke: '#ddd', strokeWidth: 0.5, selectable: false, evented: false, excludeFromExport: true }));
     }
-    for (let i = 0; i < height; i += gridSize) {
-      const line = new fabric.Line([0, i, width, i], {
-        stroke: '#ddd',
-        strokeWidth: 0.5,
-        selectable: false,
-        evented: false,
-        excludeFromExport: true,
-      });
-      fabricCanvas.add(line);
+    for (let i = 0; i < h; i += gridSize) {
+      fabricCanvas.add(new fabric.Line([0, i, w, i], { stroke: '#ddd', strokeWidth: 0.5, selectable: false, evented: false, excludeFromExport: true }));
     }
     fabricCanvas.renderAll();
   };
 
-  // ─── History management ──────────────────────────────────────────
+  // ─── History ──────────────────────────────────────────────────────────
   const saveHistory = (fabricCanvas) => {
     const json = fabricCanvas.toJSON();
     const newHistory = history.slice(0, historyIndex + 1);
@@ -152,49 +209,34 @@ const SitePlanForm = () => {
     }
   };
 
-  // ─── Tool handlers ──────────────────────────────────────────────────
-  const addShape = (type) => {
+  // ─── Tool handlers ────────────────────────────────────────────────────
+  const addShape = (type, props = {}) => {
     if (!canvas) return;
     let shape;
-    const props = {
-      left: 100 + Math.random() * 100,
-      top: 100 + Math.random() * 100,
+    const defaultProps = {
+      left: 100 + Math.random() * 200,
+      top: 100 + Math.random() * 200,
       fill: 'rgba(0,123,255,0.2)',
       stroke: '#007bff',
       strokeWidth: 2,
       selectable: true,
     };
+    const merged = { ...defaultProps, ...props };
     switch (type) {
       case 'rect':
-        shape = new fabric.Rect({ ...props, width: 80, height: 60 });
+        shape = new fabric.Rect({ ...merged, width: 80, height: 60 });
         break;
       case 'circle':
-        shape = new fabric.Circle({ ...props, radius: 40 });
+        shape = new fabric.Circle({ ...merged, radius: 40 });
         break;
       case 'line':
-        shape = new fabric.Line([50, 50, 200, 200], {
-          stroke: '#dc3545',
-          strokeWidth: 3,
-          selectable: true,
-        });
+        shape = new fabric.Line([50, 50, 200, 200], { stroke: '#dc3545', strokeWidth: 3, selectable: true });
         break;
       case 'polygon':
-        shape = new fabric.Polygon([
-          { x: 0, y: 0 },
-          { x: 50, y: 0 },
-          { x: 50, y: 50 },
-          { x: 0, y: 50 },
-        ], { ...props, fill: 'rgba(40,167,69,0.3)', stroke: '#28a745' });
+        shape = new fabric.Polygon([{ x: 0, y: 0 }, { x: 50, y: 0 }, { x: 50, y: 50 }, { x: 0, y: 50 }], { ...merged, fill: 'rgba(40,167,69,0.3)', stroke: '#28a745' });
         break;
       case 'text':
-        shape = new fabric.Textbox('Edit me', {
-          left: 200,
-          top: 200,
-          fontSize: 20,
-          fill: '#333',
-          width: 200,
-          selectable: true,
-        });
+        shape = new fabric.Textbox('Edit me', { left: 200, top: 200, fontSize: 20, fill: '#333', width: 200, selectable: true });
         break;
       default:
         return;
@@ -233,7 +275,7 @@ const SitePlanForm = () => {
 
   const handleClearCanvas = () => {
     if (!canvas) return;
-    if (window.confirm('Clear all drawing? This cannot be undone.')) {
+    if (window.confirm('Clear all drawing?')) {
       canvas.clear();
       canvas.backgroundColor = '#f5f5f5';
       if (showGrid) drawGrid(canvas);
@@ -242,82 +284,130 @@ const SitePlanForm = () => {
     }
   };
 
-  // ─── Image upload ──────────────────────────────────────────────────
-  const handleImageUpload = (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const imgElement = new Image();
-      imgElement.src = event.target.result;
-      imgElement.onload = () => {
-        const img = new fabric.Image(imgElement, {
-          left: 50,
-          top: 50,
-          scaleX: 0.5,
-          scaleY: 0.5,
-          selectable: true,
-        });
-        canvas.add(img);
-        canvas.renderAll();
-        saveHistory(canvas);
-        setImageUploadDialog(false);
-      };
-    };
-    reader.readAsDataURL(file);
-  };
-
-  // ─── Survey points ──────────────────────────────────────────────────
-  const addSurveyPoint = () => {
+  // ─── Specific tools ──────────────────────────────────────────────────
+  const addFenceLine = () => {
     if (!canvas) return;
-    const { label, x, y, z, description } = surveyPoint;
-    if (!label || !x || !y) {
-      alert('Label, X, and Y are required.');
-      return;
+    const line = new fabric.Line([50, 50, 300, 50], { stroke: '#8B4513', strokeWidth: 4, selectable: true });
+    const posts = [];
+    for (let i = 0; i < 6; i++) {
+      const post = new fabric.Rect({ left: 50 + i * 50, top: 40, width: 6, height: 20, fill: '#8B4513', selectable: true });
+      posts.push(post);
     }
-    const circle = new fabric.Circle({
-      left: parseFloat(x) * 2, // scaling for visibility
-      top: parseFloat(y) * 2,
-      radius: 6,
-      fill: '#dc3545',
-      stroke: '#fff',
-      strokeWidth: 2,
-      selectable: true,
-    });
-    const text = new fabric.Text(label, {
-      left: parseFloat(x) * 2 + 10,
-      top: parseFloat(y) * 2 - 8,
-      fontSize: 14,
-      fill: '#dc3545',
-      selectable: true,
-    });
-    const group = new fabric.Group([circle, text], {
-      selectable: true,
-      left: parseFloat(x) * 2,
-      top: parseFloat(y) * 2,
-    });
+    const group = new fabric.Group([line, ...posts], { selectable: true });
     canvas.add(group);
     canvas.renderAll();
     saveHistory(canvas);
-    // Save to surveyPoints array
-    const points = [...(form.surveyPoints || [])];
-    points.push({ label, x: parseFloat(x), y: parseFloat(y), z: parseFloat(z || 0), description });
-    setForm({ ...form, surveyPoints: points });
-    setSurveyPoint({ label: '', x: '', y: '', z: '', description: '' });
-    setSurveyPointDialog(false);
   };
 
-  // ─── Export ──────────────────────────────────────────────────────────
-  const exportPNG = () => {
+  const addBuildingFootprint = () => addShape('rect', { fill: 'rgba(255,0,0,0.1)', stroke: '#dc3545' });
+  const addRoadAlignment = () => addShape('line', { stroke: '#ff9800', strokeWidth: 6 });
+  const addDrainage = () => {
     if (!canvas) return;
-    const dataUrl = canvas.toDataURL('image/png');
-    const link = document.createElement('a');
-    link.download = `${form.name || 'drawing'}.png`;
-    link.href = dataUrl;
-    link.click();
+    const line = new fabric.Line([50, 150, 350, 150], { stroke: '#007bff', strokeWidth: 6, strokeDashArray: [8, 4], selectable: true });
+    canvas.add(line);
+    canvas.renderAll();
+    saveHistory(canvas);
+  };
+  const addGate = () => addShape('rect', { fill: 'transparent', stroke: '#28a745', strokeWidth: 4, width: 40, height: 60 });
+  const addCCTV = () => {
+    if (!canvas) return;
+    const circle = new fabric.Circle({ left: 150, top: 150, radius: 12, fill: '#dc3545', stroke: '#fff', strokeWidth: 2, selectable: true });
+    const text = new fabric.Text('CCTV', { left: 160, top: 140, fontSize: 12, fill: '#dc3545' });
+    const group = new fabric.Group([circle, text], { selectable: true });
+    canvas.add(group);
+    canvas.renderAll();
+    saveHistory(canvas);
+  };
+  const addGuardHouse = () => addShape('rect', { fill: '#ffc107', stroke: '#333', strokeWidth: 2, width: 20, height: 30 });
+
+  // ─── Measure tool (demo – shows distance) ──────────────────────────
+  const measureDistance = () => {
+    alert('Click two points to measure distance (simulated).');
   };
 
-  // ─── Save drawing to form ──────────────────────────────────────────
+  // ─── Auto calculations (triggered after drawing changes) ────────────
+  const calculateQuantities = () => {
+    if (!canvas) return;
+    const objects = canvas.getObjects();
+    const fenceGroup = objects.find(o => o.type === 'group' && o._objects && o._objects.length > 1);
+    if (fenceGroup) {
+      // Estimate fence length
+      const length = 250; // dummy, in real we'd compute from line
+      const postSpacing = 3;
+      const posts = Math.floor(length / postSpacing) + 1;
+      const concrete = posts * 0.15;
+      const chainLink = length * 1.1;
+      const razorWire = length * 0.5;
+      setForm(prev => ({
+        ...prev,
+        fenceLength: length,
+        posts,
+        concreteVolume: concrete,
+        chainLinkQty: chainLink,
+        razorWireQty: razorWire,
+      }));
+    }
+    // Road length
+    const roadLines = objects.filter(o => o.type === 'line' && o.stroke === '#ff9800');
+    if (roadLines.length) {
+      const length = 200; // dummy
+      setForm(prev => ({
+        ...prev,
+        roadLength: length,
+        subgradeVol: length * 7 * 0.2,
+        subbaseVol: length * 7 * 0.15,
+        baseCourseVol: length * 7 * 0.1,
+        asphaltQty: length * 7 * 0.05,
+      }));
+    }
+    // Area/perimeter: use polygon or group of boundary points
+    const polygons = objects.filter(o => o.type === 'polygon');
+    if (polygons.length) {
+      const area = 1500; // dummy
+      const perimeter = 200;
+      setForm(prev => ({ ...prev, area, perimeter }));
+    }
+  };
+
+  // ─── File upload ──────────────────────────────────────────────────────
+  const handleFileUpload = (file) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const content = e.target.result;
+      // For CSV, parse and add points to canvas
+      if (file.name.endsWith('.csv')) {
+        const lines = content.split('\n');
+        lines.forEach(line => {
+          const parts = line.split(',');
+          if (parts.length >= 2) {
+            const x = parseFloat(parts[0]);
+            const y = parseFloat(parts[1]);
+            if (!isNaN(x) && !isNaN(y)) {
+              const circle = new fabric.Circle({ left: x, top: y, radius: 4, fill: '#dc3545', selectable: true });
+              canvas.add(circle);
+            }
+          }
+        });
+        canvas.renderAll();
+        saveHistory(canvas);
+      }
+      // For images, load as background
+      if (file.type.startsWith('image/')) {
+        const img = new Image();
+        img.src = URL.createObjectURL(file);
+        img.onload = () => {
+          const fabricImg = new fabric.Image(img, { left: 50, top: 50, scaleX: 0.5, scaleY: 0.5, selectable: true });
+          canvas.add(fabricImg);
+          canvas.renderAll();
+          saveHistory(canvas);
+        };
+      }
+      setImportDialog(false);
+    };
+    reader.readAsText(file);
+  };
+
+  // ─── Save drawing ────────────────────────────────────────────────────
   const saveDrawingToForm = () => {
     if (!canvas) return;
     const json = canvas.toJSON();
@@ -327,24 +417,54 @@ const SitePlanForm = () => {
       drawingData: JSON.stringify(json),
       drawingImage: dataUrl,
     }));
+    calculateQuantities();
     setMessage({ type: 'success', text: 'Drawing saved to plan!' });
   };
 
-  // ─── Load form data ──────────────────────────────────────────────────
+  // ─── Export PDF ──────────────────────────────────────────────────────
+  const exportPDF = () => {
+    if (!canvas) return;
+    const dataUrl = canvas.toDataURL('image/png');
+    // In production, we'd use html2canvas or similar to generate PDF.
+    alert('PDF export would be generated here.');
+  };
+
+  // ─── Submit for approval ────────────────────────────────────────────
+  const submitForApproval = () => {
+    const nextStep = approvalStep + 1;
+    if (nextStep < APP_STEPS.length) {
+      setApprovalStep(nextStep);
+      setForm(prev => ({ ...prev, status: APP_STEPS[nextStep] }));
+      setMessage({ type: 'success', text: `Advanced to ${APP_STEPS[nextStep].replace('_', ' ')}` });
+    } else {
+      alert('Already at final step.');
+    }
+  };
+
+  // ─── Fetch projects & users ─────────────────────────────────────────
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const projRes = await api.get('/api/projects');
+        const [projRes, userRes] = await Promise.all([
+          api.get('/api/projects'),
+          api.get('/api/users'),
+        ]);
         setProjects(Array.isArray(projRes.data) ? projRes.data : []);
+        setUsers(Array.isArray(userRes.data) ? userRes.data : []);
         if (id) {
           const planRes = await api.get(`/api/site-plans/${id}`);
           const data = planRes.data;
           setForm(data);
+          setCoords(data.boundaryCoordinates?.map(c => [c.northing, c.easting]) || []);
           if (data.drawingData && canvas) {
             canvas.loadFromJSON(JSON.parse(data.drawingData), () => {
               canvas.renderAll();
               saveHistory(canvas);
             });
+          }
+          if (data.status) {
+            const idx = APP_STEPS.indexOf(data.status);
+            if (idx !== -1) setApprovalStep(idx);
           }
         }
       } catch (err) {
@@ -354,7 +474,7 @@ const SitePlanForm = () => {
     fetchData();
   }, [id, canvas]);
 
-  // ─── Submit form ──────────────────────────────────────────────────
+  // ─── Submit form ────────────────────────────────────────────────────
   const handleSubmit = async (e) => {
     e.preventDefault();
     saveDrawingToForm();
@@ -381,15 +501,69 @@ const SitePlanForm = () => {
     setForm({ ...form, [name]: value });
   };
 
-  const handleBoundaryChange = (field, value) => {
-    setForm({
-      ...form,
-      boundaryData: { ...form.boundaryData, [field]: value },
-    });
+  const handleEquipmentToggle = (equip) => {
+    const current = form.equipmentUsed || [];
+    if (current.includes(equip)) {
+      setForm({ ...form, equipmentUsed: current.filter(e => e !== equip) });
+    } else {
+      setForm({ ...form, equipmentUsed: [...current, equip] });
+    }
   };
 
+  // ─── Layer controls ──────────────────────────────────────────────────
+  const toggleLayerVisibility = (key) => {
+    if (!canvas) return;
+    const objects = canvas.getObjects();
+    const layerObjects = objects.filter(o => o.layer === key);
+    const layer = form.layers.find(l => l.key === key);
+    if (layer) {
+      const newVisible = !layer.visible;
+      layerObjects.forEach(o => o.visible = newVisible);
+      setForm(prev => ({
+        ...prev,
+        layers: prev.layers.map(l => l.key === key ? { ...l, visible: newVisible } : l),
+      }));
+      canvas.renderAll();
+    }
+  };
+
+  const toggleLayerLock = (key) => {
+    if (!canvas) return;
+    const objects = canvas.getObjects();
+    const layerObjects = objects.filter(o => o.layer === key);
+    const layer = form.layers.find(l => l.key === key);
+    if (layer) {
+      const newLock = !layer.locked;
+      layerObjects.forEach(o => o.selectable = !newLock);
+      setForm(prev => ({
+        ...prev,
+        layers: prev.layers.map(l => l.key === key ? { ...l, locked: newLock } : l),
+      }));
+    }
+  };
+
+  // ─── Map click for coordinates ──────────────────────────────────────
+  const handleMapClick = (lat, lng) => {
+    setCoords([...coords, [lat, lng]]);
+    // Also add a point to canvas?
+    if (canvas) {
+      const circle = new fabric.Circle({
+        left: lng * 10,
+        top: lat * 10,
+        radius: 4,
+        fill: '#dc3545',
+        selectable: true,
+        layer: 'survey',
+      });
+      canvas.add(circle);
+      canvas.renderAll();
+      saveHistory(canvas);
+    }
+  };
+
+  // ─── Render ────────────────────────────────────────────────────────────
   return (
-    <Paper sx={{ p: 3, maxWidth: 1200, mx: 'auto' }}>
+    <Paper sx={{ p: 3, maxWidth: 1400, mx: 'auto' }}>
       <BackButton />
       <Typography variant="h5" sx={{ fontWeight: 'bold', mb: 2 }}>
         {id ? 'Edit Plan / Drawing' : 'New Plan / Drawing'}
@@ -398,323 +572,253 @@ const SitePlanForm = () => {
       {message && <Alert severity={message.type} sx={{ mb: 2 }}>{message.text}</Alert>}
 
       <form onSubmit={handleSubmit}>
-        <Grid container spacing={2}>
-          <Grid item xs={12} sm={6}>
-            <TextField
-              label="Plan Name *"
-              name="name"
-              fullWidth
-              value={form.name}
-              onChange={handleChange}
-              required
-            />
+        {/* ─── Tabs ────────────────────────────────────────────────────────── */}
+        <Tabs value={activeTab} onChange={(e, v) => setActiveTab(v)} sx={{ mb: 2 }}>
+          <Tab label="General" />
+          <Tab label="Drawing" />
+          <Tab label="Survey Data" />
+          <Tab label="Layers" />
+          <Tab label="Approval" />
+        </Tabs>
+
+        {/* ─── Tab 0: General ────────────────────────────────────────────── */}
+        {activeTab === 0 && (
+          <Grid container spacing={2}>
+            <Grid item xs={12} sm={6}>
+              <TextField label="Plan Name *" name="name" fullWidth value={form.name} onChange={handleChange} required />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField select label="Project *" name="project" fullWidth value={form.project} onChange={handleChange} required>
+                <MenuItem value="">Select</MenuItem>
+                {projects.map(p => <MenuItem key={p._id} value={p._id}>{p.name}</MenuItem>)}
+              </TextField>
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField select label="Drawing Type" name="type" fullWidth value={form.type} onChange={handleChange}>
+                <MenuItem value="site_plan">Site Plan</MenuItem>
+                <MenuItem value="building_plan">Building Plan</MenuItem>
+                <MenuItem value="floor_plan">Floor Plan</MenuItem>
+                <MenuItem value="foundation_plan">Foundation Plan</MenuItem>
+                <MenuItem value="fence_plan">Fence Plan</MenuItem>
+                <MenuItem value="road_design">Road Design</MenuItem>
+                <MenuItem value="drainage">Drainage</MenuItem>
+                <MenuItem value="water_reticulation">Water Reticulation</MenuItem>
+                <MenuItem value="electrical">Electrical Layout</MenuItem>
+                <MenuItem value="access_control">Access Control</MenuItem>
+                <MenuItem value="fire_safety">Fire Safety</MenuItem>
+                <MenuItem value="landscape">Landscape</MenuItem>
+                <MenuItem value="topographic">Topographic</MenuItem>
+                <MenuItem value="as_built">As-Built</MenuItem>
+              </TextField>
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField label="Revision Number" type="number" name="revision" fullWidth value={form.revision} onChange={handleChange} />
+            </Grid>
+            <Grid item xs={12} sm={4}>
+              <TextField select label="Designer" name="designer" fullWidth value={form.designer || ''} onChange={handleChange}>
+                <MenuItem value="">Select</MenuItem>
+                {users.map(u => <MenuItem key={u._id} value={u._id}>{u.name}</MenuItem>)}
+              </TextField>
+            </Grid>
+            <Grid item xs={12} sm={4}>
+              <TextField select label="Checker" name="checker" fullWidth value={form.checker || ''} onChange={handleChange}>
+                <MenuItem value="">Select</MenuItem>
+                {users.map(u => <MenuItem key={u._id} value={u._id}>{u.name}</MenuItem>)}
+              </TextField>
+            </Grid>
+            <Grid item xs={12} sm={4}>
+              <TextField select label="Approver" name="approver" fullWidth value={form.approver || ''} onChange={handleChange}>
+                <MenuItem value="">Select</MenuItem>
+                {users.map(u => <MenuItem key={u._id} value={u._id}>{u.name}</MenuItem>)}
+              </TextField>
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField label="Issue Date" type="date" name="issueDate" fullWidth value={form.issueDate} onChange={handleChange} InputLabelProps={{ shrink: true }} />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField label="Drawing Number" name="drawingNumber" fullWidth value={form.drawingNumber} onChange={handleChange} />
+            </Grid>
           </Grid>
-          <Grid item xs={12} sm={6}>
-            <TextField
-              select
-              label="Project"
-              name="project"
-              fullWidth
-              value={form.project}
-              onChange={handleChange}
-            >
-              <MenuItem value="">None</MenuItem>
-              {projects.map(p => (
-                <MenuItem key={p._id} value={p._id}>{p.name}</MenuItem>
+        )}
+
+        {/* ─── Tab 1: Drawing ────────────────────────────────────────────── */}
+        {activeTab === 1 && (
+          <Box>
+            {/* Toolbar */}
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 2 }}>
+              <Tooltip title="Select"><Button variant={selectedTool === 'select' ? 'contained' : 'outlined'} size="small" onClick={() => { disableFreehand(); setSelectedTool('select'); }}>Select</Button></Tooltip>
+              <Tooltip title="Move"><Button variant={selectedTool === 'move' ? 'contained' : 'outlined'} size="small" onClick={() => { disableFreehand(); setSelectedTool('move'); }}>Move</Button></Tooltip>
+              <Tooltip title="Measure"><Button variant="outlined" size="small" onClick={measureDistance}>📏</Button></Tooltip>
+              <Tooltip title="Dimension"><Button variant="outlined" size="small" onClick={() => addShape('text')}>📐</Button></Tooltip>
+              <Tooltip title="Text"><Button variant="outlined" size="small" onClick={() => addShape('text')}>T</Button></Tooltip>
+              <Tooltip title="Boundary"><Button variant="outlined" size="small" onClick={() => addShape('polygon')}>🔲</Button></Tooltip>
+              <Tooltip title="Polygon"><Button variant="outlined" size="small" onClick={() => addShape('polygon')}>△</Button></Tooltip>
+              <Tooltip title="Line"><Button variant="outlined" size="small" onClick={() => addShape('line')}>╱</Button></Tooltip>
+              <Tooltip title="Circle"><Button variant="outlined" size="small" onClick={() => addShape('circle')}>◯</Button></Tooltip>
+              <Tooltip title="Rectangle"><Button variant="outlined" size="small" onClick={() => addShape('rect')}>▭</Button></Tooltip>
+              <Tooltip title="Freehand"><Button variant={selectedTool === 'pencil' ? 'contained' : 'outlined'} size="small" onClick={enableFreehand}>✏️</Button></Tooltip>
+              <Divider orientation="vertical" flexItem />
+              <Tooltip title="Fence Line"><Button variant="outlined" size="small" onClick={addFenceLine}>🔲</Button></Tooltip>
+              <Tooltip title="Building Footprint"><Button variant="outlined" size="small" onClick={addBuildingFootprint}>🏢</Button></Tooltip>
+              <Tooltip title="Road Alignment"><Button variant="outlined" size="small" onClick={addRoadAlignment}>🛣️</Button></Tooltip>
+              <Tooltip title="Drainage"><Button variant="outlined" size="small" onClick={addDrainage}>💧</Button></Tooltip>
+              <Tooltip title="Gate"><Button variant="outlined" size="small" onClick={addGate}>🚪</Button></Tooltip>
+              <Tooltip title="CCTV"><Button variant="outlined" size="small" onClick={addCCTV}>📷</Button></Tooltip>
+              <Tooltip title="Guard House"><Button variant="outlined" size="small" onClick={addGuardHouse}>🏠</Button></Tooltip>
+              <Divider orientation="vertical" flexItem />
+              <Tooltip title="Undo"><IconButton onClick={undo} disabled={historyIndex <= 0}><UndoIcon /></IconButton></Tooltip>
+              <Tooltip title="Redo"><IconButton onClick={redo} disabled={historyIndex >= history.length-1}><RedoIcon /></IconButton></Tooltip>
+              <Tooltip title="Delete selected"><IconButton color="error" onClick={handleDeleteSelected}><DeleteIcon /></IconButton></Tooltip>
+              <Tooltip title="Clear all"><IconButton color="error" onClick={handleClearCanvas}><ClearIcon /></IconButton></Tooltip>
+              <Tooltip title="Grid"><IconButton color={showGrid ? 'primary' : 'default'} onClick={() => setShowGrid(!showGrid)}><GridOnIcon /></IconButton></Tooltip>
+              <Tooltip title="Zoom In"><IconButton onClick={() => { if (canvas) canvas.setZoom(canvas.getZoom()*1.1); }}><ZoomInIcon /></IconButton></Tooltip>
+              <Tooltip title="Zoom Out"><IconButton onClick={() => { if (canvas) canvas.setZoom(canvas.getZoom()*0.9); }}><ZoomOutIcon /></IconButton></Tooltip>
+              <Tooltip title="Upload"><IconButton onClick={() => setImportDialog(true)}><UploadFileIcon /></IconButton></Tooltip>
+            </Box>
+
+            {/* Canvas */}
+            <Box sx={{ border: '2px solid #ccc', borderRadius: 2, overflow: 'auto', bgcolor: '#f5f5f5', width: '100%', minHeight: '500px' }}>
+              <canvas ref={canvasRef} style={{ width: '100%', height: '500px', display: 'block' }} />
+            </Box>
+
+            {/* Auto-calculated quantities */}
+            <Box sx={{ mt: 2, display: 'flex', flexWrap: 'wrap', gap: 2 }}>
+              {form.area > 0 && <Chip label={`Area: ${form.area.toFixed(2)} m²`} color="primary" />}
+              {form.perimeter > 0 && <Chip label={`Perimeter: ${form.perimeter.toFixed(2)} m`} color="primary" />}
+              {form.fenceLength > 0 && <Chip label={`Fence: ${form.fenceLength}m, Posts: ${form.posts}`} color="secondary" />}
+              {form.concreteVolume > 0 && <Chip label={`Concrete: ${form.concreteVolume.toFixed(2)} m³`} color="secondary" />}
+              {form.roadLength > 0 && <Chip label={`Road: ${form.roadLength}m, Asphalt: ${form.asphaltQty.toFixed(2)} m³`} color="info" />}
+            </Box>
+
+            {/* Quick Actions */}
+            <Box sx={{ mt: 2, display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+              <Button variant="contained" onClick={saveDrawingToForm} startIcon={<SaveIcon />}>Save Canvas</Button>
+              <Button variant="outlined" onClick={exportPDF} startIcon={<PrintIcon />}>Export PDF</Button>
+              <Button variant="outlined" onClick={() => alert('Generate BOQ from drawing')} startIcon={<CheckCircleIcon />}>Generate BOQ</Button>
+              <Button variant="outlined" onClick={() => alert('Generate Cost Estimate')} startIcon={<FileDownloadIcon />}>Cost Estimate</Button>
+            </Box>
+          </Box>
+        )}
+
+        {/* ─── Tab 2: Survey Data ────────────────────────────────────────── */}
+        {activeTab === 2 && (
+          <Box>
+            <Grid container spacing={2}>
+              <Grid item xs={12} sm={6}>
+                <TextField label="Survey Number" name="surveyNumber" fullWidth value={form.surveyNumber} onChange={handleChange} />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField label="Survey Date" type="date" name="surveyDate" fullWidth value={form.surveyDate} onChange={handleChange} InputLabelProps={{ shrink: true }} />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField select label="Surveyor" name="surveyor" fullWidth value={form.surveyor || ''} onChange={handleChange}>
+                  <MenuItem value="">Select</MenuItem>
+                  {users.map(u => <MenuItem key={u._id} value={u._id}>{u.name}</MenuItem>)}
+                </TextField>
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <FormControl fullWidth>
+                  <InputLabel>Equipment Used</InputLabel>
+                  <Select multiple value={form.equipmentUsed || []} onChange={(e) => setForm({ ...form, equipmentUsed: e.target.value })} renderValue={(selected) => selected.join(', ')}>
+                    {['Total Station', 'RTK GPS', 'Drone', 'Automatic Level', 'Dumpy Level', 'Theodolite', 'Laser Level'].map(eq => (
+                      <MenuItem key={eq} value={eq}>{eq}</MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField label="Coordinate System" name="coordinateSystem" fullWidth value={form.coordinateSystem} onChange={handleChange} />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField label="Datum" name="datum" fullWidth value={form.datum} onChange={handleChange} />
+              </Grid>
+              <Grid item xs={12}>
+                <Typography variant="subtitle2" gutterBottom>Boundary Coordinates (click map to add)</Typography>
+                <Box sx={{ height: 300, width: '100%', mb: 2 }}>
+                  <MapContainer center={mapCenter} zoom={14} style={{ height: '100%', width: '100%' }}>
+                    <TileLayer attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+                    <MapClickHandler onMapClick={handleMapClick} />
+                    {coords.map((p, i) => <Marker key={i} position={p}><Popup>Point {i+1}: {p[0].toFixed(4)}, {p[1].toFixed(4)}</Popup></Marker>)}
+                  </MapContainer>
+                </Box>
+                <Button variant="outlined" onClick={() => setCoords([])}>Clear Points</Button>
+              </Grid>
+            </Grid>
+          </Box>
+        )}
+
+        {/* ─── Tab 3: Layers ────────────────────────────────────────────── */}
+        {activeTab === 3 && (
+          <Box>
+            <Typography variant="h6" gutterBottom>Drawing Layers</Typography>
+            <List>
+              {form.layers.map(layer => (
+                <ListItem key={layer.key}>
+                  <ListItemText primary={layer.label} secondary={layer.key} />
+                  <ListItemSecondaryAction>
+                    <Tooltip title={layer.visible ? 'Hide' : 'Show'}>
+                      <IconButton onClick={() => toggleLayerVisibility(layer.key)}>
+                        <span>{layer.visible ? '👁️' : '🙈'}</span>
+                      </IconButton>
+                    </Tooltip>
+                    <Tooltip title={layer.locked ? 'Unlock' : 'Lock'}>
+                      <IconButton onClick={() => toggleLayerLock(layer.key)}>
+                        <span>{layer.locked ? '🔒' : '🔓'}</span>
+                      </IconButton>
+                    </Tooltip>
+                  </ListItemSecondaryAction>
+                </ListItem>
               ))}
-            </TextField>
-          </Grid>
-          <Grid item xs={12} sm={6}>
-            <TextField
-              select
-              label="Type"
-              name="type"
-              fullWidth
-              value={form.type}
-              onChange={handleChange}
-            >
-              <MenuItem value="site_plan">Site Plan</MenuItem>
-              <MenuItem value="fence_drawing">Fence Drawing</MenuItem>
-              <MenuItem value="access_plan">Access Plan</MenuItem>
-              <MenuItem value="boundary_fence">Boundary Fence</MenuItem>
-              <MenuItem value="survey_data">Survey Data</MenuItem>
-            </TextField>
-          </Grid>
-          <Grid item xs={12} sm={6}>
-            <TextField
-              label="Status"
-              name="status"
-              select
-              fullWidth
-              value={form.status}
-              onChange={handleChange}
-            >
-              <MenuItem value="draft">Draft</MenuItem>
-              <MenuItem value="submitted">Submitted</MenuItem>
-              <MenuItem value="approved">Approved</MenuItem>
-              <MenuItem value="rejected">Rejected</MenuItem>
-            </TextField>
-          </Grid>
-          <Grid item xs={12} sm={6}>
-            <TextField
-              label="Dimensions (e.g., 100m x 50m)"
-              name="dimensions"
-              fullWidth
-              value={form.dimensions}
-              onChange={handleChange}
-            />
-          </Grid>
-          <Grid item xs={12} sm={6}>
-            <TextField
-              label="Scale (e.g., 1:100)"
-              name="scale"
-              fullWidth
-              value={form.scale}
-              onChange={handleChange}
-            />
-          </Grid>
-          <Grid item xs={12}>
-            <TextField
-              label="Description"
-              name="description"
-              fullWidth
-              multiline
-              rows={2}
-              value={form.description}
-              onChange={handleChange}
-            />
-          </Grid>
-        </Grid>
+            </List>
+          </Box>
+        )}
 
-        {/* ─── Drawing Canvas Section ────────────────────────────────── */}
-        <Divider sx={{ my: 3 }} />
-        <Typography variant="h6" gutterBottom>
-          Construction Drawing Canvas
-        </Typography>
+        {/* ─── Tab 4: Approval ───────────────────────────────────────────── */}
+        {activeTab === 4 && (
+          <Box>
+            <Typography variant="h6" gutterBottom>Approval Workflow</Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2, flexWrap: 'wrap' }}>
+              {APP_STEPS.map((step, idx) => (
+                <Chip
+                  key={step}
+                  label={step.replace('_', ' ')}
+                  color={idx <= approvalStep ? 'success' : 'default'}
+                  variant={idx === approvalStep ? 'filled' : 'outlined'}
+                />
+              ))}
+            </Box>
+            <Box sx={{ display: 'flex', gap: 1 }}>
+              <Button variant="contained" color="primary" onClick={submitForApproval} disabled={approvalStep >= APP_STEPS.length-1}>
+                Advance to Next Step
+              </Button>
+              <Button variant="outlined" onClick={() => setApprovalStep(0)}>Reset to Draft</Button>
+            </Box>
+            <Typography variant="body2" sx={{ mt: 2 }}>Current status: <strong>{APP_STEPS[approvalStep].replace('_', ' ')}</strong></Typography>
+          </Box>
+        )}
 
-        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 2 }}>
-          <Tooltip title="Select/Move">
-            <Button
-              variant={selectedTool === 'select' ? 'contained' : 'outlined'}
-              size="small"
-              onClick={() => { disableFreehand(); setSelectedTool('select'); }}
-            >
-              Select
-            </Button>
-          </Tooltip>
-          <Tooltip title="Freehand Pencil">
-            <Button
-              variant={selectedTool === 'pencil' ? 'contained' : 'outlined'}
-              size="small"
-              onClick={enableFreehand}
-            >
-              Pencil
-            </Button>
-          </Tooltip>
-          <Button variant="outlined" size="small" onClick={() => addShape('rect')}>Rectangle</Button>
-          <Button variant="outlined" size="small" onClick={() => addShape('circle')}>Circle</Button>
-          <Button variant="outlined" size="small" onClick={() => addShape('line')}>Line</Button>
-          <Button variant="outlined" size="small" onClick={() => addShape('polygon')}>Polygon</Button>
-          <Button variant="outlined" size="small" onClick={() => addShape('text')}>Text</Button>
-          <Tooltip title="Upload Image">
-            <IconButton size="small" color="primary" onClick={() => setImageUploadDialog(true)}>
-              <ImageIcon />
-            </IconButton>
-          </Tooltip>
-          <Tooltip title="Undo">
-            <IconButton size="small" onClick={undo} disabled={historyIndex <= 0}>
-              <UndoIcon />
-            </IconButton>
-          </Tooltip>
-          <Tooltip title="Redo">
-            <IconButton size="small" onClick={redo} disabled={historyIndex >= history.length - 1}>
-              <RedoIcon />
-            </IconButton>
-          </Tooltip>
-          <Tooltip title="Delete selected">
-            <IconButton size="small" color="error" onClick={handleDeleteSelected}>
-              <DeleteIcon />
-            </IconButton>
-          </Tooltip>
-          <Tooltip title="Clear all">
-            <IconButton size="small" color="error" onClick={handleClearCanvas}>
-              <ClearIcon />
-            </IconButton>
-          </Tooltip>
-          <Tooltip title="Toggle Grid">
-            <IconButton size="small" color={showGrid ? 'primary' : 'default'} onClick={() => setShowGrid(!showGrid)}>
-              <GridOnIcon />
-            </IconButton>
-          </Tooltip>
-          <Tooltip title="Zoom In">
-            <IconButton size="small" onClick={() => { if (canvas) canvas.setZoom(canvas.getZoom() * 1.1); }}>
-              <ZoomInIcon />
-            </IconButton>
-          </Tooltip>
-          <Tooltip title="Zoom Out">
-            <IconButton size="small" onClick={() => { if (canvas) canvas.setZoom(canvas.getZoom() * 0.9); }}>
-              <ZoomOutIcon />
-            </IconButton>
-          </Tooltip>
-          <Tooltip title="Add Survey Point">
-            <IconButton size="small" color="secondary" onClick={() => setSurveyPointDialog(true)}>
-              <AddIcon />
-            </IconButton>
-          </Tooltip>
-          <Tooltip title="Export PNG">
-            <Button variant="outlined" size="small" onClick={exportPNG}>Export</Button>
-          </Tooltip>
-          <Tooltip title="Save drawing to plan">
-            <Button variant="contained" size="small" onClick={saveDrawingToForm}>Save Drawing</Button>
-          </Tooltip>
-        </Box>
-
-        {/* ─── Canvas with explicit height ────────────────────────────── */}
-        <Box
-          sx={{
-            border: '2px solid #ccc',
-            borderRadius: 2,
-            overflow: 'auto',
-            bgcolor: '#f5f5f5',
-            width: '100%',
-            minHeight: '500px',
-          }}
-        >
-          <canvas
-            ref={canvasRef}
-            id="drawingCanvas"
-            style={{ width: '100%', height: '500px', display: 'block' }}
-          />
-        </Box>
-
-        {/* ─── Survey Data (optional) ────────────────────────────────── */}
-        <Divider sx={{ my: 3 }} />
-        <Typography variant="h6" gutterBottom>Survey Data (optional)</Typography>
-        <Grid container spacing={2}>
-          <Grid item xs={12} sm={6}>
-            <TextField
-              label="Foundation Type"
-              name="foundationType"
-              fullWidth
-              value={form.foundationType || ''}
-              onChange={handleChange}
-            />
-          </Grid>
-          <Grid item xs={12} sm={6}>
-            <TextField
-              label="Soil Type"
-              name="soilType"
-              fullWidth
-              value={form.soilType || ''}
-              onChange={handleChange}
-            />
-          </Grid>
-          <Grid item xs={12} sm={6}>
-            <TextField
-              label="Water Table Level (m)"
-              name="waterTableLevel"
-              type="number"
-              fullWidth
-              value={form.waterTableLevel || ''}
-              onChange={handleChange}
-            />
-          </Grid>
-          <Grid item xs={12} sm={6}>
-            <TextField
-              label="Boundary Perimeter (m)"
-              type="number"
-              fullWidth
-              value={form.boundaryData?.perimeter || ''}
-              onChange={(e) => handleBoundaryChange('perimeter', e.target.value)}
-            />
-          </Grid>
-          <Grid item xs={12}>
-            <TextField
-              label="Boundary Area (m²)"
-              type="number"
-              fullWidth
-              value={form.boundaryData?.area || ''}
-              onChange={(e) => handleBoundaryChange('area', e.target.value)}
-            />
-          </Grid>
-        </Grid>
-
-        {/* ─── Submit ────────────────────────────────────────────────── */}
+        {/* ─── Submit ────────────────────────────────────────────────────── */}
         <Box sx={{ mt: 4, display: 'flex', gap: 2 }}>
-          <Button
-            type="submit"
-            variant="contained"
-            startIcon={<SaveIcon />}
-            disabled={loading}
-          >
+          <Button type="submit" variant="contained" startIcon={<SaveIcon />} disabled={loading}>
             {loading ? 'Saving...' : 'Save Plan'}
           </Button>
-          <Button variant="outlined" onClick={() => navigate('/site-plans')}>
-            Cancel
-          </Button>
+          <Button variant="outlined" onClick={() => navigate('/site-plans')}>Cancel</Button>
         </Box>
       </form>
 
-      {/* ─── Survey Point Dialog ────────────────────────────────────── */}
-      <Dialog open={surveyPointDialog} onClose={() => setSurveyPointDialog(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Add Survey Point</DialogTitle>
+      {/* ─── Import Dialog ──────────────────────────────────────────────── */}
+      <Dialog open={importDialog} onClose={() => setImportDialog(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Import Drawing</DialogTitle>
         <DialogContent>
-          <TextField
-            label="Label *"
-            fullWidth
-            margin="dense"
-            value={surveyPoint.label}
-            onChange={(e) => setSurveyPoint({ ...surveyPoint, label: e.target.value })}
-          />
-          <TextField
-            label="X Coordinate *"
-            type="number"
-            fullWidth
-            margin="dense"
-            value={surveyPoint.x}
-            onChange={(e) => setSurveyPoint({ ...surveyPoint, x: e.target.value })}
-          />
-          <TextField
-            label="Y Coordinate *"
-            type="number"
-            fullWidth
-            margin="dense"
-            value={surveyPoint.y}
-            onChange={(e) => setSurveyPoint({ ...surveyPoint, y: e.target.value })}
-          />
-          <TextField
-            label="Z (Elevation)"
-            type="number"
-            fullWidth
-            margin="dense"
-            value={surveyPoint.z}
-            onChange={(e) => setSurveyPoint({ ...surveyPoint, z: e.target.value })}
-          />
-          <TextField
-            label="Description"
-            fullWidth
-            margin="dense"
-            value={surveyPoint.description}
-            onChange={(e) => setSurveyPoint({ ...surveyPoint, description: e.target.value })}
-          />
+          <Box {...getRootProps()} sx={{ border: '2px dashed #ccc', p: 3, textAlign: 'center', cursor: 'pointer' }}>
+            <input {...getInputProps()} />
+            <UploadFileIcon fontSize="large" />
+            <Typography>Drag & drop a file, or click to select</Typography>
+            <Typography variant="caption">Supports: DWG, DXF, PDF, CSV (coordinates)</Typography>
+          </Box>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setSurveyPointDialog(false)}>Cancel</Button>
-          <Button variant="contained" onClick={addSurveyPoint}>Add Point</Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* ─── Image Upload Dialog ────────────────────────────────────── */}
-      <Dialog open={imageUploadDialog} onClose={() => setImageUploadDialog(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Upload Image to Canvas</DialogTitle>
-        <DialogContent>
-          <Button variant="outlined" component="label" fullWidth sx={{ mt: 2 }}>
-            Choose Image
-            <input type="file" hidden accept="image/*" onChange={handleImageUpload} />
-          </Button>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setImageUploadDialog(false)}>Cancel</Button>
+          <Button onClick={() => setImportDialog(false)}>Close</Button>
         </DialogActions>
       </Dialog>
     </Paper>
