@@ -31,7 +31,6 @@ import DrawingList from './pages/drawings/DrawingList';
 import DrawingForm from './pages/drawings/DrawingForm';
 import SurveyList from './pages/surveys/SurveyList';
 import SurveyForm from './pages/surveys/SurveyForm';
-// NEW imports for Project Planning
 import ProjectPlanning from './pages/projects/ProjectPlanning';
 
 const AuthRedirect = () => {
@@ -52,50 +51,81 @@ function App() {
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/" element={<AuthRedirect />} />
           <Route path="/change-password" element={<Navigate to="/profile" />} />
+
           <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/settings" element={<Settings />} />
             <Route path="/messages" element={<Messages />} />
             <Route path="/messages/:id" element={<Navigate to="/messages" replace />} />
+
+            {/* Workers */}
             <Route path="/workers" element={<WorkerList />} />
             <Route path="/workers/new" element={<WorkerForm />} />
             <Route path="/workers/:id" element={<WorkerForm />} />
+            <Route path="/workers/:id/edit" element={<WorkerForm />} /> {/* Edit route */}
+
+            {/* Projects */}
             <Route path="/projects" element={<ProjectList />} />
             <Route path="/projects/new" element={<ProjectForm />} />
             <Route path="/projects/:id" element={<ProjectForm />} />
+            <Route path="/projects/:id/edit" element={<ProjectForm />} /> {/* Edit route */}
+            <Route path="/projects/:projectId/planning" element={<ProjectPlanning />} />
+
+            {/* Procurement / Material Requisition */}
             <Route path="/procurement" element={<ProcurementList />} />
             <Route path="/procurement/new" element={<ProcurementForm />} />
             <Route path="/procurement/:id" element={<ProcurementForm />} />
+            <Route path="/procurement/:id/edit" element={<ProcurementForm />} /> {/* Edit route */}
+
+            {/* Funding Requests */}
             <Route path="/funding" element={<FundingRequestList />} />
             <Route path="/funding/new" element={<FundingRequestForm />} />
             <Route path="/funding/:id" element={<FundingRequestForm />} />
+            <Route path="/funding/:id/edit" element={<FundingRequestForm />} /> {/* Edit route */}
+
+            {/* Payments - redirect */}
             <Route path="/payments/:id" element={<Navigate to="/dashboard" replace />} />
+
+            {/* Subcontracts */}
             <Route path="/subcontracts" element={<SubcontractList />} />
             <Route path="/subcontracts/new" element={<SubcontractForm />} />
             <Route path="/subcontracts/:id" element={<SubcontractForm />} />
+            <Route path="/subcontracts/:id/edit" element={<SubcontractForm />} /> {/* Edit route */}
+
+            {/* BOQ */}
             <Route path="/boq" element={<BOQList />} />
             <Route path="/boq/new" element={<BOQForm />} />
             <Route path="/boq/:id" element={<BOQForm />} />
+            <Route path="/boq/:id/edit" element={<BOQForm />} /> {/* Edit route */}
+
+            {/* Advertised Projects */}
             <Route path="/advertised-projects" element={<AdvertisedProjects />} />
+            <Route path="/advertised-projects/bidded" element={<BiddedProjects />} />
+
+            {/* Delivery Notes */}
             <Route path="/delivery" element={<DeliveryNoteList />} />
             <Route path="/delivery/new" element={<DeliveryNote />} />
             <Route path="/delivery/:id" element={<DeliveryNote />} />
-            <Route path="/advertised-projects/bidded" element={<BiddedProjects />} />
+            <Route path="/delivery/:id/edit" element={<DeliveryNote />} /> {/* ← EDIT ROUTE ADDED */}
+
+            {/* Site Plans */}
             <Route path="/site-plans" element={<SitePlanList />} />
             <Route path="/site-plans/new" element={<SitePlanForm />} />
             <Route path="/site-plans/:id" element={<SitePlanForm />} />
             <Route path="/site-plans/:id/edit" element={<SitePlanForm />} />
+
+            {/* Drawings */}
             <Route path="/drawings" element={<DrawingList />} />
             <Route path="/drawings/new" element={<DrawingForm />} />
             <Route path="/drawings/:id" element={<DrawingForm />} />
             <Route path="/drawings/:id/edit" element={<DrawingForm />} />
+
+            {/* Surveys */}
             <Route path="/surveys" element={<SurveyList />} />
             <Route path="/surveys/new" element={<SurveyForm />} />
             <Route path="/surveys/:id" element={<SurveyForm />} />
             <Route path="/surveys/:id/edit" element={<SurveyForm />} />
-            {/* NEW Project Planning route */}
-            <Route path="/projects/:projectId/planning" element={<ProjectPlanning />} />
           </Route>
         </Routes>
       </BrowserRouter>
