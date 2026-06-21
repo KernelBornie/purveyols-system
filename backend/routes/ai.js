@@ -13,7 +13,11 @@ router.post('/chat', auth, async (req, res) => {
     res.json({ response });
   } catch (err) {
     console.error('AI error:', err);
-    res.status(500).json({ error: err.message });
+    // Return a friendly error message so the frontend doesn't crash
+    res.status(500).json({
+      error: 'AI service temporarily unavailable',
+      response: 'I could not process your request right now. Please try again later.'
+    });
   }
 });
 
