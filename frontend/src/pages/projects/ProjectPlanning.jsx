@@ -11,11 +11,13 @@ import EditIcon from '@mui/icons-material/Edit';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import api from '../../api/axios';
+import { useAuth } from '../../context/AuthContext';
 import BackButton from '../../components/BackButton';
 import GanttChart from '../../components/GanttChart';
 
 const ProjectPlanning = () => {
   const { projectId } = useParams();
+  const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [plan, setPlan] = useState({ tasks: [], milestones: [] });
   const [message, setMessage] = useState(null);
@@ -32,6 +34,9 @@ const ProjectPlanning = () => {
   const [milestoneDialog, setMilestoneDialog] = useState(false);
   const [milestoneForm, setMilestoneForm] = useState({ name: '', dueDate: new Date(), status: 'pending' });
   const [users, setUsers] = useState([]);
+
+  const viewOnlyRoles = ['driver', 'receptionist', 'safety-officer'];
+  const isViewOnly = viewOnlyRoles.includes(user?.role);
 
   useEffect(() => {
     fetchData();
@@ -54,6 +59,7 @@ const ProjectPlanning = () => {
   };
 
   const savePlan = async () => {
+    if (isViewOnly) return;
     try {
       await api.post('/api/project-plans', { ...plan, project: projectId });
       setMessage({ type: 'success', text: 'Plan saved!' });
@@ -64,12 +70,14 @@ const ProjectPlanning = () => {
 
   // ─── Task handlers ──────────────────────────────────
   const handleAddTask = () => {
+    if (isViewOnly) return;
     setEditingTask(null);
     setTaskForm({ name: '', startDate: new Date(), endDate: new Date(Date.now() + 7*24*60*60*1000), progress: 0, status: 'not-started', assignedTo: '' });
     setTaskDialog(true);
   };
 
   const handleEditTask = (task, idx) => {
+    if (isViewOnly) return;
     setEditingTask(idx);
     setTaskForm({ ...task });
     setTaskDialog(true);
@@ -88,6 +96,7 @@ const ProjectPlanning = () => {
   };
 
   const handleDeleteTask = (idx) => {
+    if (isViewOnly) return;
     if (!window.confirm('Delete this task?')) return;
     const tasks = plan.tasks.filter((_, i) => i !== idx);
     setPlan({ ...plan, tasks });
@@ -95,6 +104,7 @@ const ProjectPlanning = () => {
 
   // ─── Milestone handlers ──────────────────────────────────
   const handleAddMilestone = () => {
+    if (isViewOnly) return;
     setMilestoneForm({ name: '', dueDate: new Date(), status: 'pending' });
     setMilestoneDialog(true);
   };
@@ -105,6 +115,7 @@ const ProjectPlanning = () => {
   };
 
   const handleDeleteMilestone = (idx) => {
+    if (isViewOnly) return;
     if (!window.confirm('Delete this milestone?')) return;
     const milestones = plan.milestones.filter((_, i) => i !== idx);
     setPlan({ ...plan, milestones });
@@ -117,8 +128,16 @@ const ProjectPlanning = () => {
         <Typography variant="h5" sx={{ fontWeight: 'bold' }}>
           Project Planning
         </Typography>
-        <Button variant="contained" onClick={savePlan} sx={{ mr: 1 }}>Save Plan</Button>
+        {!isViewOnly && (
+          <Button variant="contained" onClick={savePlan} sx={{ mr: 1 }}>Save Plan</Button>
+        )}
       </Box>
+
+      {isViewOnly && (
+        <Alert severity="info" sx={{ mb: 2 }}>
+          You have view‑only access to this plan. Edits are disabled.
+        </Alert>
+      )}
 
       {message && <Alert severity={message.type} sx={{ mb: 2 }}>{message.text}</Alert>}
 
@@ -128,9 +147,11 @@ const ProjectPlanning = () => {
           <Paper sx={{ p: 2, mb: 3 }}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
               <Typography variant="h6">Gantt Chart</Typography>
-              <Button variant="outlined" startIcon={<AddIcon />} onClick={handleAddTask}>
-                Add Task
-              </Button>
+              {!isViewOnly && (
+                <Button variant="outlined" startIcon={<AddIcon />} onClick={handleAddTask}>
+                  Add Task
+                </Button>
+              )}
             </Box>
             <GanttChart tasks={plan.tasks} />
           </Paper>
@@ -145,10 +166,12 @@ const ProjectPlanning = () => {
                   <Typography variant="caption" display="block">Start: {new Date(task.startDate).toLocaleDateString()}</Typography>
                   <Typography variant="caption" display="block">End: {new Date(task.endDate).toLocaleDateString()}</Typography>
                   <Chip label={task.status} size="small" color={task.status === 'completed' ? 'success' : task.status === 'in-progress' ? 'warning' : 'default'} sx={{ mt: 1 }} />
-                  <Box sx={{ mt: 1 }}>
-                    <IconButton size="small" onClick={() => handleEditTask(task, idx)}><EditIcon /></IconButton>
-                    <IconButton size="small" onClick={() => handleDeleteTask(idx)}><DeleteIcon /></IconButton>
-                  </Box>
+                  {!isViewOnly && (
+                    <Box sx={{ mt: 1 }}>
+                      <IconButton size="small" onClick={() => handleEditTask(task, idx)}><EditIcon /></IconButton>
+                      <IconButton size="small" onClick={() => handleDeleteTask(idx)}><DeleteIcon /></IconButton>
+                    </Box>
+                  )}
                 </Card>
               ))}
             </Box>
@@ -158,9 +181,11 @@ const ProjectPlanning = () => {
           <Paper sx={{ p: 2 }}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
               <Typography variant="h6">Milestones</Typography>
-              <Button variant="outlined" startIcon={<AddIcon />} onClick={handleAddMilestone}>
-                Add Milestone
-              </Button>
+              {!isViewOnly && (
+                <Button variant="outlined" startIcon={<AddIcon />} onClick={handleAddMilestone}>
+                  Add Milestone
+                </Button>
+              )}
             </Box>
             <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
               {plan.milestones.map((ms, idx) => (
@@ -168,7 +193,9 @@ const ProjectPlanning = () => {
                   <Typography variant="subtitle1">{ms.name}</Typography>
                   <Typography variant="caption">Due: {new Date(ms.dueDate).toLocaleDateString()}</Typography>
                   <Chip label={ms.status} size="small" color={ms.status === 'achieved' ? 'success' : ms.status === 'missed' ? 'error' : 'warning'} sx={{ mt: 1 }} />
-                  <IconButton size="small" onClick={() => handleDeleteMilestone(idx)}><DeleteIcon /></IconButton>
+                  {!isViewOnly && (
+                    <IconButton size="small" onClick={() => handleDeleteMilestone(idx)}><DeleteIcon /></IconButton>
+                  )}
                 </Card>
               ))}
             </Box>
