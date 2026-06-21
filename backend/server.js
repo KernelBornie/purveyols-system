@@ -84,6 +84,9 @@ app.use('/api/project-plans', projectPlanRoutes);
 const siteDiaryRoutes = require('./routes/siteDiary');
 app.use('/api/site-diary', siteDiaryRoutes);
 
+// ─── OpenAI test endpoint ────────────────────────────────────────
+app.use('/api/test-openai', require('./routes/test-openai')); // 👈 ADD THIS LINE
+
 // ─── Health check ────────────────────────────────────────────────
 app.get('/api/health', (req, res) => res.json({ status: 'OK', timestamp: new Date().toISOString() }));
 
