@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Box, Typography, Paper, Table, TableHead, TableRow, TableCell, TableBody,
-  Button, Chip, CircularProgress, IconButton, Tooltip
+  Button, Chip, CircularProgress, IconButton, Tooltip, Alert
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import VisibilityIcon from '@mui/icons-material/Visibility';
@@ -20,7 +20,6 @@ const ProjectList = () => {
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
 
-  // Roles that are view‑only
   const viewOnlyRoles = ['driver', 'receptionist', 'safety-officer'];
   const isViewOnly = viewOnlyRoles.includes(user?.role);
 
@@ -119,14 +118,12 @@ const ProjectList = () => {
                 </TableCell>
                 <TableCell>{project.manager?.name || 'N/A'}</TableCell>
                 <TableCell>
-                  {/* View – always visible */}
                   <Tooltip title="View">
                     <IconButton component={Link} to={`/projects/${project._id}`} size="small" color="info">
                       <VisibilityIcon fontSize="small" />
                     </IconButton>
                   </Tooltip>
 
-                  {/* Edit – hidden for view‑only roles */}
                   {!isViewOnly && (
                     <Tooltip title="Edit">
                       <IconButton component={Link} to={`/projects/${project._id}/edit`} size="small" color="primary">
@@ -135,14 +132,12 @@ const ProjectList = () => {
                     </Tooltip>
                   )}
 
-                  {/* Planning – always visible (view-only can still see the plan) */}
                   <Tooltip title="Planning">
                     <IconButton component={Link} to={`/projects/${project._id}/planning`} size="small" color="secondary">
                       <TimelineIcon fontSize="small" />
                     </IconButton>
                   </Tooltip>
 
-                  {/* Delete – hidden for view‑only roles */}
                   {!isViewOnly && (
                     <Tooltip title="Delete">
                       <IconButton size="small" color="error" onClick={() => handleDelete(project._id)}>
@@ -156,9 +151,7 @@ const ProjectList = () => {
             {projects.length === 0 && (
               <TableRow>
                 <TableCell colSpan={7} align="center" sx={{ py: 3 }}>
-                  <Typography variant="body2" color="textSecondary">
-                    No projects yet.
-                  </Typography>
+                  <Typography variant="body2" color="textSecondary">No projects yet.</Typography>
                 </TableCell>
               </TableRow>
             )}
