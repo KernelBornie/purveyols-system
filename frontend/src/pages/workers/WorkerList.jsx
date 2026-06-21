@@ -106,14 +106,12 @@ const WorkerList = () => {
                 <TableCell>K {worker.dailyRate}</TableCell>
                 <TableCell>{worker.site || '—'}</TableCell>
                 <TableCell>
-                  {/* View – always visible */}
                   <Tooltip title="View">
                     <IconButton component={Link} to={`/workers/${worker._id}`} size="small" color="info">
                       <VisibilityIcon fontSize="small" />
                     </IconButton>
                   </Tooltip>
 
-                  {/* Edit – hidden for view‑only roles */}
                   {!isViewOnly && (
                     <Tooltip title="Edit">
                       <IconButton component={Link} to={`/workers/${worker._id}/edit`} size="small" color="primary">
@@ -122,7 +120,6 @@ const WorkerList = () => {
                     </Tooltip>
                   )}
 
-                  {/* Delete – hidden for view‑only roles */}
                   {!isViewOnly && (
                     <Tooltip title="Delete">
                       <IconButton size="small" color="error" onClick={() => handleDelete(worker._id)}>
@@ -136,9 +133,7 @@ const WorkerList = () => {
             {workers.length === 0 && (
               <TableRow>
                 <TableCell colSpan={7} align="center" sx={{ py: 3 }}>
-                  <Typography variant="body2" color="textSecondary">
-                    No workers enrolled yet.
-                  </Typography>
+                  <Typography variant="body2" color="textSecondary">No workers enrolled yet.</Typography>
                 </TableCell>
               </TableRow>
             )}
