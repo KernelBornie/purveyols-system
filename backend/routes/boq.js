@@ -19,7 +19,7 @@ router.get('/', auth, async (req, res) => {
   }
 });
 
-// ─── GET single BOQ (FIX: this was missing!) ────────────────────
+// ─── GET single BOQ ──────────────────────────────────────────────
 router.get('/:id', auth, async (req, res) => {
   try {
     const boq = await BOQ.findById(req.params.id)
@@ -35,7 +35,6 @@ router.get('/:id', auth, async (req, res) => {
 // ─── CREATE ──────────────────────────────────────────────────────
 router.post('/', auth, authorize('admin', 'director', 'quantity-surveyor', 'civil-engineer'), async (req, res) => {
   try {
-    // Calculate grand total from items
     const { items, preliminaries, contingency, vat, ...rest } = req.body;
     let subTotal = 0;
     if (items && items.length) {
@@ -121,7 +120,6 @@ router.put('/:id/submit', auth, authorize('admin', 'director', 'quantity-surveyo
     const populated = await BOQ.findById(boq._id)
       .populate('project', 'name')
       .populate('createdBy', 'name role');
-    // Notify directors
     const directors = await User.find({ role: 'director' });
     for (let director of directors) {
       await createNotification(
@@ -152,7 +150,6 @@ router.put('/:id/approve', auth, authorize('admin', 'director'), async (req, res
       .populate('project', 'name')
       .populate('createdBy', 'name role')
       .populate('approvedBy', 'name role');
-    // Notify creator
     if (boq.createdBy) {
       await createNotification(
         boq.createdBy,
@@ -169,7 +166,7 @@ router.put('/:id/approve', auth, authorize('admin', 'director'), async (req, res
 });
 
 // ─── DELETE ──────────────────────────────────────────────────────
-router.delete('/:id', auth, authorize('admin', 'director'), async (req, res) => {
+router.delete('/:id', auth, authorize('admin', 'director', 'quantity-surveyor', 'civil-engineer'), async (req, res) => {
   try {
     const deleted = await BOQ.findByIdAndDelete(req.params.id);
     if (!deleted) return res.status(404).json({ error: 'BOQ not found' });
