@@ -18,7 +18,7 @@ const BOQForm = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true); // start loading true
   const [projects, setProjects] = useState([]);
   const [form, setForm] = useState({
     project: '',
@@ -67,6 +67,7 @@ const BOQForm = () => {
 
   useEffect(() => {
     const fetchData = async () => {
+      setLoading(true);
       try {
         const projectsRes = await api.get('/api/projects');
         setProjects(Array.isArray(projectsRes.data) ? projectsRes.data : []);
@@ -74,8 +75,9 @@ const BOQForm = () => {
         if (id) {
           const boqRes = await api.get(`/api/boq/${id}`);
           const data = boqRes.data;
+          // Ensure items array exists
           setForm({
-            project: data.project || '',
+            project: data.project?._id || data.project || '',
             items: Array.isArray(data.items) ? data.items : [],
             status: data.status || 'draft',
             contingency: data.contingency || 2.0,
@@ -87,26 +89,31 @@ const BOQForm = () => {
         } else {
           setCreator(user);
           // Add default sections with headers
+          const initialItems = [
+            { isSection: true, sectionName: 'PRELIMINARIES AND GENERAL ITEMS' },
+            ...sectionTemplates[0].items,
+            { isSection: true, sectionName: 'BOUNDARY FENCE WORKS' },
+            ...sectionTemplates[1].items,
+            { isSection: true, sectionName: 'EARTHWORKS & SITE PREPARATION' },
+            ...sectionTemplates[2].items,
+          ];
           setForm(prev => ({
             ...prev,
-            items: [
-              { isSection: true, sectionName: 'PRELIMINARIES AND GENERAL ITEMS' },
-              ...sectionTemplates[0].items,
-              { isSection: true, sectionName: 'BOUNDARY FENCE WORKS' },
-              ...sectionTemplates[1].items,
-              { isSection: true, sectionName: 'EARTHWORKS & SITE PREPARATION' },
-              ...sectionTemplates[2].items,
-            ]
+            items: initialItems
           }));
         }
+        setMessage(null);
       } catch (err) {
         console.error('Error fetching data:', err);
-        setMessage({ type: 'error', text: 'Failed to load data' });
+        setMessage({ type: 'error', text: err.response?.data?.error || 'Failed to load data' });
+      } finally {
+        setLoading(false);
       }
     };
     fetchData();
   }, [id, user]);
 
+  // Calculate totals whenever form changes
   const calculateTotals = () => {
     let itemsWithAmount = [];
     let subtotal = 0;
@@ -134,7 +141,7 @@ const BOQForm = () => {
       itemsWithAmount,
       subtotal,
       preliminariesAmount,
-      preliminaries: form.preliminaries,
+      preliminaries,
       contingency: form.contingency,
       vat: form.vat,
       contingencyAmount: contingency,
@@ -194,19 +201,24 @@ const BOQForm = () => {
     setLoading(true);
     setMessage(null);
     try {
-      const itemsToSubmit = totals.itemsWithAmount.map(item => ({
-        ...item,
-        amount: parseFloat(item.amount) || 0,
-        quantity: parseFloat(item.quantity) || 0,
-        rate: parseFloat(item.rate) || 0,
-      }));
+      const itemsToSubmit = totals.itemsWithAmount.map(item => {
+        if (item.isSection) return item;
+        return {
+          ...item,
+          amount: parseFloat(item.amount) || 0,
+          quantity: parseFloat(item.quantity) || 0,
+          rate: parseFloat(item.rate) || 0,
+        };
+      });
 
       const payload = {
-        ...form,
+        project: form.project,
+        description: form.description,
         items: itemsToSubmit,
-        preliminaries: form.preliminaries,
-        contingency: form.contingency,
-        vat: form.vat,
+        preliminaries: parseFloat(form.preliminaries) || 0,
+        contingency: parseFloat(form.contingency) || 0,
+        vat: parseFloat(form.vat) || 0,
+        status: form.status,
         grandTotal: totals.grandTotal,
       };
 
@@ -225,9 +237,7 @@ const BOQForm = () => {
     }
   };
 
-  const handlePrint = () => {
-    window.print();
-  };
+  const handlePrint = () => window.print();
 
   const exportCSV = () => {
     let csv = 'Description,Qty,Unit,Rate,Amount\n';
@@ -256,6 +266,14 @@ const BOQForm = () => {
   };
 
   const items = Array.isArray(form.items) ? form.items : [];
+
+  if (loading) {
+    return (
+      <Paper sx={{ p: 3, textAlign: 'center' }}>
+        <CircularProgress />
+      </Paper>
+    );
+  }
 
   return (
     <Paper sx={{ p: 3, maxWidth: '1100px', mx: 'auto' }}>
@@ -302,7 +320,7 @@ const BOQForm = () => {
             BILL OF QUANTITIES (BOQ)
           </Typography>
           <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
-            {id ? `BOQ #${id}` : 'New BOQ'}
+            {id ? `BOQ #${id.slice(-6)}` : 'New BOQ'}
           </Typography>
         </Box>
 
