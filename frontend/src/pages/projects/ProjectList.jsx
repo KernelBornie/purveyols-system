@@ -8,8 +8,9 @@ import AddIcon from '@mui/icons-material/Add';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
-import TimelineIcon from '@mui/icons-material/Timeline'; // For planning
+import TimelineIcon from '@mui/icons-material/Timeline';
 import api from '../../api/axios';
+import { useAuth } from '../../context/AuthContext';
 import BackButton from '../../components/BackButton';
 
 const projectImages = ['project-1.jpg', 'project-3.jpg', 'project-4.jpg', 'project-5.jpg'];
@@ -17,6 +18,11 @@ const projectImages = ['project-1.jpg', 'project-3.jpg', 'project-4.jpg', 'proje
 const ProjectList = () => {
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
+  const { user } = useAuth();
+
+  // Roles that are view‑only
+  const viewOnlyRoles = ['driver', 'receptionist', 'safety-officer'];
+  const isViewOnly = viewOnlyRoles.includes(user?.role);
 
   useEffect(() => {
     fetchProjects();
@@ -60,15 +66,23 @@ const ProjectList = () => {
         <Typography variant="h5" sx={{ fontWeight: 'bold' }}>
           Projects
         </Typography>
-        <Button
-          component={Link}
-          to="/projects/new"
-          variant="contained"
-          startIcon={<AddIcon />}
-        >
-          New Project
-        </Button>
+        {!isViewOnly && (
+          <Button
+            component={Link}
+            to="/projects/new"
+            variant="contained"
+            startIcon={<AddIcon />}
+          >
+            New Project
+          </Button>
+        )}
       </Box>
+
+      {isViewOnly && (
+        <Alert severity="info" sx={{ mb: 2 }}>
+          You have view‑only access. You can view projects but cannot create, edit, or delete them.
+        </Alert>
+      )}
 
       {loading ? (
         <CircularProgress />
@@ -105,26 +119,37 @@ const ProjectList = () => {
                 </TableCell>
                 <TableCell>{project.manager?.name || 'N/A'}</TableCell>
                 <TableCell>
+                  {/* View – always visible */}
                   <Tooltip title="View">
                     <IconButton component={Link} to={`/projects/${project._id}`} size="small" color="info">
                       <VisibilityIcon fontSize="small" />
                     </IconButton>
                   </Tooltip>
-                  <Tooltip title="Edit">
-                    <IconButton component={Link} to={`/projects/${project._id}/edit`} size="small" color="primary">
-                      <EditIcon fontSize="small" />
-                    </IconButton>
-                  </Tooltip>
+
+                  {/* Edit – hidden for view‑only roles */}
+                  {!isViewOnly && (
+                    <Tooltip title="Edit">
+                      <IconButton component={Link} to={`/projects/${project._id}/edit`} size="small" color="primary">
+                        <EditIcon fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
+                  )}
+
+                  {/* Planning – always visible (view-only can still see the plan) */}
                   <Tooltip title="Planning">
                     <IconButton component={Link} to={`/projects/${project._id}/planning`} size="small" color="secondary">
                       <TimelineIcon fontSize="small" />
                     </IconButton>
                   </Tooltip>
-                  <Tooltip title="Delete">
-                    <IconButton size="small" color="error" onClick={() => handleDelete(project._id)}>
-                      <DeleteIcon fontSize="small" />
-                    </IconButton>
-                  </Tooltip>
+
+                  {/* Delete – hidden for view‑only roles */}
+                  {!isViewOnly && (
+                    <Tooltip title="Delete">
+                      <IconButton size="small" color="error" onClick={() => handleDelete(project._id)}>
+                        <DeleteIcon fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
+                  )}
                 </TableCell>
               </TableRow>
             ))}
@@ -132,7 +157,7 @@ const ProjectList = () => {
               <TableRow>
                 <TableCell colSpan={7} align="center" sx={{ py: 3 }}>
                   <Typography variant="body2" color="textSecondary">
-                    No projects yet. Click "New Project" to create one.
+                    No projects yet.
                   </Typography>
                 </TableCell>
               </TableRow>
