@@ -32,11 +32,10 @@ const getAIResponse = async (query, userId) => {
 };
 
 /**
- * OpenAI response for ANY question – no restrictions.
+ * OpenAI response – with instruction to generate SVG or tables when requested.
  */
 const getOpenAIResponse = async (query, userId) => {
   try {
-    // Gather system data for context
     const systemData = await gatherSystemData(userId);
     const context = buildContextString(systemData);
 
@@ -46,12 +45,11 @@ You have access to the following real data from the user's system:
 ${context}
 
 Your task is to answer the user's question as thoroughly and helpfully as possible.
-- If the question is about their specific data (projects, workers, funding, etc.), use the data above.
-- If the question is about general construction, engineering, safety, materials, drawing, design, or any other topic, provide a detailed, informative answer.
-- If the question is about drawing, drafting, or design, explain the process, provide step‑by‑step guidance, and mention relevant standards or best practices.
-- Always respond in plain text, no markdown, with clear sections if needed.
+- If the question asks to "draw" something (e.g., site plan, diagram), generate a valid SVG code block in your response. Use simple shapes (rect, circle, path) and include a scale bar and labels. Provide the SVG inside a code block with language "svg".
+- If the question asks for a complex table (e.g., BOQ, cost breakdown), generate a Markdown table with clear headers and rows.
+- For other questions, provide detailed, practical answers.
+- Always respond in plain text, using Markdown for tables and code blocks when appropriate.
 - Be conversational and friendly.
-- Keep responses under 500 words unless the question requires a longer explanation.
 
 Question: ${query}`;
 
@@ -63,7 +61,7 @@ Question: ${query}`;
           { role: 'system', content: systemPrompt },
           { role: 'user', content: query }
         ],
-        max_tokens: 600,
+        max_tokens: 800,
         temperature: 0.7,
       },
       {
@@ -82,20 +80,19 @@ Question: ${query}`;
     throw new Error('Unexpected OpenAI response format');
   } catch (error) {
     console.error('OpenAI error:', error);
-    // Fallback to rule-based if OpenAI fails
     return await getRuleBasedResponse(query, userId);
   }
 };
 
 /**
- * Expanded rule-based fallback – covers complex topics including drawing.
+ * Rule-based fallback – now includes SVG site plan and Markdown tables.
  */
 const getRuleBasedResponse = async (query, userId) => {
   const q = query.toLowerCase();
   const systemData = await gatherSystemData(userId);
   const { projects, workers, funding, payments, procurement, boqs, subcontracts, stats } = systemData;
 
-  // ─── 1. System data queries ──────────────────────────────────────
+  // ─── 1. System data queries (unchanged) ──────────────────────
   if (q.includes('project') || q.includes('projects')) {
     if (!projects || projects.length === 0) return { text: 'No projects found.', type: 'project' };
     let response = '📋 Your projects:\n';
@@ -144,6 +141,7 @@ const getRuleBasedResponse = async (query, userId) => {
       });
       return { text: response, type: 'boq' };
     } else {
+      // Provide detailed BOQ explanation with a sample table
       return {
         text: `📋 **What is a BOQ (Bill of Quantities)?**
 
@@ -155,17 +153,20 @@ A Bill of Quantities is a construction document that lists all the materials, pa
 • Provides a clear breakdown of project costs
 • Acts as a reference during project execution
 
-**Typical structure:**
-1. Item descriptions
-2. Quantities (m³, kg, No., etc.)
-3. Unit rates (cost per unit)
-4. Total amounts (quantity × unit rate)
-5. Preliminaries, contingencies, and VAT
+**Example BOQ Table:**
 
-**Example BOQ items:**
-• Excavation – 100 m³ @ K150/m³ = K15,000
-• Concrete C25 – 50 m³ @ K2,500/m³ = K125,000
-• Reinforcement steel – 5,000 kg @ K8/kg = K40,000
+| Item | Description | Qty | Unit | Rate (ZMW) | Amount (ZMW) |
+|------|-------------|-----|------|------------|--------------|
+| 1    | Site Clearance | 1   | LS   | 5,000      | 5,000        |
+| 2    | Excavation    | 100 | m³   | 150        | 15,000       |
+| 3    | Concrete C25  | 50  | m³   | 2,500      | 125,000      |
+| 4    | Reinforcement | 5000| kg   | 8          | 40,000       |
+| 5    | Fencing       | 200 | m    | 120        | 24,000       |
+|      | **Sub‑Total** |     |      |            | **209,000**  |
+|      | Preliminaries (5%) | |      |            | **10,450**   |
+|      | Contingency (2%) |   |      |            | **4,180**    |
+|      | VAT (16%)      |     |      |            | **33,440**   |
+|      | **GRAND TOTAL** |    |      |            | **257,070**  |
 
 In PURVEYOLS CMS, you can create, edit, and approve BOQs for each project.`,
         type: 'boq'
@@ -187,86 +188,99 @@ In PURVEYOLS CMS, you can create, edit, and approve BOQs for each project.`,
     };
   }
 
-  // ─── 2. Complex topics: Drawing, Design, Structural Analysis ───
-  if (q.includes('draw') || q.includes('design') || q.includes('architect') || q.includes('structural') || q.includes('plan')) {
-    if (q.includes('site plan') || q.includes('drawing') || q.includes('sketch')) {
-      return {
-        text: `📐 **How to Draw a Site Plan – Step-by-Step**
-
-A site plan is a scaled drawing that shows the layout of a construction site.
-
-**Step 1: Survey the Site**
-• Walk the property and record accurate measurements
-• Note existing structures, trees, roads, and utilities
-• Use a measuring tape or GPS for large areas
-
-**Step 2: Choose a Scale**
-• Common scales: 1:100, 1:200, 1:500
-• 1:100 means 1cm on paper = 1m on site
-
-**Step 3: Draw the Boundary**
-• Start with the property boundary lines
-• Add dimensions and bearings (angles)
-
-**Step 4: Add Existing Features**
-• Buildings, roads, fences, trees, power lines
-• Show their positions and dimensions
-
-**Step 5: Position Proposed Structures**
-• New building footprint, driveway, parking
-• Show setbacks from boundaries
-
-**Step 6: Include Utilities**
-• Water supply, sewer, electricity, gas
-• Mark connection points
-
-**Step 7: Show Drainage & Grading**
-• Slope arrows, catch basins, stormwater pipes
-
-**Step 8: Label Everything**
-• Dimensions, notes, title block
-• Include a north arrow and scale bar
-
-**Step 9: Review & Approve**
-• Check for accuracy
-• Get approval from the client/authorities
-
-**In PURVEYOLS CMS:** you can create site plans, drawings, and surveys directly from the platform, with tools for editing, revisions, and BOQ generation.`,
-        type: 'general'
-      };
-    }
-    // General design/structural question
+  // ─── 2. Draw site plan – SVG generation ──────────────────────
+  if (q.includes('draw') && (q.includes('site plan') || q.includes('plan') || q.includes('layout'))) {
     return {
-      text: `🏗️ **Construction Drawing & Design Principles**
+      text: `📐 **Here’s a simple SVG site plan you can copy and view in your browser:**
 
-**Key design documents:**
-• **Site Plan** – overall layout of the project site.
-• **Floor Plans** – layout of each building level.
-• **Elevations** – exterior views of the building.
-• **Sections** – cut‑through views showing construction details.
-• **Structural Drawings** – foundation, columns, beams, slabs.
-• **Services Drawings** – plumbing, electrical, HVAC.
+\`\`\`svg
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 400" width="100%" height="auto">
+  <!-- Property boundary -->
+  <rect x="50" y="50" width="400" height="300" fill="#f0f8f0" stroke="#333" stroke-width="2" />
+  
+  <!-- Title -->
+  <text x="250" y="30" text-anchor="middle" font-family="Arial" font-size="14" font-weight="bold">SITE PLAN – EXAMPLE</text>
+  
+  <!-- Scale bar -->
+  <line x1="50" y1="370" x2="150" y2="370" stroke="#000" stroke-width="2" />
+  <line x1="50" y1="365" x2="50" y2="375" stroke="#000" stroke-width="1" />
+  <line x1="150" y1="365" x2="150" y2="375" stroke="#000" stroke-width="1" />
+  <text x="100" y="390" text-anchor="middle" font-family="Arial" font-size="10">0    10    20 m</text>
+  
+  <!-- Existing building -->
+  <rect x="100" y="100" width="120" height="80" fill="#d4e2f0" stroke="#333" stroke-width="2" />
+  <text x="160" y="145" text-anchor="middle" font-family="Arial" font-size="10">Existing Building</text>
+  
+  <!-- Proposed building -->
+  <rect x="280" y="120" width="130" height="90" fill="#ffd9b3" stroke="#333" stroke-width="2" stroke-dasharray="5,5" />
+  <text x="345" y="170" text-anchor="middle" font-family="Arial" font-size="10" fill="#333">Proposed Building</text>
+  
+  <!-- Road/driveway -->
+  <rect x="50" y="220" width="400" height="30" fill="#ccc" stroke="#333" stroke-width="1" />
+  <text x="250" y="240" text-anchor="middle" font-family="Arial" font-size="10">Driveway / Access Road</text>
+  
+  <!-- Trees -->
+  <circle cx="80" cy="80" r="12" fill="#2e7d32" stroke="#1b5e20" stroke-width="1" />
+  <circle cx="75" cy="75" r="6" fill="#388e3c" />
+  <text x="80" y="70" text-anchor="middle" font-family="Arial" font-size="8">Tree</text>
+  
+  <circle cx="430" cy="80" r="12" fill="#2e7d32" stroke="#1b5e20" stroke-width="1" />
+  <circle cx="425" cy="75" r="6" fill="#388e3c" />
+  <text x="430" y="70" text-anchor="middle" font-family="Arial" font-size="8">Tree</text>
+  
+  <!-- Fence line -->
+  <line x1="50" y1="50" x2="450" y2="50" stroke="#8d6e63" stroke-width="2" stroke-dasharray="8,4" />
+  <line x1="450" y1="50" x2="450" y2="350" stroke="#8d6e63" stroke-width="2" stroke-dasharray="8,4" />
+  <text x="460" y="200" font-family="Arial" font-size="10" transform="rotate(90,460,200)">Fence Line</text>
+  
+  <!-- North arrow -->
+  <polygon points="470,50 480,70 475,70 480,90 485,70 480,70" fill="#000" />
+  <text x="480" y="45" text-anchor="middle" font-family="Arial" font-size="12" font-weight="bold">N</text>
 
-**Design process:**
-1. Concept design – sketches and feasibility.
-2. Schematic design – basic plans and elevations.
-3. Design development – detailed plans, coordination.
-4. Construction documentation – final drawings and specifications.
-5. Bidding and construction.
+  <!-- Dimensions -->
+  <text x="250" y="360" text-anchor="middle" font-family="Arial" font-size="10">Total Site Area: 40m × 30m = 1200 m²</text>
+</svg>
+\`\`\`
 
-**Key standards:**
-• Use ISO or local standards for symbols and conventions.
-• Ensure all drawings are to scale.
-• Include a title block with project details.
-
-Need more detail on a specific type of drawing? Just ask!`,
+**How to use:**  
+Copy the SVG code and save it as a `.svg` file, or paste it into an online SVG viewer.  
+This is a basic template – you can modify the dimensions, labels, and elements to match your project.`,
       type: 'general'
     };
   }
 
-  // ─── 3. Other construction knowledge ────────────────────────────
+  // ─── 3. Complex tables (BOQ, cost breakdown, etc.) ──────────
+  if (q.includes('table') || q.includes('boq') || q.includes('breakdown') || q.includes('cost') || q.includes('estimate')) {
+    // If they specifically ask for a complex table, provide a sample BOQ table.
+    return {
+      text: `📊 **Complex Table – Sample BOQ with Quantities and Costs**
+
+| Item | Description | Qty | Unit | Rate (ZMW) | Amount (ZMW) |
+|------|-------------|-----|------|------------|--------------|
+| 1    | Site Clearance | 1   | LS   | 5,000      | 5,000        |
+| 2    | Topsoil Removal | 200 | m³   | 80         | 16,000       |
+| 3    | Excavation – Foundation | 150 | m³ | 150        | 22,500       |
+| 4    | Concrete C25 – Footings | 40 | m³  | 2,500      | 100,000      |
+| 5    | Concrete C25 – Columns | 25 | m³  | 2,800      | 70,000       |
+| 6    | Reinforcement – Footings | 4000 | kg | 8 | 32,000 |
+| 7    | Reinforcement – Columns | 3000 | kg | 8 | 24,000 |
+| 8    | Formwork – Footings | 120 | m²  | 150        | 18,000       |
+| 9    | Formwork – Columns | 80  | m²  | 180        | 14,400       |
+| 10   | Fencing – Chain link | 250 | m   | 120        | 30,000       |
+| 11   | Gates and fittings | 2   | No. | 4,000      | 8,000        |
+|      | **Sub‑Total** |     |      |            | **339,900**  |
+|      | Preliminaries (5%) | |      |            | **16,995**   |
+|      | Contingency (2%)   | |      |            | **6,798**    |
+|      | VAT (16%)          | |      |            | **58,591**   |
+|      | **GRAND TOTAL**    | |      |            | **422,284**  |
+
+This table can be used as a reference for your own BOQ. Adjust quantities, rates, and items to match your project.`,
+      type: 'general'
+    };
+  }
+
+  // ─── 4. Other construction knowledge ──────────────────────────
   if (q.includes('fence') || q.includes('measurement') || q.includes('foundation') || q.includes('concrete') || q.includes('safety')) {
-    // Provide detailed answers for these – you can expand this section as needed.
     return {
       text: `🛠️ **Construction Knowledge**
 
@@ -300,12 +314,10 @@ Ask about any specific topic for more details!`,
     };
   }
 
-  // ─── 4. Definitions and general knowledge ──────────────────────
+  // ─── 5. Definitions ────────────────────────────────────────────
   if (q.includes('what is') || q.includes('define') || q.includes('meaning') || q.includes('explain')) {
     return {
       text: `📖 **I can help define construction terms!**
-
-Some common terms:
 
 **BOQ (Bill of Quantities)** – A document listing materials, quantities, and costs.
 
@@ -328,7 +340,7 @@ What term would you like me to explain in detail?`,
     };
   }
 
-  // ─── 5. Default fallback ────────────────────────────────────────
+  // ─── 6. Default fallback ──────────────────────────────────────
   return {
     text: `🤖 **PURVEYOLS ASSISTANT AI**
 
@@ -340,14 +352,13 @@ I can help with:
 • "Show me pending funding requests"
 
 🏗️ **Construction Knowledge:**
-• "How to draw a site plan?"
-• "What is a BOQ?"
+• "Draw a site plan" – I'll generate an SVG.
+• "Show me a complex BOQ table"
 • "How to measure a fence?"
 • "What's the best foundation for clay soil?"
 • "How to design a concrete mix for C25?"
 • "What are the safety requirements on site?"
 • "How to estimate construction costs?"
-• "What are the project management phases?"
 
 💡 **Ask a question and I'll give a detailed answer!`,
     type: 'general'
