@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import {
   Paper, Typography, Box, Grid, TextField, Button, IconButton,
   Table, TableHead, TableRow, TableCell, TableBody,
-  MenuItem, Alert, Chip, Avatar
+  MenuItem, Alert, Chip, Avatar, CircularProgress
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -22,6 +22,7 @@ const ProcurementForm = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
+  const [fetching, setFetching] = useState(true);
   const [projects, setProjects] = useState([]);
   const [form, setForm] = useState({
     project: '',
@@ -43,7 +44,9 @@ const ProcurementForm = () => {
   });
   const [isEditMode, setIsEditMode] = useState(!!id);
 
-  // Generate order number if new
+  // ✅ Edit allowed for these roles
+  const canEdit = ['procurement-officer', 'civil-engineer', 'quantity-surveyor', 'director', 'admin'].includes(user?.role);
+
   const generateOrderNumber = () => {
     const date = new Date();
     const y = date.getFullYear();
@@ -55,6 +58,7 @@ const ProcurementForm = () => {
 
   useEffect(() => {
     const fetchData = async () => {
+      setFetching(true);
       try {
         const projectsRes = await api.get('/api/projects');
         setProjects(Array.isArray(projectsRes.data) ? projectsRes.data : []);
@@ -88,9 +92,12 @@ const ProcurementForm = () => {
           }));
           setIsEditMode(false);
         }
+        setMessage(null);
       } catch (err) {
         console.error('Error fetching data:', err);
         setMessage({ type: 'error', text: 'Failed to load data' });
+      } finally {
+        setFetching(false);
       }
     };
 
@@ -153,6 +160,7 @@ const ProcurementForm = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!canEdit) return;
     setLoading(true);
     setMessage(null);
     try {
@@ -193,14 +201,13 @@ const ProcurementForm = () => {
     }
   };
 
-  // ─── Approve & Reject handlers ──────────────────────────────────
   const handleApprove = async () => {
+    if (!canEdit) return;
     if (!window.confirm('Approve this procurement order?')) return;
     setLoading(true);
     try {
       await api.put(`/api/procurement/${id}/approve`);
       setMessage({ type: 'success', text: 'Order approved!' });
-      // Refresh the order data
       const orderRes = await api.get(`/api/procurement/${id}`);
       const data = orderRes.data;
       setForm({
@@ -226,12 +233,12 @@ const ProcurementForm = () => {
   };
 
   const handleReject = async () => {
+    if (!canEdit) return;
     if (!window.confirm('Reject this procurement order?')) return;
     setLoading(true);
     try {
       await api.put(`/api/procurement/${id}/reject`);
       setMessage({ type: 'success', text: 'Order rejected.' });
-      // Refresh
       const orderRes = await api.get(`/api/procurement/${id}`);
       const data = orderRes.data;
       setForm({
@@ -256,9 +263,20 @@ const ProcurementForm = () => {
     }
   };
 
-  const handlePrint = () => {
-    window.print();
+  const handleDelete = async () => {
+    if (!canEdit) return;
+    if (!window.confirm('Delete this order?')) return;
+    setLoading(true);
+    try {
+      await api.delete(`/api/procurement/${id}`);
+      navigate('/procurement');
+    } catch (err) {
+      alert('Delete failed');
+      setLoading(false);
+    }
   };
+
+  const handlePrint = () => window.print();
 
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat('en-ZM', { style: 'currency', currency: 'ZMW' }).format(amount || 0);
@@ -266,12 +284,11 @@ const ProcurementForm = () => {
 
   const items = Array.isArray(form.items) ? form.items : [];
 
-  // Open signature modal
   const openSignatureModal = (field) => {
+    if (!canEdit) return;
     setSignatureModal({ open: true, field });
   };
 
-  // Save signature from modal
   const saveSignature = (dataUrl) => {
     const fieldMap = {
       prepared: 'preparedSign',
@@ -284,7 +301,6 @@ const ProcurementForm = () => {
     }
   };
 
-  // Render signature preview or button
   const renderSignatureField = (field, label, signKey) => {
     const signature = form[signKey];
     return (
@@ -299,24 +315,30 @@ const ProcurementForm = () => {
               sx={{ width: 80, height: 40, borderRadius: 1, border: '1px solid #ccc' }}
               variant="square"
             />
-            <IconButton size="small" onClick={() => openSignatureModal(field)}>
-              <EditIcon fontSize="small" />
-            </IconButton>
+            {canEdit && (
+              <IconButton size="small" onClick={() => openSignatureModal(field)}>
+                <EditIcon fontSize="small" />
+              </IconButton>
+            )}
           </Box>
         ) : (
-          <Button variant="outlined" size="small" onClick={() => openSignatureModal(field)}>
-            Sign
-          </Button>
+          canEdit && (
+            <Button variant="outlined" size="small" onClick={() => openSignatureModal(field)}>
+              Sign
+            </Button>
+          )
         )}
       </Box>
     );
   };
 
+  if (fetching) return <CircularProgress sx={{ display: 'block', margin: '40px auto' }} />;
+
   return (
     <Paper sx={{ p: 3, maxWidth: '1000px', mx: 'auto' }}>
       <BackButton />
-
       {message && <Alert severity={message.type} sx={{ mb: 2 }}>{message.text}</Alert>}
+      {!canEdit && <Alert severity="info" sx={{ mb: 2 }}>You have view‑only access.</Alert>}
 
       <form onSubmit={handleSubmit}>
         {/* Company Header */}
@@ -361,7 +383,6 @@ const ProcurementForm = () => {
           </Typography>
         </Box>
 
-        {/* Creator Info */}
         {creator && (
           <Box sx={{ mb: 2 }}>
             <Typography variant="body2">
@@ -370,7 +391,6 @@ const ProcurementForm = () => {
           </Box>
         )}
 
-        {/* Project Selection */}
         <Grid container spacing={2} sx={{ mb: 3 }}>
           <Grid item xs={12}>
             <TextField
@@ -381,7 +401,7 @@ const ProcurementForm = () => {
               value={form.project || ''}
               onChange={e => setForm({ ...form, project: e.target.value })}
               required
-              disabled={isEditMode && form.status !== 'pending'} // disable if not pending
+              disabled={!canEdit || (isEditMode && form.status !== 'pending')}
             >
               {Array.isArray(projects) && projects.map(p => (
                 <MenuItem key={p._id} value={p._id}>{p.name}</MenuItem>
@@ -421,7 +441,7 @@ const ProcurementForm = () => {
                         value={item.description || ''}
                         onChange={e => handleItemChange(idx, 'description', e.target.value)}
                         placeholder=""
-                        disabled={isEditMode && form.status !== 'pending'}
+                        disabled={!canEdit || (isEditMode && form.status !== 'pending')}
                         sx={{ '& .MuiInputBase-root': { border: 'none', '&:before': { borderBottom: 'none' }, '&:after': { borderBottom: 'none' } } }}
                       />
                     </TableCell>
@@ -432,7 +452,7 @@ const ProcurementForm = () => {
                         value={item.unit || ''}
                         onChange={e => handleItemChange(idx, 'unit', e.target.value)}
                         placeholder=""
-                        disabled={isEditMode && form.status !== 'pending'}
+                        disabled={!canEdit || (isEditMode && form.status !== 'pending')}
                         sx={{ '& .MuiInputBase-root': { border: 'none', '&:before': { borderBottom: 'none' }, '&:after': { borderBottom: 'none' } } }}
                       />
                     </TableCell>
@@ -444,7 +464,7 @@ const ProcurementForm = () => {
                         value={item.quantity || 0}
                         onChange={e => handleItemChange(idx, 'quantity', e.target.value)}
                         inputProps={{ min: 0 }}
-                        disabled={isEditMode && form.status !== 'pending'}
+                        disabled={!canEdit || (isEditMode && form.status !== 'pending')}
                         sx={{ '& .MuiInputBase-root': { border: 'none', '&:before': { borderBottom: 'none' }, '&:after': { borderBottom: 'none' } } }}
                       />
                     </TableCell>
@@ -456,7 +476,7 @@ const ProcurementForm = () => {
                         value={item.unitPrice || 0}
                         onChange={e => handleItemChange(idx, 'unitPrice', e.target.value)}
                         inputProps={{ min: 0, step: 0.01 }}
-                        disabled={isEditMode && form.status !== 'pending'}
+                        disabled={!canEdit || (isEditMode && form.status !== 'pending')}
                         sx={{ '& .MuiInputBase-root': { border: 'none', '&:before': { borderBottom: 'none' }, '&:after': { borderBottom: 'none' } } }}
                       />
                     </TableCell>
@@ -477,12 +497,12 @@ const ProcurementForm = () => {
                         value={item.supplier || ''}
                         onChange={e => handleItemChange(idx, 'supplier', e.target.value)}
                         placeholder="Supplier"
-                        disabled={isEditMode && form.status !== 'pending'}
+                        disabled={!canEdit || (isEditMode && form.status !== 'pending')}
                         sx={{ '& .MuiInputBase-root': { border: 'none', '&:before': { borderBottom: 'none' }, '&:after': { borderBottom: 'none' } } }}
                       />
                     </TableCell>
                     <TableCell sx={{ border: '1px solid #000', p: 1, textAlign: 'center' }}>
-                      <IconButton size="small" onClick={() => removeItem(idx)} color="error" disabled={isEditMode && form.status !== 'pending'}>
+                      <IconButton size="small" onClick={() => removeItem(idx)} color="error" disabled={!canEdit || (isEditMode && form.status !== 'pending')}>
                         <DeleteIcon fontSize="small" />
                       </IconButton>
                     </TableCell>
@@ -493,14 +513,14 @@ const ProcurementForm = () => {
           </Table>
         </Box>
 
-        {/* Add Row */}
-        <Box sx={{ mt: 2 }}>
-          <Button variant="outlined" startIcon={<AddIcon />} onClick={addItem} size="small" disabled={isEditMode && form.status !== 'pending'}>
-            Add Row
-          </Button>
-        </Box>
+        {canEdit && (
+          <Box sx={{ mt: 2 }}>
+            <Button variant="outlined" startIcon={<AddIcon />} onClick={addItem} size="small" disabled={isEditMode && form.status !== 'pending'}>
+              Add Row
+            </Button>
+          </Box>
+        )}
 
-        {/* Grand Total */}
         <Box sx={{ mt: 2, display: 'flex', justifyContent: 'flex-end', borderTop: '2px solid #000', pt: 2 }}>
           <Typography variant="h6" sx={{ fontWeight: 'bold' }}>GRAND TOTAL: {formatCurrency(totals.grandTotal)}</Typography>
         </Box>
@@ -516,7 +536,7 @@ const ProcurementForm = () => {
                   fullWidth
                   value={form.preparedBy || ''}
                   onChange={e => setForm({ ...form, preparedBy: e.target.value })}
-                  disabled={isEditMode && form.status !== 'pending'}
+                  disabled={!canEdit || (isEditMode && form.status !== 'pending')}
                   sx={{ '& .MuiInputBase-root': { borderBottom: '1px solid #000', borderRadius: 0, '&:before': { borderBottom: 'none' }, '&:after': { borderBottom: 'none' } } }}
                 />
               </Box>
@@ -530,7 +550,7 @@ const ProcurementForm = () => {
                   fullWidth
                   value={form.approvedBy || ''}
                   onChange={e => setForm({ ...form, approvedBy: e.target.value })}
-                  disabled={isEditMode && form.status !== 'pending'}
+                  disabled={!canEdit || (isEditMode && form.status !== 'pending')}
                   sx={{ '& .MuiInputBase-root': { borderBottom: '1px solid #000', borderRadius: 0, '&:before': { borderBottom: 'none' }, '&:after': { borderBottom: 'none' } } }}
                 />
               </Box>
@@ -544,7 +564,7 @@ const ProcurementForm = () => {
                   fullWidth
                   value={form.authorisedBy || ''}
                   onChange={e => setForm({ ...form, authorisedBy: e.target.value })}
-                  disabled={isEditMode && form.status !== 'pending'}
+                  disabled={!canEdit || (isEditMode && form.status !== 'pending')}
                   sx={{ '& .MuiInputBase-root': { borderBottom: '1px solid #000', borderRadius: 0, '&:before': { borderBottom: 'none' }, '&:after': { borderBottom: 'none' } } }}
                 />
               </Box>
@@ -562,7 +582,7 @@ const ProcurementForm = () => {
             sx={{ width: 150 }}
             value={form.status || 'pending'}
             onChange={e => setForm({ ...form, status: e.target.value })}
-            disabled={isEditMode && form.status !== 'pending'}
+            disabled={!canEdit || (isEditMode && form.status !== 'pending')}
           >
             <MenuItem value="pending">Pending</MenuItem>
             <MenuItem value="funded">Funded</MenuItem>
@@ -577,7 +597,7 @@ const ProcurementForm = () => {
 
         {/* Action Buttons */}
         <Box sx={{ mt: 4, display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-          {isEditMode && form.status === 'pending' && (
+          {canEdit && isEditMode && form.status === 'pending' && (
             <>
               <Button
                 variant="contained"
@@ -599,20 +619,33 @@ const ProcurementForm = () => {
               </Button>
             </>
           )}
-          <Button
-            type="submit"
-            variant="contained"
-            startIcon={<SaveIcon />}
-            disabled={loading || (isEditMode && form.status !== 'pending')}
-          >
-            {loading ? 'Saving...' : 'Save Order'}
-          </Button>
+          {canEdit && (
+            <Button
+              type="submit"
+              variant="contained"
+              startIcon={<SaveIcon />}
+              disabled={loading || (isEditMode && form.status !== 'pending')}
+            >
+              {loading ? 'Saving...' : 'Save Order'}
+            </Button>
+          )}
           <Button variant="outlined" startIcon={<PrintIcon />} onClick={handlePrint}>
             Print
           </Button>
           <Button variant="outlined" onClick={() => navigate('/procurement')}>
             Cancel
           </Button>
+          {canEdit && id && (
+            <Button
+              variant="contained"
+              color="error"
+              startIcon={<DeleteIcon />}
+              onClick={handleDelete}
+              disabled={loading}
+            >
+              Delete
+            </Button>
+          )}
         </Box>
       </form>
 
