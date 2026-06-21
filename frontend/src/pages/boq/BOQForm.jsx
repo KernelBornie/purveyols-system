@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import {
   Paper, Typography, Box, Grid, TextField, Button, IconButton,
   Table, TableHead, TableRow, TableCell, TableBody,
-  MenuItem, Divider, Alert, Chip, Card
+  MenuItem, Divider, Alert, Chip, Card, CircularProgress
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -18,7 +18,7 @@ const BOQForm = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const [loading, setLoading] = useState(true); // start loading true
+  const [loading, setLoading] = useState(true);
   const [projects, setProjects] = useState([]);
   const [form, setForm] = useState({
     project: '',
@@ -32,7 +32,6 @@ const BOQForm = () => {
   const [creator, setCreator] = useState(null);
   const [message, setMessage] = useState(null);
 
-  // BOQ Section templates
   const sectionTemplates = [
     {
       name: 'Preliminaries and General Items',
@@ -75,7 +74,6 @@ const BOQForm = () => {
         if (id) {
           const boqRes = await api.get(`/api/boq/${id}`);
           const data = boqRes.data;
-          // Ensure items array exists
           setForm({
             project: data.project?._id || data.project || '',
             items: Array.isArray(data.items) ? data.items : [],
@@ -88,7 +86,6 @@ const BOQForm = () => {
           setCreator(data.createdBy);
         } else {
           setCreator(user);
-          // Add default sections with headers
           const initialItems = [
             { isSection: true, sectionName: 'PRELIMINARIES AND GENERAL ITEMS' },
             ...sectionTemplates[0].items,
@@ -97,10 +94,7 @@ const BOQForm = () => {
             { isSection: true, sectionName: 'EARTHWORKS & SITE PREPARATION' },
             ...sectionTemplates[2].items,
           ];
-          setForm(prev => ({
-            ...prev,
-            items: initialItems
-          }));
+          setForm(prev => ({ ...prev, items: initialItems }));
         }
         setMessage(null);
       } catch (err) {
@@ -113,7 +107,6 @@ const BOQForm = () => {
     fetchData();
   }, [id, user]);
 
-  // Calculate totals whenever form changes
   const calculateTotals = () => {
     let itemsWithAmount = [];
     let subtotal = 0;
