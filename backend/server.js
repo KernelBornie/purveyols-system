@@ -7,18 +7,9 @@ dotenv.config();
 
 const app = express();
 
-const allowedOrigins = [
-  'http://localhost:5173',
-  'https://your-frontend-domain.com',
-  'https://purveyols-system.vercel.app'
-];
+// ─── Temporarily allow all origins for testing ──────────────────
 const corsOptions = {
-  origin: (origin, callback) => {
-    if (!origin || allowedOrigins.includes(origin)) {
-      return callback(null, true);
-    }
-    return callback(new Error('Not allowed by CORS'));
-  },
+  origin: true, // ✅ allows any origin
   credentials: true,
   optionsSuccessStatus: 200
 };
@@ -30,9 +21,7 @@ app.use((req, res, next) => {
 app.use(express.json());
 app.use(morgan('dev'));
 
-// ─── ──────────────────────────────────────────────────────────────
-// ─── NEW: Auto‑seed if database is empty ────────────────────────
-// ─── ──────────────────────────────────────────────────────────────
+// ─── Auto‑seed if database is empty ──────────────────────────────
 const User = require('./models/User');
 const { exec } = require('child_process');
 
@@ -57,9 +46,8 @@ const seedIfEmpty = async () => {
     console.error('❌ Failed to check user count:', err);
   }
 };
-// ─── ──────────────────────────────────────────────────────────────
 
-// ─── Existing routes ────────────────────────────────────────────────
+// ─── Routes ──────────────────────────────────────────────────────
 app.use('/api/test', require('./routes/test'));
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/chat-history', require('./routes/chatHistory'));
@@ -89,25 +77,23 @@ app.use('/api/site-plans', require('./routes/sitePlans'));
 app.use('/api/drawings', require('./routes/drawings'));
 app.use('/api/surveys', require('./routes/surveys'));
 
-// ─── NEW routes for Project Planning ──────────────────────────────
+// ─── Project Planning ────────────────────────────────────────────
 const projectPlanRoutes = require('./routes/projectPlans');
 app.use('/api/project-plans', projectPlanRoutes);
 
 const siteDiaryRoutes = require('./routes/siteDiary');
 app.use('/api/site-diary', siteDiaryRoutes);
 
-// ─── Health check ──────────────────────────────────────────────────
+// ─── Health check ────────────────────────────────────────────────
 app.get('/api/health', (req, res) => res.json({ status: 'OK', timestamp: new Date().toISOString() }));
 
 const PORT = process.env.PORT || 5000;
 
-// ─── ──────────────────────────────────────────────────────────────
-// ─── UPDATED: connect + auto‑seed ────────────────────────────────
-// ─── ──────────────────────────────────────────────────────────────
+// ─── Connect and start ──────────────────────────────────────────
 mongoose.connect(process.env.MONGO_URI)
   .then(() => {
     console.log('MongoDB connected');
-    seedIfEmpty(); // 👈 This triggers seeding if needed
+    seedIfEmpty();
     app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
   })
   .catch(err => console.log(err));
