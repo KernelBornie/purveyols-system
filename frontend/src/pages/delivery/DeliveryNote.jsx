@@ -29,8 +29,8 @@ const DeliveryNote = () => {
   });
   const [message, setMessage] = useState(null);
 
-  // Check if user can edit/delete
-  const canEdit = ['director', 'admin'].includes(user?.role);
+  // ✅ Edit allowed for these roles
+  const canEdit = ['procurement-officer', 'civil-engineer', 'quantity-surveyor', 'director', 'admin'].includes(user?.role);
 
   const generateNoteNumber = () => {
     const date = new Date();
@@ -132,13 +132,9 @@ const DeliveryNote = () => {
     <Paper sx={{ p: 3, maxWidth: '800px', mx: 'auto' }}>
       <BackButton />
       {message && <Alert severity={message.type} sx={{ mb: 2 }}>{message.text}</Alert>}
-      {!canEdit && (
-        <Alert severity="info" sx={{ mb: 2 }}>
-          You have view‑only access to delivery notes. Edits are disabled.
-        </Alert>
-      )}
+      {!canEdit && <Alert severity="info" sx={{ mb: 2 }}>You have view‑only access.</Alert>}
+
       <form onSubmit={handleSubmit}>
-        {/* Company Header */}
         <Box sx={{ textAlign: 'center', borderBottom: '2px solid #000', pb: 2, mb: 2 }}>
           <Typography variant="h5" sx={{ fontWeight: 'bold' }}>PURVEYOLS INVESTMENT LIMITED</Typography>
           <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>Specialized In Building Construction, Civil Engineering,</Typography>
@@ -147,142 +143,63 @@ const DeliveryNote = () => {
           <Typography variant="body2">Call +260 96539879 / +260 97739879</Typography>
           <Typography variant="body2">Email: purveyols@gmail.com</Typography>
         </Box>
-
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2, borderBottom: '1px solid #000', pb: 1 }}>
           <Typography variant="h5" sx={{ fontWeight: 'bold' }}>DELIVERY NOTE</Typography>
           <Typography variant="h6" sx={{ fontWeight: 'bold' }}>No.: {form.noteNumber || 'NEW'}</Typography>
         </Box>
-
         <Grid container spacing={2} sx={{ mb: 3 }}>
           <Grid item xs={12} md={6}>
-            <TextField
-              label="M/S"
-              fullWidth
-              size="small"
-              value={form.ms}
-              onChange={e => setForm({ ...form, ms: e.target.value })}
-              placeholder="Customer name..."
-              disabled={!canEdit}
-              InputProps={{ readOnly: !canEdit }}
-            />
+            <TextField label="M/S" fullWidth size="small" value={form.ms} onChange={e => setForm({ ...form, ms: e.target.value })} placeholder="Customer name..." disabled={!canEdit} />
           </Grid>
           <Grid item xs={12} md={6}>
-            <TextField
-              label="Date"
-              type="date"
-              fullWidth
-              size="small"
-              value={form.date}
-              onChange={e => setForm({ ...form, date: e.target.value })}
-              InputLabelProps={{ shrink: true }}
-              disabled={!canEdit}
-              InputProps={{ readOnly: !canEdit }}
-            />
+            <TextField label="Date" type="date" fullWidth size="small" value={form.date} onChange={e => setForm({ ...form, date: e.target.value })} InputLabelProps={{ shrink: true }} disabled={!canEdit} />
           </Grid>
         </Grid>
-
-        {/* Items Table */}
         <Table size="small" sx={{ border: '1px solid #000' }}>
           <TableHead>
             <TableRow sx={{ bgcolor: '#f5f5f5' }}>
               <TableCell sx={{ fontWeight: 'bold', border: '1px solid #000', width: '30%' }}>Qty</TableCell>
               <TableCell sx={{ fontWeight: 'bold', border: '1px solid #000' }}>Description</TableCell>
-              {canEdit && <TableCell sx={{ fontWeight: 'bold', border: '1px solid #000', width: '60px' }}>Action</TableCell>}
+              <TableCell sx={{ fontWeight: 'bold', border: '1px solid #000', width: '60px' }}>Action</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
             {form.items.map((item, idx) => (
               <TableRow key={idx}>
                 <TableCell sx={{ border: '1px solid #000', p: 1 }}>
-                  <TextField
-                    size="small"
-                    fullWidth
-                    value={item.quantity}
-                    onChange={e => handleItemChange(idx, 'quantity', e.target.value)}
-                    placeholder="e.g., 5"
-                    disabled={!canEdit}
-                    sx={{ '& .MuiInputBase-root': { border: 'none' } }}
-                  />
+                  <TextField size="small" fullWidth value={item.quantity} onChange={e => handleItemChange(idx, 'quantity', e.target.value)} placeholder="e.g., 5" disabled={!canEdit} sx={{ '& .MuiInputBase-root': { border: 'none' } }} />
                 </TableCell>
                 <TableCell sx={{ border: '1px solid #000', p: 1 }}>
-                  <TextField
-                    size="small"
-                    fullWidth
-                    value={item.description}
-                    onChange={e => handleItemChange(idx, 'description', e.target.value)}
-                    placeholder="Item description..."
-                    disabled={!canEdit}
-                    sx={{ '& .MuiInputBase-root': { border: 'none' } }}
-                  />
+                  <TextField size="small" fullWidth value={item.description} onChange={e => handleItemChange(idx, 'description', e.target.value)} placeholder="Item description..." disabled={!canEdit} sx={{ '& .MuiInputBase-root': { border: 'none' } }} />
                 </TableCell>
-                {canEdit && (
-                  <TableCell sx={{ border: '1px solid #000', textAlign: 'center' }}>
-                    <IconButton size="small" onClick={() => removeItem(idx)} color="error">
-                      <DeleteIcon fontSize="small" />
-                    </IconButton>
-                  </TableCell>
-                )}
+                <TableCell sx={{ border: '1px solid #000', textAlign: 'center' }}>
+                  <IconButton size="small" onClick={() => removeItem(idx)} color="error" disabled={!canEdit}><DeleteIcon fontSize="small" /></IconButton>
+                </TableCell>
               </TableRow>
             ))}
           </TableBody>
         </Table>
-
         {canEdit && (
           <Box sx={{ mt: 2 }}>
             <Button variant="outlined" startIcon={<AddIcon />} onClick={addItem} size="small">Add Row</Button>
           </Box>
         )}
-
         <Grid container spacing={2} sx={{ mt: 3 }}>
           <Grid item xs={12} md={6}>
-            <TextField
-              label="Delivered By"
-              fullWidth
-              size="small"
-              value={form.deliveredBy}
-              onChange={e => setForm({ ...form, deliveredBy: e.target.value })}
-              placeholder="Name of deliverer..."
-              disabled={!canEdit}
-              InputProps={{ readOnly: !canEdit }}
-            />
+            <TextField label="Delivered By" fullWidth size="small" value={form.deliveredBy} onChange={e => setForm({ ...form, deliveredBy: e.target.value })} placeholder="Name of deliverer..." disabled={!canEdit} />
           </Grid>
           <Grid item xs={12} md={6}>
-            <TextField
-              label="Received By"
-              fullWidth
-              size="small"
-              value={form.receivedBy}
-              onChange={e => setForm({ ...form, receivedBy: e.target.value })}
-              placeholder="Name of receiver..."
-              disabled={!canEdit}
-              InputProps={{ readOnly: !canEdit }}
-            />
+            <TextField label="Received By" fullWidth size="small" value={form.receivedBy} onChange={e => setForm({ ...form, receivedBy: e.target.value })} placeholder="Name of receiver..." disabled={!canEdit} />
           </Grid>
         </Grid>
-
-        {/* Action Buttons */}
         <Box sx={{ mt: 4, display: 'flex', gap: 2, flexWrap: 'wrap' }}>
           {canEdit && (
-            <Button type="submit" variant="contained" startIcon={<SaveIcon />} disabled={loading}>
-              {loading ? 'Saving...' : 'Save Delivery Note'}
-            </Button>
+            <Button type="submit" variant="contained" startIcon={<SaveIcon />} disabled={loading}>{loading ? 'Saving...' : 'Save Delivery Note'}</Button>
           )}
-          <Button variant="outlined" startIcon={<PrintIcon />} onClick={handlePrint}>
-            Print
-          </Button>
-          <Button variant="outlined" onClick={() => navigate('/delivery')}>
-            Cancel
-          </Button>
+          <Button variant="outlined" startIcon={<PrintIcon />} onClick={handlePrint}>Print</Button>
+          <Button variant="outlined" onClick={() => navigate('/delivery')}>Cancel</Button>
           {canEdit && id && (
-            <Button
-              variant="contained"
-              color="error"
-              startIcon={<DeleteIcon />}
-              onClick={handleDelete}
-              disabled={loading}
-            >
-              Delete
-            </Button>
+            <Button variant="contained" color="error" startIcon={<DeleteIcon />} onClick={handleDelete} disabled={loading}>Delete</Button>
           )}
         </Box>
       </form>
