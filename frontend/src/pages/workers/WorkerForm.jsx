@@ -22,8 +22,11 @@ const WorkerForm = () => {
     site: '',
     status: 'active',
   });
-  const [creator, setCreator] = useState(null);
+  const [enroller, setEnroller] = useState(null);
   const [message, setMessage] = useState(null);
+
+  const viewOnlyRoles = ['driver', 'receptionist', 'safety-officer'];
+  const isViewOnly = viewOnlyRoles.includes(user?.role);
 
   useEffect(() => {
     if (id) {
@@ -38,19 +41,23 @@ const WorkerForm = () => {
             site: data.site || '',
             status: data.status || 'active',
           });
-          setCreator(data.enrolledBy);
+          setEnroller(data.enrolledBy);
         })
         .catch(err => {
-          console.error('Error fetching worker:', err);
           setMessage({ type: 'error', text: 'Failed to load worker' });
         });
     } else {
-      setCreator(user);
+      if (isViewOnly) {
+        navigate('/workers');
+        return;
+      }
+      setEnroller(user);
     }
-  }, [id, user]);
+  }, [id, user, isViewOnly, navigate]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (isViewOnly) return;
     setLoading(true);
     setMessage(null);
     try {
@@ -62,7 +69,6 @@ const WorkerForm = () => {
         site: form.site || '',
         status: form.status,
       };
-
       if (id) {
         await api.put(`/api/workers/${id}`, payload);
         setMessage({ type: 'success', text: 'Worker updated successfully!' });
@@ -78,52 +84,35 @@ const WorkerForm = () => {
     }
   };
 
-  const handlePrint = () => {
-    window.print();
-  };
+  const handlePrint = () => window.print();
 
   return (
-    <Paper sx={{ p: 3, maxWidth: '800px', mx: 'auto' }}>
+    <Paper sx={{ p: 3, maxWidth: '700px', mx: 'auto' }}>
       <BackButton />
-
       {message && <Alert severity={message.type} sx={{ mb: 2 }}>{message.text}</Alert>}
+      {isViewOnly && (
+        <Alert severity="info" sx={{ mb: 2 }}>
+          You have view‑only access. Edits are disabled.
+        </Alert>
+      )}
 
       <form onSubmit={handleSubmit}>
-        {/* Company Header */}
+        {/* Header */}
         <Box sx={{
           textAlign: 'center',
           borderBottom: '2px solid #000',
           pb: 2,
           mb: 2,
-          '@media print': { borderBottom: '2px solid #000' }
         }}>
-          <Typography variant="h4" component="div" sx={{ fontWeight: 'bold', letterSpacing: 2 }}>
-            PURVEYOLS
-          </Typography>
-          <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>
-            Building and Civil Construction
-          </Typography>
-          <Typography variant="body2">
-            Plot No. 8, Buchi Road - Northmead, P.O. Box NH 87 Lusaka, Zambia
-          </Typography>
-          <Typography variant="body2">
-            Tel: +260 211 235354 | Mobile: +260 977 393879 / +260 965 393879
-          </Typography>
-          <Typography variant="body2">
-            Email: purveyols@gmail.com
-          </Typography>
+          <Typography variant="h4" sx={{ fontWeight: 'bold', letterSpacing: 2 }}>PURVEYOLS</Typography>
+          <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>Building and Civil Construction</Typography>
+          <Typography variant="body2">Plot No. 8, Buchi Road - Northmead, P.O. Box NH 87 Lusaka, Zambia</Typography>
+          <Typography variant="body2">Tel: +260 211 235354 | Mobile: +260 977 393879 / +260 965 393879</Typography>
+          <Typography variant="body2">Email: purveyols@gmail.com</Typography>
         </Box>
 
-        {/* Document Title */}
-        <Box sx={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          mb: 3,
-          borderBottom: '1px solid #000',
-          pb: 1
-        }}>
-          <Typography variant="h5" sx={{ fontWeight: 'bold', letterSpacing: 1 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3 }}>
+          <Typography variant="h5" sx={{ fontWeight: 'bold' }}>
             {id ? 'EDIT WORKER' : 'ENROLL WORKER'}
           </Typography>
           <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
@@ -131,113 +120,95 @@ const WorkerForm = () => {
           </Typography>
         </Box>
 
-        {/* Creator Info */}
-        {creator && (
-          <Box sx={{ mb: 2 }}>
-            <Typography variant="body2">
-              Enrolled by (you): <strong>{creator.name}</strong> ({creator.role})
-            </Typography>
-          </Box>
+        {enroller && (
+          <Typography variant="body2" sx={{ mb: 2 }}>
+            Enrolled by (you): <strong>{enroller.name}</strong> ({enroller.role})
+          </Typography>
         )}
 
-        {/* Form Fields */}
-        <Grid container spacing={2} sx={{ mb: 3 }}>
+        <Grid container spacing={2}>
           <Grid item xs={12}>
             <TextField
               label="Full Name *"
               fullWidth
-              size="small"
-              value={form.name || ''}
+              value={form.name}
               onChange={e => setForm({ ...form, name: e.target.value })}
               required
               placeholder="Enter worker's full name..."
+              disabled={isViewOnly}
+              InputProps={{ readOnly: isViewOnly }}
             />
           </Grid>
-        </Grid>
-
-        <Grid container spacing={2} sx={{ mb: 3 }}>
           <Grid item xs={12} md={6}>
             <TextField
               label="NRC Number *"
               fullWidth
-              size="small"
-              value={form.nrc || ''}
+              value={form.nrc}
               onChange={e => setForm({ ...form, nrc: e.target.value })}
               required
               placeholder="e.g., 123456/78/9"
+              disabled={isViewOnly}
+              InputProps={{ readOnly: isViewOnly }}
             />
           </Grid>
           <Grid item xs={12} md={6}>
             <TextField
               label="Phone Number"
               fullWidth
-              size="small"
-              value={form.phone || ''}
+              value={form.phone}
               onChange={e => setForm({ ...form, phone: e.target.value })}
               placeholder="e.g., +260 97 1234567"
+              disabled={isViewOnly}
+              InputProps={{ readOnly: isViewOnly }}
             />
           </Grid>
-        </Grid>
-
-        <Grid container spacing={2} sx={{ mb: 3 }}>
           <Grid item xs={12} md={6}>
             <TextField
               label="Daily Rate (ZMW)"
               type="number"
               fullWidth
-              size="small"
-              value={form.dailyRate || ''}
+              value={form.dailyRate}
               onChange={e => setForm({ ...form, dailyRate: e.target.value })}
               inputProps={{ min: 0, step: 0.01 }}
               placeholder="0.00"
+              disabled={isViewOnly}
+              InputProps={{ readOnly: isViewOnly }}
             />
           </Grid>
           <Grid item xs={12} md={6}>
             <TextField
               label="Site / Location"
               fullWidth
-              size="small"
-              value={form.site || ''}
+              value={form.site}
               onChange={e => setForm({ ...form, site: e.target.value })}
               placeholder="e.g., Lusaka, Site A"
+              disabled={isViewOnly}
+              InputProps={{ readOnly: isViewOnly }}
             />
           </Grid>
-        </Grid>
-
-        <Grid container spacing={2} sx={{ mb: 3 }}>
-          <Grid item xs={12} md={6}>
+          <Grid item xs={12}>
             <TextField
               select
               label="Status"
               fullWidth
-              size="small"
-              value={form.status || 'active'}
+              value={form.status}
               onChange={e => setForm({ ...form, status: e.target.value })}
+              disabled={isViewOnly}
             >
               <MenuItem value="active">Active</MenuItem>
               <MenuItem value="suspended">Suspended</MenuItem>
               <MenuItem value="inactive">Inactive</MenuItem>
             </TextField>
           </Grid>
-          <Grid item xs={12} md={6}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, height: '100%' }}>
-              <Typography variant="body2" color="textSecondary">Status:</Typography>
-              {form.status === 'active' && <Chip label="Active" color="success" size="small" />}
-              {form.status === 'suspended' && <Chip label="Suspended" color="warning" size="small" />}
-              {form.status === 'inactive' && <Chip label="Inactive" color="default" size="small" />}
-            </Box>
-          </Grid>
         </Grid>
 
-        {/* Approval Section */}
+        {/* Approval / Signature Section */}
         <Box sx={{ mt: 4, borderTop: '1px solid #000', pt: 3 }}>
-          <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 2 }}>
-            Approval
-          </Typography>
+          <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 2 }}>Approval</Typography>
           <Grid container spacing={2}>
             <Grid item xs={12} md={6}>
               <Typography variant="body2">Enrolled by:</Typography>
-              <Typography variant="body1" sx={{ fontWeight: 'bold' }}>{creator?.name || 'N/A'}</Typography>
+              <Typography variant="body1" sx={{ fontWeight: 'bold' }}>{enroller?.name || 'N/A'}</Typography>
             </Grid>
             <Grid item xs={12} md={6}>
               <Typography variant="body2">Date:</Typography>
@@ -252,26 +223,15 @@ const WorkerForm = () => {
           </Box>
         </Box>
 
-        {/* Action Buttons */}
+        {/* Buttons */}
         <Box sx={{ mt: 4, display: 'flex', gap: 2 }}>
-          <Button
-            type="submit"
-            variant="contained"
-            startIcon={<SaveIcon />}
-            disabled={loading}
-          >
-            {loading ? 'Saving...' : 'Save Worker'}
-          </Button>
-          <Button
-            variant="outlined"
-            startIcon={<PrintIcon />}
-            onClick={handlePrint}
-          >
-            Print
-          </Button>
-          <Button variant="outlined" onClick={() => navigate('/workers')}>
-            Cancel
-          </Button>
+          {!isViewOnly && (
+            <Button type="submit" variant="contained" startIcon={<SaveIcon />} disabled={loading}>
+              {loading ? 'Saving...' : 'Save Worker'}
+            </Button>
+          )}
+          <Button variant="outlined" startIcon={<PrintIcon />} onClick={handlePrint}>Print</Button>
+          <Button variant="outlined" onClick={() => navigate('/workers')}>Cancel</Button>
         </Box>
       </form>
     </Paper>
