@@ -5,7 +5,7 @@ const auth = require('../middleware/auth');
 const authorize = require('../middleware/rbac');
 const { createNotification } = require('../utils/notificationHelper');
 
-// ─── GET all orders with grandTotal fallback ──────────────────────────
+// ─── GET all orders ──────────────────────────────────────────────
 router.get('/', auth, async (req, res) => {
   try {
     const orders = await ProcurementOrder.find()
@@ -14,10 +14,8 @@ router.get('/', auth, async (req, res) => {
       .populate('fundedBy', 'name role')
       .populate('procurementOfficer', 'name role');
 
-    // Enrich with grandTotal if missing
     const enriched = orders.map(order => {
       const obj = order.toObject();
-      // If grandTotal is not set, compute from items
       if (!obj.grandTotal && Array.isArray(obj.items)) {
         obj.grandTotal = obj.items.reduce((sum, item) => {
           const qty = Number(item.quantity) || 0;
@@ -27,14 +25,13 @@ router.get('/', auth, async (req, res) => {
       }
       return obj;
     });
-
     res.json(enriched);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// ─── GET single order ──────────────────────────────────────────────────
+// ─── GET single order ────────────────────────────────────────────
 router.get('/:id', auth, async (req, res) => {
   try {
     const order = await ProcurementOrder.findById(req.params.id)
@@ -44,8 +41,6 @@ router.get('/:id', auth, async (req, res) => {
       .populate('procurementOfficer', 'name role');
 
     if (!order) return res.status(404).json({ error: 'Order not found' });
-
-    // Ensure grandTotal is present
     const obj = order.toObject();
     if (!obj.grandTotal && Array.isArray(obj.items)) {
       obj.grandTotal = obj.items.reduce((sum, item) => {
@@ -54,37 +49,33 @@ router.get('/:id', auth, async (req, res) => {
         return sum + (qty * price);
       }, 0);
     }
-
     res.json(obj);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// ─── CREATE new order ──────────────────────────────────────────────────
-router.post('/', auth, authorize('admin', 'director', 'procurement-officer'), async (req, res) => {
+// ─── CREATE ──────────────────────────────────────────────────────
+router.post('/', auth, authorize('admin', 'director', 'procurement-officer', 'civil-engineer', 'quantity-surveyor'), async (req, res) => {
   try {
     const order = new ProcurementOrder({ ...req.body, createdBy: req.user.id });
     await order.save();
-
     const populated = await ProcurementOrder.findById(order._id)
       .populate('project', 'name')
       .populate('createdBy', 'name role')
       .populate('fundedBy', 'name role')
       .populate('procurementOfficer', 'name role');
-
     res.status(201).json(populated);
   } catch (err) {
     res.status(400).json({ error: err.message });
   }
 });
 
-// ─── UPDATE (edit) – only if pending ──────────────────────────────────
-router.put('/:id', auth, authorize('admin', 'director', 'procurement-officer'), async (req, res) => {
+// ─── UPDATE (edit) – only pending ──────────────────────────────
+router.put('/:id', auth, authorize('admin', 'director', 'procurement-officer', 'civil-engineer', 'quantity-surveyor'), async (req, res) => {
   try {
     const order = await ProcurementOrder.findById(req.params.id);
     if (!order) return res.status(404).json({ error: 'Order not found' });
-
     if (order.status !== 'pending') {
       return res.status(400).json({ error: 'Only pending orders can be edited' });
     }
@@ -127,22 +118,19 @@ router.put('/:id', auth, authorize('admin', 'director', 'procurement-officer'), 
   }
 });
 
-// ─── APPROVE (set status → 'funded') ──────────────────────────────────
+// ─── APPROVE (→ funded) ──────────────────────────────────────────
 router.put('/:id/approve', auth, authorize('admin', 'director', 'accountant'), async (req, res) => {
   try {
     const order = await ProcurementOrder.findById(req.params.id);
     if (!order) return res.status(404).json({ error: 'Order not found' });
-
     if (order.status !== 'pending') {
       return res.status(400).json({ error: 'Only pending orders can be approved' });
     }
-
     order.status = 'funded';
     order.fundedBy = req.user.id;
     order.fundedAt = new Date();
     await order.save();
 
-    // Notify creator
     if (order.createdBy) {
       await createNotification(
         order.createdBy,
@@ -165,20 +153,17 @@ router.put('/:id/approve', auth, authorize('admin', 'director', 'accountant'), a
   }
 });
 
-// ─── REJECT (set status → 'rejected') ──────────────────────────────────
+// ─── REJECT ──────────────────────────────────────────────────────
 router.put('/:id/reject', auth, authorize('admin', 'director', 'accountant'), async (req, res) => {
   try {
     const order = await ProcurementOrder.findById(req.params.id);
     if (!order) return res.status(404).json({ error: 'Order not found' });
-
     if (order.status !== 'pending') {
       return res.status(400).json({ error: 'Only pending orders can be rejected' });
     }
-
     order.status = 'rejected';
     await order.save();
 
-    // Notify creator
     if (order.createdBy) {
       await createNotification(
         order.createdBy,
@@ -201,12 +186,11 @@ router.put('/:id/reject', auth, authorize('admin', 'director', 'accountant'), as
   }
 });
 
-// ─── FUND (backward compatibility) ────────────────────────────────────
+// ─── FUND (backward compat) ──────────────────────────────────────
 router.put('/:id/fund', auth, authorize('admin', 'director', 'accountant'), async (req, res) => {
   try {
     const order = await ProcurementOrder.findById(req.params.id);
     if (!order) return res.status(404).json({ error: 'Order not found' });
-
     order.status = 'funded';
     order.fundedBy = req.user.id;
     order.fundedAt = new Date();
@@ -224,10 +208,11 @@ router.put('/:id/fund', auth, authorize('admin', 'director', 'accountant'), asyn
   }
 });
 
-// ─── DELETE ──────────────────────────────────────────────────────────────
-router.delete('/:id', auth, authorize('admin', 'director'), async (req, res) => {
+// ─── DELETE ──────────────────────────────────────────────────────
+router.delete('/:id', auth, authorize('admin', 'director', 'procurement-officer', 'civil-engineer', 'quantity-surveyor'), async (req, res) => {
   try {
-    await ProcurementOrder.findByIdAndDelete(req.params.id);
+    const deleted = await ProcurementOrder.findByIdAndDelete(req.params.id);
+    if (!deleted) return res.status(404).json({ error: 'Order not found' });
     res.json({ message: 'Deleted' });
   } catch (err) {
     res.status(400).json({ error: err.message });
