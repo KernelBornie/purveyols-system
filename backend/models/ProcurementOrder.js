@@ -9,7 +9,7 @@ const ProcurementOrderSchema = new mongoose.Schema({
     supplier: String,
     notes: String,
   }],
-  status: { type: String, enum: ['draft','pending','funded','purchased'], default: 'draft' },
+  status: { type: String, enum: ['draft','pending','funded','purchased','rejected'], default: 'draft' },
   createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   createdAt: { type: Date, default: Date.now },
   updatedAt: Date,

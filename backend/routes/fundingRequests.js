@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const FundingRequest = require('../models/FundingRequest');
 const auth = require('../middleware/auth');
+const authorize = require('../middleware/rbac');
 const { createNotification } = require('../utils/notificationHelper');
 const User = require('../models/User');
 
@@ -12,7 +13,29 @@ router.get('/', auth, async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-router.post('/', auth, async (req, res) => {
+router.get('/:id', auth, async (req, res) => {
+  try {
+    const request = await FundingRequest.findById(req.params.id).populate('project requestedBy approvedBy');
+    if (!request) return res.status(404).json({ error: 'Request not found' });
+    res.json(request);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+router.post(
+  '/',
+  auth,
+  authorize(
+    'admin',
+    'director',
+    'civil-engineer',
+    'quantity-surveyor',
+    'foreman',
+    'driver',
+    'safety-officer',
+    'procurement-officer',
+    'accountant'
+  ),
+  async (req, res) => {
   try {
     const request = new FundingRequest({ ...req.body, requestedBy: req.user.id });
     await request.save();
@@ -34,7 +57,16 @@ router.post('/', auth, async (req, res) => {
   } catch (err) { res.status(400).json({ error: err.message }); }
 });
 
-router.put('/:id/approve', auth, async (req, res) => {
+router.put('/:id', auth, authorize('admin', 'director', 'accountant'), async (req, res) => {
+  try {
+    const updated = await FundingRequest.findByIdAndUpdate(req.params.id, req.body, { new: true })
+      .populate('project requestedBy approvedBy');
+    if (!updated) return res.status(404).json({ error: 'Request not found' });
+    res.json(updated);
+  } catch (err) { res.status(400).json({ error: err.message }); }
+});
+
+router.put('/:id/approve', auth, authorize('admin', 'director', 'accountant'), async (req, res) => {
   try {
     const request = await FundingRequest.findById(req.params.id);
     if (!request) return res.status(404).json({ error: 'Request not found' });
@@ -55,7 +87,7 @@ router.put('/:id/approve', auth, async (req, res) => {
   } catch (err) { res.status(400).json({ error: err.message }); }
 });
 
-router.put('/:id/reject', auth, async (req, res) => {
+router.put('/:id/reject', auth, authorize('admin', 'director', 'accountant'), async (req, res) => {
   try {
     const request = await FundingRequest.findById(req.params.id);
     if (!request) return res.status(404).json({ error: 'Request not found' });
@@ -64,6 +96,14 @@ router.put('/:id/reject', auth, async (req, res) => {
     await request.save();
     const populated = await FundingRequest.findById(request._id).populate('project requestedBy approvedBy');
     res.json(populated);
+  } catch (err) { res.status(400).json({ error: err.message }); }
+});
+
+router.delete('/:id', auth, authorize('admin', 'director'), async (req, res) => {
+  try {
+    const deleted = await FundingRequest.findByIdAndDelete(req.params.id);
+    if (!deleted) return res.status(404).json({ error: 'Request not found' });
+    res.json({ message: 'Deleted' });
   } catch (err) { res.status(400).json({ error: err.message }); }
 });
 

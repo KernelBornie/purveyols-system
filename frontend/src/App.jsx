@@ -57,6 +57,7 @@ function App() {
             <Route path="/profile" element={<Profile />} />
             <Route path="/settings" element={<Settings />} />
             <Route path="/messages" element={<Messages />} />
+            <Route path="/messages/:id" element={<Navigate to="/messages" replace />} />
             <Route path="/workers" element={<WorkerList />} />
             <Route path="/workers/new" element={<WorkerForm />} />
             <Route path="/workers/:id" element={<WorkerForm />} />
@@ -68,6 +69,8 @@ function App() {
             <Route path="/procurement/:id" element={<ProcurementForm />} />
             <Route path="/funding" element={<FundingRequestList />} />
             <Route path="/funding/new" element={<FundingRequestForm />} />
+            <Route path="/funding/:id" element={<FundingRequestForm />} />
+            <Route path="/payments/:id" element={<Navigate to="/dashboard" replace />} />
             <Route path="/subcontracts" element={<SubcontractList />} />
             <Route path="/subcontracts/new" element={<SubcontractForm />} />
             <Route path="/subcontracts/:id" element={<SubcontractForm />} />

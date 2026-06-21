@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const BOQ = require('../models/BOQ');
 const auth = require('../middleware/auth');
+const authorize = require('../middleware/rbac');
 const { createNotification } = require('../utils/notificationHelper');
 const User = require('../models/User');
 
@@ -12,7 +13,7 @@ router.get('/', auth, async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-router.post('/', auth, async (req, res) => {
+router.post('/', auth, authorize('admin', 'director', 'quantity-surveyor', 'civil-engineer'), async (req, res) => {
   try {
     const boq = new BOQ({ ...req.body, createdBy: req.user.id });
     await boq.save();
@@ -32,14 +33,14 @@ router.post('/', auth, async (req, res) => {
   } catch (err) { res.status(400).json({ error: err.message }); }
 });
 
-router.put('/:id', auth, async (req, res) => {
+router.put('/:id', auth, authorize('admin', 'director', 'quantity-surveyor', 'civil-engineer'), async (req, res) => {
   try {
     const boq = await BOQ.findByIdAndUpdate(req.params.id, req.body, { new: true }).populate('project createdBy');
     res.json(boq);
   } catch (err) { res.status(400).json({ error: err.message }); }
 });
 
-router.put('/:id/submit', auth, async (req, res) => {
+router.put('/:id/submit', auth, authorize('admin', 'director', 'quantity-surveyor', 'civil-engineer'), async (req, res) => {
   try {
     const boq = await BOQ.findById(req.params.id);
     if (!boq) return res.status(404).json({ error: 'BOQ not found' });
@@ -61,7 +62,7 @@ router.put('/:id/submit', auth, async (req, res) => {
   } catch (err) { res.status(400).json({ error: err.message }); }
 });
 
-router.put('/:id/approve', auth, async (req, res) => {
+router.put('/:id/approve', auth, authorize('admin', 'director'), async (req, res) => {
   try {
     const boq = await BOQ.findById(req.params.id);
     if (!boq) return res.status(404).json({ error: 'BOQ not found' });
@@ -82,7 +83,7 @@ router.put('/:id/approve', auth, async (req, res) => {
   } catch (err) { res.status(400).json({ error: err.message }); }
 });
 
-router.delete('/:id', auth, async (req, res) => {
+router.delete('/:id', auth, authorize('admin', 'director'), async (req, res) => {
   try {
     await BOQ.findByIdAndDelete(req.params.id);
     res.json({ message: 'Deleted' });

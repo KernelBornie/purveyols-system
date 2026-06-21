@@ -3,6 +3,7 @@ const router = express.Router();
 const Payment = require('../models/Payment');
 const Worker = require('../models/Worker');
 const auth = require('../middleware/auth');
+const authorize = require('../middleware/rbac');
 const crypto = require('crypto');
 const { createNotification } = require('../utils/notificationHelper');
 const User = require('../models/User');
@@ -17,7 +18,7 @@ router.get('/', auth, async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-router.post('/', auth, async (req, res) => {
+router.post('/', auth, authorize('admin', 'director', 'accountant'), async (req, res) => {
   try {
     const { type, recipientName, recipientPhone, amount, project, worker, subcontract, notes } = req.body;
     if (!amount || amount <= 0) return res.status(400).json({ error: 'Invalid amount' });
@@ -66,7 +67,7 @@ router.post('/', auth, async (req, res) => {
   } catch (err) { res.status(400).json({ error: err.message }); }
 });
 
-router.post('/bulk', auth, async (req, res) => {
+router.post('/bulk', auth, authorize('admin', 'director', 'accountant'), async (req, res) => {
   try {
     const { payments } = req.body;
     if (!payments || !payments.length) return res.status(400).json({ error: 'No payments provided' });
