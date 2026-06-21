@@ -1,36 +1,71 @@
 import React, { useState, useEffect } from 'react';
-import {
-  Table, TableHead, TableRow, TableCell, TableBody, Button, Paper, Typography,
-  Chip, IconButton, Tooltip
-} from '@mui/material';
-import VisibilityIcon from '@mui/icons-material/Visibility';
-import PrintIcon from '@mui/icons-material/Print';
-import api from '../../api/axios';
 import { Link } from 'react-router-dom';
+import {
+  Paper, Typography, Box, Table, TableHead, TableRow, TableCell, TableBody,
+  Button, IconButton, Tooltip, Alert, CircularProgress, Chip
+} from '@mui/material';
+import AddIcon from '@mui/icons-material/Add';
+import VisibilityIcon from '@mui/icons-material/Visibility';
+import EditIcon from '@mui/icons-material/Edit';
+import DeleteIcon from '@mui/icons-material/Delete';
+import api from '../../api/axios';
+import { useAuth } from '../../context/AuthContext';
 import BackButton from '../../components/BackButton';
 
 const BOQList = () => {
   const [boqs, setBoqs] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const { user } = useAuth();
+
+  // ✅ Edit allowed for engineers, QS, directors, admins
+  const canEdit = ['civil-engineer', 'quantity-surveyor', 'director', 'admin'].includes(user?.role);
 
   useEffect(() => {
-    api.get('/api/boq').then(res => setBoqs(res.data));
+    fetchBOQs();
   }, []);
 
-  const getStatusColor = (status) => {
-    if (status === 'approved') return 'success';
-    if (status === 'submitted') return 'warning';
-    return 'default';
+  const fetchBOQs = async () => {
+    setLoading(true);
+    try {
+      const res = await api.get('/api/boq');
+      setBoqs(res.data || []);
+      setError(null);
+    } catch (err) {
+      setError('Failed to load BOQs');
+    } finally {
+      setLoading(false);
+    }
   };
+
+  const handleDelete = async (id) => {
+    if (!window.confirm('Delete this BOQ?')) return;
+    try {
+      await api.delete(`/api/boq/${id}`);
+      fetchBOQs();
+    } catch (err) {
+      alert('Delete failed');
+    }
+  };
+
+  if (loading) return <CircularProgress sx={{ display: 'block', margin: '40px auto' }} />;
+  if (error) return <Alert severity="error">{error}</Alert>;
 
   return (
     <Paper sx={{ p: 2 }}>
       <BackButton />
-      <Typography variant="h5" gutterBottom>Bills of Quantities (BOQ)</Typography>
-      <Button component={Link} to="/boq/new" variant="contained" sx={{ mb: 2 }}>Create BOQ</Button>
-      
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+        <Typography variant="h5" sx={{ fontWeight: 'bold' }}>Bills of Quantities (BOQ)</Typography>
+        {canEdit && (
+          <Button component={Link} to="/boq/new" variant="contained" startIcon={<AddIcon />}>
+            New BOQ
+          </Button>
+        )}
+      </Box>
+
       <Table size="small">
         <TableHead>
-          <TableRow>
+          <TableRow sx={{ bgcolor: '#f5f5f5' }}>
             <TableCell>Project</TableCell>
             <TableCell>Description</TableCell>
             <TableCell>Items</TableCell>
@@ -41,30 +76,44 @@ const BOQList = () => {
           </TableRow>
         </TableHead>
         <TableBody>
-          {boqs.map(b => (
-            <TableRow key={b._id}>
-              <TableCell>{b.project?.name}</TableCell>
-              <TableCell>{b.description || '-'}</TableCell>
-              <TableCell>{b.items?.length || 0}</TableCell>
-              <TableCell>ZMW {(b.grandTotal || 0).toLocaleString()}</TableCell>
+          {boqs.map((boq) => (
+            <TableRow key={boq._id}>
+              <TableCell>{boq.project?.name || '—'}</TableCell>
+              <TableCell>{boq.description || '-'}</TableCell>
+              <TableCell>{boq.items?.length || 0}</TableCell>
+              <TableCell>ZMW {boq.grandTotal?.toLocaleString() || '0'}</TableCell>
               <TableCell>
-                <Chip label={b.status} size="small" color={getStatusColor(b.status)} />
+                <Chip label={boq.status} size="small" color={boq.status === 'approved' ? 'success' : boq.status === 'submitted' ? 'warning' : 'default'} />
               </TableCell>
-              <TableCell>{b.createdBy?.name}</TableCell>
+              <TableCell>{boq.createdBy?.name || '—'}</TableCell>
               <TableCell>
-                <Tooltip title="View/Edit">
-                  <IconButton component={Link} to={`/boq/${b._id}`} size="small">
+                <Tooltip title="View">
+                  <IconButton component={Link} to={`/boq/${boq._id}`} size="small">
                     <VisibilityIcon fontSize="small" />
                   </IconButton>
                 </Tooltip>
-                <Tooltip title="Print">
-                  <IconButton size="small" onClick={() => window.print()}>
-                    <PrintIcon fontSize="small" />
-                  </IconButton>
-                </Tooltip>
+                {canEdit && (
+                  <>
+                    <Tooltip title="Edit">
+                      <IconButton component={Link} to={`/boq/${boq._id}/edit`} size="small" color="primary">
+                        <EditIcon fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
+                    <Tooltip title="Delete">
+                      <IconButton size="small" color="error" onClick={() => handleDelete(boq._id)}>
+                        <DeleteIcon fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
+                  </>
+                )}
               </TableCell>
             </TableRow>
           ))}
+          {boqs.length === 0 && (
+            <TableRow>
+              <TableCell colSpan={7} align="center">No BOQs yet.</TableCell>
+            </TableRow>
+          )}
         </TableBody>
       </Table>
     </Paper>
