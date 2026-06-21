@@ -9,22 +9,21 @@ const BOQ = require('../models/BOQ');
 const Subcontract = require('../models/Subcontract');
 
 /**
- * Get AI response for any construction-related question.
- * Uses OpenAI if available, otherwise falls back to a rule-based system.
- * Returns an object: { text: string, type: string }
+ * Get AI response for any construction‑related question.
+ * Uses OpenAI if API key exists, otherwise falls back to rule‑based.
  */
 const getAIResponse = async (query, userId) => {
   try {
-    // 1. Gather system data to provide context
+    // 1. Gather system data for context
     const systemData = await gatherSystemData(userId);
 
-    // 2. If OpenAI key exists, use it
+    // 2. Check if OpenAI key exists
     const openaiKey = process.env.OPENAI_API_KEY;
     if (openaiKey) {
       return await getOpenAIResponse(query, systemData, openaiKey);
     }
 
-    // 3. Fallback: rule-based responses
+    // 3. Fallback: rule‑based responses
     return await getRuleBasedResponse(query, systemData);
   } catch (error) {
     console.error('AI service error:', error);
@@ -36,18 +35,18 @@ const getAIResponse = async (query, userId) => {
 };
 
 /**
- * Gather relevant system data for context
+ * Gather relevant system data
  */
 const gatherSystemData = async (userId) => {
   try {
     const [projects, workers, funding, payments, procurement, boqs, subcontracts] = await Promise.all([
-      Project.find().populate('manager', 'name').limit(10),
-      Worker.find().limit(10),
-      FundingRequest.find().populate('project', 'name').limit(10),
-      Payment.find().populate('worker', 'name').limit(10),
-      ProcurementOrder.find().populate('project', 'name').limit(10),
-      BOQ.find().populate('project', 'name').limit(10),
-      Subcontract.find().populate('project', 'name').limit(10),
+      Project.find().populate('manager', 'name').limit(20),
+      Worker.find().limit(20),
+      FundingRequest.find().populate('project', 'name').limit(20),
+      Payment.find().populate('worker', 'name').limit(20),
+      ProcurementOrder.find().populate('project', 'name').limit(20),
+      BOQ.find().populate('project', 'name').limit(20),
+      Subcontract.find().populate('project', 'name').limit(20),
     ]);
 
     return {
@@ -73,21 +72,25 @@ const gatherSystemData = async (userId) => {
 };
 
 /**
- * OpenAI-powered response
+ * OpenAI‑powered response – answers any question
  */
 const getOpenAIResponse = async (query, systemData, apiKey) => {
   try {
-    // Build a context string from system data
+    // Build context from system data
     const context = buildContextString(systemData);
 
-    const systemPrompt = `You are PURVEYOLS ASSISTANT AI, a helpful construction management assistant.
+    const systemPrompt = `You are PURVEYOLS ASSISTANT AI, an expert construction management assistant.
 You have access to the following real data from the user's construction management system:
 
 ${context}
 
-Answer the user's question concisely and helpfully. If the question asks about specific data (e.g., projects, workers, funding), use the data above.
-If the question is general construction knowledge, provide a helpful answer.
-Always respond with plain text, no markdown, and keep it under 300 words.`;
+Rules:
+- Answer the user's question concisely and accurately.
+- If the question asks about specific data (projects, workers, funding, etc.), use the data above.
+- If the question is about general construction knowledge, provide a helpful, detailed answer.
+- Always respond in plain text, with bullet points or numbered lists if helpful.
+- Keep responses under 400 words.
+- Be friendly and professional.`;
 
     const response = await axios.post(
       'https://api.openai.com/v1/chat/completions',
@@ -97,7 +100,7 @@ Always respond with plain text, no markdown, and keep it under 300 words.`;
           { role: 'system', content: systemPrompt },
           { role: 'user', content: query }
         ],
-        max_tokens: 400,
+        max_tokens: 500,
         temperature: 0.7,
       },
       {
@@ -116,13 +119,13 @@ Always respond with plain text, no markdown, and keep it under 300 words.`;
     throw new Error('Unexpected OpenAI response format');
   } catch (error) {
     console.error('OpenAI error:', error);
-    // Fallback to rule-based
+    // Fallback to rule‑based
     return await getRuleBasedResponse(query, systemData);
   }
 };
 
 /**
- * Rule-based fallback when no API key or API fails
+ * Fallback rule‑based responses (only if OpenAI fails or no key)
  */
 const getRuleBasedResponse = async (query, systemData) => {
   const q = query.toLowerCase();
@@ -221,22 +224,10 @@ const getRuleBasedResponse = async (query, systemData) => {
     return { text: response, type: 'subcontract' };
   }
 
-  // ─── General stats ────────────────────────────────
-  if (q.includes('status') || q.includes('overview') || q.includes('summary') || q.includes('stats')) {
-    const total = stats.totalProjects || 0;
-    const workersCount = stats.totalWorkers || 0;
-    const fundingCount = stats.totalFunding || 0;
-    const pending = stats.pendingFunding || 0;
-    return {
-      text: `📊 System Overview:\n- ${total} projects\n- ${workersCount} workers\n- ${fundingCount} funding requests (${pending} pending)\n- ${stats.totalPayments || 0} payments\n- ${procurement?.length || 0} procurement orders`,
-      type: 'stats'
-    };
-  }
-
   // ─── General construction knowledge ───────────────
   if (q.includes('construction') || q.includes('building') || q.includes('site') || q.includes('safety')) {
     return {
-      text: '🏗️ I\'m your PURVEYOLS construction assistant. I can help you manage projects, workers, funding, procurement, and more. Try asking about a specific module, or check your dashboard for an overview.',
+      text: '🏗️ I\'m your PURVEYOLS construction assistant. I can help you with:\n• Project management\n• Cost estimation and BOQs\n• Worker management\n• Procurement and materials\n• Safety and regulations\n• Site planning\n\nFeel free to ask specific questions!',
       type: 'general'
     };
   }
@@ -249,7 +240,7 @@ const getRuleBasedResponse = async (query, systemData) => {
 };
 
 /**
- * Build a readable context string from system data
+ * Build context string for OpenAI
  */
 const buildContextString = (data) => {
   let ctx = '';
