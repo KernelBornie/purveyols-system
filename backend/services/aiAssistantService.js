@@ -9,22 +9,19 @@ const BOQ = require('../models/BOQ');
 const Subcontract = require('../models/Subcontract');
 
 /**
- * Get AI response for any construction‑related question.
- * Uses OpenAI if API key exists, otherwise falls back to rule‑based.
+ * Get AI response for ANY question – uses OpenAI if available,
+ * falls back to rule-based if no key.
+ * Returns: { text: string, type: string }
  */
 const getAIResponse = async (query, userId) => {
   try {
-    // 1. Gather system data for context
-    const systemData = await gatherSystemData(userId);
-
-    // 2. Check if OpenAI key exists
     const openaiKey = process.env.OPENAI_API_KEY;
     if (openaiKey) {
-      return await getOpenAIResponse(query, systemData, openaiKey);
+      // Use OpenAI for all queries
+      return await getOpenAIResponse(query, userId);
     }
-
-    // 3. Fallback: rule‑based responses
-    return await getRuleBasedResponse(query, systemData);
+    // Fallback: rule-based
+    return await getRuleBasedResponse(query, userId);
   } catch (error) {
     console.error('AI service error:', error);
     return {
@@ -35,18 +32,161 @@ const getAIResponse = async (query, userId) => {
 };
 
 /**
- * Gather relevant system data
+ * OpenAI response for ANY question – no restrictions.
+ */
+const getOpenAIResponse = async (query, userId) => {
+  try {
+    // Gather system data for context
+    const systemData = await gatherSystemData(userId);
+    const context = buildContextString(systemData);
+
+    const systemPrompt = `You are PURVEYOLS ASSISTANT AI, a knowledgeable construction management assistant.
+You have access to the following real data from the user's system:
+
+${context}
+
+Your task is to answer the user's question as thoroughly and helpfully as possible.
+- If the question is about their specific data (projects, workers, funding, etc.), use the data above.
+- If the question is about general construction, engineering, safety, materials, or any other topic, provide a detailed, informative answer.
+- If the question is about drawing, drafting, design, or technical details, explain the process or provide step‑by‑step guidance.
+- Always respond in plain text, no markdown, with clear sections if needed.
+- Be conversational and friendly.
+- Keep responses under 500 words unless the question requires a longer explanation.
+
+Question: ${query}`;
+
+    const response = await axios.post(
+      'https://api.openai.com/v1/chat/completions',
+      {
+        model: 'gpt-3.5-turbo',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: query }
+        ],
+        max_tokens: 600,
+        temperature: 0.7,
+      },
+      {
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+        },
+        timeout: 20000,
+      }
+    );
+
+    if (response.data && response.data.choices && response.data.choices.length > 0) {
+      const text = response.data.choices[0].message.content.trim();
+      return { text, type: 'general' };
+    }
+    throw new Error('Unexpected OpenAI response format');
+  } catch (error) {
+    console.error('OpenAI error:', error);
+    // Fallback to rule-based if OpenAI fails
+    return await getRuleBasedResponse(query, userId);
+  }
+};
+
+/**
+ * Rule-based fallback – only used when OpenAI is not available.
+ */
+const getRuleBasedResponse = async (query, userId) => {
+  const q = query.toLowerCase();
+  const systemData = await gatherSystemData(userId);
+  const { projects, workers, funding, payments, procurement, boqs, subcontracts, stats } = systemData;
+
+  // ─── Check for specific data queries ────────────────────────────
+  if (q.includes('project') || q.includes('projects')) {
+    if (!projects || projects.length === 0) return { text: 'No projects found.', type: 'project' };
+    let response = '📋 Your projects:\n';
+    projects.forEach(p => {
+      response += `- ${p.name} (${p.status}) – Budget: K${p.budget?.toLocaleString() || 0}\n`;
+    });
+    return { text: response, type: 'project' };
+  }
+  if (q.includes('worker') || q.includes('workers') || q.includes('employee')) {
+    if (!workers || workers.length === 0) return { text: 'No workers enrolled.', type: 'worker' };
+    let response = '👷 Workers:\n';
+    workers.forEach(w => {
+      response += `- ${w.name} (${w.status}) – Rate: K${w.dailyRate || 0}/day\n`;
+    });
+    return { text: response, type: 'worker' };
+  }
+  if (q.includes('funding') || q.includes('fund')) {
+    if (!funding || funding.length === 0) return { text: 'No funding requests.', type: 'funding' };
+    let response = '💰 Funding requests:\n';
+    funding.forEach(f => {
+      response += `- ${f.project?.name || 'Unknown'} – K${f.amount?.toLocaleString() || 0} (${f.status})\n`;
+    });
+    return { text: response, type: 'funding' };
+  }
+  if (q.includes('payment') || q.includes('payments')) {
+    if (!payments || payments.length === 0) return { text: 'No payments recorded.', type: 'payment' };
+    let response = '💳 Payments:\n';
+    payments.forEach(p => {
+      response += `- ${p.recipientName || p.worker?.name || 'Unknown'} – K${p.amount?.toLocaleString() || 0} (${p.status})\n`;
+    });
+    return { text: response, type: 'payment' };
+  }
+  if (q.includes('procurement') || q.includes('order') || q.includes('requisition')) {
+    if (!procurement || procurement.length === 0) return { text: 'No procurement orders.', type: 'procurement' };
+    let response = '📦 Procurement orders:\n';
+    procurement.forEach(o => {
+      response += `- ${o.project?.name || 'N/A'} – Total: K${o.grandTotal?.toLocaleString() || 0} (${o.status})\n`;
+    });
+    return { text: response, type: 'procurement' };
+  }
+  if (q.includes('boq') || q.includes('bill of quantities')) {
+    if (!boqs || boqs.length === 0) return { text: 'No BOQs.', type: 'boq' };
+    let response = '📊 BOQs:\n';
+    boqs.forEach(b => {
+      response += `- ${b.project?.name || 'Unknown'} – Items: ${b.items?.length || 0} – Total: K${b.grandTotal?.toLocaleString() || 0} (${b.status})\n`;
+    });
+    return { text: response, type: 'boq' };
+  }
+  if (q.includes('subcontract') || q.includes('vendor')) {
+    if (!subcontracts || subcontracts.length === 0) return { text: 'No subcontracts.', type: 'subcontract' };
+    let response = '📄 Subcontracts:\n';
+    subcontracts.forEach(s => {
+      response += `- ${s.vendor} – Service: ${s.service || 'N/A'} – K${s.amount?.toLocaleString() || 0} (${s.status})\n`;
+    });
+    return { text: response, type: 'subcontract' };
+  }
+  if (q.includes('status') || q.includes('overview') || q.includes('summary')) {
+    return {
+      text: `📊 Overview:\n- ${stats.totalProjects || 0} projects\n- ${stats.totalWorkers || 0} workers\n- ${stats.totalFunding || 0} funding requests (${stats.pendingFunding || 0} pending)\n- ${stats.totalPayments || 0} payments`,
+      type: 'stats'
+    };
+  }
+
+  // ─── General construction knowledge (if no OpenAI) ──────────────
+  if (q.includes('fence') || q.includes('measurement') || q.includes('draw') || q.includes('site plan')) {
+    return {
+      text: 'I can help with fence measurements and site plans! Here’s a basic guide:\n\n**Fence Measurement:**\n1. Mark the boundary corners.\n2. Measure the distance between corners.\n3. Note the terrain (slopes may need extra material).\n4. Decide on post spacing (usually 2–3m).\n5. Calculate total length and number of posts.\n\n**Site Plan Drawing:**\n1. Start with the property boundary.\n2. Add existing features (buildings, trees).\n3. Position new structures (house, driveway).\n4. Show utilities (water, sewer, electricity).\n5. Use a scale (e.g., 1:100).\n6. Add dimensions and labels.\n\nWould you like more details on any step?',
+      type: 'general'
+    };
+  }
+
+  // Default fallback
+  return {
+    text: 'I can help with projects, workers, funding, payments, procurement, BOQs, subcontracts, and general construction knowledge. What would you like to know?',
+    type: 'general'
+  };
+};
+
+/**
+ * Gather system data for context
  */
 const gatherSystemData = async (userId) => {
   try {
     const [projects, workers, funding, payments, procurement, boqs, subcontracts] = await Promise.all([
-      Project.find().populate('manager', 'name').limit(20),
-      Worker.find().limit(20),
-      FundingRequest.find().populate('project', 'name').limit(20),
-      Payment.find().populate('worker', 'name').limit(20),
-      ProcurementOrder.find().populate('project', 'name').limit(20),
-      BOQ.find().populate('project', 'name').limit(20),
-      Subcontract.find().populate('project', 'name').limit(20),
+      Project.find().populate('manager', 'name').limit(10),
+      Worker.find().limit(10),
+      FundingRequest.find().populate('project', 'name').limit(10),
+      Payment.find().populate('worker', 'name').limit(10),
+      ProcurementOrder.find().populate('project', 'name').limit(10),
+      BOQ.find().populate('project', 'name').limit(10),
+      Subcontract.find().populate('project', 'name').limit(10),
     ]);
 
     return {
@@ -72,175 +212,7 @@ const gatherSystemData = async (userId) => {
 };
 
 /**
- * OpenAI‑powered response – answers any question
- */
-const getOpenAIResponse = async (query, systemData, apiKey) => {
-  try {
-    // Build context from system data
-    const context = buildContextString(systemData);
-
-    const systemPrompt = `You are PURVEYOLS ASSISTANT AI, an expert construction management assistant.
-You have access to the following real data from the user's construction management system:
-
-${context}
-
-Rules:
-- Answer the user's question concisely and accurately.
-- If the question asks about specific data (projects, workers, funding, etc.), use the data above.
-- If the question is about general construction knowledge, provide a helpful, detailed answer.
-- Always respond in plain text, with bullet points or numbered lists if helpful.
-- Keep responses under 400 words.
-- Be friendly and professional.`;
-
-    const response = await axios.post(
-      'https://api.openai.com/v1/chat/completions',
-      {
-        model: 'gpt-3.5-turbo',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: query }
-        ],
-        max_tokens: 500,
-        temperature: 0.7,
-      },
-      {
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${apiKey}`,
-        },
-        timeout: 15000,
-      }
-    );
-
-    if (response.data && response.data.choices && response.data.choices.length > 0) {
-      const text = response.data.choices[0].message.content.trim();
-      return { text, type: 'general' };
-    }
-    throw new Error('Unexpected OpenAI response format');
-  } catch (error) {
-    console.error('OpenAI error:', error);
-    // Fallback to rule‑based
-    return await getRuleBasedResponse(query, systemData);
-  }
-};
-
-/**
- * Fallback rule‑based responses (only if OpenAI fails or no key)
- */
-const getRuleBasedResponse = async (query, systemData) => {
-  const q = query.toLowerCase();
-  const { projects, workers, funding, payments, procurement, boqs, subcontracts, stats } = systemData;
-
-  // ─── Project queries ──────────────────────────────
-  if (q.includes('project') || q.includes('projects')) {
-    if (!projects || projects.length === 0) {
-      return { text: 'No projects found in the system. Create your first project from the Projects page.', type: 'project' };
-    }
-    let response = '📋 Here are your recent projects:\n';
-    projects.forEach(p => {
-      response += `- ${p.name} (${p.status || 'planning'}) – Budget: K${p.budget?.toLocaleString() || 0}\n`;
-    });
-    if (stats.totalProjects > projects.length) {
-      response += `\n... and ${stats.totalProjects - projects.length} more projects.`;
-    }
-    return { text: response, type: 'project' };
-  }
-
-  // ─── Worker queries ──────────────────────────────
-  if (q.includes('worker') || q.includes('workers') || q.includes('employee') || q.includes('staff')) {
-    if (!workers || workers.length === 0) {
-      return { text: 'No workers enrolled yet. Visit the Workers page to enroll your team.', type: 'worker' };
-    }
-    let response = '👷 Recent workers:\n';
-    workers.forEach(w => {
-      response += `- ${w.name} (${w.status || 'active'}) – Rate: K${w.dailyRate || 0}/day\n`;
-    });
-    if (stats.totalWorkers > workers.length) {
-      response += `\n... and ${stats.totalWorkers - workers.length} more workers.`;
-    }
-    return { text: response, type: 'worker' };
-  }
-
-  // ─── Funding queries ──────────────────────────────
-  if (q.includes('funding') || q.includes('fund') || q.includes('budget')) {
-    if (!funding || funding.length === 0) {
-      return { text: 'No funding requests found. You can request funding from the Funding page.', type: 'funding' };
-    }
-    let response = '💰 Recent funding requests:\n';
-    funding.forEach(f => {
-      response += `- ${f.project?.name || 'Unknown project'} – Amount: K${f.amount?.toLocaleString() || 0} (${f.status || 'pending'})\n`;
-    });
-    if (stats.pendingFunding > 0) {
-      response += `\n⚠️ ${stats.pendingFunding} pending requests await approval.`;
-    }
-    return { text: response, type: 'funding' };
-  }
-
-  // ─── Payment queries ──────────────────────────────
-  if (q.includes('payment') || q.includes('payments') || q.includes('paid')) {
-    if (!payments || payments.length === 0) {
-      return { text: 'No payments recorded yet. Process payments from the Payments page.', type: 'payment' };
-    }
-    let response = '💳 Recent payments:\n';
-    payments.forEach(p => {
-      response += `- ${p.recipientName || p.worker?.name || 'Unknown'} – Amount: K${p.amount?.toLocaleString() || 0} (${p.status || 'pending'})\n`;
-    });
-    return { text: response, type: 'payment' };
-  }
-
-  // ─── Procurement queries ──────────────────────────
-  if (q.includes('procurement') || q.includes('order') || q.includes('requisition') || q.includes('material')) {
-    if (!procurement || procurement.length === 0) {
-      return { text: 'No procurement orders yet. Create one from the Procurement page.', type: 'procurement' };
-    }
-    let response = '📦 Recent procurement orders:\n';
-    procurement.forEach(o => {
-      response += `- Order #${o.orderNumber || o._id.slice(-6)} – ${o.project?.name || 'N/A'} (${o.status || 'pending'}) – Total: K${o.grandTotal?.toLocaleString() || 0}\n`;
-    });
-    return { text: response, type: 'procurement' };
-  }
-
-  // ─── BOQ queries ──────────────────────────────────
-  if (q.includes('boq') || q.includes('bill of quantities') || q.includes('quantity')) {
-    if (!boqs || boqs.length === 0) {
-      return { text: 'No BOQs found. Create a BOQ from the BOQ page.', type: 'boq' };
-    }
-    let response = '📊 Recent Bills of Quantities:\n';
-    boqs.forEach(b => {
-      response += `- ${b.project?.name || 'Unknown project'} – Items: ${b.items?.length || 0} – Total: K${b.grandTotal?.toLocaleString() || 0} (${b.status || 'draft'})\n`;
-    });
-    return { text: response, type: 'boq' };
-  }
-
-  // ─── Subcontract queries ──────────────────────────
-  if (q.includes('subcontract') || q.includes('vendor') || q.includes('service')) {
-    if (!subcontracts || subcontracts.length === 0) {
-      return { text: 'No subcontracts found. Create one from the Subcontracts page.', type: 'subcontract' };
-    }
-    let response = '📄 Recent subcontracts:\n';
-    subcontracts.forEach(s => {
-      response += `- ${s.vendor} – Service: ${s.service || 'N/A'} – Amount: K${s.amount?.toLocaleString() || 0} (${s.status || 'draft'})\n`;
-    });
-    return { text: response, type: 'subcontract' };
-  }
-
-  // ─── General construction knowledge ───────────────
-  if (q.includes('construction') || q.includes('building') || q.includes('site') || q.includes('safety')) {
-    return {
-      text: '🏗️ I\'m your PURVEYOLS construction assistant. I can help you with:\n• Project management\n• Cost estimation and BOQs\n• Worker management\n• Procurement and materials\n• Safety and regulations\n• Site planning\n\nFeel free to ask specific questions!',
-      type: 'general'
-    };
-  }
-
-  // ─── Default fallback ──────────────────────────────
-  return {
-    text: 'I can help with projects, workers, funding, payments, procurement, BOQs, and subcontracts. What would you like to know?',
-    type: 'general'
-  };
-};
-
-/**
- * Build context string for OpenAI
+ * Build context string
  */
 const buildContextString = (data) => {
   let ctx = '';
