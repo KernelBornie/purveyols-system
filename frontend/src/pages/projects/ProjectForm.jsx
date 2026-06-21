@@ -24,6 +24,10 @@ const ProjectForm = () => {
   const [creator, setCreator] = useState(null);
   const [message, setMessage] = useState(null);
 
+  // Roles that are view‑only
+  const viewOnlyRoles = ['driver', 'receptionist', 'safety-officer'];
+  const isViewOnly = viewOnlyRoles.includes(user?.role);
+
   useEffect(() => {
     if (id) {
       api.get(`/api/projects/${id}`)
@@ -43,12 +47,18 @@ const ProjectForm = () => {
           setMessage({ type: 'error', text: 'Failed to load project' });
         });
     } else {
+      // If creating new, but view‑only users shouldn't reach this route
+      if (isViewOnly) {
+        navigate('/projects');
+        return;
+      }
       setCreator(user);
     }
-  }, [id, user]);
+  }, [id, user, isViewOnly, navigate]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (isViewOnly) return; // extra safety
     setLoading(true);
     setMessage(null);
     try {
@@ -89,8 +99,14 @@ const ProjectForm = () => {
 
       {message && <Alert severity={message.type} sx={{ mb: 2 }}>{message.text}</Alert>}
 
+      {isViewOnly && (
+        <Alert severity="info" sx={{ mb: 2 }}>
+          You have view‑only access to this project. Edits are disabled.
+        </Alert>
+      )}
+
       <form onSubmit={handleSubmit}>
-        {/* Company Header */}
+        {/* Company Header – unchanged */}
         <Box sx={{
           textAlign: 'center',
           borderBottom: '2px solid #000',
@@ -141,7 +157,7 @@ const ProjectForm = () => {
           </Box>
         )}
 
-        {/* Form Fields */}
+        {/* Form Fields – disabled when view‑only */}
         <Grid container spacing={2} sx={{ mb: 3 }}>
           <Grid item xs={12}>
             <TextField
@@ -152,6 +168,8 @@ const ProjectForm = () => {
               onChange={e => setForm({ ...form, name: e.target.value })}
               required
               placeholder="Enter project name..."
+              disabled={isViewOnly}
+              InputProps={{ readOnly: isViewOnly }}
             />
           </Grid>
         </Grid>
@@ -165,6 +183,8 @@ const ProjectForm = () => {
               value={form.location || ''}
               onChange={e => setForm({ ...form, location: e.target.value })}
               placeholder="City, Area, Site..."
+              disabled={isViewOnly}
+              InputProps={{ readOnly: isViewOnly }}
             />
           </Grid>
           <Grid item xs={12} md={6}>
@@ -177,6 +197,8 @@ const ProjectForm = () => {
               onChange={e => setForm({ ...form, budget: e.target.value })}
               inputProps={{ min: 0, step: 0.01 }}
               placeholder="0.00"
+              disabled={isViewOnly}
+              InputProps={{ readOnly: isViewOnly }}
             />
           </Grid>
         </Grid>
@@ -190,6 +212,7 @@ const ProjectForm = () => {
               size="small"
               value={form.status || 'planning'}
               onChange={e => setForm({ ...form, status: e.target.value })}
+              disabled={isViewOnly}
             >
               <MenuItem value="planning">Planning</MenuItem>
               <MenuItem value="active">Active</MenuItem>
@@ -200,10 +223,12 @@ const ProjectForm = () => {
           <Grid item xs={12} md={6}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, height: '100%' }}>
               <Typography variant="body2" color="textSecondary">Status:</Typography>
-              {form.status === 'planning' && <Chip label="Planning" color="info" size="small" />}
-              {form.status === 'active' && <Chip label="Active" color="success" size="small" />}
-              {form.status === 'paused' && <Chip label="Paused" color="warning" size="small" />}
-              {form.status === 'completed' && <Chip label="Completed" color="default" size="small" />}
+              <Chip label={form.status || 'planning'} color={
+                form.status === 'planning' ? 'info' :
+                form.status === 'active' ? 'success' :
+                form.status === 'paused' ? 'warning' :
+                'default'
+              } size="small" />
             </Box>
           </Grid>
         </Grid>
@@ -219,6 +244,8 @@ const ProjectForm = () => {
               value={form.description || ''}
               onChange={e => setForm({ ...form, description: e.target.value })}
               placeholder="Provide details about the project..."
+              disabled={isViewOnly}
+              InputProps={{ readOnly: isViewOnly }}
             />
           </Grid>
         </Grid>
@@ -246,16 +273,18 @@ const ProjectForm = () => {
           </Box>
         </Box>
 
-        {/* Action Buttons */}
+        {/* Action Buttons – hidden for view‑only */}
         <Box sx={{ mt: 4, display: 'flex', gap: 2 }}>
-          <Button
-            type="submit"
-            variant="contained"
-            startIcon={<SaveIcon />}
-            disabled={loading}
-          >
-            {loading ? 'Saving...' : 'Save Project'}
-          </Button>
+          {!isViewOnly && (
+            <Button
+              type="submit"
+              variant="contained"
+              startIcon={<SaveIcon />}
+              disabled={loading}
+            >
+              {loading ? 'Saving...' : 'Save Project'}
+            </Button>
+          )}
           <Button
             variant="outlined"
             startIcon={<PrintIcon />}
