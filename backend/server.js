@@ -26,6 +26,35 @@ app.use((req, res, next) => {
 app.use(express.json());
 app.use(morgan('dev'));
 
+// ─── ──────────────────────────────────────────────────────────────
+// ─── NEW: Auto‑seed if database is empty ────────────────────────
+// ─── ──────────────────────────────────────────────────────────────
+const User = require('./models/User');
+const { exec } = require('child_process');
+
+const seedIfEmpty = async () => {
+  try {
+    const count = await User.countDocuments();
+    if (count === 0) {
+      console.log('⚡ No users found. Seeding database...');
+      exec('npm run seed', (error, stdout, stderr) => {
+        if (error) {
+          console.error(`❌ Seed error: ${error.message}`);
+          return;
+        }
+        console.log(stdout);
+        if (stderr) console.error(stderr);
+        console.log('✅ Seeding completed.');
+      });
+    } else {
+      console.log(`✅ Database already has ${count} users. Skipping seed.`);
+    }
+  } catch (err) {
+    console.error('❌ Failed to check user count:', err);
+  }
+};
+// ─── ──────────────────────────────────────────────────────────────
+
 // ─── Existing routes ────────────────────────────────────────────────
 app.use('/api/test', require('./routes/test'));
 app.use('/api/auth', require('./routes/auth'));
@@ -67,6 +96,14 @@ app.use('/api/site-diary', siteDiaryRoutes);
 app.get('/api/health', (req, res) => res.json({ status: 'OK', timestamp: new Date().toISOString() }));
 
 const PORT = process.env.PORT || 5000;
+
+// ─── ──────────────────────────────────────────────────────────────
+// ─── UPDATED: connect + auto‑seed ────────────────────────────────
+// ─── ──────────────────────────────────────────────────────────────
 mongoose.connect(process.env.MONGO_URI)
-  .then(() => { app.listen(PORT, () => console.log(`Server running on port ${PORT}`)); })
+  .then(() => {
+    console.log('MongoDB connected');
+    seedIfEmpty(); // 👈 This is the only new line – it triggers seeding if needed
+    app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+  })
   .catch(err => console.log(err));
