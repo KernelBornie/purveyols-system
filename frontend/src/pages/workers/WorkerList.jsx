@@ -1,122 +1,150 @@
 import React, { useState, useEffect } from 'react';
-import {
-  Table, TableHead, TableRow, TableCell, TableBody, Button, Paper, Typography,
-  Chip, IconButton, Menu, MenuItem, Dialog, DialogTitle, DialogContent,
-  DialogContentText, DialogActions
-} from '@mui/material';
-import MoreVertIcon from '@mui/icons-material/MoreVert';
-import api from '../../api/axios';
 import { Link } from 'react-router-dom';
+import {
+  Box, Typography, Paper, Table, TableHead, TableRow, TableCell, TableBody,
+  Button, Chip, CircularProgress, IconButton, Tooltip, Alert
+} from '@mui/material';
+import AddIcon from '@mui/icons-material/Add';
+import VisibilityIcon from '@mui/icons-material/Visibility';
+import EditIcon from '@mui/icons-material/Edit';
+import DeleteIcon from '@mui/icons-material/Delete';
+import api from '../../api/axios';
 import { useAuth } from '../../context/AuthContext';
 import BackButton from '../../components/BackButton';
 
 const WorkerList = () => {
-  const { user } = useAuth();
   const [workers, setWorkers] = useState([]);
-  const [anchorEl, setAnchorEl] = useState(null);
-  const [selectedWorker, setSelectedWorker] = useState(null);
-  const [deleteDialog, setDeleteDialog] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const { user } = useAuth();
+
+  const viewOnlyRoles = ['driver', 'receptionist', 'safety-officer'];
+  const isViewOnly = viewOnlyRoles.includes(user?.role);
 
   useEffect(() => {
-    api.get('/api/workers').then(res => setWorkers(res.data)).catch(err => console.log(err));
+    fetchWorkers();
   }, []);
 
-  const handleMenuOpen = (event, worker) => {
-    setAnchorEl(event.currentTarget);
-    setSelectedWorker(worker);
-  };
-
-  const handleMenuClose = () => {
-    setAnchorEl(null);
-  };
-
-  const handleStatusChange = async (id, status) => {
+  const fetchWorkers = async () => {
     try {
-      await api.put(`/api/workers/${id}/${status}`);
       const res = await api.get('/api/workers');
-      setWorkers(res.data);
-    } catch (err) { alert('Failed to update worker status'); }
-    handleMenuClose();
+      setWorkers(Array.isArray(res.data) ? res.data : []);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleDelete = async () => {
-    if (!selectedWorker) return;
+  const handleDelete = async (id) => {
+    if (!window.confirm('Delete this worker?')) return;
     try {
-      await api.delete(`/api/workers/${selectedWorker._id}`);
-      const res = await api.get('/api/workers');
-      setWorkers(res.data);
-      setDeleteDialog(false);
-    } catch (err) { alert('Failed to delete worker'); }
-    handleMenuClose();
+      await api.delete(`/api/workers/${id}`);
+      fetchWorkers();
+    } catch (err) {
+      alert('Delete failed');
+    }
   };
 
-  const isDirectorOrAccountant = user?.role === 'director' || user?.role === 'accountant';
+  const getStatusColor = (status) => {
+    switch (status) {
+      case 'active': return 'success';
+      case 'suspended': return 'warning';
+      case 'inactive': return 'default';
+      default: return 'default';
+    }
+  };
 
   return (
     <Paper sx={{ p: 2 }}>
       <BackButton />
-      <Typography variant="h5" gutterBottom>Workers</Typography>
-      <Button component={Link} to="/workers/new" variant="contained" sx={{ mb: 2 }}>Enroll Worker</Button>
-      <Table>
-        <TableHead>
-          <TableRow>
-            <TableCell>Name</TableCell>
-            <TableCell>NRC</TableCell>
-            <TableCell>Site</TableCell>
-            <TableCell>Rate</TableCell>
-            <TableCell>Status</TableCell>
-            <TableCell>Enrolled By</TableCell>
-            <TableCell>Balance</TableCell>
-            <TableCell>Actions</TableCell>
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {workers.map(w => (
-            <TableRow key={w._id}>
-              <TableCell>{w.name}</TableCell>
-              <TableCell>{w.nrc}</TableCell>
-              <TableCell>{w.site}</TableCell>
-              <TableCell>{w.dailyRate}</TableCell>
-              <TableCell>
-                <Chip
-                  label={w.status || 'active'}
-                  color={w.status === 'active' ? 'success' : w.status === 'suspended' ? 'error' : 'warning'}
-                  size="small"
-                />
-              </TableCell>
-              <TableCell>{w.enrolledBy ? `${w.enrolledBy.name} (${w.enrolledBy.role})` : 'N/A'}</TableCell>
-              <TableCell>{(w.balance || 0).toFixed(2)}</TableCell>
-              <TableCell>
-                <IconButton size="small" onClick={(e) => handleMenuOpen(e, w)}>
-                  <MoreVertIcon fontSize="small" />
-                </IconButton>
-                <Menu anchorEl={anchorEl} open={Boolean(anchorEl) && selectedWorker?._id === w._id} onClose={handleMenuClose}>
-                  <MenuItem component={Link} to={`/workers/${w._id}`}>Edit</MenuItem>
-                  {isDirectorOrAccountant && (
-                    <>
-                      <MenuItem onClick={() => handleStatusChange(w._id, 'activate')}>Activate</MenuItem>
-                      <MenuItem onClick={() => handleStatusChange(w._id, 'deactivate')}>Deactivate</MenuItem>
-                      <MenuItem onClick={() => handleStatusChange(w._id, 'suspend')}>Suspend</MenuItem>
-                      <MenuItem onClick={() => setDeleteDialog(true)}>Delete</MenuItem>
-                    </>
-                  )}
-                </Menu>
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+        <Typography variant="h5" sx={{ fontWeight: 'bold' }}>
+          Workers
+        </Typography>
+        {!isViewOnly && (
+          <Button
+            component={Link}
+            to="/workers/new"
+            variant="contained"
+            startIcon={<AddIcon />}
+          >
+            Enroll Worker
+          </Button>
+        )}
+      </Box>
 
-      <Dialog open={deleteDialog} onClose={() => setDeleteDialog(false)}>
-        <DialogTitle>Delete Worker?</DialogTitle>
-        <DialogContent>
-          <DialogContentText>Are you sure you want to delete {selectedWorker?.name}? This action cannot be undone.</DialogContentText>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setDeleteDialog(false)}>Cancel</Button>
-          <Button onClick={handleDelete} color="error">Delete</Button>
-        </DialogActions>
-      </Dialog>
+      {isViewOnly && (
+        <Alert severity="info" sx={{ mb: 2 }}>
+          You have view‑only access. You can view workers but cannot create, edit, or delete them.
+        </Alert>
+      )}
+
+      {loading ? (
+        <CircularProgress />
+      ) : (
+        <Table size="small">
+          <TableHead>
+            <TableRow sx={{ bgcolor: '#f5f5f5' }}>
+              <TableCell>Name</TableCell>
+              <TableCell>NRC</TableCell>
+              <TableCell>Phone</TableCell>
+              <TableCell>Status</TableCell>
+              <TableCell>Daily Rate</TableCell>
+              <TableCell>Site</TableCell>
+              <TableCell>Actions</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {workers.map((worker) => (
+              <TableRow key={worker._id}>
+                <TableCell>{worker.name}</TableCell>
+                <TableCell>{worker.nrc}</TableCell>
+                <TableCell>{worker.phone}</TableCell>
+                <TableCell>
+                  <Chip label={worker.status} color={getStatusColor(worker.status)} size="small" />
+                </TableCell>
+                <TableCell>K {worker.dailyRate}</TableCell>
+                <TableCell>{worker.site || '—'}</TableCell>
+                <TableCell>
+                  {/* View – always visible */}
+                  <Tooltip title="View">
+                    <IconButton component={Link} to={`/workers/${worker._id}`} size="small" color="info">
+                      <VisibilityIcon fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
+
+                  {/* Edit – hidden for view‑only roles */}
+                  {!isViewOnly && (
+                    <Tooltip title="Edit">
+                      <IconButton component={Link} to={`/workers/${worker._id}/edit`} size="small" color="primary">
+                        <EditIcon fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
+                  )}
+
+                  {/* Delete – hidden for view‑only roles */}
+                  {!isViewOnly && (
+                    <Tooltip title="Delete">
+                      <IconButton size="small" color="error" onClick={() => handleDelete(worker._id)}>
+                        <DeleteIcon fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
+                  )}
+                </TableCell>
+              </TableRow>
+            ))}
+            {workers.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={7} align="center" sx={{ py: 3 }}>
+                  <Typography variant="body2" color="textSecondary">
+                    No workers enrolled yet.
+                  </Typography>
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      )}
     </Paper>
   );
 };
