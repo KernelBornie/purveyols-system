@@ -4,7 +4,7 @@ const ProjectSchema = new mongoose.Schema({
   location: String,
   startDate: Date,
   endDate: Date,
-  status: { type: String, enum: ['planning','active','paused','completed'], default: 'planning' },
+  status: { type: String, enum: ['planning','active','paused','completed','rejected'], default: 'planning' },
   budget: Number,
   manager: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   description: String,

@@ -4,7 +4,26 @@ const NotificationSchema = new mongoose.Schema({
   user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   type: {
     type: String,
-    enum: ['worker_enrolled', 'boq_shared', 'payment_made', 'funding_requested', 'funding_approved', 'procurement_ordered', 'procurement_funded', 'subcontract_created', 'worker_checked_in'],
+    enum: [
+      'worker_enrolled',
+      'boq_shared',
+      'payment_made',
+      'funding_requested',
+      'funding_approved',
+      'procurement_ordered',
+      'procurement_funded',
+      'subcontract_created',
+      'worker_checked_in',
+      'message_received',
+      'project_approved',
+      'project_rejected',
+      'procurement_approved',
+      'procurement_rejected',
+      'payment_initiated',
+      'payment_received',
+      'payment_failed',
+      'payment_confirmed'
+    ],
     required: true
   },
   title: { type: String, required: true },

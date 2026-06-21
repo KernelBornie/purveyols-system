@@ -4,6 +4,7 @@ const Worker = require('../models/Worker');
 const Attendance = require('../models/Attendance');
 const Payment = require('../models/Payment');
 const auth = require('../middleware/auth');
+const authorize = require('../middleware/rbac');
 const { createNotification } = require('../utils/notificationHelper');
 
 router.get('/', auth, async (req, res) => {
@@ -20,7 +21,7 @@ router.get('/', auth, async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-router.post('/', auth, async (req, res) => {
+router.post('/', auth, authorize('admin', 'director', 'civil-engineer', 'foreman'), async (req, res) => {
   try {
     const worker = new Worker({ ...req.body, enrolledBy: req.user.id });
     await worker.save();
@@ -42,27 +43,23 @@ router.post('/', auth, async (req, res) => {
   } catch (err) { res.status(400).json({ error: err.message }); }
 });
 
-router.put('/:id', auth, async (req, res) => {
+router.put('/:id', auth, authorize('admin', 'director', 'civil-engineer', 'foreman'), async (req, res) => {
   try {
     const worker = await Worker.findByIdAndUpdate(req.params.id, req.body, { new: true }).populate('enrolledBy', 'name role');
     res.json(worker);
   } catch (err) { res.status(400).json({ error: err.message }); }
 });
 
-router.delete('/:id', auth, async (req, res) => {
+router.delete('/:id', auth, authorize('admin', 'director'), async (req, res) => {
   try {
     const worker = await Worker.findById(req.params.id);
     if (!worker) return res.status(404).json({ error: 'Worker not found' });
-    // Only director and accountant can delete
-    if (!['director', 'accountant'].includes(req.user.role)) {
-      return res.status(403).json({ error: 'Not authorized to delete workers' });
-    }
     await Worker.findByIdAndDelete(req.params.id);
     res.json({ message: 'Worker deleted' });
   } catch (err) { res.status(400).json({ error: err.message }); }
 });
 
-router.put('/:id/activate', auth, async (req, res) => {
+router.put('/:id/activate', auth, authorize('admin', 'director'), async (req, res) => {
   try {
     const worker = await Worker.findById(req.params.id);
     if (!worker) return res.status(404).json({ error: 'Worker not found' });
@@ -73,7 +70,7 @@ router.put('/:id/activate', auth, async (req, res) => {
   } catch (err) { res.status(400).json({ error: err.message }); }
 });
 
-router.put('/:id/deactivate', auth, async (req, res) => {
+router.put('/:id/deactivate', auth, authorize('admin', 'director'), async (req, res) => {
   try {
     const worker = await Worker.findById(req.params.id);
     if (!worker) return res.status(404).json({ error: 'Worker not found' });
@@ -84,7 +81,7 @@ router.put('/:id/deactivate', auth, async (req, res) => {
   } catch (err) { res.status(400).json({ error: err.message }); }
 });
 
-router.put('/:id/suspend', auth, async (req, res) => {
+router.put('/:id/suspend', auth, authorize('admin', 'director'), async (req, res) => {
   try {
     const worker = await Worker.findById(req.params.id);
     if (!worker) return res.status(404).json({ error: 'Worker not found' });

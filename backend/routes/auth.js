@@ -30,7 +30,7 @@ router.post('/register', async (req, res) => {
     const { name, email, password, role } = req.body;
     if (await User.findOne({ email })) return res.status(400).json({ message: 'User exists' });
     const hashed = await bcrypt.hash(password, 10);
-    const user = new User({ name, email, password: hashed, role: role || 'user', createdBy: req.user?.id || null });
+    const user = new User({ name, email, password: hashed, role: role || 'civil-engineer', createdBy: req.user?.id || null });
     await user.save();
     const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '7d' });
     res.status(201).json({ token, user: { id: user._id, name, email, role: user.role } });

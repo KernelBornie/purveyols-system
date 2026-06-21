@@ -7,8 +7,14 @@ dotenv.config();
 
 const app = express();
 
+const allowedOrigins = ['http://localhost:5173', 'https://your-frontend-domain.com'];
 const corsOptions = {
-  origin: process.env.CORS_ORIGIN || '*',
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+    return callback(new Error('Not allowed by CORS'));
+  },
   credentials: true,
   optionsSuccessStatus: 200
 };
@@ -35,6 +41,7 @@ app.use('/api/workers', require('./routes/workers'));
 app.use('/api/projects', require('./routes/projects'));
 app.use('/api/payments', require('./routes/payments'));
 app.use('/api/funding-requests', require('./routes/fundingRequests'));
+app.use('/api/funding', require('./routes/funding'));
 app.use('/api/logbooks', require('./routes/logbooks'));
 app.use('/api/procurement', require('./routes/procurement'));
 app.use('/api/boq', require('./routes/boq'));
@@ -44,6 +51,7 @@ app.use('/api/material-requests', require('./routes/materialRequests'));
 app.use('/api/reports', require('./routes/reports'));
 app.use('/api/visitors', require('./routes/visitors'));
 app.use('/api/attendance', require('./routes/attendance'));
+app.use('/api/delivery', require('./routes/delivery'));
 app.use('/api/site-plans', require('./routes/sitePlans'));
 app.use('/api/drawings', require('./routes/drawings'));
 app.use('/api/surveys', require('./routes/surveys'));

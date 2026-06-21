@@ -3,6 +3,7 @@ const router = express.Router();
 const Attendance = require('../models/Attendance');
 const Worker = require('../models/Worker');
 const auth = require('../middleware/auth');
+const authorize = require('../middleware/rbac');
 const { createNotification } = require('../utils/notificationHelper');
 const User = require('../models/User');
 
@@ -20,7 +21,7 @@ router.get('/worker/:workerId', auth, async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-router.post('/', auth, async (req, res) => {
+router.post('/', auth, authorize('admin', 'director', 'civil-engineer', 'foreman'), async (req, res) => {
   try {
     const { workerId, site, rate, notes } = req.body;
     const worker = await Worker.findById(workerId);
