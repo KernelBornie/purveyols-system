@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import {
   AppBar, Toolbar, Typography, Button, Box, Container, Menu, MenuItem, IconButton, Fab,
@@ -11,6 +11,7 @@ import FileDownloadIcon from '@mui/icons-material/FileDownload';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import ConstructionIcon from '@mui/icons-material/Construction';
 import LocalShippingIcon from '@mui/icons-material/LocalShipping';
+import SmartToyIcon from '@mui/icons-material/SmartToy';
 import { useAuth } from '../context/AuthContext';
 import NotificationBell from './NotificationBell';
 import ReportModal from './ReportModal';
@@ -30,6 +31,16 @@ const Layout = () => {
   const [reportOpen, setReportOpen] = useState(false);
   const [exportAnchor, setExportAnchor] = useState(null);
   const [exportLoading, setExportLoading] = useState(false);
+  const [aiOpen, setAiOpen] = useState(false);
+
+  // ─── Open AI from sidebar click ──────────────────────────────────
+  useEffect(() => {
+    if (location.state?.openAI) {
+      setAiOpen(true);
+      // Clear state so it doesn't reopen on refresh
+      window.history.replaceState({}, document.title);
+    }
+  }, [location]);
 
   const handleMenu = (event) => setAnchorEl(event.currentTarget);
   const handleClose = () => setAnchorEl(null);
@@ -136,7 +147,6 @@ const Layout = () => {
               <ArrowBackIcon />
             </IconButton>
           )}
-          {/* --- Logo + brand name --- */}
           <Box sx={{ display: 'flex', alignItems: 'center', flexGrow: 1 }}>
             <img
               src="/logo-branding.jpg"
@@ -156,6 +166,11 @@ const Layout = () => {
             <NetworkStatus />
             <NotificationBell />
             <Button color="inherit" onClick={() => navigate('/dashboard')}>Dashboard</Button>
+            <Tooltip title="AI Assistant">
+              <IconButton color="inherit" onClick={() => setAiOpen(true)}>
+                <SmartToyIcon />
+              </IconButton>
+            </Tooltip>
             <Tooltip title="Advertised Projects & Tenders">
               <IconButton color="inherit" onClick={() => navigate('/advertised-projects')}>
                 <ConstructionIcon />
@@ -210,7 +225,6 @@ const Layout = () => {
       </AppBar>
       <Box sx={{ display: 'flex', flex: 1 }}>
         <Sidebar />
-        {/* --- Main content with dashboard overlay --- */}
         <Box component="main" sx={{ flexGrow: 1, p: 3 }}>
           <Box className="dashboard-content">
             <Container maxWidth="xl" sx={{ px: { xs: 0, sm: 2 } }}>
@@ -223,7 +237,10 @@ const Layout = () => {
       <Fab color="primary" aria-label="message" sx={{ position: 'fixed', bottom: 24, right: 24 }} onClick={handleMsgOpen}>
         <MessageIcon />
       </Fab>
-      <AIAssistant />
+      <Fab color="secondary" aria-label="ai" sx={{ position: 'fixed', bottom: 90, right: 24 }} onClick={() => setAiOpen(true)}>
+        <SmartToyIcon />
+      </Fab>
+      <AIAssistant open={aiOpen} onClose={() => setAiOpen(false)} />
       <MessageDialog open={msgOpen} onClose={handleMsgClose} onSent={() => {}} />
       <ReportModal open={reportOpen} onClose={() => setReportOpen(false)} />
     </Box>
