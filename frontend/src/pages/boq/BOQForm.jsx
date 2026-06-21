@@ -32,6 +32,9 @@ const BOQForm = () => {
   const [creator, setCreator] = useState(null);
   const [message, setMessage] = useState(null);
 
+  // ✅ Edit allowed for engineers, QS, directors, admins
+  const canEdit = ['civil-engineer', 'quantity-surveyor', 'director', 'admin'].includes(user?.role);
+
   const sectionTemplates = [
     {
       name: 'Preliminaries and General Items',
@@ -159,6 +162,7 @@ const BOQForm = () => {
   };
 
   const addItem = () => {
+    if (!canEdit) return;
     setForm({
       ...form,
       items: [...form.items, { description: '', quantity: 1, unit: '', rate: 0, amount: 0 }]
@@ -166,6 +170,7 @@ const BOQForm = () => {
   };
 
   const addSection = (sectionName, templateItems) => {
+    if (!canEdit) return;
     const newItems = templateItems.map(item => ({
       ...item,
       amount: 0
@@ -181,6 +186,7 @@ const BOQForm = () => {
   };
 
   const removeItem = (index) => {
+    if (!canEdit) return;
     const items = form.items.filter((_, i) => i !== index);
     if (items.length === 0) {
       setMessage({ type: 'warning', text: 'Must have at least one item.' });
@@ -191,6 +197,7 @@ const BOQForm = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!canEdit) return;
     setLoading(true);
     setMessage(null);
     try {
@@ -226,6 +233,19 @@ const BOQForm = () => {
     } catch (err) {
       setMessage({ type: 'error', text: err.response?.data?.error || 'Failed to save BOQ' });
     } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!canEdit) return;
+    if (!window.confirm('Delete this BOQ?')) return;
+    setLoading(true);
+    try {
+      await api.delete(`/api/boq/${id}`);
+      navigate('/boq');
+    } catch (err) {
+      alert('Delete failed');
       setLoading(false);
     }
   };
@@ -273,6 +293,7 @@ const BOQForm = () => {
       <BackButton />
 
       {message && <Alert severity={message.type} sx={{ mb: 2 }}>{message.text}</Alert>}
+      {!canEdit && <Alert severity="info" sx={{ mb: 2 }}>You have view‑only access.</Alert>}
 
       <form onSubmit={handleSubmit}>
         {/* Company Header */}
@@ -317,7 +338,6 @@ const BOQForm = () => {
           </Typography>
         </Box>
 
-        {/* Creator Info */}
         {creator && (
           <Box sx={{ mb: 2 }}>
             <Typography variant="body2">
@@ -326,7 +346,6 @@ const BOQForm = () => {
           </Box>
         )}
 
-        {/* Project and Description */}
         <Grid container spacing={2} sx={{ mb: 3 }}>
           <Grid item xs={12} md={6}>
             <TextField
@@ -337,6 +356,7 @@ const BOQForm = () => {
               value={form.project || ''}
               onChange={e => setForm({ ...form, project: e.target.value })}
               required
+              disabled={!canEdit}
             >
               {Array.isArray(projects) && projects.map(p => (
                 <MenuItem key={p._id} value={p._id}>{p.name}</MenuItem>
@@ -351,27 +371,28 @@ const BOQForm = () => {
               value={form.description || ''}
               onChange={e => setForm({ ...form, description: e.target.value })}
               placeholder="e.g., Proposed Construction of 2000m Long Boundary Fence"
+              disabled={!canEdit}
             />
           </Grid>
         </Grid>
 
-        {/* Quick Add Sections */}
-        <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 2 }}>
-          <Button variant="outlined" size="small" startIcon={<AddIcon />} onClick={() => addSection('Preliminaries', sectionTemplates[0].items)}>
-            Add Preliminaries
-          </Button>
-          <Button variant="outlined" size="small" startIcon={<AddIcon />} onClick={() => addSection('Boundary Fence', sectionTemplates[1].items)}>
-            Add Boundary Fence
-          </Button>
-          <Button variant="outlined" size="small" startIcon={<AddIcon />} onClick={() => addSection('Earthworks', sectionTemplates[2].items)}>
-            Add Earthworks
-          </Button>
-          <Button variant="contained" size="small" startIcon={<AddIcon />} onClick={addItem}>
-            Add Custom Item
-          </Button>
-        </Box>
+        {canEdit && (
+          <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 2 }}>
+            <Button variant="outlined" size="small" startIcon={<AddIcon />} onClick={() => addSection('Preliminaries', sectionTemplates[0].items)}>
+              Add Preliminaries
+            </Button>
+            <Button variant="outlined" size="small" startIcon={<AddIcon />} onClick={() => addSection('Boundary Fence', sectionTemplates[1].items)}>
+              Add Boundary Fence
+            </Button>
+            <Button variant="outlined" size="small" startIcon={<AddIcon />} onClick={() => addSection('Earthworks', sectionTemplates[2].items)}>
+              Add Earthworks
+            </Button>
+            <Button variant="contained" size="small" startIcon={<AddIcon />} onClick={addItem}>
+              Add Custom Item
+            </Button>
+          </Box>
+        )}
 
-        {/* BOQ Items Table */}
         <Box sx={{ mt: 3, overflowX: 'auto' }}>
           <Typography variant="h6" gutterBottom>BOQ Items</Typography>
           <Table size="small" sx={{ border: '1px solid #000' }}>
@@ -390,7 +411,7 @@ const BOQForm = () => {
               {items.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={7} sx={{ textAlign: 'center', py: 3, border: '1px solid #000' }}>
-                    No items added yet. Click "Add Custom Item" or a section button to start.
+                    No items added yet.
                   </TableCell>
                 </TableRow>
               ) : (
@@ -416,6 +437,7 @@ const BOQForm = () => {
                           value={item.description || ''}
                           onChange={e => handleItemChange(idx, 'description', e.target.value)}
                           placeholder="Item description..."
+                          disabled={!canEdit}
                           sx={{ '& .MuiInputBase-root': { border: 'none', '&:before': { borderBottom: 'none' }, '&:after': { borderBottom: 'none' } } }}
                         />
                       </TableCell>
@@ -425,6 +447,7 @@ const BOQForm = () => {
                           type="number"
                           value={item.quantity || 0}
                           onChange={e => handleItemChange(idx, 'quantity', e.target.value)}
+                          disabled={!canEdit}
                           sx={{ width: 80, '& .MuiInputBase-root': { border: 'none', '&:before': { borderBottom: 'none' }, '&:after': { borderBottom: 'none' } } }}
                         />
                       </TableCell>
@@ -433,6 +456,7 @@ const BOQForm = () => {
                           size="small"
                           value={item.unit || ''}
                           onChange={e => handleItemChange(idx, 'unit', e.target.value)}
+                          disabled={!canEdit}
                           sx={{ width: 100, '& .MuiInputBase-root': { border: 'none', '&:before': { borderBottom: 'none' }, '&:after': { borderBottom: 'none' } } }}
                           placeholder="m², m³, No."
                         />
@@ -443,6 +467,7 @@ const BOQForm = () => {
                           type="number"
                           value={item.rate || 0}
                           onChange={e => handleItemChange(idx, 'rate', e.target.value)}
+                          disabled={!canEdit}
                           sx={{ width: 120, '& .MuiInputBase-root': { border: 'none', '&:before': { borderBottom: 'none' }, '&:after': { borderBottom: 'none' } } }}
                         />
                       </TableCell>
@@ -456,9 +481,11 @@ const BOQForm = () => {
                         />
                       </TableCell>
                       <TableCell sx={{ border: '1px solid #000', textAlign: 'center' }}>
-                        <IconButton size="small" onClick={() => removeItem(idx)} color="error">
-                          <DeleteIcon fontSize="small" />
-                        </IconButton>
+                        {canEdit && (
+                          <IconButton size="small" onClick={() => removeItem(idx)} color="error">
+                            <DeleteIcon fontSize="small" />
+                          </IconButton>
+                        )}
                       </TableCell>
                     </TableRow>
                   );
@@ -470,7 +497,6 @@ const BOQForm = () => {
 
         <Divider sx={{ my: 3 }} />
 
-        {/* Summary Section */}
         <Box sx={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
           <Box sx={{ flex: 1, minWidth: 300 }}>
             <Typography variant="h6" gutterBottom>Summary</Typography>
@@ -478,18 +504,13 @@ const BOQForm = () => {
               <Grid container spacing={1}>
                 <Grid item xs={6}><Typography variant="body2">Sub-Total:</Typography></Grid>
                 <Grid item xs={6} sx={{ textAlign: 'right' }}><Typography variant="body2" fontWeight="bold">{formatCurrency(totals.subtotal)}</Typography></Grid>
-
                 <Grid item xs={6}><Typography variant="body2">Preliminaries ({totals.preliminaries}%):</Typography></Grid>
                 <Grid item xs={6} sx={{ textAlign: 'right' }}><Typography variant="body2">{formatCurrency(totals.preliminariesAmount)}</Typography></Grid>
-
                 <Grid item xs={6}><Typography variant="body2">Contingency ({totals.contingency}%):</Typography></Grid>
                 <Grid item xs={6} sx={{ textAlign: 'right' }}><Typography variant="body2">{formatCurrency(totals.contingencyAmount)}</Typography></Grid>
-
                 <Grid item xs={6}><Typography variant="body2">VAT ({totals.vat}%):</Typography></Grid>
                 <Grid item xs={6} sx={{ textAlign: 'right' }}><Typography variant="body2">{formatCurrency(totals.vatAmount)}</Typography></Grid>
-
                 <Grid item xs={12}><Divider sx={{ my: 1 }} /></Grid>
-
                 <Grid item xs={6}><Typography variant="h6">GRAND TOTAL:</Typography></Grid>
                 <Grid item xs={6} sx={{ textAlign: 'right' }}><Typography variant="h6" fontWeight="bold" color="primary">{formatCurrency(totals.grandTotal)}</Typography></Grid>
               </Grid>
@@ -507,6 +528,7 @@ const BOQForm = () => {
                 sx={{ mb: 2 }}
                 value={form.preliminaries || 0}
                 onChange={e => setForm({ ...form, preliminaries: e.target.value })}
+                disabled={!canEdit}
               />
               <TextField
                 label="Contingency (%)"
@@ -516,6 +538,7 @@ const BOQForm = () => {
                 sx={{ mb: 2 }}
                 value={form.contingency || 0}
                 onChange={e => setForm({ ...form, contingency: e.target.value })}
+                disabled={!canEdit}
               />
               <TextField
                 label="VAT (%)"
@@ -525,6 +548,7 @@ const BOQForm = () => {
                 sx={{ mb: 2 }}
                 value={form.vat || 0}
                 onChange={e => setForm({ ...form, vat: e.target.value })}
+                disabled={!canEdit}
               />
               <TextField
                 select
@@ -533,6 +557,7 @@ const BOQForm = () => {
                 fullWidth
                 value={form.status || 'draft'}
                 onChange={e => setForm({ ...form, status: e.target.value })}
+                disabled={!canEdit}
               >
                 <MenuItem value="draft">Draft</MenuItem>
                 <MenuItem value="submitted">Submitted</MenuItem>
@@ -544,7 +569,6 @@ const BOQForm = () => {
           </Box>
         </Box>
 
-        {/* Approval Section */}
         <Box sx={{ mt: 4, borderTop: '1px solid #000', pt: 3 }}>
           <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 2 }}>
             Approval
@@ -567,33 +591,26 @@ const BOQForm = () => {
           </Box>
         </Box>
 
-        {/* Action Buttons */}
-        <Box sx={{ mt: 4, display: 'flex', gap: 2 }}>
-          <Button
-            type="submit"
-            variant="contained"
-            startIcon={<SaveIcon />}
-            disabled={loading}
-          >
-            {loading ? 'Saving...' : 'Save BOQ'}
-          </Button>
-          <Button
-            variant="outlined"
-            startIcon={<PrintIcon />}
-            onClick={handlePrint}
-          >
+        <Box sx={{ mt: 4, display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+          {canEdit && (
+            <Button type="submit" variant="contained" startIcon={<SaveIcon />} disabled={loading}>
+              {loading ? 'Saving...' : 'Save BOQ'}
+            </Button>
+          )}
+          <Button variant="outlined" startIcon={<PrintIcon />} onClick={handlePrint}>
             Print
           </Button>
-          <Button
-            variant="outlined"
-            startIcon={<FileDownloadIcon />}
-            onClick={exportCSV}
-          >
+          <Button variant="outlined" startIcon={<FileDownloadIcon />} onClick={exportCSV}>
             Export CSV
           </Button>
           <Button variant="outlined" onClick={() => navigate('/boq')}>
             Cancel
           </Button>
+          {canEdit && id && (
+            <Button variant="contained" color="error" startIcon={<DeleteIcon />} onClick={handleDelete} disabled={loading}>
+              Delete
+            </Button>
+          )}
         </Box>
       </form>
     </Paper>
