@@ -11,7 +11,7 @@ import FileDownloadIcon from '@mui/icons-material/FileDownload';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import ConstructionIcon from '@mui/icons-material/Construction';
 import LocalShippingIcon from '@mui/icons-material/LocalShipping';
-import SmartToyIcon from '@mui/icons-material/SmartToy';
+import SmartToyIcon from '@mui/icons-material/SmartToy'; // ← AI icon
 import { useAuth } from '../context/AuthContext';
 import NotificationBell from './NotificationBell';
 import ReportModal from './ReportModal';
@@ -31,13 +31,13 @@ const Layout = () => {
   const [reportOpen, setReportOpen] = useState(false);
   const [exportAnchor, setExportAnchor] = useState(null);
   const [exportLoading, setExportLoading] = useState(false);
-  const [aiOpen, setAiOpen] = useState(false);
+  const [aiOpen, setAiOpen] = useState(false); // ← NEW state for AI
 
-  // ─── Open AI from sidebar click ──────────────────────────────────
+  // ─── Listen for AI trigger from sidebar ──────────────────────────
   useEffect(() => {
     if (location.state?.openAI) {
       setAiOpen(true);
-      // Clear state so it doesn't reopen on refresh
+      // Clear the state so it doesn't reopen on refresh
       window.history.replaceState({}, document.title);
     }
   }, [location]);
@@ -166,11 +166,6 @@ const Layout = () => {
             <NetworkStatus />
             <NotificationBell />
             <Button color="inherit" onClick={() => navigate('/dashboard')}>Dashboard</Button>
-            <Tooltip title="AI Assistant">
-              <IconButton color="inherit" onClick={() => setAiOpen(true)}>
-                <SmartToyIcon />
-              </IconButton>
-            </Tooltip>
             <Tooltip title="Advertised Projects & Tenders">
               <IconButton color="inherit" onClick={() => navigate('/advertised-projects')}>
                 <ConstructionIcon />
@@ -234,13 +229,26 @@ const Layout = () => {
         </Box>
       </Box>
       <Footer />
-      <Fab color="primary" aria-label="message" sx={{ position: 'fixed', bottom: 24, right: 24 }} onClick={handleMsgOpen}>
+
+      {/* ─── AI Floating Button ────────────────────────────── */}
+      <Tooltip title="AI Assistant">
+        <Fab
+          color="primary"
+          sx={{ position: 'fixed', bottom: 24, right: 100 }} // ← repositioned to not overlap with message Fab
+          onClick={() => setAiOpen(true)}
+        >
+          <SmartToyIcon />
+        </Fab>
+      </Tooltip>
+
+      {/* ─── Message Floating Button ────────────────────────────── */}
+      <Fab color="secondary" aria-label="message" sx={{ position: 'fixed', bottom: 24, right: 24 }} onClick={handleMsgOpen}>
         <MessageIcon />
       </Fab>
-      <Fab color="secondary" aria-label="ai" sx={{ position: 'fixed', bottom: 90, right: 24 }} onClick={() => setAiOpen(true)}>
-        <SmartToyIcon />
-      </Fab>
+
+      {/* ─── AI Assistant Modal ────────────────────────────── */}
       <AIAssistant open={aiOpen} onClose={() => setAiOpen(false)} />
+
       <MessageDialog open={msgOpen} onClose={handleMsgClose} onSent={() => {}} />
       <ReportModal open={reportOpen} onClose={() => setReportOpen(false)} />
     </Box>
