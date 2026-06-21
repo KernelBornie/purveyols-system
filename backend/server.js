@@ -7,7 +7,11 @@ dotenv.config();
 
 const app = express();
 
-const allowedOrigins = ['http://localhost:5173', 'https://your-frontend-domain.com'];
+const allowedOrigins = [
+  'http://localhost:5173',
+  'https://your-frontend-domain.com',
+  'https://purveyols-system.vercel.app'
+];
 const corsOptions = {
   origin: (origin, callback) => {
     if (!origin || allowedOrigins.includes(origin)) {
@@ -103,7 +107,7 @@ const PORT = process.env.PORT || 5000;
 mongoose.connect(process.env.MONGO_URI)
   .then(() => {
     console.log('MongoDB connected');
-    seedIfEmpty(); // 👈 This is the only new line – it triggers seeding if needed
+    seedIfEmpty(); // 👈 This triggers seeding if needed
     app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
   })
   .catch(err => console.log(err));
