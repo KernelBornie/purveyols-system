@@ -19,7 +19,8 @@ const DeliveryNoteList = () => {
   const [error, setError] = useState(null);
   const { user } = useAuth();
 
-  const canEdit = ['director', 'admin'].includes(user?.role);
+  // ✅ Edit allowed for these roles
+  const canEdit = ['procurement-officer', 'civil-engineer', 'quantity-surveyor', 'director', 'admin'].includes(user?.role);
 
   useEffect(() => {
     fetchNotes();
