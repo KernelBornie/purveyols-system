@@ -10,7 +10,6 @@ import {
   Toolbar,
   Divider,
   Box,
-  Typography,
 } from '@mui/material';
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import PeopleIcon from '@mui/icons-material/People';
@@ -26,6 +25,7 @@ import SettingsIcon from '@mui/icons-material/Settings';
 import ArchitectureIcon from '@mui/icons-material/Architecture';
 import StraightenIcon from '@mui/icons-material/Straighten';
 import SurveyIcon from '@mui/icons-material/Map';
+import SmartToyIcon from '@mui/icons-material/SmartToy'; // ← AI icon
 import { useAuth } from '../context/AuthContext';
 
 const drawerWidth = 240;
@@ -38,6 +38,7 @@ const Sidebar = () => {
   // ─── All menu items ──────────────────────────────────────────────
   const allMenuItems = [
     { text: 'Dashboard', icon: <DashboardIcon />, path: '/dashboard' },
+    { text: 'AI Assistant', icon: <SmartToyIcon />, path: '/dashboard', state: { openAI: true } }, // ← AI item
     { text: 'Projects', icon: <BusinessIcon />, path: '/projects' },
     { text: 'Workers', icon: <PeopleIcon />, path: '/workers' },
     { text: 'Funding Requests', icon: <AttachMoneyIcon />, path: '/funding' },
@@ -92,6 +93,7 @@ const Sidebar = () => {
               <ListItemButton
                 component={Link}
                 to={item.path}
+                state={item.state || null} // ← pass state if defined
                 selected={location.pathname === item.path}
                 sx={{
                   '&.Mui-selected': {
