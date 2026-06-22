@@ -1,183 +1,112 @@
-// Persistent storage service – all data stored in localStorage
-// Data NEVER disappears unless explicitly deleted
+// ─── Persistent Store for Offline Data ──────────────────────
+const STORE_KEY = 'persistentData';
 
-class PersistentStore {
-  constructor() {
-    this.prefix = 'purveyols_';
-    this.cache = {};
+/**
+ * Get all stored data
+ */
+export const getAllData = () => {
+  try {
+    const data = localStorage.getItem(STORE_KEY);
+    return data ? JSON.parse(data) : {};
+  } catch {
+    return {};
   }
+};
 
-  // Get all keys with prefix
-  getKeys() {
-    const keys = [];
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i);
-      if (key && key.startsWith(this.prefix)) {
-        keys.push(key.replace(this.prefix, ''));
-      }
-    }
-    return keys;
+/**
+ * Save all data
+ */
+export const saveAllData = (data) => {
+  try {
+    localStorage.setItem(STORE_KEY, JSON.stringify(data));
+  } catch (e) {
+    console.warn('Failed to save persistent data:', e);
   }
+};
 
-  // Set data with optional expiry
-  set(key, data, expiryMinutes = null) {
-    const fullKey = this.prefix + key;
-    const item = {
-      data: data,
-      timestamp: new Date().toISOString(),
-      expires: expiryMinutes ? Date.now() + expiryMinutes * 60000 : null,
-    };
-    localStorage.setItem(fullKey, JSON.stringify(item));
-    this.cache[key] = item;
-    return data;
-  }
+// ─── Individual getters/setters ──────────────────────────────
+export const getWorkers = () => getAllData().workers || [];
+export const saveWorkers = (workers) => {
+  const data = getAllData();
+  data.workers = workers;
+  saveAllData(data);
+};
 
-  // Get data – returns null if expired or not found
-  get(key) {
-    const fullKey = this.prefix + key;
-    try {
-      const raw = localStorage.getItem(fullKey);
-      if (!raw) return null;
-      
-      const item = JSON.parse(raw);
-      
-      // Check if expired
-      if (item.expires && Date.now() > item.expires) {
-        localStorage.removeItem(fullKey);
-        delete this.cache[key];
-        return null;
-      }
-      
-      this.cache[key] = item;
-      return item.data;
-    } catch (e) {
-      return null;
-    }
-  }
+export const getProjects = () => getAllData().projects || [];
+export const saveProjects = (projects) => {
+  const data = getAllData();
+  data.projects = projects;
+  saveAllData(data);
+};
 
-  // Remove data
-  remove(key) {
-    const fullKey = this.prefix + key;
-    localStorage.removeItem(fullKey);
-    delete this.cache[key];
-    return true;
-  }
+export const getFundingRequests = () => getAllData().funding || [];
+export const saveFundingRequests = (funding) => {
+  const data = getAllData();
+  data.funding = funding;
+  saveAllData(data);
+};
 
-  // Clear all app data
-  clearAll() {
-    const keys = this.getKeys();
-    keys.forEach(key => {
-      localStorage.removeItem(this.prefix + key);
-    });
-    this.cache = {};
-    return true;
-  }
+export const getPayments = () => getAllData().payments || [];
+export const savePayments = (payments) => {
+  const data = getAllData();
+  data.payments = payments;
+  saveAllData(data);
+};
 
-  // Get all data as object
-  getAll() {
-    const result = {};
-    const keys = this.getKeys();
-    keys.forEach(key => {
-      result[key] = this.get(key);
-    });
-    return result;
-  }
+export const getProcurementOrders = () => getAllData().procurement || [];
+export const saveProcurementOrders = (procurement) => {
+  const data = getAllData();
+  data.procurement = procurement;
+  saveAllData(data);
+};
 
-  // Check if key exists
-  has(key) {
-    return localStorage.getItem(this.prefix + key) !== null;
-  }
+export const getBOQs = () => getAllData().boqs || [];
+export const saveBOQs = (boqs) => {
+  const data = getAllData();
+  data.boqs = boqs;
+  saveAllData(data);
+};
 
-  // Get timestamp of last update
-  getTimestamp(key) {
-    const fullKey = this.prefix + key;
-    try {
-      const raw = localStorage.getItem(fullKey);
-      if (!raw) return null;
-      const item = JSON.parse(raw);
-      return item.timestamp;
-    } catch (e) {
-      return null;
-    }
-  }
-}
+export const getSubcontracts = () => getAllData().subcontracts || [];
+export const saveSubcontracts = (subcontracts) => {
+  const data = getAllData();
+  data.subcontracts = subcontracts;
+  saveAllData(data);
+};
 
-// Single instance
-const store = new PersistentStore();
+export const getNotifications = () => getAllData().notifications || [];
+export const saveNotifications = (notifications) => {
+  const data = getAllData();
+  data.notifications = notifications;
+  saveAllData(data);
+};
 
-// Helper functions for common data types
-export const saveWorkers = (data) => store.set('workers', data);
-export const getWorkers = () => store.get('workers') || [];
-
-export const saveProjects = (data) => store.set('projects', data);
-export const getProjects = () => store.get('projects') || [];
-
-export const saveFundingRequests = (data) => store.set('funding', data);
-export const getFundingRequests = () => store.get('funding') || [];
-
-export const savePayments = (data) => store.set('payments', data);
-export const getPayments = () => store.get('payments') || [];
-
-export const saveProcurementOrders = (data) => store.set('procurement', data);
-export const getProcurementOrders = () => store.get('procurement') || [];
-
-export const saveBOQs = (data) => store.set('boqs', data);
-export const getBOQs = () => store.get('boqs') || [];
-
-export const saveSubcontracts = (data) => store.set('subcontracts', data);
-export const getSubcontracts = () => store.get('subcontracts') || [];
-
-export const saveNotifications = (data) => store.set('notifications', data);
-export const getNotifications = () => store.get('notifications') || [];
-
-export const saveMessages = (data) => store.set('messages', data);
-export const getMessages = () => store.get('messages') || [];
-
-export const saveAdvertisedProjects = (data) => store.set('advertised', data);
-export const getAdvertisedProjects = () => store.get('advertised') || [];
-
-export const saveDashboardStats = (data) => store.set('stats', data);
-export const getDashboardStats = () => store.get('stats') || {};
-
-export const saveUserProfile = (data) => store.set('profile', data);
-export const getUserProfile = () => store.get('profile') || null;
-
-// App settings
-export const saveAppSettings = (data) => store.set('settings', data);
-export const getAppSettings = () => store.get('settings') || {};
-
-// Sync queue
-export const saveSyncQueue = (data) => store.set('syncQueue', data);
-export const getSyncQueue = () => store.get('syncQueue') || [];
+export const getDeliveryNotes = () => getAllData().delivery || [];
+export const saveDeliveryNotes = (delivery) => {
+  const data = getAllData();
+  data.delivery = delivery;
+  saveAllData(data);
+};
 
 export default {
-  store,
-  saveWorkers,
+  getAllData,
+  saveAllData,
   getWorkers,
-  saveProjects,
+  saveWorkers,
   getProjects,
-  saveFundingRequests,
+  saveProjects,
   getFundingRequests,
-  savePayments,
+  saveFundingRequests,
   getPayments,
-  saveProcurementOrders,
+  savePayments,
   getProcurementOrders,
-  saveBOQs,
+  saveProcurementOrders,
   getBOQs,
-  saveSubcontracts,
+  saveBOQs,
   getSubcontracts,
-  saveNotifications,
+  saveSubcontracts,
   getNotifications,
-  saveMessages,
-  getMessages,
-  saveAdvertisedProjects,
-  getAdvertisedProjects,
-  saveDashboardStats,
-  getDashboardStats,
-  saveUserProfile,
-  getUserProfile,
-  saveAppSettings,
-  getAppSettings,
-  saveSyncQueue,
-  getSyncQueue,
+  saveNotifications,
+  getDeliveryNotes,
+  saveDeliveryNotes,
 };
