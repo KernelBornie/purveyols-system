@@ -31,7 +31,7 @@ router.post('/', auth, authorize('admin', 'director', 'civil-engineer', 'foreman
     const senderName = await getSenderName(req.user.id);
     const senderRole = await getSenderRole(req.user.id);
 
-    // ─── Notify creator (you enrolled a worker) ──────────────
+    // ─── Notify creator ──────────────────────────────────────
     await createNotification(
       req.user.id,
       'worker_enrolled',
@@ -40,11 +40,10 @@ router.post('/', auth, authorize('admin', 'director', 'civil-engineer', 'foreman
       `/workers/${worker._id}`
     );
 
-    // ─── Notify accountants and directors ────────────────────
-    const accountants = await User.find({ role: 'accountant' });
-    const directors = await User.find({ role: 'director' });
-    const recipients = [...accountants, ...directors];
-    for (let recipient of recipients) {
+    // ─── Notify accountants and directors (exclude creator) ─
+    const recipients = await User.find({ role: { $in: ['accountant', 'director'] } });
+    const filtered = recipients.filter(r => r._id.toString() !== req.user.id);
+    for (let recipient of filtered) {
       await createNotification(
         recipient._id,
         'worker_enrolled',
