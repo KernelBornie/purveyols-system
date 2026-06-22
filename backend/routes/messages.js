@@ -3,9 +3,9 @@ const router = express.Router();
 const Message = require('../models/Message');
 const User = require('../models/User');
 const auth = require('../middleware/auth');
-const { createNotification } = require('../utils/notificationHelper');
+const { createNotification, getSenderName } = require('../utils/notificationHelper');
 
-// Inbox
+// ─── Inbox ──────────────────────────────────────────────────
 router.get('/', auth, async (req, res) => {
   try {
     const messages = await Message.find({ to: req.user.id })
@@ -16,7 +16,7 @@ router.get('/', auth, async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// Sent messages
+// ─── Sent messages ──────────────────────────────────────────
 router.get('/sent', auth, async (req, res) => {
   try {
     const messages = await Message.find({ from: req.user.id })
@@ -27,31 +27,43 @@ router.get('/sent', auth, async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// Send a message
+// ─── Send a message ─────────────────────────────────────────
 router.post('/', auth, async (req, res) => {
   try {
     const { to, subject, content } = req.body;
+    if (!to || !content) {
+      return res.status(400).json({ error: 'Recipient and content are required' });
+    }
     const recipient = await User.findById(to);
     if (!recipient) return res.status(404).json({ error: 'Recipient not found' });
+
+    // ✅ Get sender's name from database
+    const senderName = await getSenderName(req.user.id);
+
     const message = new Message({
       from: req.user.id,
       to,
-      subject,
+      subject: subject || '',
       content,
     });
     await message.save();
+
     await createNotification(
       recipient._id,
       'message_received',
       'New Message',
-      `You have a new message from ${req.user.name}`,
+      `You have a new message from ${senderName}`,
       `/messages/${message._id}`
     );
+
     res.status(201).json(message);
-  } catch (err) { res.status(400).json({ error: err.message }); }
+  } catch (err) {
+    console.error('Send message error:', err);
+    res.status(400).json({ error: err.message });
+  }
 });
 
-// Mark as read
+// ─── Mark as read ──────────────────────────────────────────
 router.put('/:id/read', auth, async (req, res) => {
   try {
     const message = await Message.findOne({ _id: req.params.id, to: req.user.id });
@@ -62,12 +74,11 @@ router.put('/:id/read', auth, async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// Delete
+// ─── Delete ────────────────────────────────────────────────
 router.delete('/:id', auth, async (req, res) => {
   try {
     const message = await Message.findOne({ _id: req.params.id });
     if (!message) return res.status(404).json({ error: 'Not found' });
-    // Allow delete if user is sender or receiver
     if (message.from.toString() !== req.user.id && message.to.toString() !== req.user.id) {
       return res.status(403).json({ error: 'Not authorized' });
     }
@@ -76,7 +87,7 @@ router.delete('/:id', auth, async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// Unread count
+// ─── Unread count ──────────────────────────────────────────
 router.get('/unread-count', auth, async (req, res) => {
   try {
     const count = await Message.countDocuments({ to: req.user.id, read: false });
