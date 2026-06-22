@@ -18,8 +18,8 @@ const BOQList = () => {
   const [error, setError] = useState(null);
   const { user } = useAuth();
 
-  // ✅ Edit allowed for engineers, QS, directors, admins
-  const canEdit = ['civil-engineer', 'quantity-surveyor', 'director', 'admin'].includes(user?.role);
+  // ✅ Allow: Engineer, QS, Procurement Officer, Director, Admin
+  const canEdit = ['civil-engineer', 'quantity-surveyor', 'procurement-officer', 'director', 'admin'].includes(user?.role);
 
   useEffect(() => {
     fetchBOQs();
