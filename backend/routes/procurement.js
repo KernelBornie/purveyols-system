@@ -6,7 +6,6 @@ const auth = require('../middleware/auth');
 const authorize = require('../middleware/rbac');
 const { createNotification, getSenderName } = require('../utils/notificationHelper');
 
-// ─── GET all – drivers see only their own, others see all ──────────
 router.get('/', auth, async (req, res) => {
   try {
     let filter = {};
@@ -35,7 +34,6 @@ router.get('/', auth, async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// ─── GET single ──────────────────────────────────────────────────
 router.get('/:id', auth, async (req, res) => {
   try {
     const order = await ProcurementOrder.findById(req.params.id)
@@ -60,7 +58,6 @@ router.get('/:id', auth, async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// ─── CREATE ──────────────────────────────────────────────────────
 router.post('/', auth, authorize('admin', 'director', 'procurement-officer', 'civil-engineer', 'quantity-surveyor', 'driver', 'safety-officer', 'accountant', 'foreman'), async (req, res) => {
   try {
     const order = new ProcurementOrder({ ...req.body, createdBy: req.user.id });
@@ -72,11 +69,22 @@ router.post('/', auth, authorize('admin', 'director', 'procurement-officer', 'ci
       .populate('procurementOfficer', 'name role');
 
     const senderName = await getSenderName(req.user.id);
-    // Notify directors and accountants
+
+    // ─── Notify creator ──────────────────────────────────────
+    await createNotification(
+      req.user.id,
+      'procurement_ordered',
+      'Procurement Order Created',
+      `✅ You created a procurement order`,
+      `/procurement/${order._id}`
+    );
+
+    // ─── Notify directors and accountants (exclude creator) ─
     const recipients = await User.find({ role: { $in: ['director', 'admin', 'accountant'] } });
-    for (let rec of recipients) {
+    const filtered = recipients.filter(r => r._id.toString() !== req.user.id);
+    for (let recipient of filtered) {
       await createNotification(
-        rec._id,
+        recipient._id,
         'procurement_ordered',
         'New Procurement Order',
         `${senderName} created a procurement order`,
@@ -87,7 +95,6 @@ router.post('/', auth, authorize('admin', 'director', 'procurement-officer', 'ci
   } catch (err) { res.status(400).json({ error: err.message }); }
 });
 
-// ─── UPDATE (edit) – only if pending ──────────────────────────
 router.put('/:id', auth, authorize('admin', 'director', 'procurement-officer', 'civil-engineer', 'quantity-surveyor', 'driver', 'safety-officer', 'accountant', 'foreman'), async (req, res) => {
   try {
     const order = await ProcurementOrder.findById(req.params.id);
@@ -135,7 +142,6 @@ router.put('/:id', auth, authorize('admin', 'director', 'procurement-officer', '
   } catch (err) { res.status(400).json({ error: err.message }); }
 });
 
-// ─── APPROVE (set status → 'funded') ──────────────────────────
 router.put('/:id/approve', auth, authorize('admin', 'director', 'accountant'), async (req, res) => {
   try {
     const order = await ProcurementOrder.findById(req.params.id);
@@ -154,7 +160,7 @@ router.put('/:id/approve', auth, authorize('admin', 'director', 'accountant'), a
         order.createdBy,
         'procurement_approved',
         'Procurement Order Approved',
-        `Your requisition was approved by ${senderName}`,
+        `✅ Your requisition was approved by ${senderName}`,
         `/procurement/${order._id}`
       );
     }
@@ -169,7 +175,6 @@ router.put('/:id/approve', auth, authorize('admin', 'director', 'accountant'), a
   } catch (err) { res.status(400).json({ error: err.message }); }
 });
 
-// ─── REJECT ──────────────────────────────────────────────────────
 router.put('/:id/reject', auth, authorize('admin', 'director', 'accountant'), async (req, res) => {
   try {
     const order = await ProcurementOrder.findById(req.params.id);
@@ -186,7 +191,7 @@ router.put('/:id/reject', auth, authorize('admin', 'director', 'accountant'), as
         order.createdBy,
         'procurement_rejected',
         'Procurement Order Rejected',
-        `Your requisition was rejected by ${senderName}`,
+        `❌ Your requisition was rejected by ${senderName}`,
         `/procurement/${order._id}`
       );
     }
@@ -201,7 +206,6 @@ router.put('/:id/reject', auth, authorize('admin', 'director', 'accountant'), as
   } catch (err) { res.status(400).json({ error: err.message }); }
 });
 
-// ─── FUND (backward compatibility) ────────────────────────────
 router.put('/:id/fund', auth, authorize('admin', 'director', 'accountant'), async (req, res) => {
   try {
     const order = await ProcurementOrder.findById(req.params.id);
@@ -221,7 +225,6 @@ router.put('/:id/fund', auth, authorize('admin', 'director', 'accountant'), asyn
   } catch (err) { res.status(400).json({ error: err.message }); }
 });
 
-// ─── DELETE ──────────────────────────────────────────────────────
 router.delete('/:id', auth, authorize('admin', 'director', 'procurement-officer', 'civil-engineer', 'quantity-surveyor', 'driver', 'safety-officer', 'accountant', 'foreman'), async (req, res) => {
   try {
     const order = await ProcurementOrder.findById(req.params.id);
