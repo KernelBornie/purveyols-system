@@ -83,17 +83,16 @@ Question: ${query}`;
 };
 
 /**
- * Rule‑based fallback – generates ACTUAL TABLES and SVG ILLUSTRATIONS.
+ * Rule‑based fallback – answers general knowledge and system data.
  */
 const getRuleBasedResponse = async (query, userId) => {
   const q = query.toLowerCase().trim();
   const systemData = await gatherSystemData(userId);
   const { projects, workers, funding, payments, procurement, boqs, subcontracts, stats } = systemData;
 
-  // ─── 1. App data queries with TABLES ──────────────────────────
+  // ─── 1. App data queries (with tables) ──────────────────────────
   if (q.includes('project') || q.includes('projects')) {
     if (!projects || projects.length === 0) return { text: 'No projects found.', type: 'project' };
-    // Generate a Markdown table with project data
     let table = '| Name | Location | Status | Budget |\n|------|----------|--------|--------|\n';
     projects.forEach(p => {
       table += `| ${p.name} | ${p.location || '—'} | ${p.status} | K${p.budget?.toLocaleString() || 0} |\n`;
@@ -140,7 +139,6 @@ const getRuleBasedResponse = async (query, userId) => {
       });
       return { text: `📊 **BOQs Table**\n\n${table}`, type: 'boq' };
     } else {
-      // Generate a sample BOQ table
       return {
         text: `📋 **Sample BOQ Table**
 
@@ -286,8 +284,40 @@ You can modify the dimensions, labels, and elements to match your specific proje
     };
   }
 
-  // ─── 3. General knowledge with tables where appropriate ────
+  // ─── 3. General knowledge (expanded) ──────────────────────────
   const lower = q.toLowerCase();
+
+  // AI / technology
+  if (lower.includes('artificial intelligence') || lower.includes('ai') || lower.includes('machine learning')) {
+    return {
+      text: `🤖 **What is Artificial Intelligence (AI)?**
+
+Artificial Intelligence (AI) is the simulation of human intelligence in machines that are programmed to think and learn like humans.
+
+**Key types of AI:**
+• **Narrow AI (Weak AI)** – designed for specific tasks (e.g., voice assistants, image recognition).
+• **General AI (Strong AI)** – machines with human‑level intelligence across a wide range of tasks (still theoretical).
+• **Superintelligence** – AI that surpasses human intelligence (hypothetical).
+
+**Common applications:**
+• Natural Language Processing (chatbots, translation)
+• Computer Vision (facial recognition, autonomous vehicles)
+• Robotics
+• Healthcare diagnostics
+• Financial trading
+
+**How it works:**
+AI systems use algorithms, neural networks, and large datasets to learn patterns and make predictions. Machine learning, deep learning, and reinforcement learning are key subfields.
+
+**In construction:**
+AI is used for project planning, cost estimation, risk assessment, site safety monitoring, and predictive maintenance.
+
+Would you like to know more about AI in construction?`,
+      type: 'general'
+    };
+  }
+
+  // Capitals
   if (lower.includes('capital') || lower.includes('country') || lower.includes('city')) {
     if (lower.includes('zambia')) {
       return { text: 'The capital of Zambia is **Lusaka**.', type: 'general' };
@@ -302,29 +332,88 @@ You can modify the dimensions, labels, and elements to match your specific proje
       return { text: 'The capital of the United Kingdom is **London**.', type: 'general' };
     }
     return {
-      text: 'I can help with general knowledge! Ask me about capitals, history, science, or any topic.',
+      text: 'I can help with geography! Ask me about specific countries or capitals.',
       type: 'general'
     };
   }
 
-  // ─── 4. Catch‑all: helpful response with examples ──────────
+  // History
+  if (lower.includes('history') || lower.includes('world war') || lower.includes('ancient') || lower.includes('invention')) {
+    return {
+      text: 'I have some general knowledge about history. Try asking a specific question like "When did World War II start?" or "Who built the Great Wall?" or "What is the history of construction?"',
+      type: 'general'
+    };
+  }
+
+  // Science
+  if (lower.includes('science') || lower.includes('gravity') || lower.includes('dna') || lower.includes('planet') || lower.includes('physics')) {
+    return {
+      text: 'I can answer science questions! Try asking about physics, chemistry, biology, or astronomy. For example: "What is gravity?" or "How does DNA work?"',
+      type: 'general'
+    };
+  }
+
+  // Construction-specific general knowledge
+  if (lower.includes('concrete') || lower.includes('foundation') || lower.includes('steel') || lower.includes('cement')) {
+    return {
+      text: `🏗️ **Construction Materials & Techniques**
+
+**Concrete:** A composite material made of cement, water, and aggregates. Used for foundations, columns, beams, slabs, and pavements. Strength grades: C15, C20, C25, etc.
+
+**Reinforcement Steel (Rebar):** Steel bars used to increase concrete's tensile strength. Usually deformed to bond better with concrete.
+
+**Foundations:**
+• **Strip footing** – for load‑bearing walls.
+• **Pad footing** – for columns.
+• **Raft** – for weak soils.
+• **Pile** – for deep or soft soils.
+
+**Cement:** A binder that hardens when mixed with water. Types: Portland cement (most common), rapid‑hardening, sulphate‑resistant, etc.
+
+Would you like more details on any of these?`,
+      type: 'general'
+    };
+  }
+
+  // ─── 4. Catch‑all: answer based on keywords ──────────────────
+  // If we still can't match, try to extract a topic and respond with a generic but helpful answer.
+  const words = q.split(/\s+/);
+  const commonTopics = ['construction', 'building', 'engineering', 'design', 'architecture', 'project', 'management', 'cost', 'safety', 'quality', 'schedule'];
+  let detectedTopic = null;
+  for (const word of words) {
+    if (commonTopics.includes(word)) {
+      detectedTopic = word;
+      break;
+    }
+  }
+
+  if (detectedTopic) {
+    return {
+      text: `I see you're asking about **${detectedTopic}**. I can give you a detailed answer! Could you be more specific? For example, "What are the best practices for project management?" or "How to estimate construction costs?"`,
+      type: 'general'
+    };
+  }
+
+  // Final fallback: friendly "ask me anything" with examples
   return {
-    text: `🤖 **I can help with:**
+    text: `🤖 **PURVEYOLS ASSISTANT AI**
 
-1. **System Data** (with tables):
-   • "Show me projects" → I'll give a project table
-   • "Show me workers" → I'll give a worker table
-   • "Show me funding requests" → I'll give a funding table
+I can help with:
 
-2. **Drawings** (with SVG):
-   • "Draw a site plan" → I'll generate a detailed SVG
-   • "Draw a layout" → I'll generate a layout SVG
+📊 **System Data** (in tables):
+• "Show me projects" → project table
+• "Show me workers" → worker table
+• "Show me funding requests" → funding table
 
-3. **General knowledge**:
-   • "What is the capital of Zambia?"
-   • "Explain the water cycle"
+🏗️ **Drawings** (in SVG):
+• "Draw a site plan" → detailed SVG site plan
 
-💡 **Just ask me anything!** I'll respond with a table, drawing, or explanation.`,
+🌍 **General Knowledge**:
+• "What is artificial intelligence?"
+• "What is the capital of Zambia?"
+• "Explain concrete mix design"
+
+💡 **Just ask me anything** – I'll respond with a table, drawing, or clear explanation.`,
     type: 'general'
   };
 };
