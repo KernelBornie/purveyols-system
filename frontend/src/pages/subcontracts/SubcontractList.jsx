@@ -18,8 +18,8 @@ const SubcontractList = () => {
   const [error, setError] = useState(null);
   const { user } = useAuth();
 
-  // ✅ Edit allowed for: procurement, engineer, QS, director, admin, AND accountant
-  const canEdit = ['procurement-officer', 'civil-engineer', 'quantity-surveyor', 'director', 'admin', 'accountant'].includes(user?.role);
+  // ✅ Foreman added
+  const canEdit = ['procurement-officer', 'civil-engineer', 'quantity-surveyor', 'director', 'admin', 'accountant', 'foreman'].includes(user?.role);
 
   useEffect(() => {
     fetchSubcontracts();
