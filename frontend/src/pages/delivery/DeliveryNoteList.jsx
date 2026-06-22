@@ -19,8 +19,8 @@ const DeliveryNoteList = () => {
   const [error, setError] = useState(null);
   const { user } = useAuth();
 
-  // ✅ Drivers now have edit/create permissions
-  const canEdit = ['procurement-officer', 'civil-engineer', 'quantity-surveyor', 'director', 'admin', 'driver'].includes(user?.role);
+  // ✅ Edit allowed for: procurement, engineer, QS, director, admin, driver, AND accountant
+  const canEdit = ['procurement-officer', 'civil-engineer', 'quantity-surveyor', 'director', 'admin', 'driver', 'accountant'].includes(user?.role);
 
   useEffect(() => {
     fetchNotes();
