@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
-  Paper, Typography, Box, Grid, TextField, Button, MenuItem, Alert, Chip, Divider
+  Paper, Typography, Box, Grid, TextField, Button, MenuItem, Alert, Chip, Slider, Avatar
 } from '@mui/material';
 import SaveIcon from '@mui/icons-material/Save';
 import PrintIcon from '@mui/icons-material/Print';
+import PhotoCameraIcon from '@mui/icons-material/PhotoCamera';
 import api from '../../api/axios';
 import { useAuth } from '../../context/AuthContext';
 import BackButton from '../../components/BackButton';
@@ -20,13 +21,12 @@ const ProjectForm = () => {
     budget: '',
     status: 'planning',
     description: '',
+    image: '',        // base64 or URL
+    progress: 0,
   });
   const [creator, setCreator] = useState(null);
   const [message, setMessage] = useState(null);
-
-  // Roles that are view‑only
-  const viewOnlyRoles = ['driver', 'receptionist', 'safety-officer'];
-  const isViewOnly = viewOnlyRoles.includes(user?.role);
+  const [imagePreview, setImagePreview] = useState(null);
 
   useEffect(() => {
     if (id) {
@@ -39,7 +39,10 @@ const ProjectForm = () => {
             budget: data.budget || '',
             status: data.status || 'planning',
             description: data.description || '',
+            image: data.image || '',
+            progress: data.progress || 0,
           });
+          if (data.image) setImagePreview(data.image);
           setCreator(data.createdBy);
         })
         .catch(err => {
@@ -47,18 +50,25 @@ const ProjectForm = () => {
           setMessage({ type: 'error', text: 'Failed to load project' });
         });
     } else {
-      // If creating new, but view‑only users shouldn't reach this route
-      if (isViewOnly) {
-        navigate('/projects');
-        return;
-      }
       setCreator(user);
     }
-  }, [id, user, isViewOnly, navigate]);
+  }, [id, user]);
+
+  const handleImageChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const base64 = event.target.result;
+        setForm({ ...form, image: base64 });
+        setImagePreview(base64);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (isViewOnly) return; // extra safety
     setLoading(true);
     setMessage(null);
     try {
@@ -68,6 +78,8 @@ const ProjectForm = () => {
         budget: parseFloat(form.budget) || 0,
         status: form.status,
         description: form.description || '',
+        image: form.image,
+        progress: Number(form.progress) || 0,
       };
 
       if (id) {
@@ -85,13 +97,7 @@ const ProjectForm = () => {
     }
   };
 
-  const handlePrint = () => {
-    window.print();
-  };
-
-  const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('en-ZM', { style: 'currency', currency: 'ZMW' }).format(amount || 0);
-  };
+  const handlePrint = () => window.print();
 
   return (
     <Paper sx={{ p: 3, maxWidth: '800px', mx: 'auto' }}>
@@ -99,14 +105,8 @@ const ProjectForm = () => {
 
       {message && <Alert severity={message.type} sx={{ mb: 2 }}>{message.text}</Alert>}
 
-      {isViewOnly && (
-        <Alert severity="info" sx={{ mb: 2 }}>
-          You have view‑only access to this project. Edits are disabled.
-        </Alert>
-      )}
-
       <form onSubmit={handleSubmit}>
-        {/* Company Header – unchanged */}
+        {/* Company Header */}
         <Box sx={{
           textAlign: 'center',
           borderBottom: '2px solid #000',
@@ -157,7 +157,36 @@ const ProjectForm = () => {
           </Box>
         )}
 
-        {/* Form Fields – disabled when view‑only */}
+        {/* Image Upload */}
+        <Box sx={{ mb: 3 }}>
+          <Typography variant="subtitle1" gutterBottom>Project Photo</Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <Avatar
+              src={imagePreview || '/project-placeholder.jpg'}
+              sx={{ width: 100, height: 100, borderRadius: 2, border: '1px solid #ccc' }}
+              variant="rounded"
+            />
+            <Button
+              variant="outlined"
+              component="label"
+              startIcon={<PhotoCameraIcon />}
+            >
+              Upload Image
+              <input
+                type="file"
+                accept="image/*"
+                hidden
+                onChange={handleImageChange}
+              />
+            </Button>
+            {imagePreview && (
+              <Button variant="outlined" color="error" onClick={() => { setForm({ ...form, image: '' }); setImagePreview(null); }}>
+                Remove
+              </Button>
+            )}
+          </Box>
+        </Box>
+
         <Grid container spacing={2} sx={{ mb: 3 }}>
           <Grid item xs={12}>
             <TextField
@@ -168,8 +197,6 @@ const ProjectForm = () => {
               onChange={e => setForm({ ...form, name: e.target.value })}
               required
               placeholder="Enter project name..."
-              disabled={isViewOnly}
-              InputProps={{ readOnly: isViewOnly }}
             />
           </Grid>
         </Grid>
@@ -183,8 +210,6 @@ const ProjectForm = () => {
               value={form.location || ''}
               onChange={e => setForm({ ...form, location: e.target.value })}
               placeholder="City, Area, Site..."
-              disabled={isViewOnly}
-              InputProps={{ readOnly: isViewOnly }}
             />
           </Grid>
           <Grid item xs={12} md={6}>
@@ -197,14 +222,12 @@ const ProjectForm = () => {
               onChange={e => setForm({ ...form, budget: e.target.value })}
               inputProps={{ min: 0, step: 0.01 }}
               placeholder="0.00"
-              disabled={isViewOnly}
-              InputProps={{ readOnly: isViewOnly }}
             />
           </Grid>
         </Grid>
 
         <Grid container spacing={2} sx={{ mb: 3 }}>
-          <Grid item xs={12} md={6}>
+          <Grid item xs={12} md={4}>
             <TextField
               select
               label="Status"
@@ -212,7 +235,6 @@ const ProjectForm = () => {
               size="small"
               value={form.status || 'planning'}
               onChange={e => setForm({ ...form, status: e.target.value })}
-              disabled={isViewOnly}
             >
               <MenuItem value="planning">Planning</MenuItem>
               <MenuItem value="active">Active</MenuItem>
@@ -220,16 +242,16 @@ const ProjectForm = () => {
               <MenuItem value="completed">Completed</MenuItem>
             </TextField>
           </Grid>
-          <Grid item xs={12} md={6}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, height: '100%' }}>
-              <Typography variant="body2" color="textSecondary">Status:</Typography>
-              <Chip label={form.status || 'planning'} color={
-                form.status === 'planning' ? 'info' :
-                form.status === 'active' ? 'success' :
-                form.status === 'paused' ? 'warning' :
-                'default'
-              } size="small" />
-            </Box>
+          <Grid item xs={12} md={8}>
+            <Typography gutterBottom>Progress: {form.progress}%</Typography>
+            <Slider
+              value={form.progress}
+              onChange={(e, val) => setForm({ ...form, progress: val })}
+              min={0}
+              max={100}
+              step={1}
+              valueLabelDisplay="auto"
+            />
           </Grid>
         </Grid>
 
@@ -244,8 +266,6 @@ const ProjectForm = () => {
               value={form.description || ''}
               onChange={e => setForm({ ...form, description: e.target.value })}
               placeholder="Provide details about the project..."
-              disabled={isViewOnly}
-              InputProps={{ readOnly: isViewOnly }}
             />
           </Grid>
         </Grid>
@@ -273,18 +293,16 @@ const ProjectForm = () => {
           </Box>
         </Box>
 
-        {/* Action Buttons – hidden for view‑only */}
+        {/* Action Buttons */}
         <Box sx={{ mt: 4, display: 'flex', gap: 2 }}>
-          {!isViewOnly && (
-            <Button
-              type="submit"
-              variant="contained"
-              startIcon={<SaveIcon />}
-              disabled={loading}
-            >
-              {loading ? 'Saving...' : 'Save Project'}
-            </Button>
-          )}
+          <Button
+            type="submit"
+            variant="contained"
+            startIcon={<SaveIcon />}
+            disabled={loading}
+          >
+            {loading ? 'Saving...' : 'Save Project'}
+          </Button>
           <Button
             variant="outlined"
             startIcon={<PrintIcon />}
