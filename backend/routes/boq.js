@@ -6,17 +6,177 @@ const authorize = require('../middleware/rbac');
 const { createNotification } = require('../utils/notificationHelper');
 const User = require('../models/User');
 
-// GET all, GET single, POST already done; we just update PUT and SUBMIT to include accountant, and maybe DELETE? We'll add accountant to PUT and SUBMIT, keep DELETE admin/director.
+// ─── GET all BOQs ────────────────────────────────────────────────
+router.get('/', auth, async (req, res) => {
+  try {
+    const boqs = await BOQ.find()
+      .populate('project', 'name')
+      .populate('createdBy', 'name role')
+      .sort({ createdAt: -1 });
+    res.json(boqs);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 
+// ─── GET single BOQ ──────────────────────────────────────────────
+router.get('/:id', auth, async (req, res) => {
+  try {
+    const boq = await BOQ.findById(req.params.id)
+      .populate('project', 'name location')
+      .populate('createdBy', 'name role');
+    if (!boq) return res.status(404).json({ error: 'BOQ not found' });
+    res.json(boq);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── CREATE ──────────────────────────────────────────────────────
+router.post('/', auth, authorize('admin', 'director', 'quantity-surveyor', 'civil-engineer', 'procurement-officer'), async (req, res) => {
+  // ... existing creation code (unchanged, we keep as before)
+  try {
+    const { items, preliminaries, contingency, vat, ...rest } = req.body;
+    let subTotal = 0;
+    if (items && items.length) {
+      subTotal = items.reduce((sum, item) => sum + (item.amount || 0), 0);
+    }
+    const prelims = subTotal * (preliminaries || 0) / 100;
+    const conting = subTotal * (contingency || 0) / 100;
+    const vatAmount = subTotal * (vat || 0) / 100;
+    const grandTotal = subTotal + prelims + conting + vatAmount;
+
+    const boq = new BOQ({
+      ...rest,
+      items: items || [],
+      preliminaries: preliminaries || 0,
+      contingency: contingency || 0,
+      vat: vat || 0,
+      subTotal,
+      grandTotal,
+      createdBy: req.user.id
+    });
+    await boq.save();
+    const populated = await BOQ.findById(boq._id)
+      .populate('project', 'name')
+      .populate('createdBy', 'name role');
+    // Notify directors
+    const directors = await User.find({ role: 'director' });
+    for (let director of directors) {
+      await createNotification(
+        director._id,
+        'boq_shared',
+        'New BOQ Created',
+        `${req.user.name} created a BOQ for ${populated.project?.name || 'project'}`,
+        `/boq/${boq._id}`
+      );
+    }
+    res.status(201).json(populated);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// ─── UPDATE ──────────────────────────────────────────────────────
 router.put('/:id', auth, authorize('admin', 'director', 'quantity-surveyor', 'civil-engineer', 'procurement-officer', 'accountant'), async (req, res) => {
-  // ... existing code (same as before but with accountant added)
+  try {
+    const { items, preliminaries, contingency, vat, ...rest } = req.body;
+    let subTotal = 0;
+    if (items && items.length) {
+      subTotal = items.reduce((sum, item) => sum + (item.amount || 0), 0);
+    }
+    const prelims = subTotal * (preliminaries || 0) / 100;
+    const conting = subTotal * (contingency || 0) / 100;
+    const vatAmount = subTotal * (vat || 0) / 100;
+    const grandTotal = subTotal + prelims + conting + vatAmount;
+
+    const updateData = {
+      ...rest,
+      items: items || [],
+      preliminaries: preliminaries || 0,
+      contingency: contingency || 0,
+      vat: vat || 0,
+      subTotal,
+      grandTotal,
+      updatedAt: new Date()
+    };
+    const boq = await BOQ.findByIdAndUpdate(req.params.id, updateData, { new: true })
+      .populate('project', 'name')
+      .populate('createdBy', 'name role');
+    if (!boq) return res.status(404).json({ error: 'BOQ not found' });
+    res.json(boq);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
 });
 
+// ─── SUBMIT ──────────────────────────────────────────────────────
 router.put('/:id/submit', auth, authorize('admin', 'director', 'quantity-surveyor', 'civil-engineer', 'procurement-officer', 'accountant'), async (req, res) => {
-  // ... existing code
+  try {
+    const boq = await BOQ.findById(req.params.id);
+    if (!boq) return res.status(404).json({ error: 'BOQ not found' });
+    if (boq.status === 'submitted') return res.status(400).json({ error: 'Already submitted' });
+    boq.status = 'submitted';
+    await boq.save();
+    const populated = await BOQ.findById(boq._id)
+      .populate('project', 'name')
+      .populate('createdBy', 'name role');
+    const directors = await User.find({ role: 'director' });
+    for (let director of directors) {
+      await createNotification(
+        director._id,
+        'boq_shared',
+        'BOQ Submitted for Approval',
+        `${boq.createdBy?.name} submitted a BOQ for ${boq.project?.name || 'project'}`,
+        `/boq/${boq._id}`
+      );
+    }
+    res.json(populated);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
 });
 
-// DELETE stays as admin/director (if you want accountant to delete, add 'accountant' as well)
-router.delete('/:id', auth, authorize('admin', 'director'), async (req, res) => {
-  // ...
+// ─── APPROVE ──────────────────────────────────────────────────────
+router.put('/:id/approve', auth, authorize('admin', 'director'), async (req, res) => {
+  // unchanged
+  try {
+    const boq = await BOQ.findById(req.params.id);
+    if (!boq) return res.status(404).json({ error: 'BOQ not found' });
+    if (boq.status === 'approved') return res.status(400).json({ error: 'Already approved' });
+    boq.status = 'approved';
+    boq.approvedBy = req.user.id;
+    boq.approvedAt = new Date();
+    await boq.save();
+    const populated = await BOQ.findById(boq._id)
+      .populate('project', 'name')
+      .populate('createdBy', 'name role')
+      .populate('approvedBy', 'name role');
+    if (boq.createdBy) {
+      await createNotification(
+        boq.createdBy,
+        'boq_shared',
+        'BOQ Approved',
+        `Your BOQ for ${boq.project?.name || 'project'} was approved by ${req.user.name}`,
+        `/boq/${boq._id}`
+      );
+    }
+    res.json(populated);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
 });
+
+// ─── DELETE ──────────────────────────────────────────────────────
+router.delete('/:id', auth, authorize('admin', 'director'), async (req, res) => {
+  // unchanged (or optionally add accountant)
+  try {
+    const deleted = await BOQ.findByIdAndDelete(req.params.id);
+    if (!deleted) return res.status(404).json({ error: 'BOQ not found' });
+    res.json({ message: 'Deleted' });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+module.exports = router;
