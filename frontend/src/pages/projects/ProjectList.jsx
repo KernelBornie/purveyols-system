@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Box, Typography, Paper, Table, TableHead, TableRow, TableCell, TableBody,
-  Button, Chip, CircularProgress, IconButton, Tooltip, Alert
+  Button, Chip, CircularProgress, IconButton, Tooltip, Alert, LinearProgress
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import VisibilityIcon from '@mui/icons-material/Visibility';
@@ -12,8 +12,6 @@ import TimelineIcon from '@mui/icons-material/Timeline';
 import api from '../../api/axios';
 import { useAuth } from '../../context/AuthContext';
 import BackButton from '../../components/BackButton';
-
-const projectImages = ['project-1.jpg', 'project-3.jpg', 'project-4.jpg', 'project-5.jpg'];
 
 const ProjectList = () => {
   const [projects, setProjects] = useState([]);
@@ -93,6 +91,7 @@ const ProjectList = () => {
               <TableCell>Name</TableCell>
               <TableCell>Location</TableCell>
               <TableCell>Status</TableCell>
+              <TableCell>Progress</TableCell>
               <TableCell>Budget</TableCell>
               <TableCell>Deadline</TableCell>
               <TableCell>Bidder</TableCell>
@@ -105,11 +104,11 @@ const ProjectList = () => {
             </TableRow>
           </TableHead>
           <TableBody>
-            {projects.map((project, index) => (
+            {projects.map((project) => (
               <TableRow key={project._id}>
                 <TableCell>
                   <img
-                    src={`/${projectImages[index % projectImages.length]}`}
+                    src={project.image || '/project-placeholder.jpg'}
                     alt={project.name}
                     style={{ width: 60, height: 40, objectFit: 'cover', borderRadius: 4 }}
                   />
@@ -118,6 +117,14 @@ const ProjectList = () => {
                 <TableCell>{project.location || '—'}</TableCell>
                 <TableCell>
                   <Chip label={project.status} color={getStatusColor(project.status)} size="small" />
+                </TableCell>
+                <TableCell sx={{ minWidth: 100 }}>
+                  <LinearProgress
+                    variant="determinate"
+                    value={project.progress || 0}
+                    sx={{ height: 8, borderRadius: 4 }}
+                  />
+                  <Typography variant="caption">{project.progress || 0}%</Typography>
                 </TableCell>
                 <TableCell>
                   {new Intl.NumberFormat('en-ZM', { style: 'currency', currency: 'ZMW' }).format(project.budget || 0)}
@@ -172,7 +179,7 @@ const ProjectList = () => {
             ))}
             {projects.length === 0 && (
               <TableRow>
-                <TableCell colSpan={13} align="center" sx={{ py: 3 }}>
+                <TableCell colSpan={14} align="center" sx={{ py: 3 }}>
                   <Typography variant="body2" color="textSecondary">No projects yet.</Typography>
                 </TableCell>
               </TableRow>
