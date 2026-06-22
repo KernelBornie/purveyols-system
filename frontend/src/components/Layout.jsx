@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import {
   AppBar, Toolbar, Typography, Button, Box, Container, Menu, MenuItem, IconButton, Fab,
-  Tooltip, Menu as MuiMenu, ListItemIcon, ListItemText
+  Tooltip, Menu as MuiMenu, ListItemIcon, ListItemText, useMediaQuery, useTheme
 } from '@mui/material';
 import AccountCircle from '@mui/icons-material/AccountCircle';
 import MessageIcon from '@mui/icons-material/Message';
@@ -11,7 +11,8 @@ import FileDownloadIcon from '@mui/icons-material/FileDownload';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import ConstructionIcon from '@mui/icons-material/Construction';
 import LocalShippingIcon from '@mui/icons-material/LocalShipping';
-import SmartToyIcon from '@mui/icons-material/SmartToy'; // ← AI icon
+import SmartToyIcon from '@mui/icons-material/SmartToy';
+import MenuIcon from '@mui/icons-material/Menu';
 import { useAuth } from '../context/AuthContext';
 import NotificationBell from './NotificationBell';
 import ReportModal from './ReportModal';
@@ -22,25 +23,30 @@ import api from '../api/axios';
 import Footer from './Footer';
 import Sidebar from './Sidebar';
 
+const drawerWidth = 240;
+
 const Layout = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const [mobileOpen, setMobileOpen] = useState(false);
   const [anchorEl, setAnchorEl] = useState(null);
   const [msgOpen, setMsgOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
   const [exportAnchor, setExportAnchor] = useState(null);
   const [exportLoading, setExportLoading] = useState(false);
-  const [aiOpen, setAiOpen] = useState(false); // ← NEW state for AI
+  const [aiOpen, setAiOpen] = useState(false);
 
-  // ─── Listen for AI trigger from sidebar ──────────────────────────
   useEffect(() => {
     if (location.state?.openAI) {
       setAiOpen(true);
-      // Clear the state so it doesn't reopen on refresh
       window.history.replaceState({}, document.title);
     }
   }, [location]);
+
+  const handleDrawerToggle = () => setMobileOpen(!mobileOpen);
 
   const handleMenu = (event) => setAnchorEl(event.currentTarget);
   const handleClose = () => setAnchorEl(null);
@@ -142,7 +148,12 @@ const Layout = () => {
     <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
       <AppBar position="static" sx={{ zIndex: (theme) => theme.zIndex.drawer + 1 }}>
         <Toolbar>
-          {showBack && (
+          {isMobile && (
+            <IconButton color="inherit" edge="start" onClick={handleDrawerToggle} sx={{ mr: 1 }}>
+              <MenuIcon />
+            </IconButton>
+          )}
+          {!isMobile && showBack && (
             <IconButton color="inherit" onClick={handleBack} edge="start" sx={{ mr: 1 }}>
               <ArrowBackIcon />
             </IconButton>
@@ -151,33 +162,35 @@ const Layout = () => {
             <img
               src="/logo-branding.jpg"
               alt="PURVEYOLS"
-              height="40"
+              height={isMobile ? 30 : 40}
               style={{ marginRight: 12, borderRadius: 4 }}
             />
             <Typography
-              variant="h6"
+              variant={isMobile ? 'subtitle1' : 'h6'}
               sx={{ cursor: 'pointer', fontWeight: 600 }}
               onClick={() => navigate('/dashboard')}
             >
-              PURVEYOLS CMS
+              {isMobile ? 'PURVEYOLS' : 'PURVEYOLS CMS'}
             </Typography>
           </Box>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: isMobile ? 0.5 : 1 }}>
             <NetworkStatus />
             <NotificationBell />
-            <Button color="inherit" onClick={() => navigate('/dashboard')}>Dashboard</Button>
+            {!isMobile && (
+              <Button color="inherit" onClick={() => navigate('/dashboard')}>Dashboard</Button>
+            )}
             <Tooltip title="Advertised Projects & Tenders">
-              <IconButton color="inherit" onClick={() => navigate('/advertised-projects')}>
+              <IconButton color="inherit" onClick={() => navigate('/advertised-projects')} size={isMobile ? 'small' : 'medium'}>
                 <ConstructionIcon />
               </IconButton>
             </Tooltip>
             <Tooltip title="Delivery Notes">
-              <IconButton color="inherit" onClick={() => navigate('/delivery')}>
+              <IconButton color="inherit" onClick={() => navigate('/delivery')} size={isMobile ? 'small' : 'medium'}>
                 <LocalShippingIcon />
               </IconButton>
             </Tooltip>
             <Tooltip title="Export Data">
-              <IconButton color="inherit" onClick={handleExportOpen}>
+              <IconButton color="inherit" onClick={handleExportOpen} size={isMobile ? 'small' : 'medium'}>
                 <FileDownloadIcon />
               </IconButton>
             </Tooltip>
@@ -195,7 +208,7 @@ const Layout = () => {
                 <ListItemText>Export Funding Requests</ListItemText>
               </MenuItem>
             </MuiMenu>
-            <IconButton color="inherit" onClick={handleMenu}>
+            <IconButton color="inherit" onClick={handleMenu} size={isMobile ? 'small' : 'medium'}>
               <AccountCircle />
             </IconButton>
             <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={handleClose}>
@@ -218,37 +231,44 @@ const Layout = () => {
           </Box>
         </Toolbar>
       </AppBar>
+
       <Box sx={{ display: 'flex', flex: 1 }}>
-        <Sidebar />
-        <Box component="main" sx={{ flexGrow: 1, p: 3 }}>
-          <Box className="dashboard-content">
-            <Container maxWidth="xl" sx={{ px: { xs: 0, sm: 2 } }}>
-              <Outlet />
-            </Container>
-          </Box>
+        <Sidebar
+          mobileOpen={mobileOpen}
+          handleDrawerToggle={handleDrawerToggle}
+          isMobile={isMobile}
+        />
+        <Box component="main" sx={{ flexGrow: 1, p: isMobile ? 1 : 3, width: { sm: `calc(100% - ${drawerWidth}px)` } }}>
+          <Container maxWidth="xl" sx={{ px: { xs: 0, sm: 2 } }}>
+            <Outlet />
+          </Container>
         </Box>
       </Box>
+
       <Footer />
 
-      {/* ─── AI Floating Button ────────────────────────────── */}
       <Tooltip title="AI Assistant">
         <Fab
           color="primary"
-          sx={{ position: 'fixed', bottom: 24, right: 100 }} // ← repositioned to not overlap with message Fab
+          sx={{ position: 'fixed', bottom: isMobile ? 80 : 24, right: isMobile ? 16 : 100 }}
+          size={isMobile ? 'small' : 'medium'}
           onClick={() => setAiOpen(true)}
         >
           <SmartToyIcon />
         </Fab>
       </Tooltip>
 
-      {/* ─── Message Floating Button ────────────────────────────── */}
-      <Fab color="secondary" aria-label="message" sx={{ position: 'fixed', bottom: 24, right: 24 }} onClick={handleMsgOpen}>
+      <Fab
+        color="secondary"
+        aria-label="message"
+        sx={{ position: 'fixed', bottom: isMobile ? 24 : 24, right: isMobile ? 16 : 24 }}
+        size={isMobile ? 'small' : 'medium'}
+        onClick={handleMsgOpen}
+      >
         <MessageIcon />
       </Fab>
 
-      {/* ─── AI Assistant Modal ────────────────────────────── */}
       <AIAssistant open={aiOpen} onClose={() => setAiOpen(false)} />
-
       <MessageDialog open={msgOpen} onClose={handleMsgClose} onSent={() => {}} />
       <ReportModal open={reportOpen} onClose={() => setReportOpen(false)} />
     </Box>
