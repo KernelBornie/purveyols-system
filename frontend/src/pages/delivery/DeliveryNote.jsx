@@ -29,8 +29,8 @@ const DeliveryNote = () => {
   });
   const [message, setMessage] = useState(null);
 
-  // ✅ Drivers now have edit/create permissions
-  const canEdit = ['procurement-officer', 'civil-engineer', 'quantity-surveyor', 'director', 'admin', 'driver'].includes(user?.role);
+  // ✅ Edit allowed for: procurement, engineer, QS, director, admin, driver, AND accountant
+  const canEdit = ['procurement-officer', 'civil-engineer', 'quantity-surveyor', 'director', 'admin', 'driver', 'accountant'].includes(user?.role);
 
   const generateNoteNumber = () => {
     const date = new Date();
