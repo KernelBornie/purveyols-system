@@ -166,7 +166,7 @@ router.put('/:id/approve', auth, authorize('admin', 'director'), async (req, res
 });
 
 // ─── DELETE ──────────────────────────────────────────────────────
-router.delete('/:id', auth, authorize('admin', 'director', 'quantity-surveyor', 'civil-engineer', 'procurement-officer'), async (req, res) => {
+router.delete('/:id', auth, authorize('admin', 'director'), async (req, res) => {
   try {
     const deleted = await BOQ.findByIdAndDelete(req.params.id);
     if (!deleted) return res.status(404).json({ error: 'BOQ not found' });
