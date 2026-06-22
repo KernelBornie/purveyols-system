@@ -1,106 +1,142 @@
 const express = require('express');
-const mongoose = require('mongoose');
-const cors = require('cors');
-const morgan = require('morgan');
-const dotenv = require('dotenv');
-dotenv.config();
+const router = express.Router();
+const SparePartRequest = require('../models/SparePartRequest');
+const User = require('../models/User');
+const auth = require('../middleware/auth');
+const { createNotification, getSenderName } = require('../utils/notificationHelper');
 
-const app = express();
-
-// ─── Temporarily allow all origins for testing ──────────────────
-const corsOptions = {
-  origin: true, // ✅ allows any origin
-  credentials: true,
-  optionsSuccessStatus: 200
-};
-app.use(cors(corsOptions));
-app.use((req, res, next) => {
-  console.log(`${req.method} ${req.url} - Origin: ${req.headers.origin}`);
-  next();
-});
-app.use(express.json());
-app.use(morgan('dev'));
-
-// ─── Auto‑seed if database is empty ──────────────────────────────
-const User = require('./models/User');
-const { exec } = require('child_process');
-
-const seedIfEmpty = async () => {
+// ─── GET all ──────────────────────────────────────────────────
+router.get('/', auth, async (req, res) => {
   try {
-    const count = await User.countDocuments();
-    if (count === 0) {
-      console.log('⚡ No users found. Seeding database...');
-      exec('npm run seed', (error, stdout, stderr) => {
-        if (error) {
-          console.error(`❌ Seed error: ${error.message}`);
-          return;
-        }
-        console.log(stdout);
-        if (stderr) console.error(stderr);
-        console.log('✅ Seeding completed.');
-      });
-    } else {
-      console.log(`✅ Database already has ${count} users. Skipping seed.`);
+    let filter = {};
+    if (req.user.role === 'driver') filter.driver = req.user.id;
+    const requests = await SparePartRequest.find(filter)
+      .populate('driver', 'name')
+      .populate('project', 'name')
+      .populate('approvedBy', 'name')
+      .sort({ requestedAt: -1 });
+    res.json(requests);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// ─── GET single ──────────────────────────────────────────────
+router.get('/:id', auth, async (req, res) => {
+  try {
+    const request = await SparePartRequest.findById(req.params.id)
+      .populate('driver', 'name')
+      .populate('project', 'name')
+      .populate('approvedBy', 'name');
+    if (!request) return res.status(404).json({ error: 'Not found' });
+    if (req.user.role === 'driver' && request.driver._id.toString() !== req.user.id) {
+      return res.status(403).json({ error: 'Access denied' });
     }
-  } catch (err) {
-    console.error('❌ Failed to check user count:', err);
-  }
-};
+    res.json(request);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
 
-// ─── Routes ──────────────────────────────────────────────────────
-// ❌ REMOVED: app.use('/api/test', require('./routes/test'));
-app.use('/api/auth', require('./routes/auth'));
-app.use('/api/chat-history', require('./routes/chatHistory'));
-app.use('/api/ai', require('./routes/ai'));
-app.use('/api/bids', require('./routes/bids'));
-app.use('/api/advertised-projects', require('./routes/advertisedProjects'));
-app.use('/api/mobile-money', require('./routes/mobileMoney'));
-app.use('/api/messages', require('./routes/messages'));
-app.use('/api/notifications', require('./routes/notifications'));
-app.use('/api/users', require('./routes/users'));
-app.use('/api/workers', require('./routes/workers'));
-app.use('/api/projects', require('./routes/projects'));
-app.use('/api/payments', require('./routes/payments'));
-app.use('/api/funding-requests', require('./routes/fundingRequests'));
-app.use('/api/funding', require('./routes/funding'));
-app.use('/api/logbooks', require('./routes/logbooks'));
-app.use('/api/procurement', require('./routes/procurement'));
-app.use('/api/boq', require('./routes/boq'));
-app.use('/api/subcontracts', require('./routes/subcontracts'));
-app.use('/api/safety-reports', require('./routes/safetyReports'));
-app.use('/api/material-requests', require('./routes/materialRequests'));
-app.use('/api/reports', require('./routes/reports'));
-app.use('/api/visitors', require('./routes/visitors'));
-app.use('/api/attendance', require('./routes/attendance'));
-app.use('/api/delivery', require('./routes/delivery'));
-app.use('/api/site-plans', require('./routes/sitePlans'));
-app.use('/api/drawings', require('./routes/drawings'));
-app.use('/api/surveys', require('./routes/surveys'));
+// ─── CREATE ──────────────────────────────────────────────────
+router.post('/', auth, async (req, res) => {
+  try {
+    const { project, item, quantity, description } = req.body;
+    if (!item || !quantity || quantity < 1) {
+      return res.status(400).json({ error: 'Item and quantity are required' });
+    }
+    const request = new SparePartRequest({
+      driver: req.user.id,
+      project: project || null,
+      item,
+      quantity,
+      description: description || '',
+      status: 'pending',
+    });
+    await request.save();
+    const populated = await SparePartRequest.findById(request._id)
+      .populate('driver', 'name')
+      .populate('project', 'name');
 
-// ─── Spare Parts (for drivers) ──────────────────────────────────
-app.use('/api/spare-parts', require('./routes/spareParts'));
+    const senderName = await getSenderName(req.user.id);
+    const recipients = await User.find({ role: { $in: ['procurement-officer', 'director', 'admin'] } });
+    for (let rec of recipients) {
+      await createNotification(
+        rec._id,
+        'spare_part_requested',
+        'New Spare Parts Request',
+        `${senderName} requested ${quantity} x ${item}`,
+        `/spare-parts/${request._id}`
+      );
+    }
+    res.status(201).json(populated);
+  } catch (err) { res.status(400).json({ error: err.message }); }
+});
 
-// ─── Project Planning ────────────────────────────────────────────
-const projectPlanRoutes = require('./routes/projectPlans');
-app.use('/api/project-plans', projectPlanRoutes);
+// ─── UPDATE (drivers can edit if pending, others approve/reject) ──
+router.put('/:id', auth, async (req, res) => {
+  try {
+    const request = await SparePartRequest.findById(req.params.id);
+    if (!request) return res.status(404).json({ error: 'Not found' });
 
-const siteDiaryRoutes = require('./routes/siteDiary');
-app.use('/api/site-diary', siteDiaryRoutes);
+    if (req.user.role === 'driver') {
+      if (request.driver.toString() !== req.user.id) return res.status(403).json({ error: 'Access denied' });
+      if (request.status !== 'pending') return res.status(400).json({ error: 'Cannot edit approved/rejected request' });
+      const { item, quantity, description } = req.body;
+      if (item) request.item = item;
+      if (quantity) request.quantity = quantity;
+      if (description) request.description = description;
+      request.updatedAt = new Date();
+      await request.save();
+    } else {
+      // Procurement/Admin/Director can approve/reject
+      const { status, rejectionReason } = req.body;
+      if (!['approved', 'rejected'].includes(status)) {
+        return res.status(400).json({ error: 'Invalid status' });
+      }
+      const senderName = await getSenderName(req.user.id);
+      if (status === 'approved') {
+        request.status = 'approved';
+        request.approvedBy = req.user.id;
+        request.approvedAt = new Date();
+        await createNotification(
+          request.driver,
+          'spare_part_approved',
+          'Spare Parts Approved',
+          `Your request for ${request.quantity} x ${request.item} was approved by ${senderName}`,
+          `/spare-parts/${request._id}`
+        );
+      } else {
+        request.status = 'rejected';
+        request.rejectionReason = rejectionReason || '';
+        await createNotification(
+          request.driver,
+          'spare_part_rejected',
+          'Spare Parts Rejected',
+          `Your request for ${request.quantity} x ${request.item} was rejected by ${senderName}`,
+          `/spare-parts/${request._id}`
+        );
+      }
+      request.updatedAt = new Date();
+      await request.save();
+    }
 
-// ─── OpenAI test endpoint (optional) ────────────────────────────
-// If you created test-openai.js, uncomment this line:
-// app.use('/api/test-openai', require('./routes/test-openai'));
+    const populated = await SparePartRequest.findById(request._id)
+      .populate('driver', 'name')
+      .populate('project', 'name')
+      .populate('approvedBy', 'name');
+    res.json(populated);
+  } catch (err) { res.status(400).json({ error: err.message }); }
+});
 
-// ─── Health check ────────────────────────────────────────────────
-app.get('/api/health', (req, res) => res.json({ status: 'OK', timestamp: new Date().toISOString() }));
+// ─── DELETE ──────────────────────────────────────────────────
+router.delete('/:id', auth, async (req, res) => {
+  try {
+    const request = await SparePartRequest.findById(req.params.id);
+    if (!request) return res.status(404).json({ error: 'Not found' });
+    if (req.user.role === 'driver') {
+      if (request.driver.toString() !== req.user.id) return res.status(403).json({ error: 'Access denied' });
+      if (request.status !== 'pending') return res.status(400).json({ error: 'Cannot delete approved/rejected request' });
+    }
+    await SparePartRequest.findByIdAndDelete(req.params.id);
+    res.json({ message: 'Deleted' });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
 
-const PORT = process.env.PORT || 5000;
-
-// ─── Connect and start ──────────────────────────────────────────
-mongoose.connect(process.env.MONGO_URI)
-  .then(() => {
-    console.log('MongoDB connected');
-    seedIfEmpty();
-    app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
-  })
-  .catch(err => console.log(err));
+module.exports = router;
