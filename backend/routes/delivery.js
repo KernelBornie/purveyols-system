@@ -35,7 +35,7 @@ router.post('/', auth, authorize('admin', 'director', 'procurement-officer', 'ci
     // ─── Notify creator ──────────────────────────────────────
     await createNotification(
       req.user.id,
-      'logbook_entry', // or a specific type like 'delivery_created' – but we can reuse logbook_entry
+      'logbook_entry',
       'Delivery Note Created',
       `✅ You created a delivery note`,
       `/delivery/${note._id}`
