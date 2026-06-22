@@ -19,6 +19,11 @@ const WorkerList = () => {
 
   const viewOnlyRoles = ['driver', 'receptionist', 'safety-officer'];
   const isViewOnly = viewOnlyRoles.includes(user?.role);
+  
+  // ✅ Allow accountant to edit workers
+  const canEdit = !isViewOnly || user?.role === 'accountant'; // Actually we want accountant to be able to edit even if they are in viewOnly? We'll separate logic.
+  // Let's use: edit allowed if role is admin, director, civil-engineer, foreman, OR accountant
+  const canEditWorker = ['admin', 'director', 'civil-engineer', 'foreman', 'accountant'].includes(user?.role);
 
   useEffect(() => {
     fetchWorkers();
@@ -61,7 +66,7 @@ const WorkerList = () => {
         <Typography variant="h5" sx={{ fontWeight: 'bold' }}>
           Workers
         </Typography>
-        {!isViewOnly && (
+        {canEditWorker && (
           <Button
             component={Link}
             to="/workers/new"
@@ -73,7 +78,7 @@ const WorkerList = () => {
         )}
       </Box>
 
-      {isViewOnly && (
+      {!canEditWorker && (
         <Alert severity="info" sx={{ mb: 2 }}>
           You have view‑only access. You can view workers but cannot create, edit, or delete them.
         </Alert>
@@ -112,7 +117,7 @@ const WorkerList = () => {
                     </IconButton>
                   </Tooltip>
 
-                  {!isViewOnly && (
+                  {canEditWorker && (
                     <Tooltip title="Edit">
                       <IconButton component={Link} to={`/workers/${worker._id}/edit`} size="small" color="primary">
                         <EditIcon fontSize="small" />
@@ -120,7 +125,7 @@ const WorkerList = () => {
                     </Tooltip>
                   )}
 
-                  {!isViewOnly && (
+                  {canEditWorker && (
                     <Tooltip title="Delete">
                       <IconButton size="small" color="error" onClick={() => handleDelete(worker._id)}>
                         <DeleteIcon fontSize="small" />
