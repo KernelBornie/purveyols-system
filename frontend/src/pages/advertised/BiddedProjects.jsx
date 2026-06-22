@@ -13,6 +13,7 @@ import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
+import AddIcon from '@mui/icons-material/Add';
 import { useNavigate } from 'react-router-dom';
 import api from '../../api/axios';
 import BackButton from '../../components/BackButton';
@@ -85,6 +86,27 @@ const BiddedProjects = () => {
       fetchBids();
     } catch (err) {
       setSnackbar({ open: true, message: 'Failed to delete', severity: 'error' });
+    }
+  };
+
+  const handleConvertToProject = async (bidId) => {
+    if (!window.confirm('Create a project from this awarded bid? All details will be carried over.')) return;
+    try {
+      const res = await api.post(`/api/bids/${bidId}/convert-to-project`);
+      setSnackbar({
+        open: true,
+        message: `✅ Project "${res.data.project.name}" created successfully!`,
+        severity: 'success'
+      });
+      fetchBids();
+      // Optionally navigate to the new project edit page
+      // navigate(`/projects/${res.data.project._id}`);
+    } catch (err) {
+      setSnackbar({
+        open: true,
+        message: '❌ ' + (err.response?.data?.error || 'Failed to create project'),
+        severity: 'error'
+      });
     }
   };
 
@@ -163,6 +185,17 @@ const BiddedProjects = () => {
                 <CardActions>
                   <Button size="small" startIcon={<EditIcon />} onClick={() => handleEditOpen(bid)}>Edit</Button>
                   <Button size="small" color="error" startIcon={<DeleteIcon />} onClick={() => handleDelete(bid._id)}>Delete</Button>
+                  {bid.status === 'awarded' && !bid.isConverted && (
+                    <Button
+                      size="small"
+                      variant="contained"
+                      color="success"
+                      startIcon={<AddIcon />}
+                      onClick={() => handleConvertToProject(bid._id)}
+                    >
+                      Create Project
+                    </Button>
+                  )}
                   <Button size="small" href={bid.sourceUrl} target="_blank" rel="noopener noreferrer">Source</Button>
                 </CardActions>
               </Card>
