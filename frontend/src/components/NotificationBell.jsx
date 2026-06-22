@@ -10,9 +10,12 @@ import {
   Divider,
   Button,
   Chip,
+  Tooltip,
 } from '@mui/material';
 import NotificationsIcon from '@mui/icons-material/Notifications';
 import CircleIcon from '@mui/icons-material/Circle';
+import VolumeUpIcon from '@mui/icons-material/VolumeUp';
+import VolumeOffIcon from '@mui/icons-material/VolumeOff';
 import api from '../api/axios';
 import { useAuth } from '../context/AuthContext';
 
@@ -24,6 +27,10 @@ const NotificationBell = () => {
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [anchorEl, setAnchorEl] = useState(null);
+  const [soundEnabled, setSoundEnabled] = useState(() => {
+    const saved = localStorage.getItem('notificationSoundEnabled');
+    return saved !== null ? saved === 'true' : true;
+  });
   const audioRef = useRef(null);
   const prevUnreadCount = useRef(0);
 
@@ -39,7 +46,7 @@ const NotificationBell = () => {
       const data = res.data || [];
       setNotifications(data);
       const newUnread = data.filter(n => !n.read).length;
-      if (newUnread > prevUnreadCount.current) {
+      if (newUnread > prevUnreadCount.current && soundEnabled) {
         if (audioRef.current) {
           audioRef.current.currentTime = 0;
           audioRef.current.play().catch(() => {});
@@ -56,15 +63,18 @@ const NotificationBell = () => {
     fetchNotifications();
     const interval = setInterval(fetchNotifications, 30000);
     return () => clearInterval(interval);
-  }, [user]);
+  }, [user, soundEnabled]);
 
-  const handleOpen = (event) => {
-    setAnchorEl(event.currentTarget);
+  const toggleSound = () => {
+    setSoundEnabled(prev => {
+      const newVal = !prev;
+      localStorage.setItem('notificationSoundEnabled', String(newVal));
+      return newVal;
+    });
   };
 
-  const handleClose = () => {
-    setAnchorEl(null);
-  };
+  const handleOpen = (event) => setAnchorEl(event.currentTarget);
+  const handleClose = () => setAnchorEl(null);
 
   const handleNotificationClick = (notification) => {
     handleClose();
@@ -162,11 +172,18 @@ const NotificationBell = () => {
 
   return (
     <>
-      <IconButton color="inherit" onClick={handleOpen}>
-        <Badge badgeContent={unreadCount} color="error">
-          <NotificationsIcon />
-        </Badge>
-      </IconButton>
+      <Box sx={{ display: 'flex', alignItems: 'center' }}>
+        <IconButton color="inherit" onClick={handleOpen}>
+          <Badge badgeContent={unreadCount} color="error">
+            <NotificationsIcon />
+          </Badge>
+        </IconButton>
+        <Tooltip title={soundEnabled ? 'Sound On' : 'Sound Off'}>
+          <IconButton color="inherit" onClick={toggleSound} size="small">
+            {soundEnabled ? <VolumeUpIcon fontSize="small" /> : <VolumeOffIcon fontSize="small" />}
+          </IconButton>
+        </Tooltip>
+      </Box>
 
       <Menu
         anchorEl={anchorEl}
