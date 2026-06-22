@@ -5,7 +5,6 @@ const User = require('../models/User');
 const auth = require('../middleware/auth');
 const { createNotification, getSenderName } = require('../utils/notificationHelper');
 
-// ─── GET all ──────────────────────────────────────────────────
 router.get('/', auth, async (req, res) => {
   try {
     const visitors = await Visitor.find()
@@ -15,7 +14,6 @@ router.get('/', auth, async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// ─── GET single ──────────────────────────────────────────────
 router.get('/:id', auth, async (req, res) => {
   try {
     const visitor = await Visitor.findById(req.params.id)
@@ -25,7 +23,6 @@ router.get('/:id', auth, async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// ─── CREATE ──────────────────────────────────────────────────
 router.post('/', auth, async (req, res) => {
   try {
     const visitor = new Visitor({
@@ -38,14 +35,26 @@ router.post('/', auth, async (req, res) => {
       .populate('loggedBy', 'name role');
 
     const senderName = await getSenderName(req.user.id);
-    // Notify receptionists and directors
-    const recipients = await User.find({ role: { $in: ['receptionist', 'director', 'admin'] } });
-    for (let rec of recipients) {
+    const senderRole = req.user.role; // we can get role directly from req.user
+
+    // ─── Notify creator ──────────────────────────────────────
+    await createNotification(
+      req.user.id,
+      'visitor_logged',
+      'Visitor Logged',
+      `✅ You logged a visitor: ${visitor.name || 'Unknown'}`,
+      `/visitors/${visitor._id}`
+    );
+
+    // ─── Notify directors and admins (exclude creator) ──────
+    const recipients = await User.find({ role: { $in: ['director', 'admin'] } });
+    const filtered = recipients.filter(r => r._id.toString() !== req.user.id);
+    for (let recipient of filtered) {
       await createNotification(
-        rec._id,
+        recipient._id,
         'visitor_logged',
         'New Visitor Logged',
-        `${senderName} logged a visitor: ${visitor.name || 'Unknown'}`,
+        `${senderName} (${senderRole}) logged a visitor: ${visitor.name || 'Unknown'}`,
         `/visitors/${visitor._id}`
       );
     }
@@ -53,7 +62,6 @@ router.post('/', auth, async (req, res) => {
   } catch (err) { res.status(400).json({ error: err.message }); }
 });
 
-// ─── UPDATE ──────────────────────────────────────────────────
 router.put('/:id', auth, async (req, res) => {
   try {
     const visitor = await Visitor.findByIdAndUpdate(req.params.id, req.body, { new: true })
@@ -63,7 +71,6 @@ router.put('/:id', auth, async (req, res) => {
   } catch (err) { res.status(400).json({ error: err.message }); }
 });
 
-// ─── DELETE ──────────────────────────────────────────────────
 router.delete('/:id', auth, async (req, res) => {
   try {
     await Visitor.findByIdAndDelete(req.params.id);
