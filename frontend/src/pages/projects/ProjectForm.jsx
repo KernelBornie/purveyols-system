@@ -21,7 +21,7 @@ const ProjectForm = () => {
     budget: '',
     status: 'planning',
     description: '',
-    image: '',        // base64 or URL
+    image: '',
     progress: 0,
   });
   const [creator, setCreator] = useState(null);
@@ -144,7 +144,7 @@ const ProjectForm = () => {
             {id ? 'EDIT PROJECT' : 'CREATE PROJECT'}
           </Typography>
           <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
-            {id ? `Project ID: ${id}` : 'New Project'}
+            {id ? `Project ID: ${id.slice(-6)}` : 'New Project'}
           </Typography>
         </Box>
 
