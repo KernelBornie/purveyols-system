@@ -2,7 +2,9 @@ const express = require('express');
 const router = express.Router();
 const multer = require('multer');
 const Logbook = require('../models/Logbook');
+const User = require('../models/User');
 const auth = require('../middleware/auth');
+const { createNotification, getSenderName } = require('../utils/notificationHelper');
 
 const storage = multer.memoryStorage();
 const upload = multer({
@@ -17,21 +19,32 @@ const upload = multer({
   }
 });
 
+// ─── GET all ──────────────────────────────────────────────────
 router.get('/', auth, async (req, res) => {
   try {
-    const logbooks = await Logbook.find().populate('createdBy', 'name role');
+    let filter = {};
+    if (req.user.role === 'driver') filter.createdBy = req.user.id;
+    const logbooks = await Logbook.find(filter)
+      .populate('createdBy', 'name role')
+      .sort({ createdAt: -1 });
     res.json(logbooks);
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// ─── GET single ──────────────────────────────────────────────
 router.get('/:id', auth, async (req, res) => {
   try {
-    const logbook = await Logbook.findById(req.params.id).populate('createdBy', 'name role');
+    const logbook = await Logbook.findById(req.params.id)
+      .populate('createdBy', 'name role');
     if (!logbook) return res.status(404).json({ error: 'Not found' });
+    if (req.user.role === 'driver' && logbook.createdBy._id.toString() !== req.user.id) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
     res.json(logbook);
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// ─── CREATE ──────────────────────────────────────────────────
 router.post('/', auth, upload.single('file'), async (req, res) => {
   try {
     const { vehicle, route, startTime, endTime, distance, fuelUsed, notes, status } = req.body;
@@ -56,10 +69,25 @@ router.post('/', auth, upload.single('file'), async (req, res) => {
       createdBy: req.user.id,
     });
     await logbook.save();
-    res.status(201).json(logbook);
+    const populated = await Logbook.findById(logbook._id).populate('createdBy', 'name role');
+
+    const senderName = await getSenderName(req.user.id);
+    // Notify directors, admins, safety officers
+    const recipients = await User.find({ role: { $in: ['director', 'admin', 'safety-officer'] } });
+    for (let rec of recipients) {
+      await createNotification(
+        rec._id,
+        'logbook_entry',
+        'New Logbook Entry',
+        `${senderName} added a logbook entry for trip: ${logbook.vehicle || 'Unknown'}`,
+        `/logbooks/${logbook._id}`
+      );
+    }
+    res.status(201).json(populated);
   } catch (err) { res.status(400).json({ error: err.message }); }
 });
 
+// ─── UPDATE ──────────────────────────────────────────────────
 router.put('/:id', auth, upload.single('file'), async (req, res) => {
   try {
     const logbook = await Logbook.findById(req.params.id);
@@ -70,11 +98,13 @@ router.put('/:id', auth, upload.single('file'), async (req, res) => {
       update.fileName = req.file.originalname;
       update.fileType = req.file.mimetype;
     }
-    const updated = await Logbook.findByIdAndUpdate(req.params.id, update, { new: true });
+    const updated = await Logbook.findByIdAndUpdate(req.params.id, update, { new: true })
+      .populate('createdBy', 'name role');
     res.json(updated);
   } catch (err) { res.status(400).json({ error: err.message }); }
 });
 
+// ─── DELETE ──────────────────────────────────────────────────
 router.delete('/:id', auth, async (req, res) => {
   try {
     await Logbook.findByIdAndDelete(req.params.id);
