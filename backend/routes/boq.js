@@ -4,7 +4,7 @@ const BOQ = require('../models/BOQ');
 const User = require('../models/User');
 const auth = require('../middleware/auth');
 const authorize = require('../middleware/rbac');
-const { createNotification, getSenderName } = require('../utils/notificationHelper');
+const { createNotification, getSenderName, getSenderRole, formatCurrency } = require('../utils/notificationHelper');
 
 // ─── GET all BOQs ────────────────────────────────────────────
 router.get('/', auth, async (req, res) => {
@@ -61,16 +61,31 @@ router.post('/', auth, authorize('admin', 'director', 'quantity-surveyor', 'civi
       .populate('createdBy', 'name role');
 
     const senderName = await getSenderName(req.user.id);
+    const senderRole = await getSenderRole(req.user.id);
+    const projectName = populated.project?.name || 'Unknown Project';
+    const total = formatCurrency(grandTotal);
+
+    // ─── Notify the creator (you created this) ──────────────
+    await createNotification(
+      req.user.id,
+      'boq_shared',
+      'BOQ Created',
+      `✅ You created a BOQ for "${projectName}" with total ${total}`,
+      `/boq/${boq._id}`
+    );
+
+    // ─── Notify directors (engineer created a BOQ) ──────────
     const directors = await User.find({ role: 'director' });
     for (let director of directors) {
       await createNotification(
         director._id,
         'boq_shared',
         'New BOQ Created',
-        `${senderName} created a BOQ for ${populated.project?.name || 'project'}`,
+        `${senderName} (${senderRole}) created a BOQ for "${projectName}" with total ${total}`,
         `/boq/${boq._id}`
       );
     }
+
     res.status(201).json(populated);
   } catch (err) {
     res.status(400).json({ error: err.message });
@@ -123,13 +138,26 @@ router.put('/:id/submit', auth, authorize('admin', 'director', 'quantity-surveyo
       .populate('createdBy', 'name role');
 
     const senderName = await getSenderName(req.user.id);
+    const projectName = populated.project?.name || 'Unknown Project';
+    const total = formatCurrency(boq.grandTotal || 0);
+
+    // ─── Notify creator (you submitted) ──────────────────────
+    await createNotification(
+      req.user.id,
+      'boq_shared',
+      'BOQ Submitted',
+      `✅ You submitted a BOQ for "${projectName}" for approval`,
+      `/boq/${boq._id}`
+    );
+
+    // ─── Notify directors (BOQ submitted) ────────────────────
     const directors = await User.find({ role: 'director' });
     for (let director of directors) {
       await createNotification(
         director._id,
         'boq_shared',
         'BOQ Submitted for Approval',
-        `${senderName} submitted a BOQ for ${boq.project?.name || 'project'}`,
+        `${senderName} submitted a BOQ for "${projectName}" with total ${total}`,
         `/boq/${boq._id}`
       );
     }
@@ -155,12 +183,16 @@ router.put('/:id/approve', auth, authorize('admin', 'director'), async (req, res
       .populate('approvedBy', 'name role');
 
     const senderName = await getSenderName(req.user.id);
+    const projectName = populated.project?.name || 'Unknown Project';
+    const total = formatCurrency(boq.grandTotal || 0);
+
+    // ─── Notify creator (your BOQ was approved) ─────────────
     if (boq.createdBy) {
       await createNotification(
         boq.createdBy,
         'boq_shared',
         'BOQ Approved',
-        `Your BOQ for ${boq.project?.name || 'project'} was approved by ${senderName}`,
+        `✅ Your BOQ for "${projectName}" with total ${total} was approved by ${senderName}`,
         `/boq/${boq._id}`
       );
     }
