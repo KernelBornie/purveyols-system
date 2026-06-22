@@ -32,8 +32,8 @@ const ProcurementOrderForm = () => {
   const [creator, setCreator] = useState(null);
   const [message, setMessage] = useState(null);
 
-  // ✅ Edit allowed for: procurement, engineer, QS, director, admin, driver, safety-officer, AND accountant
-  const canEdit = ['procurement-officer', 'civil-engineer', 'quantity-surveyor', 'director', 'admin', 'driver', 'safety-officer', 'accountant'].includes(user?.role);
+  // ✅ Foreman added
+  const canEdit = ['procurement-officer', 'civil-engineer', 'quantity-surveyor', 'director', 'admin', 'driver', 'safety-officer', 'accountant', 'foreman'].includes(user?.role);
 
   useEffect(() => {
     const fetchData = async () => {
