@@ -48,7 +48,7 @@ const seedIfEmpty = async () => {
 };
 
 // ─── Routes ──────────────────────────────────────────────────────
-app.use('/api/test', require('./routes/test'));
+// ❌ REMOVED: app.use('/api/test', require('./routes/test'));
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/chat-history', require('./routes/chatHistory'));
 app.use('/api/ai', require('./routes/ai'));
@@ -84,8 +84,9 @@ app.use('/api/project-plans', projectPlanRoutes);
 const siteDiaryRoutes = require('./routes/siteDiary');
 app.use('/api/site-diary', siteDiaryRoutes);
 
-// ─── OpenAI test endpoint ────────────────────────────────────────
-app.use('/api/test-openai', require('./routes/test-openai')); // 👈 ADD THIS LINE
+// ─── OpenAI test endpoint (optional) ────────────────────────────
+// If you created test-openai.js, uncomment this line:
+// app.use('/api/test-openai', require('./routes/test-openai'));
 
 // ─── Health check ────────────────────────────────────────────────
 app.get('/api/health', (req, res) => res.json({ status: 'OK', timestamp: new Date().toISOString() }));
