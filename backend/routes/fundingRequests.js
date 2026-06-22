@@ -4,7 +4,7 @@ const FundingRequest = require('../models/FundingRequest');
 const User = require('../models/User');
 const auth = require('../middleware/auth');
 const authorize = require('../middleware/rbac');
-const { createNotification, getSenderName } = require('../utils/notificationHelper');
+const { createNotification, getSenderName, getSenderRole, formatCurrency } = require('../utils/notificationHelper');
 
 router.get('/', auth, async (req, res) => {
   try {
@@ -38,6 +38,20 @@ router.post('/', auth, authorize('admin', 'director', 'civil-engineer', 'quantit
       .populate('approvedBy', 'name role');
 
     const senderName = await getSenderName(req.user.id);
+    const senderRole = await getSenderRole(req.user.id);
+    const projectName = populated.project?.name || 'Unknown Project';
+    const amount = formatCurrency(request.amount);
+
+    // ─── Notify creator ──────────────────────────────────────
+    await createNotification(
+      req.user.id,
+      'funding_requested',
+      'Funding Requested',
+      `✅ You requested ${amount} for "${projectName}"`,
+      `/funding/${request._id}`
+    );
+
+    // ─── Notify accountants and directors ────────────────────
     const accountants = await User.find({ role: 'accountant' });
     const directors = await User.find({ role: 'director' });
     const recipients = [...accountants, ...directors];
@@ -46,7 +60,7 @@ router.post('/', auth, authorize('admin', 'director', 'civil-engineer', 'quantit
         recipient._id,
         'funding_requested',
         'New Funding Request',
-        `${senderName} requested ZMW ${request.amount} for ${request.project?.name || 'project'}`,
+        `${senderName} (${senderRole}) requested ${amount} for "${projectName}"`,
         `/funding/${request._id}`
       );
     }
@@ -79,11 +93,14 @@ router.put('/:id/approve', auth, authorize('admin', 'director', 'accountant'), a
       .populate('approvedBy', 'name role');
 
     const senderName = await getSenderName(req.user.id);
+    const projectName = populated.project?.name || 'Unknown Project';
+    const amount = formatCurrency(request.amount);
+
     await createNotification(
       request.requestedBy,
       'funding_approved',
-      'Funding Request Approved',
-      `Your funding request for ZMW ${request.amount} was approved by ${senderName}`,
+      'Funding Approved',
+      `✅ Your request for ${amount} for "${projectName}" was approved by ${senderName}`,
       `/funding/${request._id}`
     );
     res.json(populated);
@@ -101,6 +118,18 @@ router.put('/:id/reject', auth, authorize('admin', 'director', 'accountant'), as
       .populate('project', 'name')
       .populate('requestedBy', 'name role')
       .populate('approvedBy', 'name role');
+
+    const senderName = await getSenderName(req.user.id);
+    const projectName = populated.project?.name || 'Unknown Project';
+    const amount = formatCurrency(request.amount);
+
+    await createNotification(
+      request.requestedBy,
+      'funding_rejected',
+      'Funding Rejected',
+      `❌ Your request for ${amount} for "${projectName}" was rejected by ${senderName}`,
+      `/funding/${request._id}`
+    );
     res.json(populated);
   } catch (err) { res.status(400).json({ error: err.message }); }
 });
