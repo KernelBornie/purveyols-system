@@ -7,19 +7,19 @@ import {
 import SmartToyIcon from '@mui/icons-material/SmartToy';
 import SendIcon from '@mui/icons-material/Send';
 import CloseIcon from '@mui/icons-material/Close';
+import DeleteIcon from '@mui/icons-material/Delete';
 import api from '../api/axios';
 import { useAuth } from '../context/AuthContext';
 
 const AIAssistant = ({ open, onClose }) => {
   const { user } = useAuth();
-  const [messages, setMessages] = useState([
-    { sender: 'ai', text: 'Hello! I\'m your PURVEYOLS ASSISTANT AI. Ask me about project planning, materials, costs, safety, or any construction-related topic!' }
-  ]);
+  const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
+  const [historyLoaded, setHistoryLoaded] = useState(false);
 
   // Auto‑scroll
   useEffect(() => {
@@ -28,11 +28,11 @@ const AIAssistant = ({ open, onClose }) => {
     }
   }, [messages]);
 
-  // Focus input when dialog opens
+  // Load chat history when modal opens
   useEffect(() => {
     if (open) {
-      setTimeout(() => inputRef.current?.focus(), 300);
       loadHistory();
+      setTimeout(() => inputRef.current?.focus(), 300);
     }
   }, [open]);
 
@@ -42,14 +42,18 @@ const AIAssistant = ({ open, onClose }) => {
       const history = res.data;
       if (history && history.messages && history.messages.length > 0) {
         setMessages(history.messages);
-        return;
+      } else {
+        // Default welcome
+        setMessages([
+          { sender: 'ai', text: 'Hello! I\'m your PURVEYOLS ASSISTANT AI. Ask me about project planning, materials, costs, safety, or any construction-related topic!' }
+        ]);
       }
     } catch (err) {
-      // silent fail
+      // Silent fail – use default
+      setMessages([
+        { sender: 'ai', text: 'Hello! I\'m your PURVEYOLS ASSISTANT AI. Ask me about project planning, materials, costs, safety, or any construction-related topic!' }
+      ]);
     }
-    setMessages([
-      { sender: 'ai', text: 'Hello! I\'m your PURVEYOLS ASSISTANT AI. Ask me about project planning, materials, costs, safety, or any construction-related topic!' }
-    ]);
   };
 
   const handleSend = async () => {
@@ -62,6 +66,9 @@ const AIAssistant = ({ open, onClose }) => {
     setError(null);
 
     try {
+      // Save user message to history
+      await api.post('/api/chat-history/message', { sender: 'user', text: input, type: 'user' });
+
       const res = await api.post('/api/ai/chat', { message: input });
       let responseText = 'I could not process your request.';
       if (res.data && res.data.response) {
@@ -81,18 +88,36 @@ const AIAssistant = ({ open, onClose }) => {
       };
       setMessages(prev => [...prev, aiMsg]);
 
-      // Save to history (optional)
-      try {
-        await api.post('/api/chat-history/message', { sender: 'user', text: input, type: 'user' });
-        await api.post('/api/chat-history/message', { sender: 'ai', text: responseText, type: res.data.response?.type || 'general' });
-      } catch (e) { /* silent */ }
+      // Save AI response to history
+      await api.post('/api/chat-history/message', { sender: 'ai', text: responseText, type: res.data.response?.type || 'general' });
+
     } catch (err) {
       console.error('AI error:', err);
       const errorMsg = err.response?.data?.response || 'Sorry, I encountered an error. Please try again.';
       setError(errorMsg);
-      setMessages(prev => [...prev, { sender: 'ai', text: errorMsg, type: 'error', timestamp: new Date() }]);
+      const errorAiMsg = { sender: 'ai', text: errorMsg, type: 'error', timestamp: new Date() };
+      setMessages(prev => [...prev, errorAiMsg]);
+      // Save error message to history too
+      try {
+        await api.post('/api/chat-history/message', { sender: 'ai', text: errorMsg, type: 'error' });
+      } catch (e) { /* ignore */ }
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDeleteMessage = async (index) => {
+    const msg = messages[index];
+    if (!msg || !msg._id) return; // Must have an ID from history
+
+    if (!window.confirm('Delete this message?')) return;
+
+    try {
+      await api.delete(`/api/chat-history/message/${msg._id}`);
+      // Remove from local state
+      setMessages(prev => prev.filter((_, i) => i !== index));
+    } catch (err) {
+      alert('Failed to delete message');
     }
   };
 
@@ -101,6 +126,11 @@ const AIAssistant = ({ open, onClose }) => {
       e.preventDefault();
       handleSend();
     }
+  };
+
+  const formatTime = (date) => {
+    if (!date) return '';
+    return new Date(date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
   return (
@@ -131,6 +161,7 @@ const AIAssistant = ({ open, onClose }) => {
               display: 'flex',
               justifyContent: msg.sender === 'user' ? 'flex-end' : 'flex-start',
               gap: 1,
+              alignItems: 'flex-start',
             }}
           >
             {msg.sender === 'ai' && (
@@ -146,6 +177,7 @@ const AIAssistant = ({ open, onClose }) => {
                 color: msg.sender === 'user' ? 'white' : 'text.primary',
                 borderRadius: 2,
                 whiteSpace: 'pre-wrap',
+                position: 'relative',
               }}
             >
               <Typography variant="body2" style={{ whiteSpace: 'pre-wrap' }}>
@@ -153,8 +185,17 @@ const AIAssistant = ({ open, onClose }) => {
               </Typography>
               {msg.timestamp && (
                 <Typography variant="caption" display="block" sx={{ mt: 0.5, opacity: 0.6 }}>
-                  {new Date(msg.timestamp).toLocaleTimeString()}
+                  {formatTime(msg.timestamp)}
                 </Typography>
+              )}
+              {msg._id && (
+                <IconButton
+                  size="small"
+                  onClick={() => handleDeleteMessage(idx)}
+                  sx={{ position: 'absolute', top: 0, right: 0 }}
+                >
+                  <DeleteIcon fontSize="small" />
+                </IconButton>
               )}
             </Paper>
             {msg.sender === 'user' && (
