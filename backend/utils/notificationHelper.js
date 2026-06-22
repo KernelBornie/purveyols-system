@@ -12,7 +12,6 @@ const Notification = require('../models/Notification');
  */
 const createNotification = async (userId, type, title, message, link = null, data = null) => {
   try {
-    // Validate that the type is in the enum (optional – will be caught by Mongoose)
     const notification = new Notification({
       user: userId,
       type,
@@ -27,9 +26,23 @@ const createNotification = async (userId, type, title, message, link = null, dat
     return notification;
   } catch (error) {
     console.error('Failed to create notification:', error);
-    // Don't throw – just log so the main operation isn't interrupted
     return null;
   }
 };
 
-module.exports = { createNotification };
+/**
+ * Get sender's name from user ID (for notifications)
+ * @param {string} userId - The sender's user ID
+ * @returns {Promise<string>} The sender's name
+ */
+const getSenderName = async (userId) => {
+  try {
+    const User = require('../models/User');
+    const user = await User.findById(userId);
+    return user ? user.name : 'Unknown User';
+  } catch (error) {
+    return 'Unknown User';
+  }
+};
+
+module.exports = { createNotification, getSenderName };
