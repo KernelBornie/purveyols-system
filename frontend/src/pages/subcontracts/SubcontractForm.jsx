@@ -31,8 +31,8 @@ const SubcontractForm = () => {
   const [creator, setCreator] = useState(null);
   const [message, setMessage] = useState(null);
 
-  // ✅ Edit allowed for: procurement, engineer, QS, director, admin, AND accountant
-  const canEdit = ['procurement-officer', 'civil-engineer', 'quantity-surveyor', 'director', 'admin', 'accountant'].includes(user?.role);
+  // ✅ Foreman added
+  const canEdit = ['procurement-officer', 'civil-engineer', 'quantity-surveyor', 'director', 'admin', 'accountant', 'foreman'].includes(user?.role);
 
   useEffect(() => {
     const fetchData = async () => {
