@@ -29,8 +29,8 @@ const DeliveryNote = () => {
   });
   const [message, setMessage] = useState(null);
 
-  // ✅ Edit allowed for: procurement, engineer, QS, director, admin, driver, AND accountant
-  const canEdit = ['procurement-officer', 'civil-engineer', 'quantity-surveyor', 'director', 'admin', 'driver', 'accountant'].includes(user?.role);
+  // ✅ Foreman added
+  const canEdit = ['procurement-officer', 'civil-engineer', 'quantity-surveyor', 'director', 'admin', 'driver', 'accountant', 'foreman'].includes(user?.role);
 
   const generateNoteNumber = () => {
     const date = new Date();
