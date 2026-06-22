@@ -34,9 +34,15 @@ const NotificationBell = () => {
   const audioRef = useRef(null);
   const prevUnreadCount = useRef(0);
 
+  // ─── Load sound on mount ──────────────────────────────────
   useEffect(() => {
-    audioRef.current = new Audio(NOTIFICATION_SOUND);
-    audioRef.current.load();
+    try {
+      audioRef.current = new Audio(NOTIFICATION_SOUND);
+      audioRef.current.load();
+      console.log('🔊 Notification sound loaded');
+    } catch (e) {
+      console.warn('⚠️ Could not load notification sound:', e);
+    }
   }, []);
 
   const fetchNotifications = async () => {
@@ -46,10 +52,14 @@ const NotificationBell = () => {
       const data = res.data || [];
       setNotifications(data);
       const newUnread = data.filter(n => !n.read).length;
+      
+      // ─── Play sound only if new unread count increased and sound is enabled ───
       if (newUnread > prevUnreadCount.current && soundEnabled) {
         if (audioRef.current) {
           audioRef.current.currentTime = 0;
-          audioRef.current.play().catch(() => {});
+          audioRef.current.play().catch((err) => {
+            console.warn('🔇 Sound play failed:', err);
+          });
         }
       }
       prevUnreadCount.current = newUnread;
@@ -109,12 +119,13 @@ const NotificationBell = () => {
   const getTypeLabel = (type) => {
     const labels = {
       worker_enrolled: 'New Worker',
-      boq_shared: 'BOQ Shared',
+      boq_shared: 'BOQ',
       payment_made: 'Payment Made',
       payment_failed: 'Payment Failed',
       payment_confirmed: 'Payment Confirmed',
       funding_requested: 'Funding Requested',
       funding_approved: 'Funding Approved',
+      funding_rejected: 'Funding Rejected',
       procurement_ordered: 'Procurement Ordered',
       procurement_funded: 'Procurement Funded',
       procurement_approved: 'Procurement Approved',
@@ -124,9 +135,13 @@ const NotificationBell = () => {
       message_received: 'New Message',
       project_approved: 'Project Approved',
       project_rejected: 'Project Rejected',
+      project_created: 'Project Created',
       safety_report_created: 'Safety Report',
       visitor_logged: 'Visitor Logged',
       logbook_entry: 'Logbook Entry',
+      spare_part_requested: 'Spare Part Requested',
+      spare_part_approved: 'Spare Part Approved',
+      spare_part_rejected: 'Spare Part Rejected',
     };
     return labels[type] || type;
   };
@@ -134,17 +149,29 @@ const NotificationBell = () => {
   const getTypeColor = (type) => {
     const colors = {
       worker_enrolled: '#4caf50',
-      payment_made: '#2196f3',
+      boq_shared: '#2196f3',
+      payment_made: '#4caf50',
       payment_failed: '#f44336',
       payment_confirmed: '#4caf50',
+      funding_requested: '#ff9800',
       funding_approved: '#4caf50',
+      funding_rejected: '#f44336',
+      procurement_ordered: '#2196f3',
+      procurement_funded: '#4caf50',
       procurement_approved: '#4caf50',
+      procurement_rejected: '#f44336',
+      subcontract_created: '#3f51b5',
+      worker_checked_in: '#4caf50',
+      message_received: '#9c27b0',
       project_approved: '#4caf50',
       project_rejected: '#f44336',
+      project_created: '#2196f3',
       safety_report_created: '#ff9800',
       visitor_logged: '#9c27b0',
       logbook_entry: '#00bcd4',
-      subcontract_created: '#3f51b5',
+      spare_part_requested: '#ff6f00',
+      spare_part_approved: '#4caf50',
+      spare_part_rejected: '#f44336',
     };
     return colors[type] || '#ff9800';
   };
@@ -221,7 +248,6 @@ const NotificationBell = () => {
         )}
 
         <Divider />
-        {/* ─── "View all" link ────────────────────────────── */}
         <MenuItem onClick={() => { handleClose(); navigate('/notifications'); }} sx={{ justifyContent: 'center' }}>
           <Typography variant="body2" color="primary">View all notifications</Typography>
         </MenuItem>
