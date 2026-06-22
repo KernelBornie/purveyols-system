@@ -3,8 +3,9 @@ const router = express.Router();
 const Visitor = require('../models/Visitor');
 const User = require('../models/User');
 const auth = require('../middleware/auth');
-const { createNotification, getSenderName } = require('../utils/notificationHelper');
+const { createNotification, getSenderName, getSenderRole } = require('../utils/notificationHelper');
 
+// ─── GET all ──────────────────────────────────────────────────
 router.get('/', auth, async (req, res) => {
   try {
     const visitors = await Visitor.find()
@@ -14,6 +15,7 @@ router.get('/', auth, async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// ─── GET single ──────────────────────────────────────────────
 router.get('/:id', auth, async (req, res) => {
   try {
     const visitor = await Visitor.findById(req.params.id)
@@ -23,6 +25,7 @@ router.get('/:id', auth, async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// ─── CREATE ──────────────────────────────────────────────────
 router.post('/', auth, async (req, res) => {
   try {
     const visitor = new Visitor({
@@ -34,10 +37,14 @@ router.post('/', auth, async (req, res) => {
     const populated = await Visitor.findById(visitor._id)
       .populate('loggedBy', 'name role');
 
+    // ─── Get sender info ──────────────────────────────────────
     const senderName = await getSenderName(req.user.id);
-    const senderRole = req.user.role; // we can get role directly from req.user
+    const senderRole = await getSenderRole(req.user.id);
+    
+    // ─── For debugging (remove in production) ────────────────
+    console.log(`📢 Visitor logged by: ${senderName} (${senderRole})`);
 
-    // ─── Notify creator ──────────────────────────────────────
+    // ─── 1. Personal notification for the creator ────────────
     await createNotification(
       req.user.id,
       'visitor_logged',
@@ -46,10 +53,18 @@ router.post('/', auth, async (req, res) => {
       `/visitors/${visitor._id}`
     );
 
-    // ─── Notify directors and admins (exclude creator) ──────
+    // ─── 2. Notification for others (directors & admins) ────
+    // ⚠️ IMPORTANT: use the exact role names as stored in your DB
     const recipients = await User.find({ role: { $in: ['director', 'admin'] } });
-    const filtered = recipients.filter(r => r._id.toString() !== req.user.id);
-    for (let recipient of filtered) {
+    
+    // ─── Exclude the creator from this list ──────────────────
+    const filteredRecipients = recipients.filter(
+      r => r._id.toString() !== req.user.id
+    );
+
+    console.log(`📤 Sending "others" notification to ${filteredRecipients.length} users`);
+
+    for (let recipient of filteredRecipients) {
       await createNotification(
         recipient._id,
         'visitor_logged',
@@ -58,10 +73,15 @@ router.post('/', auth, async (req, res) => {
         `/visitors/${visitor._id}`
       );
     }
+
     res.status(201).json(populated);
-  } catch (err) { res.status(400).json({ error: err.message }); }
+  } catch (err) {
+    console.error('❌ Visitor creation error:', err);
+    res.status(400).json({ error: err.message });
+  }
 });
 
+// ─── UPDATE ──────────────────────────────────────────────────
 router.put('/:id', auth, async (req, res) => {
   try {
     const visitor = await Visitor.findByIdAndUpdate(req.params.id, req.body, { new: true })
@@ -71,6 +91,7 @@ router.put('/:id', auth, async (req, res) => {
   } catch (err) { res.status(400).json({ error: err.message }); }
 });
 
+// ─── DELETE ──────────────────────────────────────────────────
 router.delete('/:id', auth, async (req, res) => {
   try {
     await Visitor.findByIdAndDelete(req.params.id);
