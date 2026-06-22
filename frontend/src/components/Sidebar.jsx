@@ -23,22 +23,20 @@ import MessageIcon from '@mui/icons-material/Message';
 import PersonIcon from '@mui/icons-material/Person';
 import SettingsIcon from '@mui/icons-material/Settings';
 import ArchitectureIcon from '@mui/icons-material/Architecture';
-import StraightenIcon from '@mui/icons-material/Straighten';
 import SurveyIcon from '@mui/icons-material/Map';
-import SmartToyIcon from '@mui/icons-material/SmartToy'; // ← AI icon
+import SmartToyIcon from '@mui/icons-material/SmartToy';
 import { useAuth } from '../context/AuthContext';
 
 const drawerWidth = 240;
 
-const Sidebar = () => {
+const Sidebar = ({ mobileOpen, handleDrawerToggle, isMobile }) => {
   const location = useLocation();
   const { user } = useAuth();
   const role = user?.role?.toLowerCase();
 
-  // ─── All menu items ──────────────────────────────────────────────
   const allMenuItems = [
     { text: 'Dashboard', icon: <DashboardIcon />, path: '/dashboard' },
-    { text: 'AI Assistant', icon: <SmartToyIcon />, path: '/dashboard', state: { openAI: true } }, // ← AI item
+    { text: 'AI Assistant', icon: <SmartToyIcon />, path: '/dashboard', state: { openAI: true } },
     { text: 'Projects', icon: <BusinessIcon />, path: '/projects' },
     { text: 'Workers', icon: <PeopleIcon />, path: '/workers' },
     { text: 'Funding Requests', icon: <AttachMoneyIcon />, path: '/funding' },
@@ -55,10 +53,7 @@ const Sidebar = () => {
     { text: 'Settings', icon: <SettingsIcon />, path: '/settings' },
   ];
 
-  // ─── Roles that should NOT see BOQ, Subcontract, Site Plans, Drawings, Surveys ───
   const restrictedRoles = ['receptionist', 'safety', 'driver'];
-
-  // ─── Hide specific items for restricted roles ──────────────────
   const hiddenItems = ['BOQs', 'Subcontracts', 'Site Plans', 'Drawings', 'Surveys'];
 
   const visibleMenuItems = allMenuItems.filter(item => {
@@ -68,20 +63,13 @@ const Sidebar = () => {
     return true;
   });
 
-  return (
-    <Drawer
-      variant="permanent"
-      sx={{
-        width: drawerWidth,
-        flexShrink: 0,
-        [`& .MuiDrawer-paper`]: { width: drawerWidth, boxSizing: 'border-box' },
-      }}
-    >
+  const drawerContent = (
+    <Box>
       <Toolbar>
         <img
           src="/logo-branding.jpg"
           alt="PURVEYOLS"
-          height="30"
+          height={30}
           style={{ marginRight: 0, borderRadius: 4 }}
         />
       </Toolbar>
@@ -93,7 +81,7 @@ const Sidebar = () => {
               <ListItemButton
                 component={Link}
                 to={item.path}
-                state={item.state || null} // ← pass state if defined
+                state={item.state || null}
                 selected={location.pathname === item.path}
                 sx={{
                   '&.Mui-selected': {
@@ -110,7 +98,34 @@ const Sidebar = () => {
           ))}
         </List>
       </Box>
-    </Drawer>
+    </Box>
+  );
+
+  return (
+    <Box component="nav" sx={{ width: { sm: drawerWidth }, flexShrink: { sm: 0 } }}>
+      {isMobile ? (
+        <Drawer
+          variant="temporary"
+          open={mobileOpen}
+          onClose={handleDrawerToggle}
+          ModalProps={{ keepMounted: true }}
+          sx={{
+            '& .MuiDrawer-paper': { boxSizing: 'border-box', width: drawerWidth },
+          }}
+        >
+          {drawerContent}
+        </Drawer>
+      ) : (
+        <Drawer
+          variant="permanent"
+          sx={{
+            '& .MuiDrawer-paper': { boxSizing: 'border-box', width: drawerWidth },
+          }}
+        >
+          {drawerContent}
+        </Drawer>
+      )}
+    </Box>
   );
 };
 
