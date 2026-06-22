@@ -1,135 +1,100 @@
 const express = require('express');
-const router = express.Router();
-const Project = require('../models/Project');
-const auth = require('../middleware/auth');
-const authorize = require('../middleware/rbac');
-const { createNotification, getSenderName } = require('../utils/notificationHelper');
+const mongoose = require('mongoose');
+const cors = require('cors');
+const morgan = require('morgan');
+const dotenv = require('dotenv');
+dotenv.config();
 
-// ─── GET all ──────────────────────────────────────────────────
-router.get('/', auth, async (req, res) => {
-  try {
-    const projects = await Project.find()
-      .populate('manager', 'name role')
-      .populate('createdBy', 'name role')
-      .populate('bidder', 'name role')
-      .populate('assignedStaff', 'name role');
-    res.json(projects);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+const app = express();
+
+// ─── CORS ──────────────────────────────────────────────────────
+const corsOptions = {
+  origin: true,
+  credentials: true,
+  optionsSuccessStatus: 200
+};
+app.use(cors(corsOptions));
+app.use((req, res, next) => {
+  console.log(`${req.method} ${req.url} - Origin: ${req.headers.origin}`);
+  next();
 });
+app.use(express.json({ limit: '50mb' })); // ✅ Increased limit for images
+app.use(morgan('dev'));
 
-// ─── GET single (by id) ────────────────────────────────────
-router.get('/:id', auth, async (req, res) => {
+// ─── Auto‑seed if database is empty ──────────────────────────
+const User = require('./models/User');
+const { exec } = require('child_process');
+
+const seedIfEmpty = async () => {
   try {
-    const project = await Project.findById(req.params.id)
-      .populate('manager', 'name role')
-      .populate('createdBy', 'name role')
-      .populate('bidder', 'name role')
-      .populate('assignedStaff', 'name role');
-    if (!project) return res.status(404).json({ error: 'Project not found' });
-    res.json(project);
+    const count = await User.countDocuments();
+    if (count === 0) {
+      console.log('⚡ No users found. Seeding database...');
+      exec('npm run seed', (error, stdout, stderr) => {
+        if (error) {
+          console.error(`❌ Seed error: ${error.message}`);
+          return;
+        }
+        console.log(stdout);
+        if (stderr) console.error(stderr);
+        console.log('✅ Seeding completed.');
+      });
+    } else {
+      console.log(`✅ Database already has ${count} users. Skipping seed.`);
+    }
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('❌ Failed to check user count:', err);
   }
-});
+};
 
-// ─── CREATE ──────────────────────────────────────────────────
-router.post('/', auth, authorize('admin', 'director', 'civil-engineer'), async (req, res) => {
-  try {
-    const project = new Project({ ...req.body, createdBy: req.user.id });
-    await project.save();
-    const populated = await Project.findById(project._id)
-      .populate('manager', 'name role')
-      .populate('createdBy', 'name role')
-      .populate('bidder', 'name role')
-      .populate('assignedStaff', 'name role');
-    res.status(201).json(populated);
-  } catch (err) {
-    res.status(400).json({ error: err.message });
-  }
-});
+// ─── Routes ──────────────────────────────────────────────────────
+// ❌ REMOVE: const Project = require('./models/Project'); // ← DO NOT ADD THIS
+app.use('/api/auth', require('./routes/auth'));
+app.use('/api/chat-history', require('./routes/chatHistory'));
+app.use('/api/ai', require('./routes/ai'));
+app.use('/api/bids', require('./routes/bids'));
+app.use('/api/advertised-projects', require('./routes/advertisedProjects'));
+app.use('/api/mobile-money', require('./routes/mobileMoney'));
+app.use('/api/messages', require('./routes/messages'));
+app.use('/api/notifications', require('./routes/notifications'));
+app.use('/api/users', require('./routes/users'));
+app.use('/api/workers', require('./routes/workers'));
+app.use('/api/projects', require('./routes/projects'));
+app.use('/api/payments', require('./routes/payments'));
+app.use('/api/funding-requests', require('./routes/fundingRequests'));
+app.use('/api/funding', require('./routes/funding'));
+app.use('/api/logbooks', require('./routes/logbooks'));
+app.use('/api/procurement', require('./routes/procurement'));
+app.use('/api/boq', require('./routes/boq'));
+app.use('/api/subcontracts', require('./routes/subcontracts'));
+app.use('/api/safety-reports', require('./routes/safetyReports'));
+app.use('/api/material-requests', require('./routes/materialRequests'));
+app.use('/api/reports', require('./routes/reports'));
+app.use('/api/visitors', require('./routes/visitors'));
+app.use('/api/attendance', require('./routes/attendance'));
+app.use('/api/delivery', require('./routes/delivery'));
+app.use('/api/site-plans', require('./routes/sitePlans'));
+app.use('/api/drawings', require('./routes/drawings'));
+app.use('/api/surveys', require('./routes/surveys'));
+app.use('/api/spare-parts', require('./routes/spareParts'));
 
-// ─── UPDATE ──────────────────────────────────────────────────
-// ✅ Allow admin, director, and civil‑engineer to edit
-router.put('/:id', auth, authorize('admin', 'director', 'civil-engineer'), async (req, res) => {
-  try {
-    const updated = await Project.findByIdAndUpdate(req.params.id, req.body, { new: true })
-      .populate('manager', 'name role')
-      .populate('createdBy', 'name role')
-      .populate('bidder', 'name role')
-      .populate('assignedStaff', 'name role');
-    if (!updated) return res.status(404).json({ error: 'Project not found' });
-    res.json(updated);
-  } catch (err) {
-    res.status(400).json({ error: err.message });
-  }
-});
+// ─── Project Planning ────────────────────────────────────────────
+const projectPlanRoutes = require('./routes/projectPlans');
+app.use('/api/project-plans', projectPlanRoutes);
 
-// ─── DELETE ──────────────────────────────────────────────────
-// Only admin and director can delete
-router.delete('/:id', auth, authorize('admin', 'director'), async (req, res) => {
-  try {
-    const deleted = await Project.findByIdAndDelete(req.params.id);
-    if (!deleted) return res.status(404).json({ error: 'Project not found' });
-    res.json({ message: 'Deleted' });
-  } catch (err) {
-    res.status(400).json({ error: err.message });
-  }
-});
+const siteDiaryRoutes = require('./routes/siteDiary');
+app.use('/api/site-diary', siteDiaryRoutes);
 
-// ─── APPROVE ──────────────────────────────────────────────────
-// Only admin and director can approve
-router.put('/:id/approve', auth, authorize('admin', 'director'), async (req, res) => {
-  try {
-    const project = await Project.findById(req.params.id);
-    if (!project) return res.status(404).json({ error: 'Project not found' });
-    project.status = 'active';
-    await project.save();
-    const populated = await Project.findById(project._id)
-      .populate('manager', 'name role')
-      .populate('createdBy', 'name role')
-      .populate('bidder', 'name role')
-      .populate('assignedStaff', 'name role');
-    const senderName = await getSenderName(req.user.id);
-    await createNotification(
-      project.createdBy,
-      'project_approved',
-      'Project Approved',
-      `Your project "${project.name}" has been approved by ${senderName}`,
-      `/projects/${project._id}`
-    );
-    res.json(populated);
-  } catch (err) {
-    res.status(400).json({ error: err.message });
-  }
-});
+// ─── Health check ────────────────────────────────────────────────
+app.get('/api/health', (req, res) => res.json({ status: 'OK', timestamp: new Date().toISOString() }));
 
-// ─── REJECT ──────────────────────────────────────────────────
-// Only admin and director can reject
-router.put('/:id/reject', auth, authorize('admin', 'director'), async (req, res) => {
-  try {
-    const project = await Project.findById(req.params.id);
-    if (!project) return res.status(404).json({ error: 'Project not found' });
-    project.status = 'rejected';
-    await project.save();
-    const populated = await Project.findById(project._id)
-      .populate('manager', 'name role')
-      .populate('createdBy', 'name role')
-      .populate('bidder', 'name role')
-      .populate('assignedStaff', 'name role');
-    const senderName = await getSenderName(req.user.id);
-    await createNotification(
-      project.createdBy,
-      'project_rejected',
-      'Project Rejected',
-      `Your project "${project.name}" has been rejected by ${senderName}`,
-      `/projects/${project._id}`
-    );
-    res.json(populated);
-  } catch (err) {
-    res.status(400).json({ error: err.message });
-  }
-});
+const PORT = process.env.PORT || 5000;
 
-module.exports = router;
+// ─── Connect and start ──────────────────────────────────────────
+mongoose.connect(process.env.MONGO_URI)
+  .then(() => {
+    console.log('MongoDB connected');
+    seedIfEmpty();
+    app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+  })
+  .catch(err => console.log(err));
