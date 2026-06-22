@@ -1,12 +1,12 @@
 const express = require('express');
 const router = express.Router();
 const BOQ = require('../models/BOQ');
+const User = require('../models/User');
 const auth = require('../middleware/auth');
 const authorize = require('../middleware/rbac');
-const { createNotification } = require('../utils/notificationHelper');
-const User = require('../models/User');
+const { createNotification, getSenderName } = require('../utils/notificationHelper');
 
-// ─── GET all BOQs ────────────────────────────────────────────────
+// ─── GET all BOQs ────────────────────────────────────────────
 router.get('/', auth, async (req, res) => {
   try {
     const boqs = await BOQ.find()
@@ -19,7 +19,7 @@ router.get('/', auth, async (req, res) => {
   }
 });
 
-// ─── GET single BOQ ──────────────────────────────────────────────
+// ─── GET single BOQ ──────────────────────────────────────────
 router.get('/:id', auth, async (req, res) => {
   try {
     const boq = await BOQ.findById(req.params.id)
@@ -32,7 +32,7 @@ router.get('/:id', auth, async (req, res) => {
   }
 });
 
-// ─── CREATE ──────────────────────────────────────────────────────
+// ─── CREATE ──────────────────────────────────────────────────
 router.post('/', auth, authorize('admin', 'director', 'quantity-surveyor', 'civil-engineer', 'procurement-officer', 'foreman'), async (req, res) => {
   try {
     const { items, preliminaries, contingency, vat, ...rest } = req.body;
@@ -59,13 +59,15 @@ router.post('/', auth, authorize('admin', 'director', 'quantity-surveyor', 'civi
     const populated = await BOQ.findById(boq._id)
       .populate('project', 'name')
       .populate('createdBy', 'name role');
+
+    const senderName = await getSenderName(req.user.id);
     const directors = await User.find({ role: 'director' });
     for (let director of directors) {
       await createNotification(
         director._id,
         'boq_shared',
         'New BOQ Created',
-        `${req.user.name} created a BOQ for ${populated.project?.name || 'project'}`,
+        `${senderName} created a BOQ for ${populated.project?.name || 'project'}`,
         `/boq/${boq._id}`
       );
     }
@@ -75,7 +77,7 @@ router.post('/', auth, authorize('admin', 'director', 'quantity-surveyor', 'civi
   }
 });
 
-// ─── UPDATE ──────────────────────────────────────────────────────
+// ─── UPDATE ──────────────────────────────────────────────────
 router.put('/:id', auth, authorize('admin', 'director', 'quantity-surveyor', 'civil-engineer', 'procurement-officer', 'accountant', 'foreman'), async (req, res) => {
   try {
     const { items, preliminaries, contingency, vat, ...rest } = req.body;
@@ -108,7 +110,7 @@ router.put('/:id', auth, authorize('admin', 'director', 'quantity-surveyor', 'ci
   }
 });
 
-// ─── SUBMIT ──────────────────────────────────────────────────────
+// ─── SUBMIT ──────────────────────────────────────────────────
 router.put('/:id/submit', auth, authorize('admin', 'director', 'quantity-surveyor', 'civil-engineer', 'procurement-officer', 'accountant', 'foreman'), async (req, res) => {
   try {
     const boq = await BOQ.findById(req.params.id);
@@ -119,13 +121,15 @@ router.put('/:id/submit', auth, authorize('admin', 'director', 'quantity-surveyo
     const populated = await BOQ.findById(boq._id)
       .populate('project', 'name')
       .populate('createdBy', 'name role');
+
+    const senderName = await getSenderName(req.user.id);
     const directors = await User.find({ role: 'director' });
     for (let director of directors) {
       await createNotification(
         director._id,
         'boq_shared',
         'BOQ Submitted for Approval',
-        `${boq.createdBy?.name} submitted a BOQ for ${boq.project?.name || 'project'}`,
+        `${senderName} submitted a BOQ for ${boq.project?.name || 'project'}`,
         `/boq/${boq._id}`
       );
     }
@@ -135,7 +139,7 @@ router.put('/:id/submit', auth, authorize('admin', 'director', 'quantity-surveyo
   }
 });
 
-// ─── APPROVE ──────────────────────────────────────────────────────
+// ─── APPROVE ──────────────────────────────────────────────────
 router.put('/:id/approve', auth, authorize('admin', 'director'), async (req, res) => {
   try {
     const boq = await BOQ.findById(req.params.id);
@@ -149,12 +153,14 @@ router.put('/:id/approve', auth, authorize('admin', 'director'), async (req, res
       .populate('project', 'name')
       .populate('createdBy', 'name role')
       .populate('approvedBy', 'name role');
+
+    const senderName = await getSenderName(req.user.id);
     if (boq.createdBy) {
       await createNotification(
         boq.createdBy,
         'boq_shared',
         'BOQ Approved',
-        `Your BOQ for ${boq.project?.name || 'project'} was approved by ${req.user.name}`,
+        `Your BOQ for ${boq.project?.name || 'project'} was approved by ${senderName}`,
         `/boq/${boq._id}`
       );
     }
@@ -164,7 +170,7 @@ router.put('/:id/approve', auth, authorize('admin', 'director'), async (req, res
   }
 });
 
-// ─── DELETE ──────────────────────────────────────────────────────
+// ─── DELETE ──────────────────────────────────────────────────
 router.delete('/:id', auth, authorize('admin', 'director'), async (req, res) => {
   try {
     const deleted = await BOQ.findByIdAndDelete(req.params.id);
