@@ -5,6 +5,7 @@ const auth = require('../middleware/auth');
 const authorize = require('../middleware/rbac');
 const { createNotification } = require('../utils/notificationHelper');
 
+// ─── GET all ──────────────────────────────────────────────────
 router.get('/', auth, async (req, res) => {
   try {
     const projects = await Project.find()
@@ -13,9 +14,27 @@ router.get('/', auth, async (req, res) => {
       .populate('bidder', 'name role')
       .populate('assignedStaff', 'name role');
     res.json(projects);
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
+// ─── GET single (by id) ────────────────────────────────────
+router.get('/:id', auth, async (req, res) => {
+  try {
+    const project = await Project.findById(req.params.id)
+      .populate('manager', 'name role')
+      .populate('createdBy', 'name role')
+      .populate('bidder', 'name role')
+      .populate('assignedStaff', 'name role');
+    if (!project) return res.status(404).json({ error: 'Project not found' });
+    res.json(project);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── CREATE ──────────────────────────────────────────────────
 router.post('/', auth, authorize('admin', 'director'), async (req, res) => {
   try {
     const project = new Project({ ...req.body, createdBy: req.user.id });
@@ -26,9 +45,12 @@ router.post('/', auth, authorize('admin', 'director'), async (req, res) => {
       .populate('bidder', 'name role')
       .populate('assignedStaff', 'name role');
     res.status(201).json(populated);
-  } catch (err) { res.status(400).json({ error: err.message }); }
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
 });
 
+// ─── UPDATE ──────────────────────────────────────────────────
 router.put('/:id', auth, authorize('admin', 'director'), async (req, res) => {
   try {
     const updated = await Project.findByIdAndUpdate(req.params.id, req.body, { new: true })
@@ -36,17 +58,25 @@ router.put('/:id', auth, authorize('admin', 'director'), async (req, res) => {
       .populate('createdBy', 'name role')
       .populate('bidder', 'name role')
       .populate('assignedStaff', 'name role');
+    if (!updated) return res.status(404).json({ error: 'Project not found' });
     res.json(updated);
-  } catch (err) { res.status(400).json({ error: err.message }); }
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
 });
 
+// ─── DELETE ──────────────────────────────────────────────────
 router.delete('/:id', auth, authorize('admin', 'director'), async (req, res) => {
   try {
-    await Project.findByIdAndDelete(req.params.id);
+    const deleted = await Project.findByIdAndDelete(req.params.id);
+    if (!deleted) return res.status(404).json({ error: 'Project not found' });
     res.json({ message: 'Deleted' });
-  } catch (err) { res.status(400).json({ error: err.message }); }
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
 });
 
+// ─── APPROVE ──────────────────────────────────────────────────
 router.put('/:id/approve', auth, authorize('admin', 'director'), async (req, res) => {
   try {
     const project = await Project.findById(req.params.id);
@@ -66,9 +96,12 @@ router.put('/:id/approve', auth, authorize('admin', 'director'), async (req, res
       `/projects/${project._id}`
     );
     res.json(populated);
-  } catch (err) { res.status(400).json({ error: err.message }); }
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
 });
 
+// ─── REJECT ──────────────────────────────────────────────────
 router.put('/:id/reject', auth, authorize('admin', 'director'), async (req, res) => {
   try {
     const project = await Project.findById(req.params.id);
@@ -88,7 +121,9 @@ router.put('/:id/reject', auth, authorize('admin', 'director'), async (req, res)
       `/projects/${project._id}`
     );
     res.json(populated);
-  } catch (err) { res.status(400).json({ error: err.message }); }
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
 });
 
 module.exports = router;
