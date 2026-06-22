@@ -5,8 +5,11 @@
   box-sizing: border-box;
 }
 
-body {
+html, body {
   margin: 0;
+  padding: 0;
+  min-height: 100vh;
+  width: 100%;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
     'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
     sans-serif;
@@ -18,7 +21,7 @@ body {
   background-size: cover;
   background-attachment: fixed;
   background-position: center;
-  min-height: 100vh;
+  background-repeat: no-repeat;
 }
 
 code {
@@ -33,9 +36,80 @@ code {
   padding: 20px;
   border-radius: 12px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
 }
 
-/* --- Print styles --- */
+/* ===== Responsive Fixes ===== */
+
+/* Small devices (phones, 600px and down) */
+@media (max-width: 600px) {
+  .dashboard-content {
+    padding: 12px;
+    border-radius: 8px;
+    margin: 0 4px;
+  }
+
+  /* Make tables scroll horizontally on mobile */
+  .MuiTableContainer-root {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Reduce padding in table cells */
+  .MuiTableCell-root {
+    padding: 6px 8px !important;
+    font-size: 0.75rem !important;
+  }
+
+  /* Make buttons and inputs more touch-friendly */
+  .MuiButton-root {
+    min-height: 44px !important;
+    min-width: 44px !important;
+  }
+
+  .MuiTextField-root input,
+  .MuiTextField-root textarea {
+    font-size: 16px !important; /* prevents iOS zoom */
+  }
+
+  /* Adjust cards and papers */
+  .MuiPaper-root {
+    padding: 12px !important;
+  }
+
+  /* Typography adjustments */
+  .MuiTypography-h4 {
+    font-size: 1.5rem !important;
+  }
+  .MuiTypography-h5 {
+    font-size: 1.25rem !important;
+  }
+  .MuiTypography-h6 {
+    font-size: 1rem !important;
+  }
+}
+
+/* Medium devices (tablets, 600px to 900px) */
+@media (min-width: 600px) and (max-width: 900px) {
+  .dashboard-content {
+    padding: 16px;
+  }
+
+  .MuiTableCell-root {
+    padding: 8px 12px !important;
+  }
+}
+
+/* Large devices (desktops, 900px and up) */
+@media (min-width: 900px) {
+  .dashboard-content {
+    padding: 24px;
+  }
+}
+
+/* ===== Print styles ===== */
 @media print {
   body {
     background: #fff !important;
@@ -47,4 +121,19 @@ code {
     padding: 0 !important;
     border-radius: 0 !important;
   }
+}
+
+/* ===== Utility ===== */
+.flex-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.text-center {
+  text-align: center;
+}
+
+.w-100 {
+  width: 100%;
 }
