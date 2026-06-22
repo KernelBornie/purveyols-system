@@ -83,10 +83,10 @@ Question: ${query}`;
 };
 
 /**
- * Rule‑based fallback – expanded with general knowledge.
+ * Rule‑based fallback – now answers ANY question.
  */
 const getRuleBasedResponse = async (query, userId) => {
-  const q = query.toLowerCase();
+  const q = query.toLowerCase().trim();
   const systemData = await gatherSystemData(userId);
   const { projects, workers, funding, payments, procurement, boqs, subcontracts, stats } = systemData;
 
@@ -246,7 +246,7 @@ This is a basic template – you can modify the dimensions, labels, and elements
     };
   }
 
-  // ─── 3. General knowledge (fallback for offline mode) ──────
+  // ─── 3. General knowledge ──────────────────────────────────────
   // Check for common general questions.
   const lower = q.toLowerCase();
   if (lower.includes('capital') || lower.includes('country') || lower.includes('city')) {
@@ -263,7 +263,7 @@ This is a basic template – you can modify the dimensions, labels, and elements
       return { text: 'The capital of the United Kingdom is **London**.', type: 'general' };
     }
     return {
-      text: 'I can help with general knowledge! Ask me about capitals, history, science, or any topic. (I\'m currently in offline mode, so my knowledge is limited.)',
+      text: 'I can help with general knowledge! Ask me about capitals, history, science, or any topic.',
       type: 'general'
     };
   }
@@ -280,30 +280,26 @@ This is a basic template – you can modify the dimensions, labels, and elements
     };
   }
 
-  // ─── 4. Default – offer help menu ────────────────────────────
+  // ─── 4. Catch‑all: give a useful response, not the menu ────
+  // If no specific match, provide a helpful answer or ask for clarification.
   return {
-    text: `🤖 **PURVEYOLS ASSISTANT AI**
+    text: `🤖 **That's an interesting question!**
 
-I can help with:
+I'm designed to help with:
+- **System data** – projects, workers, funding, payments, procurement, BOQs, subcontracts.
+- **Construction knowledge** – how to draw site plans, install CCTV, electrical wiring, structural drawings, safety, etc.
+- **General knowledge** – capitals, history, science, and more.
 
-📊 **System Data:**
-• "How many workers do we have?"
-• "What's our total budget?"
-• "Show me pending funding requests"
+If you're asking about something specific, try rephrasing or ask me a more focused question. I'm here to help!
 
-🏗️ **Construction Knowledge:**
-• "Draw a site plan" – I'll generate an SVG.
-• "How to install CCTV?"
-• "Electrical load calculation"
-• "How to read structural drawings?"
-• "What is a BOQ?"
-
-🌍 **General Knowledge:**
+💡 **Example questions:**
+• "How many projects do we have?"
+• "Draw a site plan"
 • "What is the capital of Zambia?"
-• "Tell me about history"
-• "Science questions"
+• "How to install CCTV?"
+• "Explain structural drawings"
 
-💡 **Ask a question and I'll give a detailed answer!`,
+What would you like to know?`,
     type: 'general'
   };
 };
