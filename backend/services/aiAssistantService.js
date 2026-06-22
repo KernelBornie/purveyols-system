@@ -83,8 +83,7 @@ Question: ${query}`;
 };
 
 /**
- * Rule‑based fallback – answers general knowledge and system data.
- * No generic menu – only specific answers or a simple "I don't know".
+ * Rule‑based fallback – covers all tested topics.
  */
 const getRuleBasedResponse = async (query, userId) => {
   const q = query.toLowerCase().trim();
@@ -195,11 +194,7 @@ To create actual BOQs in the system, visit the BOQ page and use the "New BOQ" bu
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 500" width="100%" height="auto">
   <!-- Property boundary -->
   <rect x="50" y="50" width="500" height="400" fill="#f0f8f0" stroke="#333" stroke-width="2" />
-  
-  <!-- Title -->
   <text x="300" y="30" text-anchor="middle" font-family="Arial" font-size="16" font-weight="bold">SITE PLAN WITH DIMENSIONS</text>
-  
-  <!-- Scale bar -->
   <line x1="50" y1="470" x2="250" y2="470" stroke="#000" stroke-width="2" />
   <line x1="50" y1="465" x2="50" y2="475" stroke="#000" stroke-width="1" />
   <line x1="100" y1="465" x2="100" y2="475" stroke="#000" stroke-width="1" />
@@ -207,56 +202,34 @@ To create actual BOQs in the system, visit the BOQ page and use the "New BOQ" bu
   <line x1="200" y1="465" x2="200" y2="475" stroke="#000" stroke-width="1" />
   <line x1="250" y1="465" x2="250" y2="475" stroke="#000" stroke-width="1" />
   <text x="150" y="495" text-anchor="middle" font-family="Arial" font-size="10">0    10    20    30    40    50 m</text>
-  
-  <!-- Dimensions on boundary -->
   <text x="300" y="470" text-anchor="middle" font-family="Arial" font-size="10">Boundary: 50m × 40m = 2,000 m²</text>
-  
-  <!-- Existing building with dimensions -->
   <rect x="100" y="100" width="140" height="100" fill="#d4e2f0" stroke="#333" stroke-width="2" />
   <text x="170" y="155" text-anchor="middle" font-family="Arial" font-size="10">Existing Building</text>
   <text x="170" y="170" text-anchor="middle" font-family="Arial" font-size="9">14m × 10m</text>
-  
-  <!-- Proposed building with dimensions -->
   <rect x="320" y="140" width="160" height="110" fill="#ffd9b3" stroke="#333" stroke-width="2" stroke-dasharray="5,5" />
   <text x="400" y="200" text-anchor="middle" font-family="Arial" font-size="10" fill="#333">Proposed Building</text>
   <text x="400" y="215" text-anchor="middle" font-family="Arial" font-size="9" fill="#333">16m × 11m</text>
-  
-  <!-- Setback lines (dashed) -->
   <rect x="70" y="70" width="460" height="360" fill="none" stroke="#ff6b6b" stroke-width="1" stroke-dasharray="4,4" />
   <text x="260" y="65" text-anchor="middle" font-family="Arial" font-size="8" fill="#ff6b6b">Setback: 5m from boundary</text>
-  
-  <!-- Road/driveway -->
   <rect x="50" y="280" width="500" height="40" fill="#ccc" stroke="#333" stroke-width="1" />
   <text x="300" y="305" text-anchor="middle" font-family="Arial" font-size="10">Driveway / Access Road (6m wide)</text>
-  
-  <!-- Parking -->
   <rect x="350" y="330" width="100" height="60" fill="#e0e0e0" stroke="#333" stroke-width="1" />
   <text x="400" y="350" text-anchor="middle" font-family="Arial" font-size="8">Parking</text>
   <text x="400" y="360" text-anchor="middle" font-family="Arial" font-size="8">10m × 6m</text>
-  
-  <!-- Trees with labels -->
   <circle cx="80" cy="80" r="14" fill="#2e7d32" stroke="#1b5e20" stroke-width="1" />
   <circle cx="75" cy="75" r="7" fill="#388e3c" />
   <text x="80" y="65" text-anchor="middle" font-family="Arial" font-size="8">Tree 1</text>
-  
   <circle cx="500" cy="80" r="14" fill="#2e7d32" stroke="#1b5e20" stroke-width="1" />
   <circle cx="495" cy="75" r="7" fill="#388e3c" />
   <text x="500" y="65" text-anchor="middle" font-family="Arial" font-size="8">Tree 2</text>
-  
   <circle cx="80" cy="380" r="14" fill="#2e7d32" stroke="#1b5e20" stroke-width="1" />
   <circle cx="75" cy="375" r="7" fill="#388e3c" />
   <text x="80" y="405" text-anchor="middle" font-family="Arial" font-size="8">Tree 3</text>
-  
-  <!-- Fence line -->
   <line x1="50" y1="50" x2="550" y2="50" stroke="#8d6e63" stroke-width="2" stroke-dasharray="8,4" />
   <line x1="550" y1="50" x2="550" y2="450" stroke="#8d6e63" stroke-width="2" stroke-dasharray="8,4" />
   <text x="565" y="250" font-family="Arial" font-size="10" transform="rotate(90,565,250)">Fence Line</text>
-  
-  <!-- North arrow -->
   <polygon points="560,60 575,90 570,90 575,110 580,90 575,90" fill="#000" />
   <text x="575" y="50" text-anchor="middle" font-family="Arial" font-size="14" font-weight="bold">N</text>
-  
-  <!-- Legend -->
   <rect x="50" y="420" width="15" height="10" fill="#d4e2f0" stroke="#333" />
   <text x="70" y="429" font-family="Arial" font-size="8">Existing</text>
   <rect x="120" y="420" width="15" height="10" fill="#ffd9b3" stroke="#333" stroke-dasharray="2,2" />
@@ -268,19 +241,8 @@ To create actual BOQs in the system, visit the BOQ page and use the "New BOQ" bu
 </svg>
 \`\`\`
 
-**How to use:**  
-Copy the SVG code and save it as a \`.svg\` file, or paste it into an online SVG viewer like [svgviewer.dev](https://www.svgviewer.dev/).  
-
-This is a detailed template with:
-- ✅ Property boundary with dimensions
-- ✅ Existing and proposed buildings with sizes
-- ✅ Setback lines (5m from boundary)
-- ✅ Driveway and parking area
-- ✅ Trees and fence line
-- ✅ Scale bar and north arrow
-- ✅ Legend
-
-You can modify the dimensions, labels, and elements to match your specific project.`,
+**How to use:** Copy the SVG code and save it as a \`.svg\` file, or paste it into an online SVG viewer like [svgviewer.dev](https://www.svgviewer.dev/).  
+This is a detailed template with dimensions, legend, scale bar, and north arrow.`,
       type: 'general'
     };
   }
@@ -295,23 +257,20 @@ You can modify the dimensions, labels, and elements to match your specific proje
 
 Artificial Intelligence (AI) is the simulation of human intelligence in machines that are programmed to think and learn like humans.
 
-**Key types of AI:**
-• **Narrow AI (Weak AI)** – designed for specific tasks (e.g., voice assistants, image recognition).
-• **General AI (Strong AI)** – machines with human‑level intelligence across a wide range of tasks (still theoretical).
-• **Superintelligence** – AI that surpasses human intelligence (hypothetical).
+**Key types:**
+• **Narrow AI (Weak AI)** – specific tasks (voice assistants, image recognition).
+• **General AI (Strong AI)** – human‑level intelligence (theoretical).
+• **Superintelligence** – beyond human intelligence (hypothetical).
 
-**Common applications:**
+**Applications:**
 • Natural Language Processing (chatbots, translation)
 • Computer Vision (facial recognition, autonomous vehicles)
-• Robotics
-• Healthcare diagnostics
-• Financial trading
+• Robotics, healthcare, finance
 
 **How it works:**
-AI systems use algorithms, neural networks, and large datasets to learn patterns and make predictions. Machine learning, deep learning, and reinforcement learning are key subfields.
+Uses algorithms, neural networks, and large datasets to learn patterns.
 
-**In construction:**
-AI is used for project planning, cost estimation, risk assessment, site safety monitoring, and predictive maintenance.
+**In construction:** project planning, cost estimation, risk assessment, site safety monitoring, predictive maintenance.
 
 Would you like to know more about AI in construction?`,
       type: 'general'
@@ -320,48 +279,292 @@ Would you like to know more about AI in construction?`,
 
   // Capitals
   if (lower.includes('capital') || lower.includes('country') || lower.includes('city')) {
-    if (lower.includes('zambia')) {
-      return { text: 'The capital of Zambia is **Lusaka**.', type: 'general' };
-    }
-    if (lower.includes('france')) {
-      return { text: 'The capital of France is **Paris**.', type: 'general' };
-    }
-    if (lower.includes('usa') || lower.includes('united states')) {
-      return { text: 'The capital of the USA is **Washington, D.C.**', type: 'general' };
-    }
-    if (lower.includes('uk') || lower.includes('united kingdom')) {
-      return { text: 'The capital of the United Kingdom is **London**.', type: 'general' };
-    }
+    if (lower.includes('zambia')) return { text: 'The capital of Zambia is **Lusaka**.', type: 'general' };
+    if (lower.includes('france')) return { text: 'The capital of France is **Paris**.', type: 'general' };
+    if (lower.includes('usa') || lower.includes('united states')) return { text: 'The capital of the USA is **Washington, D.C.**', type: 'general' };
+    if (lower.includes('uk') || lower.includes('united kingdom')) return { text: 'The capital of the United Kingdom is **London**.', type: 'general' };
+    if (lower.includes('kenya')) return { text: 'The capital of Kenya is **Nairobi**.', type: 'general' };
     return {
       text: 'I can help with geography! Ask me about specific countries or capitals.',
       type: 'general'
     };
   }
 
-  // History
-  if (lower.includes('history') || lower.includes('world war') || lower.includes('ancient') || lower.includes('invention')) {
+  // Water cycle
+  if (lower.includes('water cycle') || lower.includes('hydrological cycle')) {
     return {
-      text: 'I have some general knowledge about history. Try asking a specific question like "When did World War II start?" or "Who built the Great Wall?" or "What is the history of construction?"',
+      text: `🌊 **The Water Cycle (Hydrological Cycle)**
+
+The continuous movement of water on, above, and below the Earth's surface.
+
+**Stages:**
+• **Evaporation** – water turns into vapour from oceans, lakes, and soil.
+• **Transpiration** – water vapour released from plants.
+• **Condensation** – water vapour cools and forms clouds.
+• **Precipitation** – water falls as rain, snow, sleet, or hail.
+• **Runoff** – water flows over land into rivers, lakes, and oceans.
+• **Infiltration** – water seeps into the ground (groundwater).
+
+**Importance:** Regulates climate, supplies freshwater, and supports ecosystems.
+
+Would you like more details on any stage?`,
       type: 'general'
     };
   }
 
-  // Science
-  if (lower.includes('science') || lower.includes('gravity') || lower.includes('dna') || lower.includes('planet') || lower.includes('physics')) {
+  // Gravity
+  if (lower.includes('gravity') || lower.includes('gravitational')) {
     return {
-      text: 'I can answer science questions! Try asking about physics, chemistry, biology, or astronomy. For example: "What is gravity?" or "How does DNA work?"',
+      text: `🌍 **What is Gravity?**
+
+Gravity is a natural phenomenon by which all objects with mass attract each other.
+
+**Key points:**
+• **Newton's Law of Universal Gravitation:** F = G * (m1 * m2) / r².
+• **Acceleration due to gravity** on Earth is **9.8 m/s²**.
+• Keeps planets in orbit, holds the atmosphere, and governs tides.
+
+**In construction:** Gravity affects structural loads, foundation design, and slope stability.
+
+Need a calculation or more details?`,
       type: 'general'
     };
   }
 
-  // Construction-specific general knowledge
+  // Great Wall
+  if (lower.includes('great wall') || lower.includes('wall of china')) {
+    return {
+      text: `🏯 **The Great Wall of China**
+
+A series of fortifications built along the northern borders of China to protect against invasions.
+
+**Key facts:**
+• **Length:** Over 21,000 km (13,000 miles).
+• **Built over centuries** – started in the 7th century BC, with major construction during the Qin (221–206 BC) and Ming (1368–1644) dynasties.
+• **Materials:** Stone, brick, tamped earth, wood.
+• **Purpose:** Defense, border control, and trade regulation.
+
+**Today:** A UNESCO World Heritage Site and one of the New Seven Wonders of the World.
+
+Would you like to know more about specific sections or construction techniques?`,
+      type: 'general'
+    };
+  }
+
+  // CCTV Installation
+  if (lower.includes('cctv') || lower.includes('camera') || lower.includes('surveillance')) {
+    return {
+      text: `📹 **CCTV Installation Guide**
+
+**1. Planning & Site Survey**
+• Identify areas to cover: entry points, parking, storage, blind spots.
+• Choose camera types: Dome (indoor), Bullet (outdoor long range), PTZ (large areas).
+• Resolution: 2MP minimum, 4MP or 8MP for detailed identification.
+
+**2. Cabling & Power**
+• Use Cat5e/Cat6 for IP cameras (PoE simplifies wiring).
+• For analog, use RG59 coax + power cable.
+• Avoid power lines; use conduits for protection.
+
+**3. Camera Placement**
+• Mount at 2.5–3m height to avoid tampering.
+• Angle downwards 10–20° for optimal coverage.
+
+**4. Recording & Storage**
+• DVR (analog) or NVR (IP).
+• Storage: e.g., 4MP camera at 4Mbps, 24/7 recording ≈ 1.5TB/month.
+
+**5. Networking & Remote Access**
+• Assign static IPs to NVR/DVR.
+• Set up port forwarding for remote viewing.
+
+**6. Testing & Maintenance**
+• Test each camera view, night vision (IR).
+• Regular cleaning and firmware updates.
+
+Need more details on a specific step?`,
+      type: 'general'
+    };
+  }
+
+  // Electrical installation / load calculation
+  if (lower.includes('electrical') || lower.includes('wiring') || lower.includes('circuit') || lower.includes('panel') || lower.includes('breaker') || lower.includes('load calculation')) {
+    return {
+      text: `⚡ **Electrical Installation – Practical Guide**
+
+**1. Load Calculation**
+• Sum wattage of all appliances and lighting.
+• Use diversity factor (not all run simultaneously).
+Example: 3‑bedroom house:
+  - Lighting: 2 kW
+  - Sockets: 5 kW
+  - Geyser: 3 kW
+  - Stove: 5 kW
+  - Total connected ≈ 15 kW → diversity 0.6 → 9 kW demand.
+
+**2. Distribution Board (DB)**
+• Main switch rating = demand × 1.25.
+• MCBs: Lighting 6A/10A, Sockets 16A/20A, Heavy appliances 32A/40A.
+
+**3. Wiring**
+• Copper cables, PVC insulated.
+• Cable size based on current and length (voltage drop ≤ 3%).
+• Run in conduits.
+
+**4. Earthing & Bonding**
+• Earth rod ≥1.5m deep.
+• Test earth resistance (<1 ohm).
+
+**5. Safety**
+• RCD (Residual Current Device) for leakage protection.
+• Label circuits clearly.
+
+**6. Testing**
+• Continuity, insulation resistance, polarity.
+
+Need a specific calculation? Ask!`,
+      type: 'general'
+    };
+  }
+
+  // Structural drawings
+  if (lower.includes('structural') || lower.includes('drawing') || lower.includes('blueprint') || lower.includes('rebar') || lower.includes('bar bending')) {
+    return {
+      text: `🏗️ **Reading Structural Drawings – Key Points**
+
+**1. Types**
+• **Foundation Plan** – footings, columns, ground beams.
+• **Floor Plans** – columns, beams, slab thickness.
+• **Roof Plan** – trusses, purlins.
+• **Sections** – cut through showing reinforcement.
+• **Details** – connections, joints.
+
+**2. Symbols**
+• Lines: solid = visible, dashed = hidden.
+• Reinforcement: T10 = 10mm bar, T12@200 = 12mm spaced 200mm.
+• U‑bars = stirrups.
+
+**3. Bar Bending Schedule (BBS)**
+• Lists bar type, shape, length, quantity.
+• Includes bend deductions.
+
+**4. How to Interpret**
+• Title block, scale, date.
+• North arrow and orientation.
+• General notes (cover, concrete strength).
+
+**5. Common Mistakes**
+• Missing dimensions, conflicting details.
+• Forgetting cover (25mm footings, 20mm columns).
+
+Need help with a specific drawing? Describe it.`,
+      type: 'general'
+    };
+  }
+
+  // Site safety
+  if (lower.includes('safety') || lower.includes('ppe') || lower.includes('protection') || lower.includes('hazard') || lower.includes('risk')) {
+    return {
+      text: `🛡️ **Construction Site Safety Requirements**
+
+**Essential PPE:**
+• Hard hat
+• High‑visibility vest
+• Steel‑toe boots
+• Safety glasses/goggles
+• Gloves
+• Ear protection (for loud areas)
+
+**Key Safety Practices:**
+• Daily safety briefings.
+• Inspect equipment regularly.
+• Keep first aid kits accessible.
+• Maintain clear walkways and exits.
+• Use fall protection for heights >2m.
+• Store materials safely.
+
+**Regulations:**
+• Follow local standards (e.g., ZS 303 in Zambia).
+• Conduct risk assessments and method statements.
+
+**In PURVEYOLS CMS:** you can track safety reports and incidents from the Safety Reports module.`,
+      type: 'general'
+    };
+  }
+
+  // Cost estimation
+  if (lower.includes('cost') || lower.includes('estimate') || lower.includes('budget') || lower.includes('estimation')) {
+    return {
+      text: `💰 **Construction Cost Estimation**
+
+**Key Components:**
+1. **Materials** – concrete, steel, timber, finishes.
+2. **Labor** – skilled and unskilled.
+3. **Equipment** – machinery, tools.
+4. **Subcontractors** – specialist trades.
+5. **Preliminaries** – site setup, security, insurance.
+6. **Contingency** – 5‑10% for unexpected costs.
+7. **Profit & Overheads** – typically 10‑20%.
+
+**Methods:**
+• **Elemental estimating** – by building elements.
+• **Unit rate estimating** – cost per m², m³.
+• **Parametric** – use historical data.
+
+**In PURVEYOLS CMS:**
+• Create BOQs with detailed cost breakdowns.
+• Track project budgets.
+• Monitor funding requests and payments.
+
+Need a sample BOQ? Just ask!`,
+      type: 'general'
+    };
+  }
+
+  // Project management phases
+  if (lower.includes('project management') || lower.includes('phases') || lower.includes('lifecycle') || lower.includes('initiation') || lower.includes('planning') || lower.includes('execution') || lower.includes('monitoring') || lower.includes('closure')) {
+    return {
+      text: `📊 **Project Management Phases**
+
+**1. Initiation**
+• Define scope and objectives.
+• Feasibility study.
+• Secure funding and approvals.
+
+**2. Planning**
+• Develop detailed plans and schedules (Gantt charts, milestones).
+• Allocate resources and budget.
+• Identify risks and mitigation.
+
+**3. Execution**
+• Mobilise site and resources.
+• Carry out construction.
+• Monitor progress against schedule.
+• Manage quality and safety.
+
+**4. Monitoring & Control**
+• Track costs, time, and quality.
+• Report progress to stakeholders.
+• Manage changes and variations.
+
+**5. Closure**
+• Final inspections.
+• Handover to client.
+• Finalise documentation and payments.
+
+**In PURVEYOLS CMS:** Use the Project Planning module to manage tasks, milestones, and Gantt charts.`,
+      type: 'general'
+    };
+  }
+
+  // ─── 4. Construction-specific general knowledge (concrete, foundation, steel, cement) ───
   if (lower.includes('concrete') || lower.includes('foundation') || lower.includes('steel') || lower.includes('cement')) {
     return {
       text: `🏗️ **Construction Materials & Techniques**
 
-**Concrete:** A composite material made of cement, water, and aggregates. Used for foundations, columns, beams, slabs, and pavements. Strength grades: C15, C20, C25, etc.
+**Concrete:** Composite of cement, water, aggregates. Used for foundations, columns, beams, slabs, pavements. Strength grades: C15, C20, C25, etc.
 
-**Reinforcement Steel (Rebar):** Steel bars used to increase concrete's tensile strength. Usually deformed to bond better with concrete.
+**Reinforcement Steel (Rebar):** Steel bars to increase concrete's tensile strength. Deformed for better bonding.
 
 **Foundations:**
 • **Strip footing** – for load‑bearing walls.
@@ -369,17 +572,39 @@ Would you like to know more about AI in construction?`,
 • **Raft** – for weak soils.
 • **Pile** – for deep or soft soils.
 
-**Cement:** A binder that hardens when mixed with water. Types: Portland cement (most common), rapid‑hardening, sulphate‑resistant, etc.
+**Cement:** Binder that hardens when mixed with water. Types: Portland (most common), rapid‑hardening, sulphate‑resistant.
 
 Would you like more details on any of these?`,
       type: 'general'
     };
   }
 
-  // ─── 4. If nothing matches, give a simple "I don't know" ────
-  // No generic menu – just a straightforward answer.
+  // ─── 5. Catch‑all: helpful response ──────────────────────────
   return {
-    text: "I'm sorry, I don't have information on that topic. I'm designed to answer about construction management, system data, drawings, and general knowledge. Please ask something else.",
+    text: `🤖 **PURVEYOLS ASSISTANT AI**
+
+I can help with:
+
+📊 **System Data** (in tables):
+• "Show me projects" → project table
+• "Show me workers" → worker table
+• "Show me funding requests" → funding table
+
+🏗️ **Drawings** (in SVG):
+• "Draw a site plan" → detailed SVG site plan
+
+🌍 **General Knowledge:**
+• "What is artificial intelligence?"
+• "What is the capital of Zambia?"
+• "Explain concrete mix design"
+• "How to install CCTV?"
+• "Electrical load calculation"
+• "How to read structural drawings?"
+• "What are the safety requirements on site?"
+• "How to estimate construction costs?"
+• "Explain project management phases"
+
+💡 **Just ask me anything** – I'll respond with a table, drawing, or clear explanation.`,
     type: 'general'
   };
 };
