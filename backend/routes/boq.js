@@ -6,7 +6,6 @@ const auth = require('../middleware/auth');
 const authorize = require('../middleware/rbac');
 const { createNotification, getSenderName, getSenderRole, formatCurrency } = require('../utils/notificationHelper');
 
-// ─── GET all BOQs ────────────────────────────────────────────
 router.get('/', auth, async (req, res) => {
   try {
     const boqs = await BOQ.find()
@@ -19,7 +18,6 @@ router.get('/', auth, async (req, res) => {
   }
 });
 
-// ─── GET single BOQ ──────────────────────────────────────────
 router.get('/:id', auth, async (req, res) => {
   try {
     const boq = await BOQ.findById(req.params.id)
@@ -32,7 +30,6 @@ router.get('/:id', auth, async (req, res) => {
   }
 });
 
-// ─── CREATE ──────────────────────────────────────────────────
 router.post('/', auth, authorize('admin', 'director', 'quantity-surveyor', 'civil-engineer', 'procurement-officer', 'foreman'), async (req, res) => {
   try {
     const { items, preliminaries, contingency, vat, ...rest } = req.body;
@@ -65,7 +62,7 @@ router.post('/', auth, authorize('admin', 'director', 'quantity-surveyor', 'civi
     const projectName = populated.project?.name || 'Unknown Project';
     const total = formatCurrency(grandTotal);
 
-    // ─── Notify the creator (you created this) ──────────────
+    // ─── Notify the creator ──────────────────────────────
     await createNotification(
       req.user.id,
       'boq_shared',
@@ -74,11 +71,12 @@ router.post('/', auth, authorize('admin', 'director', 'quantity-surveyor', 'civi
       `/boq/${boq._id}`
     );
 
-    // ─── Notify directors (engineer created a BOQ) ──────────
+    // ─── Notify directors (exclude creator) ──────────────
     const directors = await User.find({ role: 'director' });
-    for (let director of directors) {
+    const recipients = directors.filter(d => d._id.toString() !== req.user.id);
+    for (let recipient of recipients) {
       await createNotification(
-        director._id,
+        recipient._id,
         'boq_shared',
         'New BOQ Created',
         `${senderName} (${senderRole}) created a BOQ for "${projectName}" with total ${total}`,
@@ -92,7 +90,6 @@ router.post('/', auth, authorize('admin', 'director', 'quantity-surveyor', 'civi
   }
 });
 
-// ─── UPDATE ──────────────────────────────────────────────────
 router.put('/:id', auth, authorize('admin', 'director', 'quantity-surveyor', 'civil-engineer', 'procurement-officer', 'accountant', 'foreman'), async (req, res) => {
   try {
     const { items, preliminaries, contingency, vat, ...rest } = req.body;
@@ -125,7 +122,6 @@ router.put('/:id', auth, authorize('admin', 'director', 'quantity-surveyor', 'ci
   }
 });
 
-// ─── SUBMIT ──────────────────────────────────────────────────
 router.put('/:id/submit', auth, authorize('admin', 'director', 'quantity-surveyor', 'civil-engineer', 'procurement-officer', 'accountant', 'foreman'), async (req, res) => {
   try {
     const boq = await BOQ.findById(req.params.id);
@@ -141,7 +137,7 @@ router.put('/:id/submit', auth, authorize('admin', 'director', 'quantity-surveyo
     const projectName = populated.project?.name || 'Unknown Project';
     const total = formatCurrency(boq.grandTotal || 0);
 
-    // ─── Notify creator (you submitted) ──────────────────────
+    // ─── Notify creator ──────────────────────────────────────
     await createNotification(
       req.user.id,
       'boq_shared',
@@ -150,11 +146,12 @@ router.put('/:id/submit', auth, authorize('admin', 'director', 'quantity-surveyo
       `/boq/${boq._id}`
     );
 
-    // ─── Notify directors (BOQ submitted) ────────────────────
+    // ─── Notify directors (exclude creator) ──────────────
     const directors = await User.find({ role: 'director' });
-    for (let director of directors) {
+    const recipients = directors.filter(d => d._id.toString() !== req.user.id);
+    for (let recipient of recipients) {
       await createNotification(
-        director._id,
+        recipient._id,
         'boq_shared',
         'BOQ Submitted for Approval',
         `${senderName} submitted a BOQ for "${projectName}" with total ${total}`,
@@ -167,7 +164,6 @@ router.put('/:id/submit', auth, authorize('admin', 'director', 'quantity-surveyo
   }
 });
 
-// ─── APPROVE ──────────────────────────────────────────────────
 router.put('/:id/approve', auth, authorize('admin', 'director'), async (req, res) => {
   try {
     const boq = await BOQ.findById(req.params.id);
@@ -186,7 +182,7 @@ router.put('/:id/approve', auth, authorize('admin', 'director'), async (req, res
     const projectName = populated.project?.name || 'Unknown Project';
     const total = formatCurrency(boq.grandTotal || 0);
 
-    // ─── Notify creator (your BOQ was approved) ─────────────
+    // ─── Notify creator ──────────────────────────────────────
     if (boq.createdBy) {
       await createNotification(
         boq.createdBy,
@@ -202,7 +198,6 @@ router.put('/:id/approve', auth, authorize('admin', 'director'), async (req, res
   }
 });
 
-// ─── DELETE ──────────────────────────────────────────────────
 router.delete('/:id', auth, authorize('admin', 'director'), async (req, res) => {
   try {
     const deleted = await BOQ.findByIdAndDelete(req.params.id);
