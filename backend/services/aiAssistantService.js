@@ -10,17 +10,21 @@ const Subcontract = require('../models/Subcontract');
 
 /**
  * Get AI response for ANY question – uses OpenAI if available,
- * falls back to rule-based if no key.
+ * falls back to rule-based if no key or rate-limited.
  * Returns: { text: string, type: string }
  */
 const getAIResponse = async (query, userId) => {
   try {
     const openaiKey = process.env.OPENAI_API_KEY;
     if (openaiKey) {
-      // Use OpenAI for all queries
-      return await getOpenAIResponse(query, userId);
+      try {
+        return await getOpenAIResponse(query, userId);
+      } catch (openaiErr) {
+        // If OpenAI fails (rate limit, quota, etc.), fall back to rule-based
+        console.log('OpenAI failed, falling back to rule-based:', openaiErr.message);
+        return await getRuleBasedResponse(query, userId);
+      }
     }
-    // Fallback: rule-based
     return await getRuleBasedResponse(query, userId);
   } catch (error) {
     console.error('AI service error:', error);
@@ -32,14 +36,13 @@ const getAIResponse = async (query, userId) => {
 };
 
 /**
- * OpenAI response – with enhanced system prompt for expert-level answers.
+ * OpenAI response – with expert system prompt.
  */
 const getOpenAIResponse = async (query, userId) => {
-  try {
-    const systemData = await gatherSystemData(userId);
-    const context = buildContextString(systemData);
+  const systemData = await gatherSystemData(userId);
+  const context = buildContextString(systemData);
 
-    const systemPrompt = `You are PURVEYOLS ASSISTANT AI, an expert construction and engineering consultant.
+  const systemPrompt = `You are PURVEYOLS ASSISTANT AI, an expert construction and engineering consultant.
 
 You have access to the following real data from the user's system:
 
@@ -55,46 +58,42 @@ Your task is to answer the user's question as a seasoned professional would – 
 
 Question: ${query}`;
 
-    const response = await axios.post(
-      'https://api.openai.com/v1/chat/completions',
-      {
-        model: 'gpt-3.5-turbo',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: query }
-        ],
-        max_tokens: 800,
-        temperature: 0.7,
+  const response = await axios.post(
+    'https://api.openai.com/v1/chat/completions',
+    {
+      model: 'gpt-3.5-turbo',
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: query }
+      ],
+      max_tokens: 800,
+      temperature: 0.7,
+    },
+    {
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
       },
-      {
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
-        },
-        timeout: 20000,
-      }
-    );
-
-    if (response.data && response.data.choices && response.data.choices.length > 0) {
-      const text = response.data.choices[0].message.content.trim();
-      return { text, type: 'general' };
+      timeout: 20000,
     }
-    throw new Error('Unexpected OpenAI response format');
-  } catch (error) {
-    console.error('OpenAI error:', error);
-    return await getRuleBasedResponse(query, userId);
+  );
+
+  if (response.data && response.data.choices && response.data.choices.length > 0) {
+    const text = response.data.choices[0].message.content.trim();
+    return { text, type: 'general' };
   }
+  throw new Error('Unexpected OpenAI response format');
 };
 
 /**
- * Rule-based fallback – now covers more real-world topics.
+ * Rule-based fallback – now includes SVG for site plans.
  */
 const getRuleBasedResponse = async (query, userId) => {
   const q = query.toLowerCase();
   const systemData = await gatherSystemData(userId);
   const { projects, workers, funding, payments, procurement, boqs, subcontracts, stats } = systemData;
 
-  // ─── 1. System data queries (unchanged) ──────────────────────
+  // ─── 1. System data queries ──────────────────────────────────────
   if (q.includes('project') || q.includes('projects')) {
     if (!projects || projects.length === 0) return { text: 'No projects found.', type: 'project' };
     let response = '📋 Your projects:\n';
@@ -189,206 +188,7 @@ In PURVEYOLS CMS, you can create, edit, and approve BOQs for each project.`,
     };
   }
 
-  // ─── 2. CCTV Installation ──────────────────────────────────────
-  if (q.includes('cctv') || q.includes('camera') || q.includes('surveillance')) {
-    return {
-      text: `📹 **CCTV Installation Guide**
-
-**1. Planning & Site Survey**
-• Identify areas to cover: entry points, parking, storage, blind spots.
-• Determine camera types:
-  - **Dome** – indoor, discreet
-  - **Bullet** – outdoor, long range
-  - **PTZ** – pan-tilt-zoom for large areas
-• Choose resolution: 2MP minimum, 4MP or 8MP for detailed identification.
-
-**2. Cabling & Power**
-• Use **Cat5e/Cat6** for IP cameras (PoE – Power over Ethernet simplifies wiring).
-• For analog, use RG59 coax + power cable.
-• Plan cable routes – avoid power lines, use conduits for protection.
-
-**3. Camera Placement**
-• Mount at 2.5–3m height to avoid tampering.
-• Angle downwards 10–20° for optimal coverage.
-• Ensure field of view covers entry/exit and high-value areas.
-
-**4. Recording & Storage**
-• Choose between **DVR** (analog) or **NVR** (IP).
-• Calculate storage:  
-  - Bitrate × number of cameras × recording hours.  
-  Example: 4MP camera at 4Mbps, 24/7 recording ≈ 1.5TB/month.
-• Use motion detection to save storage.
-
-**5. Networking & Remote Access**
-• Assign static IPs to NVR/DVR.
-• Set up port forwarding for remote viewing (secure with strong passwords).
-• Consider cloud or hybrid storage for redundancy.
-
-**6. Testing & Maintenance**
-• Test each camera view.
-• Check night vision (IR) functionality.
-• Schedule regular cleaning and firmware updates.
-
-Need more details on a specific step? Ask away!`,
-      type: 'general'
-    };
-  }
-
-  // ─── 3. Electrical Installation ────────────────────────────────
-  if (q.includes('electrical') || q.includes('wiring') || q.includes('circuit') || q.includes('panel') || q.includes('breaker')) {
-    return {
-      text: `⚡ **Electrical Installation – Practical Guide**
-
-**1. Load Calculation**
-• Sum the wattage of all appliances and lighting.
-• Consider diversity factor (not all loads run simultaneously).
-• Example: For a 3-bedroom house:
-  - Lighting: 2 kW
-  - Sockets: 5 kW
-  - Geyser: 3 kW
-  - Stove: 5 kW
-  - Total connected load ≈ 15 kW → diversity factor 0.6 → 9 kW demand.
-
-**2. Distribution Board (DB)**
-• Choose a DB with enough ways (circuit breakers).
-• Main switch rating = total demand × 1.25 (safety margin).
-• Use MCBs (miniature circuit breakers) for each circuit:
-  - Lighting: 6A or 10A
-  - Sockets: 16A or 20A
-  - Heavy appliances: 32A or 40A (stove, geyser)
-
-**3. Wiring**
-• Use copper cables (PVC insulated).
-• Select cable size based on current and length (voltage drop ≤ 3%).
-• Example: For a 20A circuit, use 2.5mm² cable up to 30m.
-• Run cables in conduits (PVC or metal) for protection.
-
-**4. Earthing & Bonding**
-• Install earth rod (at least 1.5m deep).
-• Connect all metal parts (DB, conduits, appliances) to earth.
-• Test earth resistance (< 1 ohm is ideal).
-
-**5. Safety**
-• Use RCD (Residual Current Device) – trips on leakage.
-• Label all circuits clearly.
-• Follow local regulations (e.g., Zambian ZS 303).
-
-**6. Testing**
-• Test continuity, insulation resistance, and polarity.
-• Verify all circuits are correctly connected.
-
-Need a specific calculation or diagram? Let me know.`,
-      type: 'general'
-    };
-  }
-
-  // ─── 4. Structural Drawings ────────────────────────────────────
-  if (q.includes('structural') || q.includes('drawing') || q.includes('plan') || q.includes('blueprint') || q.includes('rebar')) {
-    return {
-      text: `🏗️ **Reading Structural Drawings – Key Points**
-
-**1. Types of Structural Drawings**
-• **Foundation Plan** – shows footings, columns, ground beams.
-• **Floor Plans** – column layout, beams, slab thickness.
-• **Roof Plan** – roof trusses, purlins, bracing.
-• **Sections** – cut through the building showing reinforcement.
-• **Details** – blow‑ups of connections, joints, and special items.
-
-**2. Common Symbols**
-• **Lines:**
-  - Solid thick – visible edges.
-  - Dashed – hidden elements.
-  - Center lines – symmetry axes.
-• **Dimensions** – in mm or m, always check the scale.
-• **Reinforcement:**
-  - T10 = 10mm diameter bar.
-  - T12@200 = 12mm bar spaced at 200mm centres.
-  - "U" bars – stirrups.
-
-**3. Bar Bending Schedule (BBS)**
-• Lists each bar type, shape, length, and quantity.
-• Includes bend deductions.
-• Essential for ordering and cutting steel.
-
-**4. How to Interpret**
-• Start with the title block – project name, scale, date.
-• Identify the north arrow and orientation.
-• Read the general notes – cover, concrete strength, standards.
-• Trace load paths from roof to foundation.
-
-**5. Common Mistakes**
-• Missing dimensions or conflicting details.
-• Not accounting for cover (minimum 25mm for footings, 20mm for columns).
-• Forgetting openings (doors, windows) in structural elements.
-
-I can help you interpret a specific drawing if you describe it.`,
-      type: 'general'
-    };
-  }
-
-  // ─── 5. Site Layout Planning ──────────────────────────────────
-  if (q.includes('site layout') || q.includes('logistics') || q.includes('crane') || q.includes('material storage')) {
-    return {
-      text: `🏗️ **Construction Site Layout Planning**
-
-**1. Site Access**
-• Main entrance for vehicles – wide enough for trucks and cranes.
-• Separate pedestrian access for safety.
-• Temporary roads to key areas (materials, concrete plant).
-
-**2. Storage Areas**
-• Materials: 
-  - Cement: covered, dry, off-ground.
-  - Steel: raised, sorted by size.
-  - Timber: stacked, ventilated.
-• Position near where they will be used (crane radius).
-
-**3. Crane Placement**
-• Choose the largest crane for the heaviest lift.
-• Place within lifting radius of all structures.
-• Consider ground conditions – use crane mats.
-
-**4. Utilities**
-• Water supply – for concrete mixing, dust suppression.
-• Electricity – temporary power poles.
-• Sewage/stormwater – temporary drainage.
-
-**5. Safety Zones**
-• Exclusion zones around crane swing radius.
-• First aid post and fire extinguishers.
-• Signage for hazards, speed limits, and PPE.
-
-**6. Flow of Work**
-• Sequence: site clearance → foundations → structure → finishes.
-• Ensure materials are available ahead of each phase.
-
-**Example Layout (SVG):**
-\`\`\`svg
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 400">
-  <rect x="50" y="50" width="500" height="300" fill="#e8f5e9" stroke="#333" stroke-width="2"/>
-  <text x="300" y="30" text-anchor="middle" font-weight="bold">SITE LAYOUT PLAN</text>
-  <!-- Crane -->
-  <circle cx="200" cy="200" r="80" fill="none" stroke="#ff9800" stroke-width="1" stroke-dasharray="4"/>
-  <rect x="190" y="190" width="20" height="40" fill="#ff9800"/>
-  <text x="200" y="185" text-anchor="middle" font-size="8">Crane</text>
-  <!-- Storage -->
-  <rect x="350" y="80" width="100" height="60" fill="#b3e5fc" stroke="#0288d1"/>
-  <text x="400" y="115" text-anchor="middle" font-size="8">Materials Store</text>
-  <!-- Building -->
-  <rect x="230" y="220" width="120" height="80" fill="#d4e2f0" stroke="#333"/>
-  <text x="290" y="265" text-anchor="middle" font-size="8">Building</text>
-  <!-- Entrance -->
-  <rect x="50" y="170" width="30" height="60" fill="#a5d6a7" stroke="#2e7d32"/>
-  <text x="65" y="205" text-anchor="middle" font-size="8">Gate</text>
-</svg>
-\`\`\`
-
-Need a detailed layout for your specific project? Describe it.`,
-      type: 'general'
-    };
-  }
-
-  // ─── 6. Draw site plan (SVG) ──────────────────────────────────
+  // ─── 2. Draw site plan – SVG generation ──────────────────────────
   if (q.includes('draw') && (q.includes('site plan') || q.includes('plan') || q.includes('layout'))) {
     return {
       text: `📐 **Here’s a simple SVG site plan you can copy and view in your browser:**
@@ -443,103 +243,189 @@ Need a detailed layout for your specific project? Describe it.`,
 \`\`\`
 
 **How to use:**  
-Copy the SVG code and save it as a `.svg` file, or paste it into an online SVG viewer.  
+Copy the SVG code and save it as a \`.svg\` file, or paste it into an online SVG viewer.  
 This is a basic template – you can modify the dimensions, labels, and elements to match your project.`,
       type: 'general'
     };
   }
 
-  // ─── 7. Complex tables (BOQ, cost breakdown, etc.) ──────────
-  if (q.includes('table') || q.includes('boq') || q.includes('breakdown') || q.includes('cost') || q.includes('estimate')) {
+  // ─── 3. CCTV Installation ──────────────────────────────────────
+  if (q.includes('cctv') || q.includes('camera') || q.includes('surveillance')) {
     return {
-      text: `📊 **Complex Table – Sample BOQ with Quantities and Costs**
+      text: `📹 **CCTV Installation Guide**
 
-| Item | Description | Qty | Unit | Rate (ZMW) | Amount (ZMW) |
-|------|-------------|-----|------|------------|--------------|
-| 1    | Site Clearance | 1   | LS   | 5,000      | 5,000        |
-| 2    | Topsoil Removal | 200 | m³   | 80         | 16,000       |
-| 3    | Excavation – Foundation | 150 | m³ | 150        | 22,500       |
-| 4    | Concrete C25 – Footings | 40 | m³  | 2,500      | 100,000      |
-| 5    | Concrete C25 – Columns | 25 | m³  | 2,800      | 70,000       |
-| 6    | Reinforcement – Footings | 4000 | kg | 8 | 32,000 |
-| 7    | Reinforcement – Columns | 3000 | kg | 8 | 24,000 |
-| 8    | Formwork – Footings | 120 | m²  | 150        | 18,000       |
-| 9    | Formwork – Columns | 80  | m²  | 180        | 14,400       |
-| 10   | Fencing – Chain link | 250 | m   | 120        | 30,000       |
-| 11   | Gates and fittings | 2   | No. | 4,000      | 8,000        |
-|      | **Sub‑Total** |     |      |            | **339,900**  |
-|      | Preliminaries (5%) | |      |            | **16,995**   |
-|      | Contingency (2%)   | |      |            | **6,798**    |
-|      | VAT (16%)          | |      |            | **58,591**   |
-|      | **GRAND TOTAL**    | |      |            | **422,284**  |
+**1. Planning & Site Survey**
+• Identify areas to cover: entry points, parking, storage, blind spots.
+• Determine camera types:
+  - **Dome** – indoor, discreet
+  - **Bullet** – outdoor, long range
+  - **PTZ** – pan-tilt-zoom for large areas
+• Choose resolution: 2MP minimum, 4MP or 8MP for detailed identification.
 
-This table can be used as a reference for your own BOQ. Adjust quantities, rates, and items to match your project.`,
+**2. Cabling & Power**
+• Use **Cat5e/Cat6** for IP cameras (PoE – Power over Ethernet simplifies wiring).
+• For analog, use RG59 coax + power cable.
+• Plan cable routes – avoid power lines, use conduits for protection.
+
+**3. Camera Placement**
+• Mount at 2.5–3m height to avoid tampering.
+• Angle downwards 10–20° for optimal coverage.
+• Ensure field of view covers entry/exit and high-value areas.
+
+**4. Recording & Storage**
+• Choose between **DVR** (analog) or **NVR** (IP).
+• Calculate storage:  
+  - Bitrate × number of cameras × recording hours.  
+  Example: 4MP camera at 4Mbps, 24/7 recording ≈ 1.5TB/month.
+• Use motion detection to save storage.
+
+**5. Networking & Remote Access**
+• Assign static IPs to NVR/DVR.
+• Set up port forwarding for remote viewing (secure with strong passwords).
+• Consider cloud or hybrid storage for redundancy.
+
+**6. Testing & Maintenance**
+• Test each camera view.
+• Check night vision (IR) functionality.
+• Schedule regular cleaning and firmware updates.
+
+Need more details on a specific step? Ask away!`,
       type: 'general'
     };
   }
 
-  // ─── 8. Other construction knowledge ──────────────────────────
-  if (q.includes('fence') || q.includes('measurement') || q.includes('foundation') || q.includes('concrete') || q.includes('safety')) {
+  // ─── 4. Electrical Installation ────────────────────────────────
+  if (q.includes('electrical') || q.includes('wiring') || q.includes('circuit') || q.includes('panel') || q.includes('breaker')) {
     return {
-      text: `🛠️ **Construction Knowledge**
+      text: `⚡ **Electrical Installation – Practical Guide**
 
-**Fence Measurement:**
-1. Mark boundary corners.
-2. Measure total length along the boundary.
-3. Decide post spacing (e.g., 2.5m).
-4. Calculate number of posts = length / spacing.
-5. Add 5-10% for wastage.
+**1. Load Calculation**
+• Sum the wattage of all appliances and lighting.
+• Consider diversity factor (not all loads run simultaneously).
+• Example: For a 3-bedroom house:
+  - Lighting: 2 kW
+  - Sockets: 5 kW
+  - Geyser: 3 kW
+  - Stove: 5 kW
+  - Total connected load ≈ 15 kW → diversity factor 0.6 → 9 kW demand.
 
-**Foundation Types:**
-• Strip footing – for load‑bearing walls.
-• Pad footing – for columns.
-• Raft foundation – for weak soils.
-• Pile foundation – for deep or soft soil.
+**2. Distribution Board (DB)**
+• Choose a DB with enough ways (circuit breakers).
+• Main switch rating = total demand × 1.25 (safety margin).
+• Use MCBs (miniature circuit breakers) for each circuit:
+  - Lighting: 6A or 10A
+  - Sockets: 16A or 20A
+  - Heavy appliances: 32A or 40A (stove, geyser)
 
-**Concrete Mix Design (C25):**
-• Cement: 1 part
-• Sand: 2 parts
-• Gravel: 4 parts
-• Water: ~0.5 parts (water/cement ratio 0.5)
+**3. Wiring**
+• Use copper cables (PVC insulated).
+• Select cable size based on current and length (voltage drop ≤ 3%).
+• Example: For a 20A circuit, use 2.5mm² cable up to 30m.
+• Run cables in conduits (PVC or metal) for protection.
 
-**Site Safety Essentials:**
-• PPE: Hard hat, high‑vis vest, steel‑toe boots, safety glasses, gloves.
-• Daily safety briefings.
-• First aid kit on site.
-• Fall protection for heights >2m.
+**4. Earthing & Bonding**
+• Install earth rod (at least 1.5m deep).
+• Connect all metal parts (DB, conduits, appliances) to earth.
+• Test earth resistance (< 1 ohm is ideal).
 
-Ask about any specific topic for more details!`,
+**5. Safety**
+• Use RCD (Residual Current Device) – trips on leakage.
+• Label all circuits clearly.
+• Follow local regulations (e.g., Zambian ZS 303).
+
+**6. Testing**
+• Test continuity, insulation resistance, and polarity.
+• Verify all circuits are correctly connected.
+
+Need a specific calculation or diagram? Let me know.`,
       type: 'general'
     };
   }
 
-  // ─── 9. Definitions ────────────────────────────────────────────
-  if (q.includes('what is') || q.includes('define') || q.includes('meaning') || q.includes('explain')) {
+  // ─── 5. Structural Drawings ────────────────────────────────────
+  if (q.includes('structural') || q.includes('drawing') || q.includes('blueprint') || q.includes('rebar')) {
     return {
-      text: `📖 **I can help define construction terms!**
+      text: `🏗️ **Reading Structural Drawings – Key Points**
 
-**BOQ (Bill of Quantities)** – A document listing materials, quantities, and costs.
+**1. Types of Structural Drawings**
+• **Foundation Plan** – shows footings, columns, ground beams.
+• **Floor Plans** – column layout, beams, slab thickness.
+• **Roof Plan** – roof trusses, purlins, bracing.
+• **Sections** – cut through the building showing reinforcement.
+• **Details** – blow‑ups of connections, joints, and special items.
 
-**Site Plan** – A scaled drawing showing the layout of the construction site.
+**2. Common Symbols**
+• **Lines:**
+  - Solid thick – visible edges.
+  - Dashed – hidden elements.
+  - Center lines – symmetry axes.
+• **Dimensions** – in mm or m, always check the scale.
+• **Reinforcement:**
+  - T10 = 10mm diameter bar.
+  - T12@200 = 12mm bar spaced at 200mm centres.
+  - "U" bars – stirrups.
 
-**Foundation** – The structure that transfers building loads to the ground.
+**3. Bar Bending Schedule (BBS)**
+• Lists each bar type, shape, length, and quantity.
+• Includes bend deductions.
+• Essential for ordering and cutting steel.
 
-**Rebar** – Steel reinforcement used in concrete to increase tensile strength.
+**4. How to Interpret**
+• Start with the title block – project name, scale, date.
+• Identify the north arrow and orientation.
+• Read the general notes – cover, concrete strength, standards.
+• Trace load paths from roof to foundation.
 
-**Formwork** – Molds used to shape poured concrete.
+**5. Common Mistakes**
+• Missing dimensions or conflicting details.
+• Not accounting for cover (minimum 25mm for footings, 20mm for columns).
+• Forgetting openings (doors, windows) in structural elements.
 
-**Preliminaries** – Costs for site setup, security, insurance, and project management.
-
-**Contingency** – A budget reserve (5-10%) for unexpected costs.
-
-**VAT** – Value Added Tax, usually added to the total cost.
-
-What term would you like me to explain in detail?`,
+I can help you interpret a specific drawing if you describe it.`,
       type: 'general'
     };
   }
 
-  // ─── 10. Default fallback ─────────────────────────────────────
+  // ─── 6. Site Layout Planning ──────────────────────────────────
+  if (q.includes('site layout') || q.includes('logistics') || q.includes('crane') || q.includes('material storage')) {
+    return {
+      text: `🏗️ **Construction Site Layout Planning**
+
+**1. Site Access**
+• Main entrance for vehicles – wide enough for trucks and cranes.
+• Separate pedestrian access for safety.
+• Temporary roads to key areas (materials, concrete plant).
+
+**2. Storage Areas**
+• Materials: 
+  - Cement: covered, dry, off-ground.
+  - Steel: raised, sorted by size.
+  - Timber: stacked, ventilated.
+• Position near where they will be used (crane radius).
+
+**3. Crane Placement**
+• Choose the largest crane for the heaviest lift.
+• Place within lifting radius of all structures.
+• Consider ground conditions – use crane mats.
+
+**4. Utilities**
+• Water supply – for concrete mixing, dust suppression.
+• Electricity – temporary power poles.
+• Sewage/stormwater – temporary drainage.
+
+**5. Safety Zones**
+• Exclusion zones around crane swing radius.
+• First aid post and fire extinguishers.
+• Signage for hazards, speed limits, and PPE.
+
+**6. Flow of Work**
+• Sequence: site clearance → foundations → structure → finishes.
+• Ensure materials are available ahead of each phase.`,
+      type: 'general'
+    };
+  }
+
+  // ─── 7. Default fallback ──────────────────────────────────────
   return {
     text: `🤖 **PURVEYOLS ASSISTANT AI**
 
@@ -552,12 +438,10 @@ I can help with:
 
 🏗️ **Construction Knowledge:**
 • "Draw a site plan" – I'll generate an SVG.
-• "Show me a complex BOQ table"
-• "How to measure a fence?"
-• "What's the best foundation for clay soil?"
-• "How to design a concrete mix for C25?"
-• "What are the safety requirements on site?"
-• "How to estimate construction costs?"
+• "How to install CCTV?"
+• "Electrical load calculation"
+• "How to read structural drawings?"
+• "What is a BOQ?"
 
 💡 **Ask a question and I'll give a detailed answer!`,
     type: 'general'
