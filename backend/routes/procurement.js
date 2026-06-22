@@ -4,15 +4,21 @@ const ProcurementOrder = require('../models/ProcurementOrder');
 const auth = require('../middleware/auth');
 const authorize = require('../middleware/rbac');
 const { createNotification } = require('../utils/notificationHelper');
+const User = require('../models/User');
 
-// ─── GET all orders ──────────────────────────────────────────────
+// ─── GET all – drivers see only their own ──────────────────────
 router.get('/', auth, async (req, res) => {
   try {
-    const orders = await ProcurementOrder.find()
+    let filter = {};
+    if (req.user.role === 'driver') {
+      filter.createdBy = req.user.id;
+    }
+    const orders = await ProcurementOrder.find(filter)
       .populate('project', 'name')
       .populate('createdBy', 'name role')
       .populate('fundedBy', 'name role')
-      .populate('procurementOfficer', 'name role');
+      .populate('procurementOfficer', 'name role')
+      .sort({ createdAt: -1 });
 
     const enriched = orders.map(order => {
       const obj = order.toObject();
@@ -31,7 +37,7 @@ router.get('/', auth, async (req, res) => {
   }
 });
 
-// ─── GET single order ────────────────────────────────────────────
+// ─── GET single ──────────────────────────────────────────────────
 router.get('/:id', auth, async (req, res) => {
   try {
     const order = await ProcurementOrder.findById(req.params.id)
@@ -41,6 +47,10 @@ router.get('/:id', auth, async (req, res) => {
       .populate('procurementOfficer', 'name role');
 
     if (!order) return res.status(404).json({ error: 'Order not found' });
+    // If driver, check ownership
+    if (req.user.role === 'driver' && order.createdBy._id.toString() !== req.user.id) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
     const obj = order.toObject();
     if (!obj.grandTotal && Array.isArray(obj.items)) {
       obj.grandTotal = obj.items.reduce((sum, item) => {
@@ -56,7 +66,7 @@ router.get('/:id', auth, async (req, res) => {
 });
 
 // ─── CREATE ──────────────────────────────────────────────────────
-router.post('/', auth, authorize('admin', 'director', 'procurement-officer', 'civil-engineer', 'quantity-surveyor'), async (req, res) => {
+router.post('/', auth, authorize('admin', 'director', 'procurement-officer', 'civil-engineer', 'quantity-surveyor', 'driver'), async (req, res) => {
   try {
     const order = new ProcurementOrder({ ...req.body, createdBy: req.user.id });
     await order.save();
@@ -71,11 +81,15 @@ router.post('/', auth, authorize('admin', 'director', 'procurement-officer', 'ci
   }
 });
 
-// ─── UPDATE (edit) – only pending ──────────────────────────────
-router.put('/:id', auth, authorize('admin', 'director', 'procurement-officer', 'civil-engineer', 'quantity-surveyor'), async (req, res) => {
+// ─── UPDATE (edit) – only if pending ──────────────────────────
+router.put('/:id', auth, authorize('admin', 'director', 'procurement-officer', 'civil-engineer', 'quantity-surveyor', 'driver'), async (req, res) => {
   try {
     const order = await ProcurementOrder.findById(req.params.id);
     if (!order) return res.status(404).json({ error: 'Order not found' });
+    // If driver, check ownership
+    if (req.user.role === 'driver' && order.createdBy.toString() !== req.user.id) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
     if (order.status !== 'pending') {
       return res.status(400).json({ error: 'Only pending orders can be edited' });
     }
@@ -118,8 +132,9 @@ router.put('/:id', auth, authorize('admin', 'director', 'procurement-officer', '
   }
 });
 
-// ─── APPROVE (→ funded) ──────────────────────────────────────────
+// ─── APPROVE (set status → 'funded') ──────────────────────────
 router.put('/:id/approve', auth, authorize('admin', 'director', 'accountant'), async (req, res) => {
+  // approval logic unchanged
   try {
     const order = await ProcurementOrder.findById(req.params.id);
     if (!order) return res.status(404).json({ error: 'Order not found' });
@@ -153,7 +168,7 @@ router.put('/:id/approve', auth, authorize('admin', 'director', 'accountant'), a
   }
 });
 
-// ─── REJECT ──────────────────────────────────────────────────────
+// ─── REJECT (set status → 'rejected') ──────────────────────────
 router.put('/:id/reject', auth, authorize('admin', 'director', 'accountant'), async (req, res) => {
   try {
     const order = await ProcurementOrder.findById(req.params.id);
@@ -186,7 +201,7 @@ router.put('/:id/reject', auth, authorize('admin', 'director', 'accountant'), as
   }
 });
 
-// ─── FUND (backward compat) ──────────────────────────────────────
+// ─── FUND (backward compatibility) ────────────────────────────
 router.put('/:id/fund', auth, authorize('admin', 'director', 'accountant'), async (req, res) => {
   try {
     const order = await ProcurementOrder.findById(req.params.id);
@@ -209,10 +224,20 @@ router.put('/:id/fund', auth, authorize('admin', 'director', 'accountant'), asyn
 });
 
 // ─── DELETE ──────────────────────────────────────────────────────
-router.delete('/:id', auth, authorize('admin', 'director', 'procurement-officer', 'civil-engineer', 'quantity-surveyor'), async (req, res) => {
+router.delete('/:id', auth, authorize('admin', 'director', 'procurement-officer', 'civil-engineer', 'quantity-surveyor', 'driver'), async (req, res) => {
   try {
-    const deleted = await ProcurementOrder.findByIdAndDelete(req.params.id);
-    if (!deleted) return res.status(404).json({ error: 'Order not found' });
+    const order = await ProcurementOrder.findById(req.params.id);
+    if (!order) return res.status(404).json({ error: 'Order not found' });
+    // If driver, check ownership and only if pending
+    if (req.user.role === 'driver') {
+      if (order.createdBy.toString() !== req.user.id) {
+        return res.status(403).json({ error: 'Access denied' });
+      }
+      if (order.status !== 'pending') {
+        return res.status(400).json({ error: 'Cannot delete approved/rejected order' });
+      }
+    }
+    await ProcurementOrder.findByIdAndDelete(req.params.id);
     res.json({ message: 'Deleted' });
   } catch (err) {
     res.status(400).json({ error: err.message });
