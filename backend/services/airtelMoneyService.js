@@ -1,118 +1,134 @@
 const axios = require('axios');
+const crypto = require('crypto');
 
-// Airtel Money API Configuration
-// Replace these with your actual credentials from Airtel
-const AIRTEL_CONFIG = {
-  baseURL: process.env.AIRTEL_API_URL || 'https://openapi.airtel.africa',
-  clientId: process.env.AIRTEL_CLIENT_ID || '',
-  clientSecret: process.env.AIRTEL_CLIENT_SECRET || '',
-  apiKey: process.env.AIRTEL_API_KEY || '',
-  // For Zambia, the country code is 'ZM'
-  country: 'ZM',
-  currency: 'ZMW',
-};
+/**
+ * Send money via Airtel Money API (real integration)
+ * Uses environment variables:
+ *   - AIRTEL_CLIENT_ID
+ *   - AIRTEL_CLIENT_SECRET
+ *   - AIRTEL_API_URL (e.g., https://openapi.airtel.africa)
+ *   - AIRTEL_API_KEY (if required)
+ *
+ * Returns: { status, transactionId, data }
+ */
+const sendMoney = async (recipientPhone, amount, reference, description) => {
+  const clientId = process.env.AIRTEL_CLIENT_ID;
+  const clientSecret = process.env.AIRTEL_CLIENT_SECRET;
+  const apiUrl = process.env.AIRTEL_API_URL || 'https://openapi.airtel.africa';
 
-// Get access token from Airtel
-const getAccessToken = async () => {
+  if (!clientId || !clientSecret) {
+    throw new Error('AIRTEL_CLIENT_ID and AIRTEL_CLIENT_SECRET are required');
+  }
+
   try {
-    const response = await axios.post(
-      `${AIRTEL_CONFIG.baseURL}/auth/oauth2/token`,
+    // Step 1: Obtain access token
+    const tokenResponse = await axios.post(
+      `${apiUrl}/auth/oauth/token`,
       {
-        client_id: AIRTEL_CONFIG.clientId,
-        client_secret: AIRTEL_CONFIG.clientSecret,
+        client_id: clientId,
+        client_secret: clientSecret,
         grant_type: 'client_credentials',
       },
       {
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
       }
     );
-    return response.data.access_token;
-  } catch (error) {
-    console.error('❌ Failed to get Airtel access token:', error.response?.data || error.message);
-    throw new Error('Failed to authenticate with Airtel Money API');
-  }
-};
 
-// Send money to a recipient
-const sendMoney = async (recipientPhone, amount, reference, description = 'Worker Payment') => {
-  try {
-    // Get access token
-    const token = await getAccessToken();
-    
-    // Format phone number (remove + if present, ensure country code)
-    let phone = recipientPhone.replace(/^\+/, '');
-    if (!phone.startsWith('26')) {
-      phone = `26${phone.replace(/^0/, '')}`;
+    const accessToken = tokenResponse.data?.access_token;
+    if (!accessToken) {
+      throw new Error('Failed to obtain Airtel access token');
     }
-    
-    // Prepare payment payload
-    const payload = {
-      reference: reference,
+
+    // Step 2: Initiate payment
+    const paymentPayload = {
+      reference: reference || `PAY-${Date.now()}`,
       subscriber: {
-        country: AIRTEL_CONFIG.country,
-        currency: AIRTEL_CONFIG.currency,
-        msisdn: phone,
+        country: 'ZM',
+        currency: 'ZMW',
+        msisdn: recipientPhone.replace(/^0+/, '260'), // Normalize to 260...
       },
       transaction: {
-        amount: parseFloat(amount).toFixed(2),
-        description: description || 'Worker Payment',
-        country: AIRTEL_CONFIG.country,
-        currency: AIRTEL_CONFIG.currency,
+        amount: amount.toString(),
+        country: 'ZM',
+        currency: 'ZMW',
+        description: description || 'Payment from Purveyols CMS',
       },
     };
-    
-    console.log(`📤 Sending payment to Airtel:`, payload);
-    
-    const response = await axios.post(
-      `${AIRTEL_CONFIG.baseURL}/standard/v1/payments`,
-      payload,
+
+    const paymentResponse = await axios.post(
+      `${apiUrl}/merchant/v2/payments/`,
+      paymentPayload,
       {
         headers: {
+          'Authorization': `Bearer ${accessToken}`,
           'Content-Type': 'application/json',
-          'Accept': 'application/json',
-          'Authorization': `Bearer ${token}`,
-          'X-Country': AIRTEL_CONFIG.country,
-          'X-Currency': AIRTEL_CONFIG.currency,
-          'api-key': AIRTEL_CONFIG.apiKey,
+          'X-Country': 'ZM',
+          'X-Currency': 'ZMW',
         },
       }
     );
-    
-    console.log('✅ Airtel payment successful:', response.data);
-    return response.data;
+
+    return {
+      status: 'success',
+      transactionId: paymentResponse.data?.data?.transactionId || paymentResponse.data?.transactionId,
+      data: paymentResponse.data,
+    };
+
   } catch (error) {
-    console.error('❌ Airtel payment failed:', error.response?.data || error.message);
-    throw new Error(error.response?.data?.message || 'Airtel payment failed');
+    console.error('Airtel Money API error:', error.response?.data || error.message);
+    throw new Error(error.response?.data?.message || error.message || 'Airtel payment failed');
   }
 };
 
-// Check transaction status
+/**
+ * Check transaction status with Airtel
+ */
 const checkTransactionStatus = async (reference) => {
+  const clientId = process.env.AIRTEL_CLIENT_ID;
+  const clientSecret = process.env.AIRTEL_CLIENT_SECRET;
+  const apiUrl = process.env.AIRTEL_API_URL || 'https://openapi.airtel.africa';
+
+  if (!clientId || !clientSecret) {
+    throw new Error('AIRTEL_CLIENT_ID and AIRTEL_CLIENT_SECRET are required');
+  }
+
   try {
-    const token = await getAccessToken();
-    
-    const response = await axios.get(
-      `${AIRTEL_CONFIG.baseURL}/standard/v1/payments/${reference}`,
+    // Obtain access token again
+    const tokenResponse = await axios.post(
+      `${apiUrl}/auth/oauth/token`,
+      {
+        client_id: clientId,
+        client_secret: clientSecret,
+        grant_type: 'client_credentials',
+      },
+      {
+        headers: { 'Content-Type': 'application/json' },
+      }
+    );
+
+    const accessToken = tokenResponse.data?.access_token;
+    if (!accessToken) {
+      throw new Error('Failed to obtain Airtel access token');
+    }
+
+    const statusResponse = await axios.get(
+      `${apiUrl}/merchant/v2/payments/status/${reference}`,
       {
         headers: {
-          'Authorization': `Bearer ${token}`,
-          'X-Country': AIRTEL_CONFIG.country,
-          'api-key': AIRTEL_CONFIG.apiKey,
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+          'X-Country': 'ZM',
+          'X-Currency': 'ZMW',
         },
       }
     );
-    
-    return response.data;
+
+    return statusResponse.data;
+
   } catch (error) {
-    console.error('❌ Status check failed:', error.response?.data || error.message);
-    return { status: 'FAILED' };
+    console.error('Airtel status check error:', error.response?.data || error.message);
+    throw new Error(error.response?.data?.message || error.message || 'Status check failed');
   }
 };
 
-module.exports = {
-  sendMoney,
-  checkTransactionStatus,
-};
+module.exports = { sendMoney, checkTransactionStatus };
