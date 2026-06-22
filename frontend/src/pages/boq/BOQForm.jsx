@@ -32,8 +32,8 @@ const BOQForm = () => {
   const [creator, setCreator] = useState(null);
   const [message, setMessage] = useState(null);
 
-  // ✅ Allow: Engineer, QS, Procurement Officer, Director, Admin
-  const canEdit = ['civil-engineer', 'quantity-surveyor', 'procurement-officer', 'director', 'admin'].includes(user?.role);
+  // ✅ Allow: Engineer, QS, Procurement Officer, Director, Admin, AND Accountant
+  const canEdit = ['civil-engineer', 'quantity-surveyor', 'procurement-officer', 'director', 'admin', 'accountant'].includes(user?.role);
 
   const sectionTemplates = [
     {
