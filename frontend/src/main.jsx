@@ -7,8 +7,9 @@ import { AuthProvider } from './context/AuthContext';
 import { CssBaseline } from '@mui/material';
 import { initOfflineSync } from './utils/offlineSync';
 import { syncAllData } from './services/dataSyncService';
+import api from './api/axios';
 
-// Register service worker
+// ─── Register service worker ──────────────────────────────────
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     try {
@@ -26,17 +27,13 @@ if ('serviceWorker' in navigator) {
   });
 }
 
-// Initialize offline sync
-try {
-  initOfflineSync();
-} catch (e) {
-  console.log('Offline sync not available:', e);
-}
+// ─── Initialize offline sync ──────────────────────────────────
+const cleanup = initOfflineSync(api);
 
-// Preload data from API into persistent storage
+// ─── Preload data from API into persistent storage ──────────
 setTimeout(() => {
   syncAllData().then(results => {
-    console.log('📦 Data preloaded into persistent storage:', results);
+    console.log('📦 Data preloaded into persistent storage:', Object.keys(results));
   }).catch(err => {
     console.log('Data preload failed:', err);
   });
