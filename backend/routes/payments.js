@@ -44,13 +44,11 @@ router.post('/', auth, authorize('admin', 'director', 'accountant'), async (req,
 
     const senderName = await getSenderName(req.user.id);
 
-    // Notify all accountants and directors
+    // ─── Notify ONLY accountants ──────────────────────────
     const accountants = await User.find({ role: 'accountant' });
-    const directors = await User.find({ role: 'director' });
-    const recipients = [...accountants, ...directors];
-    for (let recipient of recipients) {
+    for (let accountant of accountants) {
       await createNotification(
-        recipient._id,
+        accountant._id,
         'payment_made',
         'Payment Made',
         `${senderName} paid ${recipientName} ZMW ${amount}`,
@@ -58,7 +56,7 @@ router.post('/', auth, authorize('admin', 'director', 'accountant'), async (req,
       );
     }
 
-    // Notify the worker if they have a user account (optional)
+    // Optionally notify the worker if they have a user account
     if (worker) {
       const workerUser = await User.findOne({ email: recipientPhone });
       if (workerUser) {
@@ -116,6 +114,19 @@ router.post('/bulk', auth, authorize('admin', 'director', 'accountant'), async (
         );
       }
     }
+
+    // ─── Notify ONLY accountants about bulk payments ──────
+    const accountants = await User.find({ role: 'accountant' });
+    for (let accountant of accountants) {
+      await createNotification(
+        accountant._id,
+        'payment_made',
+        'Bulk Payments Made',
+        `${senderName} made bulk payments totaling ZMW ${created.reduce((sum, p) => sum + p.amount, 0)}`,
+        `/payments`
+      );
+    }
+
     res.status(201).json(created);
   } catch (err) {
     res.status(400).json({ error: err.message });
