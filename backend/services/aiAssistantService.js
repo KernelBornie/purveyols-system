@@ -84,6 +84,7 @@ Question: ${query}`;
 
 /**
  * Rule‑based fallback – answers general knowledge and system data.
+ * No generic menu – only specific answers or a simple "I don't know".
  */
 const getRuleBasedResponse = async (query, userId) => {
   const q = query.toLowerCase().trim();
@@ -375,45 +376,10 @@ Would you like more details on any of these?`,
     };
   }
 
-  // ─── 4. Catch‑all: answer based on keywords ──────────────────
-  // If we still can't match, try to extract a topic and respond with a generic but helpful answer.
-  const words = q.split(/\s+/);
-  const commonTopics = ['construction', 'building', 'engineering', 'design', 'architecture', 'project', 'management', 'cost', 'safety', 'quality', 'schedule'];
-  let detectedTopic = null;
-  for (const word of words) {
-    if (commonTopics.includes(word)) {
-      detectedTopic = word;
-      break;
-    }
-  }
-
-  if (detectedTopic) {
-    return {
-      text: `I see you're asking about **${detectedTopic}**. I can give you a detailed answer! Could you be more specific? For example, "What are the best practices for project management?" or "How to estimate construction costs?"`,
-      type: 'general'
-    };
-  }
-
-  // Final fallback: friendly "ask me anything" with examples
+  // ─── 4. If nothing matches, give a simple "I don't know" ────
+  // No generic menu – just a straightforward answer.
   return {
-    text: `🤖 **PURVEYOLS ASSISTANT AI**
-
-I can help with:
-
-📊 **System Data** (in tables):
-• "Show me projects" → project table
-• "Show me workers" → worker table
-• "Show me funding requests" → funding table
-
-🏗️ **Drawings** (in SVG):
-• "Draw a site plan" → detailed SVG site plan
-
-🌍 **General Knowledge**:
-• "What is artificial intelligence?"
-• "What is the capital of Zambia?"
-• "Explain concrete mix design"
-
-💡 **Just ask me anything** – I'll respond with a table, drawing, or clear explanation.`,
+    text: "I'm sorry, I don't have information on that topic. I'm designed to answer about construction management, system data, drawings, and general knowledge. Please ask something else.",
     type: 'general'
   };
 };
