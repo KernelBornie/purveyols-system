@@ -14,7 +14,7 @@ const ProjectSchema = new mongoose.Schema({
 
   // ─── New fields ──────────────────────────────────────────────
   image: { type: String, default: '' },          // base64 image or URL
-  progress: { type: Number, default: 0, min: 0, max: 100 }, // 0-100%
+  progress: { type: Number, default: 0, min: 0, max: 100 },
 
   // ─── From awarded bids ──────────────────────────────────────
   bidSource: { type: String, default: '' },
