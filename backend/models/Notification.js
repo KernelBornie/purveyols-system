@@ -22,16 +22,22 @@ const NotificationSchema = new mongoose.Schema({
       'payment_initiated',
       'payment_received',
       'payment_failed',
-      'payment_confirmed'
+      'payment_confirmed',
+      'safety_report_created',
+      'visitor_logged',
+      'logbook_entry',
+      'spare_part_requested',
+      'spare_part_approved',
+      'spare_part_rejected',
     ],
     required: true
   },
   title: { type: String, required: true },
   message: { type: String, required: true },
-  link: { type: String },
+  link: { type: String, default: '' },
   read: { type: Boolean, default: false },
+  data: { type: mongoose.Schema.Types.Mixed },
   createdAt: { type: Date, default: Date.now },
-  data: { type: mongoose.Schema.Types.Mixed } // extra context
 });
 
 module.exports = mongoose.model('Notification', NotificationSchema);
