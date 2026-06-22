@@ -19,7 +19,8 @@ const ProcurementList = () => {
   const [error, setError] = useState(null);
   const { user } = useAuth();
 
-  const canEdit = ['procurement-officer', 'civil-engineer', 'quantity-surveyor', 'director', 'admin'].includes(user?.role);
+  // ✅ Drivers can also edit/create/delete their own
+  const canEdit = ['procurement-officer', 'civil-engineer', 'quantity-surveyor', 'director', 'admin', 'driver'].includes(user?.role);
 
   useEffect(() => {
     fetchOrders();
