@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const mongoose = require('mongoose'); // ✅ Added for ObjectId validation
+const mongoose = require('mongoose');
 const Message = require('../models/Message');
 const User = require('../models/User');
 const auth = require('../middleware/auth');
@@ -39,7 +39,6 @@ router.post('/', auth, async (req, res) => {
   try {
     const { to, subject, content } = req.body;
 
-    // ─── Validate required fields ──────────────────────────
     if (!to || !content) {
       return res.status(400).json({ error: 'Recipient and content are required' });
     }
@@ -49,16 +48,13 @@ router.post('/', auth, async (req, res) => {
       return res.status(400).json({ error: 'Invalid recipient ID format' });
     }
 
-    // ─── Check if recipient exists ─────────────────────────
     const recipient = await User.findById(to);
     if (!recipient) {
       return res.status(404).json({ error: 'Recipient not found' });
     }
 
-    // ─── Get sender's name for notification ────────────────
     const senderName = await getSenderName(req.user.id);
 
-    // ─── Create and save the message ────────────────────────
     const message = new Message({
       from: req.user.id,
       to,
@@ -67,8 +63,7 @@ router.post('/', auth, async (req, res) => {
     });
     await message.save();
 
-    // ─── Log for debugging ──────────────────────────────────
-    console.log(`📩 Message sent from ${req.user.id} to ${to}`);
+    console.log(`📩 Message from ${req.user.id} to ${to}`);
 
     // ─── Notify only the recipient ──────────────────────────
     await createNotification(
@@ -79,7 +74,6 @@ router.post('/', auth, async (req, res) => {
       `/messages/${message._id}`
     );
 
-    // ─── Populate and return the saved message ──────────────
     const populated = await Message.findById(message._id)
       .populate('from', 'name role')
       .populate('to', 'name role');
@@ -110,12 +104,9 @@ router.delete('/:id', auth, async (req, res) => {
   try {
     const message = await Message.findOne({ _id: req.params.id });
     if (!message) return res.status(404).json({ error: 'Message not found' });
-
-    // Only sender or recipient can delete
     if (message.from.toString() !== req.user.id && message.to.toString() !== req.user.id) {
       return res.status(403).json({ error: 'Not authorized' });
     }
-
     await Message.findByIdAndDelete(req.params.id);
     res.json({ message: 'Deleted' });
   } catch (err) {
@@ -139,12 +130,9 @@ router.get('/unread-count', auth, async (req, res) => {
 router.get('/conversation/:otherUserId', auth, async (req, res) => {
   try {
     const { otherUserId } = req.params;
-
-    // Validate otherUserId
     if (!mongoose.Types.ObjectId.isValid(otherUserId)) {
       return res.status(400).json({ error: 'Invalid user ID' });
     }
-
     const messages = await Message.find({
       $or: [
         { from: req.user.id, to: otherUserId },
@@ -154,7 +142,6 @@ router.get('/conversation/:otherUserId', auth, async (req, res) => {
       .populate('from', 'name role')
       .populate('to', 'name role')
       .sort({ createdAt: 1 });
-
     res.json(messages);
   } catch (err) {
     console.error('Conversation error:', err);
