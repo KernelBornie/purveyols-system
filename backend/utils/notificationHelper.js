@@ -3,13 +3,6 @@ const User = require('../models/User');
 
 /**
  * Create an in-app notification for a user
- * @param {string} userId - The recipient's user ID
- * @param {string} type - Notification type (must match enum)
- * @param {string} title - Short title
- * @param {string} message - Detailed message
- * @param {string} link - Optional link (e.g., '/boq/123')
- * @param {object} data - Optional extra data
- * @returns {Promise<object>} The created notification
  */
 const createNotification = async (userId, type, title, message, link = null, data = null) => {
   try {
@@ -33,8 +26,6 @@ const createNotification = async (userId, type, title, message, link = null, dat
 
 /**
  * Get sender's name from user ID
- * @param {string} userId - The sender's user ID
- * @returns {Promise<string>} The sender's name
  */
 const getSenderName = async (userId) => {
   try {
@@ -47,8 +38,6 @@ const getSenderName = async (userId) => {
 
 /**
  * Get sender's role from user ID
- * @param {string} userId - The sender's user ID
- * @returns {Promise<string>} The sender's role
  */
 const getSenderRole = async (userId) => {
   try {
