@@ -63,26 +63,26 @@ function App() {
             <Route path="/workers" element={<WorkerList />} />
             <Route path="/workers/new" element={<WorkerForm />} />
             <Route path="/workers/:id" element={<WorkerForm />} />
-            <Route path="/workers/:id/edit" element={<WorkerForm />} /> {/* Edit route */}
+            <Route path="/workers/:id/edit" element={<WorkerForm />} />
 
             {/* Projects */}
             <Route path="/projects" element={<ProjectList />} />
             <Route path="/projects/new" element={<ProjectForm />} />
             <Route path="/projects/:id" element={<ProjectForm />} />
-            <Route path="/projects/:id/edit" element={<ProjectForm />} /> {/* Edit route */}
+            <Route path="/projects/:id/edit" element={<ProjectForm />} />
             <Route path="/projects/:projectId/planning" element={<ProjectPlanning />} />
 
             {/* Procurement / Material Requisition */}
             <Route path="/procurement" element={<ProcurementList />} />
             <Route path="/procurement/new" element={<ProcurementForm />} />
             <Route path="/procurement/:id" element={<ProcurementForm />} />
-            <Route path="/procurement/:id/edit" element={<ProcurementForm />} /> {/* Edit route */}
+            <Route path="/procurement/:id/edit" element={<ProcurementForm />} />
 
             {/* Funding Requests */}
             <Route path="/funding" element={<FundingRequestList />} />
             <Route path="/funding/new" element={<FundingRequestForm />} />
             <Route path="/funding/:id" element={<FundingRequestForm />} />
-            <Route path="/funding/:id/edit" element={<FundingRequestForm />} /> {/* Edit route */}
+            <Route path="/funding/:id/edit" element={<FundingRequestForm />} />
 
             {/* Payments - redirect */}
             <Route path="/payments/:id" element={<Navigate to="/dashboard" replace />} />
@@ -91,13 +91,13 @@ function App() {
             <Route path="/subcontracts" element={<SubcontractList />} />
             <Route path="/subcontracts/new" element={<SubcontractForm />} />
             <Route path="/subcontracts/:id" element={<SubcontractForm />} />
-            <Route path="/subcontracts/:id/edit" element={<SubcontractForm />} /> {/* Edit route */}
+            <Route path="/subcontracts/:id/edit" element={<SubcontractForm />} />
 
             {/* BOQ */}
             <Route path="/boq" element={<BOQList />} />
             <Route path="/boq/new" element={<BOQForm />} />
             <Route path="/boq/:id" element={<BOQForm />} />
-            <Route path="/boq/:id/edit" element={<BOQForm />} /> {/* Edit route */}
+            <Route path="/boq/:id/edit" element={<BOQForm />} />
 
             {/* Advertised Projects */}
             <Route path="/advertised-projects" element={<AdvertisedProjects />} />
@@ -107,7 +107,7 @@ function App() {
             <Route path="/delivery" element={<DeliveryNoteList />} />
             <Route path="/delivery/new" element={<DeliveryNote />} />
             <Route path="/delivery/:id" element={<DeliveryNote />} />
-            <Route path="/delivery/:id/edit" element={<DeliveryNote />} /> {/* ← EDIT ROUTE ADDED */}
+            <Route path="/delivery/:id/edit" element={<DeliveryNote />} />
 
             {/* Site Plans */}
             <Route path="/site-plans" element={<SitePlanList />} />
