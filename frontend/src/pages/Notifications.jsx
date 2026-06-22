@@ -88,6 +88,9 @@ const Notifications = () => {
       safety_report_created: 'Safety Report',
       visitor_logged: 'Visitor Logged',
       logbook_entry: 'Logbook Entry',
+      spare_part_requested: 'Spare Part Requested',
+      spare_part_approved: 'Spare Part Approved',
+      spare_part_rejected: 'Spare Part Rejected',
     };
     return labels[type] || type;
   };
@@ -106,6 +109,9 @@ const Notifications = () => {
       visitor_logged: '#9c27b0',
       logbook_entry: '#00bcd4',
       subcontract_created: '#3f51b5',
+      spare_part_requested: '#ff6f00',
+      spare_part_approved: '#4caf50',
+      spare_part_rejected: '#f44336',
     };
     return colors[type] || '#ff9800';
   };
