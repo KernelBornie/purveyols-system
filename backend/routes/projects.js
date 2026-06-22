@@ -6,7 +6,6 @@ const auth = require('../middleware/auth');
 const authorize = require('../middleware/rbac');
 const { createNotification, getSenderName, getSenderRole } = require('../utils/notificationHelper');
 
-// ─── GET all ──────────────────────────────────────────────────
 router.get('/', auth, async (req, res) => {
   try {
     const projects = await Project.find()
@@ -18,7 +17,6 @@ router.get('/', auth, async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// ─── GET single ──────────────────────────────────────────────
 router.get('/:id', auth, async (req, res) => {
   try {
     const project = await Project.findById(req.params.id)
@@ -31,7 +29,6 @@ router.get('/:id', auth, async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// ─── CREATE ──────────────────────────────────────────────────
 router.post('/', auth, authorize('admin', 'director', 'civil-engineer'), async (req, res) => {
   try {
     const project = new Project({ ...req.body, createdBy: req.user.id });
@@ -54,11 +51,12 @@ router.post('/', auth, authorize('admin', 'director', 'civil-engineer'), async (
       `/projects/${project._id}`
     );
 
-    // ─── Notify directors ────────────────────────────────────
+    // ─── Notify directors (exclude creator) ──────────────
     const directors = await User.find({ role: 'director' });
-    for (let director of directors) {
+    const recipients = directors.filter(d => d._id.toString() !== req.user.id);
+    for (let recipient of recipients) {
       await createNotification(
-        director._id,
+        recipient._id,
         'project_created',
         'New Project Created',
         `${senderName} (${senderRole}) created a new project: "${project.name}"`,
@@ -69,7 +67,6 @@ router.post('/', auth, authorize('admin', 'director', 'civil-engineer'), async (
   } catch (err) { res.status(400).json({ error: err.message }); }
 });
 
-// ─── UPDATE ──────────────────────────────────────────────────
 router.put('/:id', auth, authorize('admin', 'director', 'civil-engineer', 'accountant'), async (req, res) => {
   try {
     const updated = await Project.findByIdAndUpdate(req.params.id, req.body, { new: true })
@@ -82,7 +79,6 @@ router.put('/:id', auth, authorize('admin', 'director', 'civil-engineer', 'accou
   } catch (err) { res.status(400).json({ error: err.message }); }
 });
 
-// ─── DELETE ──────────────────────────────────────────────────
 router.delete('/:id', auth, authorize('admin', 'director'), async (req, res) => {
   try {
     const deleted = await Project.findByIdAndDelete(req.params.id);
@@ -91,7 +87,6 @@ router.delete('/:id', auth, authorize('admin', 'director'), async (req, res) => 
   } catch (err) { res.status(400).json({ error: err.message }); }
 });
 
-// ─── APPROVE ──────────────────────────────────────────────────
 router.put('/:id/approve', auth, authorize('admin', 'director'), async (req, res) => {
   try {
     const project = await Project.findById(req.params.id);
@@ -107,7 +102,6 @@ router.put('/:id/approve', auth, authorize('admin', 'director'), async (req, res
     const senderName = await getSenderName(req.user.id);
     const projectName = project.name;
 
-    // ─── Notify creator ──────────────────────────────────────
     await createNotification(
       project.createdBy,
       'project_approved',
@@ -119,7 +113,6 @@ router.put('/:id/approve', auth, authorize('admin', 'director'), async (req, res
   } catch (err) { res.status(400).json({ error: err.message }); }
 });
 
-// ─── REJECT ──────────────────────────────────────────────────
 router.put('/:id/reject', auth, authorize('admin', 'director'), async (req, res) => {
   try {
     const project = await Project.findById(req.params.id);
