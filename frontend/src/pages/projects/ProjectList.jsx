@@ -94,6 +94,12 @@ const ProjectList = () => {
               <TableCell>Location</TableCell>
               <TableCell>Status</TableCell>
               <TableCell>Budget</TableCell>
+              <TableCell>Deadline</TableCell>
+              <TableCell>Bidder</TableCell>
+              <TableCell>Bid Source</TableCell>
+              <TableCell>Bid Amount</TableCell>
+              <TableCell>Assigned Staff</TableCell>
+              <TableCell>Time Frame</TableCell>
               <TableCell>Manager</TableCell>
               <TableCell>Actions</TableCell>
             </TableRow>
@@ -116,6 +122,24 @@ const ProjectList = () => {
                 <TableCell>
                   {new Intl.NumberFormat('en-ZM', { style: 'currency', currency: 'ZMW' }).format(project.budget || 0)}
                 </TableCell>
+                <TableCell>
+                  {project.endDate ? new Date(project.endDate).toLocaleDateString() : '—'}
+                </TableCell>
+                <TableCell>{project.bidder?.name || '—'}</TableCell>
+                <TableCell>
+                  {project.bidSource ? (
+                    <Tooltip title={project.sourceUrl || ''}>
+                      <span>{project.bidSource}</span>
+                    </Tooltip>
+                  ) : '—'}
+                </TableCell>
+                <TableCell>
+                  {project.bidAmount ? new Intl.NumberFormat('en-ZM', { style: 'currency', currency: 'ZMW' }).format(project.bidAmount) : '—'}
+                </TableCell>
+                <TableCell>
+                  {project.assignedStaff?.map(staff => staff.name).join(', ') || '—'}
+                </TableCell>
+                <TableCell>{project.timeFrame || '—'}</TableCell>
                 <TableCell>{project.manager?.name || 'N/A'}</TableCell>
                 <TableCell>
                   <Tooltip title="View">
@@ -125,32 +149,30 @@ const ProjectList = () => {
                   </Tooltip>
 
                   {!isViewOnly && (
-                    <Tooltip title="Edit">
-                      <IconButton component={Link} to={`/projects/${project._id}/edit`} size="small" color="primary">
-                        <EditIcon fontSize="small" />
-                      </IconButton>
-                    </Tooltip>
-                  )}
-
-                  <Tooltip title="Planning">
-                    <IconButton component={Link} to={`/projects/${project._id}/planning`} size="small" color="secondary">
-                      <TimelineIcon fontSize="small" />
-                    </IconButton>
-                  </Tooltip>
-
-                  {!isViewOnly && (
-                    <Tooltip title="Delete">
-                      <IconButton size="small" color="error" onClick={() => handleDelete(project._id)}>
-                        <DeleteIcon fontSize="small" />
-                      </IconButton>
-                    </Tooltip>
+                    <>
+                      <Tooltip title="Edit">
+                        <IconButton component={Link} to={`/projects/${project._id}/edit`} size="small" color="primary">
+                          <EditIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                      <Tooltip title="Planning">
+                        <IconButton component={Link} to={`/projects/${project._id}/planning`} size="small" color="secondary">
+                          <TimelineIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                      <Tooltip title="Delete">
+                        <IconButton size="small" color="error" onClick={() => handleDelete(project._id)}>
+                          <DeleteIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                    </>
                   )}
                 </TableCell>
               </TableRow>
             ))}
             {projects.length === 0 && (
               <TableRow>
-                <TableCell colSpan={7} align="center" sx={{ py: 3 }}>
+                <TableCell colSpan={13} align="center" sx={{ py: 3 }}>
                   <Typography variant="body2" color="textSecondary">No projects yet.</Typography>
                 </TableCell>
               </TableRow>
