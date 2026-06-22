@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const Bid = require('../models/Bid');
+const Project = require('../models/Project');
 const auth = require('../middleware/auth');
 
 // Get all bids for current user
@@ -58,6 +59,56 @@ router.delete('/:id', auth, async (req, res) => {
     if (!bid) return res.status(404).json({ error: 'Bid not found' });
     res.json({ message: 'Bid deleted' });
   } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── Convert awarded bid to Project ──────────────────────────
+router.post('/:id/convert-to-project', auth, async (req, res) => {
+  try {
+    const bid = await Bid.findOne({ _id: req.params.id, user: req.user.id });
+    if (!bid) return res.status(404).json({ error: 'Bid not found' });
+    if (bid.status !== 'awarded') {
+      return res.status(400).json({ error: 'Only awarded bids can be converted to projects' });
+    }
+    if (bid.isConverted) {
+      return res.status(400).json({ error: 'This bid has already been converted to a project' });
+    }
+
+    // Create a new Project from the bid data
+    const project = new Project({
+      name: bid.projectTitle || 'Project from Bid',
+      location: bid.location || '',
+      budget: parseFloat(bid.budget?.replace(/[^0-9.-]+/g, '')) || 0,
+      endDate: bid.deadline ? new Date(bid.deadline) : null,
+      status: 'planning',
+      createdBy: req.user.id,
+      bidder: req.user.id,
+      bidSource: bid.source || '',
+      bidAmount: parseFloat(bid.bidAmount?.replace(/[^0-9.-]+/g, '')) || 0,
+      assignedStaff: [],
+      timeFrame: '',
+      isFromBid: true,
+      sourceUrl: bid.sourceUrl || '',
+      description: bid.description || '',
+      manager: null,
+    });
+
+    await project.save();
+
+    // Mark bid as converted
+    bid.convertedToProject = project._id;
+    bid.isConverted = true;
+    bid.updatedAt = new Date();
+    await bid.save();
+
+    res.status(201).json({
+      message: 'Project created successfully from bid!',
+      project,
+      bid
+    });
+  } catch (err) {
+    console.error('Convert bid error:', err);
     res.status(500).json({ error: err.message });
   }
 });
