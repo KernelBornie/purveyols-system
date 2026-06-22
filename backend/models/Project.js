@@ -12,7 +12,11 @@ const ProjectSchema = new mongoose.Schema({
   createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   createdAt: { type: Date, default: Date.now },
 
-  // ─── New fields for awarded bids ──────────────────────────
+  // ─── New fields ──────────────────────────────────────────────
+  image: { type: String, default: '' },          // base64 image or URL
+  progress: { type: Number, default: 0, min: 0, max: 100 }, // 0-100%
+
+  // ─── From awarded bids ──────────────────────────────────────
   bidSource: { type: String, default: '' },
   bidder: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   bidAmount: { type: Number, default: 0 },
