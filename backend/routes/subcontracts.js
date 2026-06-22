@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const Subcontract = require('../models/Subcontract');
 const auth = require('../middleware/auth');
+const authorize = require('../middleware/rbac');
 
 router.get('/', auth, async (req, res) => {
   try {
@@ -12,7 +13,7 @@ router.get('/', auth, async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-router.post('/', auth, async (req, res) => {
+router.post('/', auth, authorize('admin', 'director', 'procurement-officer', 'civil-engineer', 'quantity-surveyor', 'accountant'), async (req, res) => {
   try {
     const sub = new Subcontract({ ...req.body, createdBy: req.user.id });
     await sub.save();
@@ -23,7 +24,7 @@ router.post('/', auth, async (req, res) => {
   } catch (err) { res.status(400).json({ error: err.message }); }
 });
 
-router.put('/:id', auth, async (req, res) => {
+router.put('/:id', auth, authorize('admin', 'director', 'procurement-officer', 'civil-engineer', 'quantity-surveyor', 'accountant'), async (req, res) => {
   try {
     const sub = await Subcontract.findByIdAndUpdate(req.params.id, req.body, { new: true })
       .populate('project', 'name')
@@ -32,7 +33,7 @@ router.put('/:id', auth, async (req, res) => {
   } catch (err) { res.status(400).json({ error: err.message }); }
 });
 
-router.delete('/:id', auth, async (req, res) => {
+router.delete('/:id', auth, authorize('admin', 'director', 'procurement-officer', 'accountant'), async (req, res) => {
   try {
     await Subcontract.findByIdAndDelete(req.params.id);
     res.json({ message: 'Deleted' });
