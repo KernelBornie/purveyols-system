@@ -6,13 +6,15 @@ const authorize = require('../middleware/rbac');
 const { createNotification } = require('../utils/notificationHelper');
 const User = require('../models/User');
 
-// ─── GET all – drivers see only their own ──────────────────────
+// ─── GET all – drivers see only their own, others see all ──────────
 router.get('/', auth, async (req, res) => {
   try {
     let filter = {};
     if (req.user.role === 'driver') {
       filter.createdBy = req.user.id;
     }
+    // Safety officers can see all (like procurement officers)
+    // So no filter for safety-officer
     const orders = await ProcurementOrder.find(filter)
       .populate('project', 'name')
       .populate('createdBy', 'name role')
@@ -66,7 +68,7 @@ router.get('/:id', auth, async (req, res) => {
 });
 
 // ─── CREATE ──────────────────────────────────────────────────────
-router.post('/', auth, authorize('admin', 'director', 'procurement-officer', 'civil-engineer', 'quantity-surveyor', 'driver'), async (req, res) => {
+router.post('/', auth, authorize('admin', 'director', 'procurement-officer', 'civil-engineer', 'quantity-surveyor', 'driver', 'safety-officer'), async (req, res) => {
   try {
     const order = new ProcurementOrder({ ...req.body, createdBy: req.user.id });
     await order.save();
@@ -82,12 +84,12 @@ router.post('/', auth, authorize('admin', 'director', 'procurement-officer', 'ci
 });
 
 // ─── UPDATE (edit) – only if pending ──────────────────────────
-router.put('/:id', auth, authorize('admin', 'director', 'procurement-officer', 'civil-engineer', 'quantity-surveyor', 'driver'), async (req, res) => {
+router.put('/:id', auth, authorize('admin', 'director', 'procurement-officer', 'civil-engineer', 'quantity-surveyor', 'driver', 'safety-officer'), async (req, res) => {
   try {
     const order = await ProcurementOrder.findById(req.params.id);
     if (!order) return res.status(404).json({ error: 'Order not found' });
-    // If driver, check ownership
-    if (req.user.role === 'driver' && order.createdBy.toString() !== req.user.id) {
+    // If driver or safety officer, check ownership (safety-officer can edit only their own)
+    if ((req.user.role === 'driver' || req.user.role === 'safety-officer') && order.createdBy.toString() !== req.user.id) {
       return res.status(403).json({ error: 'Access denied' });
     }
     if (order.status !== 'pending') {
@@ -134,7 +136,6 @@ router.put('/:id', auth, authorize('admin', 'director', 'procurement-officer', '
 
 // ─── APPROVE (set status → 'funded') ──────────────────────────
 router.put('/:id/approve', auth, authorize('admin', 'director', 'accountant'), async (req, res) => {
-  // approval logic unchanged
   try {
     const order = await ProcurementOrder.findById(req.params.id);
     if (!order) return res.status(404).json({ error: 'Order not found' });
@@ -224,12 +225,12 @@ router.put('/:id/fund', auth, authorize('admin', 'director', 'accountant'), asyn
 });
 
 // ─── DELETE ──────────────────────────────────────────────────────
-router.delete('/:id', auth, authorize('admin', 'director', 'procurement-officer', 'civil-engineer', 'quantity-surveyor', 'driver'), async (req, res) => {
+router.delete('/:id', auth, authorize('admin', 'director', 'procurement-officer', 'civil-engineer', 'quantity-surveyor', 'driver', 'safety-officer'), async (req, res) => {
   try {
     const order = await ProcurementOrder.findById(req.params.id);
     if (!order) return res.status(404).json({ error: 'Order not found' });
-    // If driver, check ownership and only if pending
-    if (req.user.role === 'driver') {
+    // If driver or safety officer, check ownership and only if pending
+    if (req.user.role === 'driver' || req.user.role === 'safety-officer') {
       if (order.createdBy.toString() !== req.user.id) {
         return res.status(403).json({ error: 'Access denied' });
       }
