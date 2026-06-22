@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const SparePartRequest = require('../models/SparePartRequest');
-const User = require('../models/User');
+const User = require('../models/User'); // ✅ Correct path
 const auth = require('../middleware/auth');
 const { createNotification, getSenderName } = require('../utils/notificationHelper');
 
