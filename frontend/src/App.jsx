@@ -32,6 +32,9 @@ import DrawingForm from './pages/drawings/DrawingForm';
 import SurveyList from './pages/surveys/SurveyList';
 import SurveyForm from './pages/surveys/SurveyForm';
 import ProjectPlanning from './pages/projects/ProjectPlanning';
+import Notifications from './pages/Notifications';
+import SparePartList from './pages/spare-parts/SparePartList';
+import SparePartForm from './pages/spare-parts/SparePartForm';
 
 const AuthRedirect = () => {
   const { user, loading } = useAuth();
@@ -58,6 +61,7 @@ function App() {
             <Route path="/settings" element={<Settings />} />
             <Route path="/messages" element={<Messages />} />
             <Route path="/messages/:id" element={<Navigate to="/messages" replace />} />
+            <Route path="/notifications" element={<Notifications />} />
 
             {/* Workers */}
             <Route path="/workers" element={<WorkerList />} />
@@ -126,6 +130,12 @@ function App() {
             <Route path="/surveys/new" element={<SurveyForm />} />
             <Route path="/surveys/:id" element={<SurveyForm />} />
             <Route path="/surveys/:id/edit" element={<SurveyForm />} />
+
+            {/* Spare Parts */}
+            <Route path="/spare-parts" element={<SparePartList />} />
+            <Route path="/spare-parts/new" element={<SparePartForm />} />
+            <Route path="/spare-parts/:id" element={<SparePartForm />} />
+            <Route path="/spare-parts/:id/edit" element={<SparePartForm />} />
           </Route>
         </Routes>
       </BrowserRouter>
