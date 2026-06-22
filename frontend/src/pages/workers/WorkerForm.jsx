@@ -27,6 +27,9 @@ const WorkerForm = () => {
 
   const viewOnlyRoles = ['driver', 'receptionist', 'safety-officer'];
   const isViewOnly = viewOnlyRoles.includes(user?.role);
+  // ✅ Allow accountant to edit
+  const canEdit = !isViewOnly || user?.role === 'accountant'; // More precisely:
+  const canEditWorker = ['admin', 'director', 'civil-engineer', 'foreman', 'accountant'].includes(user?.role);
 
   useEffect(() => {
     if (id) {
@@ -47,17 +50,17 @@ const WorkerForm = () => {
           setMessage({ type: 'error', text: 'Failed to load worker' });
         });
     } else {
-      if (isViewOnly) {
+      if (!canEditWorker) {
         navigate('/workers');
         return;
       }
       setEnroller(user);
     }
-  }, [id, user, isViewOnly, navigate]);
+  }, [id, user, canEditWorker, navigate]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (isViewOnly) return;
+    if (!canEditWorker) return;
     setLoading(true);
     setMessage(null);
     try {
@@ -90,7 +93,7 @@ const WorkerForm = () => {
     <Paper sx={{ p: 3, maxWidth: '700px', mx: 'auto' }}>
       <BackButton />
       {message && <Alert severity={message.type} sx={{ mb: 2 }}>{message.text}</Alert>}
-      {isViewOnly && (
+      {!canEditWorker && (
         <Alert severity="info" sx={{ mb: 2 }}>
           You have view‑only access. Edits are disabled.
         </Alert>
@@ -135,8 +138,8 @@ const WorkerForm = () => {
               onChange={e => setForm({ ...form, name: e.target.value })}
               required
               placeholder="Enter worker's full name..."
-              disabled={isViewOnly}
-              InputProps={{ readOnly: isViewOnly }}
+              disabled={!canEditWorker}
+              InputProps={{ readOnly: !canEditWorker }}
             />
           </Grid>
           <Grid item xs={12} md={6}>
@@ -147,8 +150,8 @@ const WorkerForm = () => {
               onChange={e => setForm({ ...form, nrc: e.target.value })}
               required
               placeholder="e.g., 123456/78/9"
-              disabled={isViewOnly}
-              InputProps={{ readOnly: isViewOnly }}
+              disabled={!canEditWorker}
+              InputProps={{ readOnly: !canEditWorker }}
             />
           </Grid>
           <Grid item xs={12} md={6}>
@@ -158,8 +161,8 @@ const WorkerForm = () => {
               value={form.phone}
               onChange={e => setForm({ ...form, phone: e.target.value })}
               placeholder="e.g., +260 97 1234567"
-              disabled={isViewOnly}
-              InputProps={{ readOnly: isViewOnly }}
+              disabled={!canEditWorker}
+              InputProps={{ readOnly: !canEditWorker }}
             />
           </Grid>
           <Grid item xs={12} md={6}>
@@ -171,8 +174,8 @@ const WorkerForm = () => {
               onChange={e => setForm({ ...form, dailyRate: e.target.value })}
               inputProps={{ min: 0, step: 0.01 }}
               placeholder="0.00"
-              disabled={isViewOnly}
-              InputProps={{ readOnly: isViewOnly }}
+              disabled={!canEditWorker}
+              InputProps={{ readOnly: !canEditWorker }}
             />
           </Grid>
           <Grid item xs={12} md={6}>
@@ -182,8 +185,8 @@ const WorkerForm = () => {
               value={form.site}
               onChange={e => setForm({ ...form, site: e.target.value })}
               placeholder="e.g., Lusaka, Site A"
-              disabled={isViewOnly}
-              InputProps={{ readOnly: isViewOnly }}
+              disabled={!canEditWorker}
+              InputProps={{ readOnly: !canEditWorker }}
             />
           </Grid>
           <Grid item xs={12}>
@@ -193,7 +196,7 @@ const WorkerForm = () => {
               fullWidth
               value={form.status}
               onChange={e => setForm({ ...form, status: e.target.value })}
-              disabled={isViewOnly}
+              disabled={!canEditWorker}
             >
               <MenuItem value="active">Active</MenuItem>
               <MenuItem value="suspended">Suspended</MenuItem>
@@ -225,7 +228,7 @@ const WorkerForm = () => {
 
         {/* Buttons */}
         <Box sx={{ mt: 4, display: 'flex', gap: 2 }}>
-          {!isViewOnly && (
+          {canEditWorker && (
             <Button type="submit" variant="contained" startIcon={<SaveIcon />} disabled={loading}>
               {loading ? 'Saving...' : 'Save Worker'}
             </Button>
