@@ -1,95 +1,170 @@
-// Offline sync utility with fallback to localStorage
-// This version works without localforage to avoid build issues
+// ─── Offline Sync Queue Manager ──────────────────────────────
+const STORAGE_KEY = 'offlineQueue';
+const RETRY_DELAY = 5000; // 5 seconds
+const MAX_RETRIES = 3;
 
-// Use localStorage as fallback
-const store = {
-  getItem: async (key) => {
-    try {
-      const data = localStorage.getItem(key);
-      return data ? JSON.parse(data) : null;
-    } catch (e) { return null; }
-  },
-  setItem: async (key, value) => {
-    try {
-      localStorage.setItem(key, JSON.stringify(value));
-      return value;
-    } catch (e) { return null; }
-  },
-  removeItem: async (key) => {
-    try {
-      localStorage.removeItem(key);
-      return true;
-    } catch (e) { return false; }
+let isProcessing = false;
+let syncInterval = null;
+
+/**
+ * Get the current sync queue from localStorage
+ */
+const getQueue = () => {
+  try {
+    const data = localStorage.getItem(STORAGE_KEY);
+    return data ? JSON.parse(data) : [];
+  } catch {
+    return [];
   }
 };
 
-// Queue an operation for sync when online
-export const queueSync = async (operation, data) => {
-  const queue = (await store.getItem('syncQueue')) || [];
-  queue.push({ operation, data, timestamp: new Date().toISOString() });
-  await store.setItem('syncQueue', queue);
-  console.log('📦 Queued for sync:', operation, data);
-  return queue.length;
+/**
+ * Save the sync queue to localStorage
+ */
+const saveQueue = (queue) => {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(queue));
+  } catch (e) {
+    console.warn('Failed to save sync queue:', e);
+  }
 };
 
-// Process sync queue when online
-export const processSyncQueue = async () => {
-  // We don't auto-process to avoid conflicts, we'll just check
-  console.log('🔄 Sync check...');
-  return { results: [], failed: [] };
+/**
+ * Add an offline request to the queue
+ * @param {object} request - { method, url, data, headers, timestamp, retries }
+ */
+export const enqueueRequest = (request) => {
+  const queue = getQueue();
+  queue.push({
+    ...request,
+    timestamp: Date.now(),
+    retries: 0,
+  });
+  saveQueue(queue);
+  console.log(`📦 Request queued for offline sync: ${request.method} ${request.url}`);
 };
 
-// Get sync status
+/**
+ * Process the sync queue – replay all pending requests
+ * @param {function} apiCall - function to execute the request (e.g., axios instance)
+ * @returns {Promise<{ success: number, failed: number }>}
+ */
+export const processQueue = async (apiCall) => {
+  if (isProcessing) return;
+  const queue = getQueue();
+  if (queue.length === 0) return;
+
+  isProcessing = true;
+  console.log(`🔄 Processing ${queue.length} queued requests...`);
+
+  let success = 0;
+  let failed = 0;
+  const newQueue = [];
+
+  for (const request of queue) {
+    try {
+      await apiCall({
+        method: request.method,
+        url: request.url,
+        data: request.data,
+        headers: request.headers || {},
+      });
+      success++;
+      console.log(`✅ Replayed: ${request.method} ${request.url}`);
+    } catch (error) {
+      request.retries = (request.retries || 0) + 1;
+      if (request.retries < MAX_RETRIES) {
+        newQueue.push(request);
+        console.warn(`⏳ Retry ${request.retries}/${MAX_RETRIES}: ${request.method} ${request.url}`);
+      } else {
+        failed++;
+        console.error(`❌ Failed permanently: ${request.method} ${request.url}`, error);
+        // Optionally notify user of permanent failure
+      }
+    }
+  }
+
+  saveQueue(newQueue);
+  isProcessing = false;
+  console.log(`✅ Sync complete: ${success} succeeded, ${failed} failed, ${newQueue.length} remaining`);
+
+  // If there are still items, schedule another attempt
+  if (newQueue.length > 0 && !syncInterval) {
+    syncInterval = setInterval(() => processQueue(apiCall), RETRY_DELAY);
+  } else if (newQueue.length === 0 && syncInterval) {
+    clearInterval(syncInterval);
+    syncInterval = null;
+  }
+
+  return { success, failed, remaining: newQueue.length };
+};
+
+/**
+ * Check if there are pending items in the queue
+ */
+export const hasPending = () => {
+  return getQueue().length > 0;
+};
+
+/**
+ * Clear the queue (e.g., on logout)
+ */
+export const clearQueue = () => {
+  saveQueue([]);
+  if (syncInterval) {
+    clearInterval(syncInterval);
+    syncInterval = null;
+  }
+  console.log('🧹 Offline sync queue cleared');
+};
+
+/**
+ * Get the current sync status (pending count)
+ */
 export const getSyncStatus = async () => {
-  const queue = (await store.getItem('syncQueue')) || [];
+  const queue = getQueue();
   return { pending: queue.length, queue };
 };
 
-// Clear sync queue
-export const clearSyncQueue = async () => {
-  await store.removeItem('syncQueue');
-  console.log('🗑️ Sync queue cleared');
-};
-
-// Check if online and process
-export const checkAndSync = async () => {
-  if (navigator.onLine) {
+/**
+ * Init offline sync – set up online/offline listeners
+ * @param {function} apiCall - the axios instance to use for replay
+ */
+export const initOfflineSync = (apiCall) => {
+  // Listen for online events
+  const handleOnline = () => {
     console.log('🌐 Online - checking sync queue...');
-    const status = await getSyncStatus();
-    if (status.pending > 0) {
-      console.log(`📤 ${status.pending} items pending sync`);
-    }
+    processQueue(apiCall);
+  };
+
+  const handleOffline = () => {
+    console.log('📴 Offline - requests will be queued');
+  };
+
+  window.addEventListener('online', handleOnline);
+  window.addEventListener('offline', handleOffline);
+
+  // If we're already online, process queue immediately
+  if (navigator.onLine) {
+    setTimeout(() => processQueue(apiCall), 1000);
   }
-};
 
-// Initialize offline sync
-export const initOfflineSync = () => {
-  console.log('🔁 Offline sync initialized (using localStorage fallback)');
-  
-  // Check on load
-  setTimeout(async () => {
-    await checkAndSync();
-  }, 3000);
-
-  // Check when coming online
-  window.addEventListener('online', async () => {
-    console.log('🌐 Online detected - checking sync...');
-    await checkAndSync();
-  });
-
-  // Periodic check (every 30 seconds)
-  setInterval(async () => {
-    if (navigator.onLine) {
-      await checkAndSync();
+  // Return cleanup function
+  return () => {
+    window.removeEventListener('online', handleOnline);
+    window.removeEventListener('offline', handleOffline);
+    if (syncInterval) {
+      clearInterval(syncInterval);
+      syncInterval = null;
     }
-  }, 30000);
+  };
 };
 
 export default {
-  queueSync,
-  processSyncQueue,
+  enqueueRequest,
+  processQueue,
+  hasPending,
+  clearQueue,
   getSyncStatus,
-  clearSyncQueue,
-  checkAndSync,
   initOfflineSync,
 };
