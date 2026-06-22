@@ -19,8 +19,8 @@ const ProcurementList = () => {
   const [error, setError] = useState(null);
   const { user } = useAuth();
 
-  // ✅ Edit allowed for: procurement, engineer, QS, director, admin, driver, AND safety-officer
-  const canEdit = ['procurement-officer', 'civil-engineer', 'quantity-surveyor', 'director', 'admin', 'driver', 'safety-officer'].includes(user?.role);
+  // ✅ Edit allowed for: procurement, engineer, QS, director, admin, driver, safety-officer, AND accountant
+  const canEdit = ['procurement-officer', 'civil-engineer', 'quantity-surveyor', 'director', 'admin', 'driver', 'safety-officer', 'accountant'].includes(user?.role);
 
   useEffect(() => {
     fetchOrders();
