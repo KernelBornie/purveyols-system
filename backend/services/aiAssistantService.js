@@ -46,10 +46,10 @@ You have access to the following real data from the user's system:
 ${context}
 
 Your task is to answer the user's question as thoroughly and helpfully as possible.
-- If the question is about the user's specific data (projects, workers, funding, etc.), use the data above.
-- If the question is about general knowledge (history, science, geography, culture, etc.), provide a clear, accurate, and concise answer.
-- If the user asks to "draw" something (site plan, diagram, layout), generate an SVG code block with proper labels and a scale bar.
-- For tables (BOQ, cost breakdown), provide a Markdown table with realistic figures.
+- If the question is about the user's specific data (projects, workers, funding, etc.), use the data above and format it as a Markdown table when appropriate.
+- If the question asks to "draw" something (site plan, diagram, layout), generate an SVG code block with proper labels, dimensions, and a scale bar.
+- For tables (BOQ, cost breakdown, project lists), provide a Markdown table with realistic figures.
+- If the question is about general knowledge, provide a clear, accurate answer.
 - Always respond in plain text, using Markdown for tables and code blocks where helpful.
 - Be friendly and authoritative.
 
@@ -63,7 +63,7 @@ Question: ${query}`;
         { role: 'system', content: systemPrompt },
         { role: 'user', content: query }
       ],
-      max_tokens: 800,
+      max_tokens: 1000,
       temperature: 0.7,
     },
     {
@@ -83,74 +83,66 @@ Question: ${query}`;
 };
 
 /**
- * Rule‑based fallback – now answers ANY question.
+ * Rule‑based fallback – generates ACTUAL TABLES and SVG ILLUSTRATIONS.
  */
 const getRuleBasedResponse = async (query, userId) => {
   const q = query.toLowerCase().trim();
   const systemData = await gatherSystemData(userId);
   const { projects, workers, funding, payments, procurement, boqs, subcontracts, stats } = systemData;
 
-  // ─── 1. App data queries ──────────────────────────────────────
+  // ─── 1. App data queries with TABLES ──────────────────────────
   if (q.includes('project') || q.includes('projects')) {
     if (!projects || projects.length === 0) return { text: 'No projects found.', type: 'project' };
-    let response = '📋 Your projects:\n';
+    // Generate a Markdown table with project data
+    let table = '| Name | Location | Status | Budget |\n|------|----------|--------|--------|\n';
     projects.forEach(p => {
-      response += `- ${p.name} (${p.status}) – Budget: K${p.budget?.toLocaleString() || 0}\n`;
+      table += `| ${p.name} | ${p.location || '—'} | ${p.status} | K${p.budget?.toLocaleString() || 0} |\n`;
     });
-    return { text: response, type: 'project' };
+    return { text: `📋 **Projects Table**\n\n${table}`, type: 'project' };
   }
   if (q.includes('worker') || q.includes('workers') || q.includes('employee')) {
     if (!workers || workers.length === 0) return { text: 'No workers enrolled.', type: 'worker' };
-    let response = '👷 Workers:\n';
+    let table = '| Name | NRC | Status | Rate (ZMW) |\n|------|-----|--------|------------|\n';
     workers.forEach(w => {
-      response += `- ${w.name} (${w.status}) – Rate: K${w.dailyRate || 0}/day\n`;
+      table += `| ${w.name} | ${w.nrc || '—'} | ${w.status || 'active'} | ${w.dailyRate || 0} |\n`;
     });
-    return { text: response, type: 'worker' };
+    return { text: `👷 **Workers Table**\n\n${table}`, type: 'worker' };
   }
   if (q.includes('funding') || q.includes('fund')) {
     if (!funding || funding.length === 0) return { text: 'No funding requests.', type: 'funding' };
-    let response = '💰 Funding requests:\n';
+    let table = '| Project | Amount | Status |\n|---------|--------|--------|\n';
     funding.forEach(f => {
-      response += `- ${f.project?.name || 'Unknown'} – K${f.amount?.toLocaleString() || 0} (${f.status})\n`;
+      table += `| ${f.project?.name || 'Unknown'} | K${f.amount?.toLocaleString() || 0} | ${f.status} |\n`;
     });
-    return { text: response, type: 'funding' };
+    return { text: `💰 **Funding Requests Table**\n\n${table}`, type: 'funding' };
   }
   if (q.includes('payment') || q.includes('payments')) {
     if (!payments || payments.length === 0) return { text: 'No payments recorded.', type: 'payment' };
-    let response = '💳 Payments:\n';
+    let table = '| Recipient | Amount | Status |\n|-----------|--------|--------|\n';
     payments.forEach(p => {
-      response += `- ${p.recipientName || p.worker?.name || 'Unknown'} – K${p.amount?.toLocaleString() || 0} (${p.status})\n`;
+      table += `| ${p.recipientName || p.worker?.name || 'Unknown'} | K${p.amount?.toLocaleString() || 0} | ${p.status} |\n`;
     });
-    return { text: response, type: 'payment' };
+    return { text: `💳 **Payments Table**\n\n${table}`, type: 'payment' };
   }
   if (q.includes('procurement') || q.includes('order') || q.includes('requisition')) {
     if (!procurement || procurement.length === 0) return { text: 'No procurement orders.', type: 'procurement' };
-    let response = '📦 Procurement orders:\n';
+    let table = '| Order # | Project | Total | Status |\n|---------|---------|-------|--------|\n';
     procurement.forEach(o => {
-      response += `- ${o.project?.name || 'N/A'} – Total: K${o.grandTotal?.toLocaleString() || 0} (${o.status})\n`;
+      table += `| ${o.orderNumber || o._id.slice(-6)} | ${o.project?.name || 'N/A'} | K${o.grandTotal?.toLocaleString() || 0} | ${o.status} |\n`;
     });
-    return { text: response, type: 'procurement' };
+    return { text: `📦 **Procurement Orders Table**\n\n${table}`, type: 'procurement' };
   }
   if (q.includes('boq') || q.includes('bill of quantities')) {
     if (boqs && boqs.length > 0) {
-      let response = '📊 Your BOQs:\n';
+      let table = '| Project | Items | Grand Total | Status |\n|---------|-------|-------------|--------|\n';
       boqs.forEach(b => {
-        response += `- ${b.project?.name || 'Unknown'} – Items: ${b.items?.length || 0} – Total: K${b.grandTotal?.toLocaleString() || 0} (${b.status})\n`;
+        table += `| ${b.project?.name || 'Unknown'} | ${b.items?.length || 0} | K${b.grandTotal?.toLocaleString() || 0} | ${b.status} |\n`;
       });
-      return { text: response, type: 'boq' };
+      return { text: `📊 **BOQs Table**\n\n${table}`, type: 'boq' };
     } else {
+      // Generate a sample BOQ table
       return {
-        text: `📋 **What is a BOQ (Bill of Quantities)?**
-
-A Bill of Quantities is a construction document that lists all the materials, parts, and labor required for a project, with their quantities, unit rates, and total costs.
-
-**Key purposes:**
-• Helps in cost estimation and budgeting
-• Serves as a basis for tendering and bidding
-• Provides a clear breakdown of project costs
-• Acts as a reference during project execution
-
-**Example BOQ Table:**
+        text: `📋 **Sample BOQ Table**
 
 | Item | Description | Qty | Unit | Rate (ZMW) | Amount (ZMW) |
 |------|-------------|-----|------|------------|--------------|
@@ -165,89 +157,136 @@ A Bill of Quantities is a construction document that lists all the materials, pa
 |      | VAT (16%)      |     |      |            | **33,440**   |
 |      | **GRAND TOTAL** |    |      |            | **257,070**  |
 
-In PURVEYOLS CMS, you can create, edit, and approve BOQs for each project.`,
+To create actual BOQs in the system, visit the BOQ page and use the "New BOQ" button.`,
         type: 'boq'
       };
     }
   }
   if (q.includes('subcontract') || q.includes('vendor')) {
     if (!subcontracts || subcontracts.length === 0) return { text: 'No subcontracts.', type: 'subcontract' };
-    let response = '📄 Subcontracts:\n';
+    let table = '| Vendor | Service | Amount | Status |\n|--------|---------|--------|--------|\n';
     subcontracts.forEach(s => {
-      response += `- ${s.vendor} – Service: ${s.service || 'N/A'} – K${s.amount?.toLocaleString() || 0} (${s.status})\n`;
+      table += `| ${s.vendor} | ${s.service || 'N/A'} | K${s.amount?.toLocaleString() || 0} | ${s.status} |\n`;
     });
-    return { text: response, type: 'subcontract' };
+    return { text: `📄 **Subcontracts Table**\n\n${table}`, type: 'subcontract' };
   }
   if (q.includes('status') || q.includes('overview') || q.includes('summary')) {
     return {
-      text: `📊 Overview:\n- ${stats.totalProjects || 0} projects\n- ${stats.totalWorkers || 0} workers\n- ${stats.totalFunding || 0} funding requests (${stats.pendingFunding || 0} pending)\n- ${stats.totalPayments || 0} payments`,
+      text: `📊 **System Overview Table**
+
+| Metric | Value |
+|--------|-------|
+| Projects | ${stats.totalProjects || 0} |
+| Workers | ${stats.totalWorkers || 0} |
+| Funding Requests | ${stats.totalFunding || 0} |
+| Pending Funding | ${stats.pendingFunding || 0} |
+| Payments | ${stats.totalPayments || 0} |
+| Procurement Orders | ${procurement?.length || 0} |
+| BOQs | ${boqs?.length || 0} |`,
       type: 'stats'
     };
   }
 
-  // ─── 2. Draw requests (SVG) ──────────────────────────────────
+  // ─── 2. Draw requests – DETAILED SVG ──────────────────────────
   if (q.includes('draw') && (q.includes('site plan') || q.includes('plan') || q.includes('layout') || q.includes('diagram'))) {
     return {
-      text: `📐 **Here’s a simple SVG site plan you can copy and view in your browser:**
+      text: `📐 **Detailed SVG Site Plan with Dimensions**
 
 \`\`\`svg
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 400" width="100%" height="auto">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 500" width="100%" height="auto">
   <!-- Property boundary -->
-  <rect x="50" y="50" width="400" height="300" fill="#f0f8f0" stroke="#333" stroke-width="2" />
+  <rect x="50" y="50" width="500" height="400" fill="#f0f8f0" stroke="#333" stroke-width="2" />
   
   <!-- Title -->
-  <text x="250" y="30" text-anchor="middle" font-family="Arial" font-size="14" font-weight="bold">SITE PLAN – EXAMPLE</text>
+  <text x="300" y="30" text-anchor="middle" font-family="Arial" font-size="16" font-weight="bold">SITE PLAN WITH DIMENSIONS</text>
   
   <!-- Scale bar -->
-  <line x1="50" y1="370" x2="150" y2="370" stroke="#000" stroke-width="2" />
-  <line x1="50" y1="365" x2="50" y2="375" stroke="#000" stroke-width="1" />
-  <line x1="150" y1="365" x2="150" y2="375" stroke="#000" stroke-width="1" />
-  <text x="100" y="390" text-anchor="middle" font-family="Arial" font-size="10">0    10    20 m</text>
+  <line x1="50" y1="470" x2="250" y2="470" stroke="#000" stroke-width="2" />
+  <line x1="50" y1="465" x2="50" y2="475" stroke="#000" stroke-width="1" />
+  <line x1="100" y1="465" x2="100" y2="475" stroke="#000" stroke-width="1" />
+  <line x1="150" y1="465" x2="150" y2="475" stroke="#000" stroke-width="1" />
+  <line x1="200" y1="465" x2="200" y2="475" stroke="#000" stroke-width="1" />
+  <line x1="250" y1="465" x2="250" y2="475" stroke="#000" stroke-width="1" />
+  <text x="150" y="495" text-anchor="middle" font-family="Arial" font-size="10">0    10    20    30    40    50 m</text>
   
-  <!-- Existing building -->
-  <rect x="100" y="100" width="120" height="80" fill="#d4e2f0" stroke="#333" stroke-width="2" />
-  <text x="160" y="145" text-anchor="middle" font-family="Arial" font-size="10">Existing Building</text>
+  <!-- Dimensions on boundary -->
+  <text x="300" y="470" text-anchor="middle" font-family="Arial" font-size="10">Boundary: 50m × 40m = 2,000 m²</text>
   
-  <!-- Proposed building -->
-  <rect x="280" y="120" width="130" height="90" fill="#ffd9b3" stroke="#333" stroke-width="2" stroke-dasharray="5,5" />
-  <text x="345" y="170" text-anchor="middle" font-family="Arial" font-size="10" fill="#333">Proposed Building</text>
+  <!-- Existing building with dimensions -->
+  <rect x="100" y="100" width="140" height="100" fill="#d4e2f0" stroke="#333" stroke-width="2" />
+  <text x="170" y="155" text-anchor="middle" font-family="Arial" font-size="10">Existing Building</text>
+  <text x="170" y="170" text-anchor="middle" font-family="Arial" font-size="9">14m × 10m</text>
+  
+  <!-- Proposed building with dimensions -->
+  <rect x="320" y="140" width="160" height="110" fill="#ffd9b3" stroke="#333" stroke-width="2" stroke-dasharray="5,5" />
+  <text x="400" y="200" text-anchor="middle" font-family="Arial" font-size="10" fill="#333">Proposed Building</text>
+  <text x="400" y="215" text-anchor="middle" font-family="Arial" font-size="9" fill="#333">16m × 11m</text>
+  
+  <!-- Setback lines (dashed) -->
+  <rect x="70" y="70" width="460" height="360" fill="none" stroke="#ff6b6b" stroke-width="1" stroke-dasharray="4,4" />
+  <text x="260" y="65" text-anchor="middle" font-family="Arial" font-size="8" fill="#ff6b6b">Setback: 5m from boundary</text>
   
   <!-- Road/driveway -->
-  <rect x="50" y="220" width="400" height="30" fill="#ccc" stroke="#333" stroke-width="1" />
-  <text x="250" y="240" text-anchor="middle" font-family="Arial" font-size="10">Driveway / Access Road</text>
+  <rect x="50" y="280" width="500" height="40" fill="#ccc" stroke="#333" stroke-width="1" />
+  <text x="300" y="305" text-anchor="middle" font-family="Arial" font-size="10">Driveway / Access Road (6m wide)</text>
   
-  <!-- Trees -->
-  <circle cx="80" cy="80" r="12" fill="#2e7d32" stroke="#1b5e20" stroke-width="1" />
-  <circle cx="75" cy="75" r="6" fill="#388e3c" />
-  <text x="80" y="70" text-anchor="middle" font-family="Arial" font-size="8">Tree</text>
+  <!-- Parking -->
+  <rect x="350" y="330" width="100" height="60" fill="#e0e0e0" stroke="#333" stroke-width="1" />
+  <text x="400" y="350" text-anchor="middle" font-family="Arial" font-size="8">Parking</text>
+  <text x="400" y="360" text-anchor="middle" font-family="Arial" font-size="8">10m × 6m</text>
   
-  <circle cx="430" cy="80" r="12" fill="#2e7d32" stroke="#1b5e20" stroke-width="1" />
-  <circle cx="425" cy="75" r="6" fill="#388e3c" />
-  <text x="430" y="70" text-anchor="middle" font-family="Arial" font-size="8">Tree</text>
+  <!-- Trees with labels -->
+  <circle cx="80" cy="80" r="14" fill="#2e7d32" stroke="#1b5e20" stroke-width="1" />
+  <circle cx="75" cy="75" r="7" fill="#388e3c" />
+  <text x="80" y="65" text-anchor="middle" font-family="Arial" font-size="8">Tree 1</text>
+  
+  <circle cx="500" cy="80" r="14" fill="#2e7d32" stroke="#1b5e20" stroke-width="1" />
+  <circle cx="495" cy="75" r="7" fill="#388e3c" />
+  <text x="500" y="65" text-anchor="middle" font-family="Arial" font-size="8">Tree 2</text>
+  
+  <circle cx="80" cy="380" r="14" fill="#2e7d32" stroke="#1b5e20" stroke-width="1" />
+  <circle cx="75" cy="375" r="7" fill="#388e3c" />
+  <text x="80" y="405" text-anchor="middle" font-family="Arial" font-size="8">Tree 3</text>
   
   <!-- Fence line -->
-  <line x1="50" y1="50" x2="450" y2="50" stroke="#8d6e63" stroke-width="2" stroke-dasharray="8,4" />
-  <line x1="450" y1="50" x2="450" y2="350" stroke="#8d6e63" stroke-width="2" stroke-dasharray="8,4" />
-  <text x="460" y="200" font-family="Arial" font-size="10" transform="rotate(90,460,200)">Fence Line</text>
+  <line x1="50" y1="50" x2="550" y2="50" stroke="#8d6e63" stroke-width="2" stroke-dasharray="8,4" />
+  <line x1="550" y1="50" x2="550" y2="450" stroke="#8d6e63" stroke-width="2" stroke-dasharray="8,4" />
+  <text x="565" y="250" font-family="Arial" font-size="10" transform="rotate(90,565,250)">Fence Line</text>
   
   <!-- North arrow -->
-  <polygon points="470,50 480,70 475,70 480,90 485,70 480,70" fill="#000" />
-  <text x="480" y="45" text-anchor="middle" font-family="Arial" font-size="12" font-weight="bold">N</text>
-
-  <!-- Dimensions -->
-  <text x="250" y="360" text-anchor="middle" font-family="Arial" font-size="10">Total Site Area: 40m × 30m = 1200 m²</text>
+  <polygon points="560,60 575,90 570,90 575,110 580,90 575,90" fill="#000" />
+  <text x="575" y="50" text-anchor="middle" font-family="Arial" font-size="14" font-weight="bold">N</text>
+  
+  <!-- Legend -->
+  <rect x="50" y="420" width="15" height="10" fill="#d4e2f0" stroke="#333" />
+  <text x="70" y="429" font-family="Arial" font-size="8">Existing</text>
+  <rect x="120" y="420" width="15" height="10" fill="#ffd9b3" stroke="#333" stroke-dasharray="2,2" />
+  <text x="140" y="429" font-family="Arial" font-size="8">Proposed</text>
+  <rect x="190" y="420" width="15" height="10" fill="#ccc" />
+  <text x="210" y="429" font-family="Arial" font-size="8">Road</text>
+  <circle cx="260" cy="425" r="6" fill="#2e7d32" />
+  <text x="270" y="429" font-family="Arial" font-size="8">Tree</text>
 </svg>
 \`\`\`
 
 **How to use:**  
-Copy the SVG code and save it as a \`.svg\` file, or paste it into an online SVG viewer.  
-This is a basic template – you can modify the dimensions, labels, and elements to match your project.`,
+Copy the SVG code and save it as a \`.svg\` file, or paste it into an online SVG viewer like [svgviewer.dev](https://www.svgviewer.dev/).  
+
+This is a detailed template with:
+- ✅ Property boundary with dimensions
+- ✅ Existing and proposed buildings with sizes
+- ✅ Setback lines (5m from boundary)
+- ✅ Driveway and parking area
+- ✅ Trees and fence line
+- ✅ Scale bar and north arrow
+- ✅ Legend
+
+You can modify the dimensions, labels, and elements to match your specific project.`,
       type: 'general'
     };
   }
 
-  // ─── 3. General knowledge ──────────────────────────────────────
-  // Check for common general questions.
+  // ─── 3. General knowledge with tables where appropriate ────
   const lower = q.toLowerCase();
   if (lower.includes('capital') || lower.includes('country') || lower.includes('city')) {
     if (lower.includes('zambia')) {
@@ -267,39 +306,25 @@ This is a basic template – you can modify the dimensions, labels, and elements
       type: 'general'
     };
   }
-  if (lower.includes('history') || lower.includes('world war') || lower.includes('ancient')) {
-    return {
-      text: 'I have some general knowledge about history. Ask a specific question like "When did World War II start?" or "Who built the Great Wall?"',
-      type: 'general'
-    };
-  }
-  if (lower.includes('science') || lower.includes('gravity') || lower.includes('dna') || lower.includes('planet')) {
-    return {
-      text: 'I can answer science questions! Try asking about physics, chemistry, biology, or astronomy.',
-      type: 'general'
-    };
-  }
 
-  // ─── 4. Catch‑all: give a useful response, not the menu ────
-  // If no specific match, provide a helpful answer or ask for clarification.
+  // ─── 4. Catch‑all: helpful response with examples ──────────
   return {
-    text: `🤖 **That's an interesting question!**
+    text: `🤖 **I can help with:**
 
-I'm designed to help with:
-- **System data** – projects, workers, funding, payments, procurement, BOQs, subcontracts.
-- **Construction knowledge** – how to draw site plans, install CCTV, electrical wiring, structural drawings, safety, etc.
-- **General knowledge** – capitals, history, science, and more.
+1. **System Data** (with tables):
+   • "Show me projects" → I'll give a project table
+   • "Show me workers" → I'll give a worker table
+   • "Show me funding requests" → I'll give a funding table
 
-If you're asking about something specific, try rephrasing or ask me a more focused question. I'm here to help!
+2. **Drawings** (with SVG):
+   • "Draw a site plan" → I'll generate a detailed SVG
+   • "Draw a layout" → I'll generate a layout SVG
 
-💡 **Example questions:**
-• "How many projects do we have?"
-• "Draw a site plan"
-• "What is the capital of Zambia?"
-• "How to install CCTV?"
-• "Explain structural drawings"
+3. **General knowledge**:
+   • "What is the capital of Zambia?"
+   • "Explain the water cycle"
 
-What would you like to know?`,
+💡 **Just ask me anything!** I'll respond with a table, drawing, or explanation.`,
     type: 'general'
   };
 };
