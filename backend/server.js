@@ -18,7 +18,7 @@ app.use((req, res, next) => {
   console.log(`${req.method} ${req.url} - Origin: ${req.headers.origin}`);
   next();
 });
-app.use(express.json());
+app.use(express.json({ limit: '50mb' })); // ✅ Increased limit for images
 app.use(morgan('dev'));
 
 // ─── Auto‑seed if database is empty ──────────────────────────────
@@ -48,7 +48,6 @@ const seedIfEmpty = async () => {
 };
 
 // ─── Routes ──────────────────────────────────────────────────────
-// ❌ REMOVED: app.use('/api/test', require('./routes/test'));
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/chat-history', require('./routes/chatHistory'));
 app.use('/api/ai', require('./routes/ai'));
@@ -77,6 +76,9 @@ app.use('/api/site-plans', require('./routes/sitePlans'));
 app.use('/api/drawings', require('./routes/drawings'));
 app.use('/api/surveys', require('./routes/surveys'));
 
+// ─── Spare Parts (for drivers) ──────────────────────────────────
+app.use('/api/spare-parts', require('./routes/spareParts'));
+
 // ─── Project Planning ────────────────────────────────────────────
 const projectPlanRoutes = require('./routes/projectPlans');
 app.use('/api/project-plans', projectPlanRoutes);
@@ -85,7 +87,6 @@ const siteDiaryRoutes = require('./routes/siteDiary');
 app.use('/api/site-diary', siteDiaryRoutes);
 
 // ─── OpenAI test endpoint (optional) ────────────────────────────
-// If you created test-openai.js, uncomment this line:
 // app.use('/api/test-openai', require('./routes/test-openai'));
 
 // ─── Health check ────────────────────────────────────────────────
