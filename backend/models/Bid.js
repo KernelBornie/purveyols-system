@@ -30,6 +30,10 @@ const BidSchema = new mongoose.Schema({
   user: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now },
+
+  // ─── Conversion tracking ──────────────────────────────
+  convertedToProject: { type: mongoose.Schema.Types.ObjectId, ref: 'Project' },
+  isConverted: { type: Boolean, default: false },
 });
 
 module.exports = mongoose.model('Bid', BidSchema);
