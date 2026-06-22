@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   IconButton,
@@ -10,14 +10,13 @@ import {
   Divider,
   Button,
   Chip,
-  ListItemIcon,
-  ListItemText,
 } from '@mui/material';
 import NotificationsIcon from '@mui/icons-material/Notifications';
 import CircleIcon from '@mui/icons-material/Circle';
-import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import api from '../api/axios';
 import { useAuth } from '../context/AuthContext';
+
+const NOTIFICATION_SOUND = '/notification.mp3';
 
 const NotificationBell = () => {
   const navigate = useNavigate();
@@ -25,7 +24,13 @@ const NotificationBell = () => {
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [anchorEl, setAnchorEl] = useState(null);
-  const [loading, setLoading] = useState(false);
+  const audioRef = useRef(null);
+  const prevUnreadCount = useRef(0);
+
+  useEffect(() => {
+    audioRef.current = new Audio(NOTIFICATION_SOUND);
+    audioRef.current.load();
+  }, []);
 
   const fetchNotifications = async () => {
     if (!user) return;
@@ -33,7 +38,15 @@ const NotificationBell = () => {
       const res = await api.get('/api/notifications');
       const data = res.data || [];
       setNotifications(data);
-      setUnreadCount(data.filter(n => !n.read).length);
+      const newUnread = data.filter(n => !n.read).length;
+      if (newUnread > prevUnreadCount.current) {
+        if (audioRef.current) {
+          audioRef.current.currentTime = 0;
+          audioRef.current.play().catch(() => {});
+        }
+      }
+      prevUnreadCount.current = newUnread;
+      setUnreadCount(newUnread);
     } catch (err) {
       console.error('Failed to fetch notifications:', err);
     }
@@ -47,9 +60,6 @@ const NotificationBell = () => {
 
   const handleOpen = (event) => {
     setAnchorEl(event.currentTarget);
-    // Mark all as read when the menu opens (optional)
-    // You can uncomment this if you want to auto-mark on open
-    // markAllAsRead();
   };
 
   const handleClose = () => {
@@ -61,7 +71,6 @@ const NotificationBell = () => {
     if (notification.link) {
       navigate(notification.link);
     } else {
-      // Fallback: try to construct a link from type
       const fallbackMap = {
         'payment_made': '/payments',
         'payment_failed': '/payments',
@@ -74,22 +83,21 @@ const NotificationBell = () => {
         'boq_shared': '/boq',
         'project_approved': '/projects',
         'project_rejected': '/projects',
+        'safety_report_created': '/safety-reports',
+        'visitor_logged': '/visitors',
+        'logbook_entry': '/logbooks',
+        'subcontract_created': '/subcontracts',
       };
       const fallbackPath = fallbackMap[notification.type];
-      if (fallbackPath) {
-        navigate(fallbackPath);
-      } else {
-        navigate('/dashboard');
-      }
+      if (fallbackPath) navigate(fallbackPath);
+      else navigate('/dashboard');
     }
-    // Mark as read after click
     markAsRead(notification._id);
   };
 
   const markAsRead = async (id) => {
     try {
       await api.put(`/api/notifications/${id}/read`);
-      // Update local state
       setNotifications(prev =>
         prev.map(n => (n._id === id ? { ...n, read: true } : n))
       );
@@ -127,6 +135,9 @@ const NotificationBell = () => {
       message_received: 'New Message',
       project_approved: 'Project Approved',
       project_rejected: 'Project Rejected',
+      safety_report_created: 'Safety Report',
+      visitor_logged: 'Visitor Logged',
+      logbook_entry: 'Logbook Entry',
     };
     return labels[type] || type;
   };
@@ -141,6 +152,10 @@ const NotificationBell = () => {
       procurement_approved: '#4caf50',
       project_approved: '#4caf50',
       project_rejected: '#f44336',
+      safety_report_created: '#ff9800',
+      visitor_logged: '#9c27b0',
+      logbook_entry: '#00bcd4',
+      subcontract_created: '#3f51b5',
     };
     return colors[type] || '#ff9800';
   };
@@ -157,22 +172,14 @@ const NotificationBell = () => {
         anchorEl={anchorEl}
         open={Boolean(anchorEl)}
         onClose={handleClose}
-        PaperProps={{
-          sx: {
-            width: 380,
-            maxHeight: 500,
-            overflow: 'auto',
-          },
-        }}
+        PaperProps={{ sx: { width: 380, maxHeight: 500, overflow: 'auto' } }}
         transformOrigin={{ horizontal: 'right', vertical: 'top' }}
         anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
       >
         <Box sx={{ p: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <Typography variant="h6">Notifications</Typography>
           {unreadCount > 0 && (
-            <Button size="small" onClick={markAllAsRead}>
-              Mark all as read
-            </Button>
+            <Button size="small" onClick={markAllAsRead}>Mark all as read</Button>
           )}
         </Box>
         <Divider />
