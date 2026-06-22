@@ -21,7 +21,7 @@ router.get('/', auth, async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-router.post('/', auth, authorize('admin', 'director', 'civil-engineer', 'foreman'), async (req, res) => {
+router.post('/', auth, authorize('admin', 'director', 'civil-engineer', 'foreman', 'accountant'), async (req, res) => {
   try {
     const worker = new Worker({ ...req.body, enrolledBy: req.user.id });
     await worker.save();
@@ -43,14 +43,14 @@ router.post('/', auth, authorize('admin', 'director', 'civil-engineer', 'foreman
   } catch (err) { res.status(400).json({ error: err.message }); }
 });
 
-router.put('/:id', auth, authorize('admin', 'director', 'civil-engineer', 'foreman'), async (req, res) => {
+router.put('/:id', auth, authorize('admin', 'director', 'civil-engineer', 'foreman', 'accountant'), async (req, res) => {
   try {
     const worker = await Worker.findByIdAndUpdate(req.params.id, req.body, { new: true }).populate('enrolledBy', 'name role');
     res.json(worker);
   } catch (err) { res.status(400).json({ error: err.message }); }
 });
 
-router.delete('/:id', auth, authorize('admin', 'director'), async (req, res) => {
+router.delete('/:id', auth, authorize('admin', 'director', 'accountant'), async (req, res) => {
   try {
     const worker = await Worker.findById(req.params.id);
     if (!worker) return res.status(404).json({ error: 'Worker not found' });
@@ -59,7 +59,7 @@ router.delete('/:id', auth, authorize('admin', 'director'), async (req, res) => 
   } catch (err) { res.status(400).json({ error: err.message }); }
 });
 
-router.put('/:id/activate', auth, authorize('admin', 'director'), async (req, res) => {
+router.put('/:id/activate', auth, authorize('admin', 'director', 'accountant'), async (req, res) => {
   try {
     const worker = await Worker.findById(req.params.id);
     if (!worker) return res.status(404).json({ error: 'Worker not found' });
@@ -70,7 +70,7 @@ router.put('/:id/activate', auth, authorize('admin', 'director'), async (req, re
   } catch (err) { res.status(400).json({ error: err.message }); }
 });
 
-router.put('/:id/deactivate', auth, authorize('admin', 'director'), async (req, res) => {
+router.put('/:id/deactivate', auth, authorize('admin', 'director', 'accountant'), async (req, res) => {
   try {
     const worker = await Worker.findById(req.params.id);
     if (!worker) return res.status(404).json({ error: 'Worker not found' });
@@ -81,7 +81,7 @@ router.put('/:id/deactivate', auth, authorize('admin', 'director'), async (req, 
   } catch (err) { res.status(400).json({ error: err.message }); }
 });
 
-router.put('/:id/suspend', auth, authorize('admin', 'director'), async (req, res) => {
+router.put('/:id/suspend', auth, authorize('admin', 'director', 'accountant'), async (req, res) => {
   try {
     const worker = await Worker.findById(req.params.id);
     if (!worker) return res.status(404).json({ error: 'Worker not found' });
