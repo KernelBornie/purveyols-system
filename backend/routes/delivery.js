@@ -26,7 +26,7 @@ router.get('/:id', auth, async (req, res) => {
 });
 
 // ─── CREATE ─────────────────────────────────────────────────
-router.post('/', auth, authorize('admin', 'director', 'procurement-officer', 'civil-engineer', 'quantity-surveyor', 'driver'), async (req, res) => {
+router.post('/', auth, authorize('admin', 'director', 'procurement-officer', 'civil-engineer', 'quantity-surveyor', 'driver', 'accountant'), async (req, res) => {
   try {
     const note = new Delivery({ ...req.body, createdBy: req.user.id });
     await note.save();
@@ -37,7 +37,7 @@ router.post('/', auth, authorize('admin', 'director', 'procurement-officer', 'ci
 });
 
 // ─── UPDATE ─────────────────────────────────────────────────
-router.put('/:id', auth, authorize('admin', 'director', 'procurement-officer', 'civil-engineer', 'quantity-surveyor', 'driver'), async (req, res) => {
+router.put('/:id', auth, authorize('admin', 'director', 'procurement-officer', 'civil-engineer', 'quantity-surveyor', 'driver', 'accountant'), async (req, res) => {
   try {
     const updated = await Delivery.findByIdAndUpdate(
       req.params.id,
@@ -52,7 +52,7 @@ router.put('/:id', auth, authorize('admin', 'director', 'procurement-officer', '
 });
 
 // ─── DELETE ─────────────────────────────────────────────────
-router.delete('/:id', auth, authorize('admin', 'director', 'procurement-officer', 'civil-engineer', 'quantity-surveyor', 'driver'), async (req, res) => {
+router.delete('/:id', auth, authorize('admin', 'director', 'procurement-officer', 'civil-engineer', 'quantity-surveyor', 'driver', 'accountant'), async (req, res) => {
   try {
     const deleted = await Delivery.findByIdAndDelete(req.params.id);
     if (!deleted) return res.status(404).json({ error: 'Delivery note not found' });
