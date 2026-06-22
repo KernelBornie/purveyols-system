@@ -6,7 +6,6 @@ const auth = require('../middleware/auth');
 const authorize = require('../middleware/rbac');
 const { createNotification, getSenderName } = require('../utils/notificationHelper');
 
-// ─── GET all ──────────────────────────────────────────────────
 router.get('/', auth, async (req, res) => {
   try {
     const subs = await Subcontract.find()
@@ -17,7 +16,6 @@ router.get('/', auth, async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// ─── GET single ──────────────────────────────────────────────
 router.get('/:id', auth, async (req, res) => {
   try {
     const sub = await Subcontract.findById(req.params.id)
@@ -28,7 +26,6 @@ router.get('/:id', auth, async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// ─── CREATE ──────────────────────────────────────────────────
 router.post('/', auth, authorize('admin', 'director', 'procurement-officer', 'civil-engineer', 'quantity-surveyor', 'accountant', 'foreman'), async (req, res) => {
   try {
     const sub = new Subcontract({ ...req.body, createdBy: req.user.id });
@@ -38,10 +35,22 @@ router.post('/', auth, authorize('admin', 'director', 'procurement-officer', 'ci
       .populate('createdBy', 'name role');
 
     const senderName = await getSenderName(req.user.id);
+
+    // ─── Notify creator ──────────────────────────────────────
+    await createNotification(
+      req.user.id,
+      'subcontract_created',
+      'Subcontract Created',
+      `✅ You created a subcontract for ${sub.vendor || 'vendor'}`,
+      `/subcontracts/${sub._id}`
+    );
+
+    // ─── Notify directors, admins, accountants (exclude creator) ─
     const recipients = await User.find({ role: { $in: ['director', 'admin', 'accountant'] } });
-    for (let rec of recipients) {
+    const filtered = recipients.filter(r => r._id.toString() !== req.user.id);
+    for (let recipient of filtered) {
       await createNotification(
-        rec._id,
+        recipient._id,
         'subcontract_created',
         'New Subcontract',
         `${senderName} created a subcontract for ${sub.vendor || 'vendor'}`,
@@ -52,7 +61,6 @@ router.post('/', auth, authorize('admin', 'director', 'procurement-officer', 'ci
   } catch (err) { res.status(400).json({ error: err.message }); }
 });
 
-// ─── UPDATE ──────────────────────────────────────────────────
 router.put('/:id', auth, authorize('admin', 'director', 'procurement-officer', 'civil-engineer', 'quantity-surveyor', 'accountant', 'foreman'), async (req, res) => {
   try {
     const sub = await Subcontract.findByIdAndUpdate(req.params.id, req.body, { new: true })
@@ -63,7 +71,6 @@ router.put('/:id', auth, authorize('admin', 'director', 'procurement-officer', '
   } catch (err) { res.status(400).json({ error: err.message }); }
 });
 
-// ─── DELETE ──────────────────────────────────────────────────
 router.delete('/:id', auth, authorize('admin', 'director', 'procurement-officer', 'accountant', 'foreman'), async (req, res) => {
   try {
     await Subcontract.findByIdAndDelete(req.params.id);
