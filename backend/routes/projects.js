@@ -3,7 +3,7 @@ const router = express.Router();
 const Project = require('../models/Project');
 const auth = require('../middleware/auth');
 const authorize = require('../middleware/rbac');
-const { createNotification } = require('../utils/notificationHelper');
+const { createNotification, getSenderName } = require('../utils/notificationHelper');
 
 // ─── GET all ──────────────────────────────────────────────────
 router.get('/', auth, async (req, res) => {
@@ -35,7 +35,7 @@ router.get('/:id', auth, async (req, res) => {
 });
 
 // ─── CREATE ──────────────────────────────────────────────────
-router.post('/', auth, authorize('admin', 'director'), async (req, res) => {
+router.post('/', auth, authorize('admin', 'director', 'civil-engineer'), async (req, res) => {
   try {
     const project = new Project({ ...req.body, createdBy: req.user.id });
     await project.save();
@@ -51,7 +51,8 @@ router.post('/', auth, authorize('admin', 'director'), async (req, res) => {
 });
 
 // ─── UPDATE ──────────────────────────────────────────────────
-router.put('/:id', auth, authorize('admin', 'director'), async (req, res) => {
+// ✅ Allow admin, director, civil-engineer, and accountant
+router.put('/:id', auth, authorize('admin', 'director', 'civil-engineer', 'accountant'), async (req, res) => {
   try {
     const updated = await Project.findByIdAndUpdate(req.params.id, req.body, { new: true })
       .populate('manager', 'name role')
@@ -88,11 +89,12 @@ router.put('/:id/approve', auth, authorize('admin', 'director'), async (req, res
       .populate('createdBy', 'name role')
       .populate('bidder', 'name role')
       .populate('assignedStaff', 'name role');
+    const senderName = await getSenderName(req.user.id);
     await createNotification(
       project.createdBy,
       'project_approved',
       'Project Approved',
-      `Your project "${project.name}" has been approved by ${req.user.name}`,
+      `Your project "${project.name}" has been approved by ${senderName}`,
       `/projects/${project._id}`
     );
     res.json(populated);
@@ -113,11 +115,12 @@ router.put('/:id/reject', auth, authorize('admin', 'director'), async (req, res)
       .populate('createdBy', 'name role')
       .populate('bidder', 'name role')
       .populate('assignedStaff', 'name role');
+    const senderName = await getSenderName(req.user.id);
     await createNotification(
       project.createdBy,
       'project_rejected',
       'Project Rejected',
-      `Your project "${project.name}" has been rejected by ${req.user.name}`,
+      `Your project "${project.name}" has been rejected by ${senderName}`,
       `/projects/${project._id}`
     );
     res.json(populated);
