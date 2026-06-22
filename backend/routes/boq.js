@@ -33,8 +33,7 @@ router.get('/:id', auth, async (req, res) => {
 });
 
 // ─── CREATE ──────────────────────────────────────────────────────
-router.post('/', auth, authorize('admin', 'director', 'quantity-surveyor', 'civil-engineer', 'procurement-officer'), async (req, res) => {
-  // ... existing creation code (unchanged, we keep as before)
+router.post('/', auth, authorize('admin', 'director', 'quantity-surveyor', 'civil-engineer', 'procurement-officer', 'foreman'), async (req, res) => {
   try {
     const { items, preliminaries, contingency, vat, ...rest } = req.body;
     let subTotal = 0;
@@ -60,7 +59,6 @@ router.post('/', auth, authorize('admin', 'director', 'quantity-surveyor', 'civi
     const populated = await BOQ.findById(boq._id)
       .populate('project', 'name')
       .populate('createdBy', 'name role');
-    // Notify directors
     const directors = await User.find({ role: 'director' });
     for (let director of directors) {
       await createNotification(
@@ -78,7 +76,7 @@ router.post('/', auth, authorize('admin', 'director', 'quantity-surveyor', 'civi
 });
 
 // ─── UPDATE ──────────────────────────────────────────────────────
-router.put('/:id', auth, authorize('admin', 'director', 'quantity-surveyor', 'civil-engineer', 'procurement-officer', 'accountant'), async (req, res) => {
+router.put('/:id', auth, authorize('admin', 'director', 'quantity-surveyor', 'civil-engineer', 'procurement-officer', 'accountant', 'foreman'), async (req, res) => {
   try {
     const { items, preliminaries, contingency, vat, ...rest } = req.body;
     let subTotal = 0;
@@ -111,7 +109,7 @@ router.put('/:id', auth, authorize('admin', 'director', 'quantity-surveyor', 'ci
 });
 
 // ─── SUBMIT ──────────────────────────────────────────────────────
-router.put('/:id/submit', auth, authorize('admin', 'director', 'quantity-surveyor', 'civil-engineer', 'procurement-officer', 'accountant'), async (req, res) => {
+router.put('/:id/submit', auth, authorize('admin', 'director', 'quantity-surveyor', 'civil-engineer', 'procurement-officer', 'accountant', 'foreman'), async (req, res) => {
   try {
     const boq = await BOQ.findById(req.params.id);
     if (!boq) return res.status(404).json({ error: 'BOQ not found' });
@@ -139,7 +137,6 @@ router.put('/:id/submit', auth, authorize('admin', 'director', 'quantity-surveyo
 
 // ─── APPROVE ──────────────────────────────────────────────────────
 router.put('/:id/approve', auth, authorize('admin', 'director'), async (req, res) => {
-  // unchanged
   try {
     const boq = await BOQ.findById(req.params.id);
     if (!boq) return res.status(404).json({ error: 'BOQ not found' });
@@ -169,7 +166,6 @@ router.put('/:id/approve', auth, authorize('admin', 'director'), async (req, res
 
 // ─── DELETE ──────────────────────────────────────────────────────
 router.delete('/:id', auth, authorize('admin', 'director'), async (req, res) => {
-  // unchanged (or optionally add accountant)
   try {
     const deleted = await BOQ.findByIdAndDelete(req.params.id);
     if (!deleted) return res.status(404).json({ error: 'BOQ not found' });
