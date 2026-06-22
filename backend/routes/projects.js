@@ -9,7 +9,9 @@ router.get('/', auth, async (req, res) => {
   try {
     const projects = await Project.find()
       .populate('manager', 'name role')
-      .populate('createdBy', 'name role');
+      .populate('createdBy', 'name role')
+      .populate('bidder', 'name role')
+      .populate('assignedStaff', 'name role');
     res.json(projects);
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
@@ -20,7 +22,9 @@ router.post('/', auth, authorize('admin', 'director'), async (req, res) => {
     await project.save();
     const populated = await Project.findById(project._id)
       .populate('manager', 'name role')
-      .populate('createdBy', 'name role');
+      .populate('createdBy', 'name role')
+      .populate('bidder', 'name role')
+      .populate('assignedStaff', 'name role');
     res.status(201).json(populated);
   } catch (err) { res.status(400).json({ error: err.message }); }
 });
@@ -29,7 +33,9 @@ router.put('/:id', auth, authorize('admin', 'director'), async (req, res) => {
   try {
     const updated = await Project.findByIdAndUpdate(req.params.id, req.body, { new: true })
       .populate('manager', 'name role')
-      .populate('createdBy', 'name role');
+      .populate('createdBy', 'name role')
+      .populate('bidder', 'name role')
+      .populate('assignedStaff', 'name role');
     res.json(updated);
   } catch (err) { res.status(400).json({ error: err.message }); }
 });
@@ -49,7 +55,9 @@ router.put('/:id/approve', auth, authorize('admin', 'director'), async (req, res
     await project.save();
     const populated = await Project.findById(project._id)
       .populate('manager', 'name role')
-      .populate('createdBy', 'name role');
+      .populate('createdBy', 'name role')
+      .populate('bidder', 'name role')
+      .populate('assignedStaff', 'name role');
     await createNotification(
       project.createdBy,
       'project_approved',
@@ -69,7 +77,9 @@ router.put('/:id/reject', auth, authorize('admin', 'director'), async (req, res)
     await project.save();
     const populated = await Project.findById(project._id)
       .populate('manager', 'name role')
-      .populate('createdBy', 'name role');
+      .populate('createdBy', 'name role')
+      .populate('bidder', 'name role')
+      .populate('assignedStaff', 'name role');
     await createNotification(
       project.createdBy,
       'project_rejected',
