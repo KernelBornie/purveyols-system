@@ -54,17 +54,42 @@ const ProjectForm = () => {
     }
   }, [id, user]);
 
+  // ─── Compress image before saving ──────────────────────────────
   const handleImageChange = (e) => {
     const file = e.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        const base64 = event.target.result;
-        setForm({ ...form, image: base64 });
-        setImagePreview(base64);
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = () => {
+        const MAX_WIDTH = 800;
+        const MAX_HEIGHT = 600;
+        let width = img.width;
+        let height = img.height;
+        if (width > height) {
+          if (width > MAX_WIDTH) {
+            height = height * (MAX_WIDTH / width);
+            width = MAX_WIDTH;
+          }
+        } else {
+          if (height > MAX_HEIGHT) {
+            width = width * (MAX_HEIGHT / height);
+            height = MAX_HEIGHT;
+          }
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+        const compressedBase64 = canvas.toDataURL('image/jpeg', 0.7);
+        setForm({ ...form, image: compressedBase64 });
+        setImagePreview(compressedBase64);
       };
-      reader.readAsDataURL(file);
-    }
+      img.src = event.target.result;
+    };
+    reader.readAsDataURL(file);
   };
 
   const handleSubmit = async (e) => {
@@ -91,7 +116,8 @@ const ProjectForm = () => {
       }
       setTimeout(() => navigate('/projects'), 1500);
     } catch (err) {
-      setMessage({ type: 'error', text: err.response?.data?.error || 'Failed to save project' });
+      const msg = err.response?.data?.error || 'Failed to save project';
+      setMessage({ type: 'error', text: msg });
     } finally {
       setLoading(false);
     }
@@ -148,7 +174,6 @@ const ProjectForm = () => {
           </Typography>
         </Box>
 
-        {/* Creator Info */}
         {creator && (
           <Box sx={{ mb: 2 }}>
             <Typography variant="body2">
