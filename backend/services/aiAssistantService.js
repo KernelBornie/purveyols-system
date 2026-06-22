@@ -9,9 +9,7 @@ const BOQ = require('../models/BOQ');
 const Subcontract = require('../models/Subcontract');
 
 /**
- * Get AI response for ANY question – uses OpenAI if available,
- * falls back to rule-based if no key or rate-limited.
- * Returns: { text: string, type: string }
+ * Get AI response – uses OpenAI if available, otherwise rule‑based.
  */
 const getAIResponse = async (query, userId) => {
   try {
@@ -19,9 +17,8 @@ const getAIResponse = async (query, userId) => {
     if (openaiKey) {
       try {
         return await getOpenAIResponse(query, userId);
-      } catch (openaiErr) {
-        // If OpenAI fails (rate limit, quota, etc.), fall back to rule-based
-        console.log('OpenAI failed, falling back to rule-based:', openaiErr.message);
+      } catch (err) {
+        console.log('OpenAI failed, falling back to rule‑based:', err.message);
         return await getRuleBasedResponse(query, userId);
       }
     }
@@ -36,7 +33,7 @@ const getAIResponse = async (query, userId) => {
 };
 
 /**
- * OpenAI response – with expert system prompt.
+ * OpenAI response – asks to answer ANY question.
  */
 const getOpenAIResponse = async (query, userId) => {
   const systemData = await gatherSystemData(userId);
@@ -48,13 +45,13 @@ You have access to the following real data from the user's system:
 
 ${context}
 
-Your task is to answer the user's question as a seasoned professional would – with practical, step‑by‑step guidance, detailed explanations, and real‑world examples.
-
-- For questions about CCTV installation, electrical wiring, structural drawings, site layout, or any technical construction topic, provide thorough, practical instructions. Include typical materials, tools, safety precautions, and best practices.
-- For "draw" requests (site plan, layout), generate an SVG code block with clear labels, dimensions, and a scale bar.
+Your task is to answer the user's question as thoroughly and helpfully as possible.
+- If the question is about the user's specific data (projects, workers, funding, etc.), use the data above.
+- If the question is about general knowledge (history, science, geography, culture, etc.), provide a clear, accurate, and concise answer.
+- If the user asks to "draw" something (site plan, diagram, layout), generate an SVG code block with proper labels and a scale bar.
 - For tables (BOQ, cost breakdown), provide a Markdown table with realistic figures.
-- Always write in plain text, using Markdown for tables and code blocks where helpful.
-- Be friendly, authoritative, and ready to go into depth. If a question is broad, suggest specific aspects to focus on.
+- Always respond in plain text, using Markdown for tables and code blocks where helpful.
+- Be friendly and authoritative.
 
 Question: ${query}`;
 
@@ -86,14 +83,14 @@ Question: ${query}`;
 };
 
 /**
- * Rule-based fallback – now includes SVG for site plans.
+ * Rule‑based fallback – expanded with general knowledge.
  */
 const getRuleBasedResponse = async (query, userId) => {
   const q = query.toLowerCase();
   const systemData = await gatherSystemData(userId);
   const { projects, workers, funding, payments, procurement, boqs, subcontracts, stats } = systemData;
 
-  // ─── 1. System data queries ──────────────────────────────────────
+  // ─── 1. App data queries ──────────────────────────────────────
   if (q.includes('project') || q.includes('projects')) {
     if (!projects || projects.length === 0) return { text: 'No projects found.', type: 'project' };
     let response = '📋 Your projects:\n';
@@ -188,8 +185,8 @@ In PURVEYOLS CMS, you can create, edit, and approve BOQs for each project.`,
     };
   }
 
-  // ─── 2. Draw site plan – SVG generation ──────────────────────────
-  if (q.includes('draw') && (q.includes('site plan') || q.includes('plan') || q.includes('layout'))) {
+  // ─── 2. Draw requests (SVG) ──────────────────────────────────
+  if (q.includes('draw') && (q.includes('site plan') || q.includes('plan') || q.includes('layout') || q.includes('diagram'))) {
     return {
       text: `📐 **Here’s a simple SVG site plan you can copy and view in your browser:**
 
@@ -249,183 +246,41 @@ This is a basic template – you can modify the dimensions, labels, and elements
     };
   }
 
-  // ─── 3. CCTV Installation ──────────────────────────────────────
-  if (q.includes('cctv') || q.includes('camera') || q.includes('surveillance')) {
+  // ─── 3. General knowledge (fallback for offline mode) ──────
+  // Check for common general questions.
+  const lower = q.toLowerCase();
+  if (lower.includes('capital') || lower.includes('country') || lower.includes('city')) {
+    if (lower.includes('zambia')) {
+      return { text: 'The capital of Zambia is **Lusaka**.', type: 'general' };
+    }
+    if (lower.includes('france')) {
+      return { text: 'The capital of France is **Paris**.', type: 'general' };
+    }
+    if (lower.includes('usa') || lower.includes('united states')) {
+      return { text: 'The capital of the USA is **Washington, D.C.**', type: 'general' };
+    }
+    if (lower.includes('uk') || lower.includes('united kingdom')) {
+      return { text: 'The capital of the United Kingdom is **London**.', type: 'general' };
+    }
     return {
-      text: `📹 **CCTV Installation Guide**
-
-**1. Planning & Site Survey**
-• Identify areas to cover: entry points, parking, storage, blind spots.
-• Determine camera types:
-  - **Dome** – indoor, discreet
-  - **Bullet** – outdoor, long range
-  - **PTZ** – pan-tilt-zoom for large areas
-• Choose resolution: 2MP minimum, 4MP or 8MP for detailed identification.
-
-**2. Cabling & Power**
-• Use **Cat5e/Cat6** for IP cameras (PoE – Power over Ethernet simplifies wiring).
-• For analog, use RG59 coax + power cable.
-• Plan cable routes – avoid power lines, use conduits for protection.
-
-**3. Camera Placement**
-• Mount at 2.5–3m height to avoid tampering.
-• Angle downwards 10–20° for optimal coverage.
-• Ensure field of view covers entry/exit and high-value areas.
-
-**4. Recording & Storage**
-• Choose between **DVR** (analog) or **NVR** (IP).
-• Calculate storage:  
-  - Bitrate × number of cameras × recording hours.  
-  Example: 4MP camera at 4Mbps, 24/7 recording ≈ 1.5TB/month.
-• Use motion detection to save storage.
-
-**5. Networking & Remote Access**
-• Assign static IPs to NVR/DVR.
-• Set up port forwarding for remote viewing (secure with strong passwords).
-• Consider cloud or hybrid storage for redundancy.
-
-**6. Testing & Maintenance**
-• Test each camera view.
-• Check night vision (IR) functionality.
-• Schedule regular cleaning and firmware updates.
-
-Need more details on a specific step? Ask away!`,
+      text: 'I can help with general knowledge! Ask me about capitals, history, science, or any topic. (I\'m currently in offline mode, so my knowledge is limited.)',
+      type: 'general'
+    };
+  }
+  if (lower.includes('history') || lower.includes('world war') || lower.includes('ancient')) {
+    return {
+      text: 'I have some general knowledge about history. Ask a specific question like "When did World War II start?" or "Who built the Great Wall?"',
+      type: 'general'
+    };
+  }
+  if (lower.includes('science') || lower.includes('gravity') || lower.includes('dna') || lower.includes('planet')) {
+    return {
+      text: 'I can answer science questions! Try asking about physics, chemistry, biology, or astronomy.',
       type: 'general'
     };
   }
 
-  // ─── 4. Electrical Installation ────────────────────────────────
-  if (q.includes('electrical') || q.includes('wiring') || q.includes('circuit') || q.includes('panel') || q.includes('breaker')) {
-    return {
-      text: `⚡ **Electrical Installation – Practical Guide**
-
-**1. Load Calculation**
-• Sum the wattage of all appliances and lighting.
-• Consider diversity factor (not all loads run simultaneously).
-• Example: For a 3-bedroom house:
-  - Lighting: 2 kW
-  - Sockets: 5 kW
-  - Geyser: 3 kW
-  - Stove: 5 kW
-  - Total connected load ≈ 15 kW → diversity factor 0.6 → 9 kW demand.
-
-**2. Distribution Board (DB)**
-• Choose a DB with enough ways (circuit breakers).
-• Main switch rating = total demand × 1.25 (safety margin).
-• Use MCBs (miniature circuit breakers) for each circuit:
-  - Lighting: 6A or 10A
-  - Sockets: 16A or 20A
-  - Heavy appliances: 32A or 40A (stove, geyser)
-
-**3. Wiring**
-• Use copper cables (PVC insulated).
-• Select cable size based on current and length (voltage drop ≤ 3%).
-• Example: For a 20A circuit, use 2.5mm² cable up to 30m.
-• Run cables in conduits (PVC or metal) for protection.
-
-**4. Earthing & Bonding**
-• Install earth rod (at least 1.5m deep).
-• Connect all metal parts (DB, conduits, appliances) to earth.
-• Test earth resistance (< 1 ohm is ideal).
-
-**5. Safety**
-• Use RCD (Residual Current Device) – trips on leakage.
-• Label all circuits clearly.
-• Follow local regulations (e.g., Zambian ZS 303).
-
-**6. Testing**
-• Test continuity, insulation resistance, and polarity.
-• Verify all circuits are correctly connected.
-
-Need a specific calculation or diagram? Let me know.`,
-      type: 'general'
-    };
-  }
-
-  // ─── 5. Structural Drawings ────────────────────────────────────
-  if (q.includes('structural') || q.includes('drawing') || q.includes('blueprint') || q.includes('rebar')) {
-    return {
-      text: `🏗️ **Reading Structural Drawings – Key Points**
-
-**1. Types of Structural Drawings**
-• **Foundation Plan** – shows footings, columns, ground beams.
-• **Floor Plans** – column layout, beams, slab thickness.
-• **Roof Plan** – roof trusses, purlins, bracing.
-• **Sections** – cut through the building showing reinforcement.
-• **Details** – blow‑ups of connections, joints, and special items.
-
-**2. Common Symbols**
-• **Lines:**
-  - Solid thick – visible edges.
-  - Dashed – hidden elements.
-  - Center lines – symmetry axes.
-• **Dimensions** – in mm or m, always check the scale.
-• **Reinforcement:**
-  - T10 = 10mm diameter bar.
-  - T12@200 = 12mm bar spaced at 200mm centres.
-  - "U" bars – stirrups.
-
-**3. Bar Bending Schedule (BBS)**
-• Lists each bar type, shape, length, and quantity.
-• Includes bend deductions.
-• Essential for ordering and cutting steel.
-
-**4. How to Interpret**
-• Start with the title block – project name, scale, date.
-• Identify the north arrow and orientation.
-• Read the general notes – cover, concrete strength, standards.
-• Trace load paths from roof to foundation.
-
-**5. Common Mistakes**
-• Missing dimensions or conflicting details.
-• Not accounting for cover (minimum 25mm for footings, 20mm for columns).
-• Forgetting openings (doors, windows) in structural elements.
-
-I can help you interpret a specific drawing if you describe it.`,
-      type: 'general'
-    };
-  }
-
-  // ─── 6. Site Layout Planning ──────────────────────────────────
-  if (q.includes('site layout') || q.includes('logistics') || q.includes('crane') || q.includes('material storage')) {
-    return {
-      text: `🏗️ **Construction Site Layout Planning**
-
-**1. Site Access**
-• Main entrance for vehicles – wide enough for trucks and cranes.
-• Separate pedestrian access for safety.
-• Temporary roads to key areas (materials, concrete plant).
-
-**2. Storage Areas**
-• Materials: 
-  - Cement: covered, dry, off-ground.
-  - Steel: raised, sorted by size.
-  - Timber: stacked, ventilated.
-• Position near where they will be used (crane radius).
-
-**3. Crane Placement**
-• Choose the largest crane for the heaviest lift.
-• Place within lifting radius of all structures.
-• Consider ground conditions – use crane mats.
-
-**4. Utilities**
-• Water supply – for concrete mixing, dust suppression.
-• Electricity – temporary power poles.
-• Sewage/stormwater – temporary drainage.
-
-**5. Safety Zones**
-• Exclusion zones around crane swing radius.
-• First aid post and fire extinguishers.
-• Signage for hazards, speed limits, and PPE.
-
-**6. Flow of Work**
-• Sequence: site clearance → foundations → structure → finishes.
-• Ensure materials are available ahead of each phase.`,
-      type: 'general'
-    };
-  }
-
-  // ─── 7. Default fallback ──────────────────────────────────────
+  // ─── 4. Default – offer help menu ────────────────────────────
   return {
     text: `🤖 **PURVEYOLS ASSISTANT AI**
 
@@ -442,6 +297,11 @@ I can help with:
 • "Electrical load calculation"
 • "How to read structural drawings?"
 • "What is a BOQ?"
+
+🌍 **General Knowledge:**
+• "What is the capital of Zambia?"
+• "Tell me about history"
+• "Science questions"
 
 💡 **Ask a question and I'll give a detailed answer!`,
     type: 'general'
