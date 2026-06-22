@@ -6,7 +6,7 @@ const Payment = require('../models/Payment');
 const User = require('../models/User');
 const auth = require('../middleware/auth');
 const authorize = require('../middleware/rbac');
-const { createNotification, getSenderName } = require('../utils/notificationHelper');
+const { createNotification, getSenderName, getSenderRole } = require('../utils/notificationHelper');
 
 router.get('/', auth, async (req, res) => {
   try {
@@ -28,9 +28,19 @@ router.post('/', auth, authorize('admin', 'director', 'civil-engineer', 'foreman
     await worker.save();
     const populated = await Worker.findById(worker._id).populate('enrolledBy', 'name role');
 
-    // ✅ Get sender's name
     const senderName = await getSenderName(req.user.id);
+    const senderRole = await getSenderRole(req.user.id);
 
+    // ─── Notify creator (you enrolled a worker) ──────────────
+    await createNotification(
+      req.user.id,
+      'worker_enrolled',
+      'Worker Enrolled',
+      `✅ You enrolled ${worker.name} as a worker`,
+      `/workers/${worker._id}`
+    );
+
+    // ─── Notify accountants and directors ────────────────────
     const accountants = await User.find({ role: 'accountant' });
     const directors = await User.find({ role: 'director' });
     const recipients = [...accountants, ...directors];
@@ -39,7 +49,7 @@ router.post('/', auth, authorize('admin', 'director', 'civil-engineer', 'foreman
         recipient._id,
         'worker_enrolled',
         'New Worker Enrolled',
-        `${senderName} enrolled ${worker.name}`,
+        `${senderName} (${senderRole}) enrolled ${worker.name}`,
         `/workers/${worker._id}`
       );
     }
@@ -47,7 +57,6 @@ router.post('/', auth, authorize('admin', 'director', 'civil-engineer', 'foreman
   } catch (err) { res.status(400).json({ error: err.message }); }
 });
 
-// ... rest of the file (PUT, DELETE, etc.) unchanged
 router.put('/:id', auth, authorize('admin', 'director', 'civil-engineer', 'foreman', 'accountant'), async (req, res) => {
   try {
     const worker = await Worker.findByIdAndUpdate(req.params.id, req.body, { new: true }).populate('enrolledBy', 'name role');
