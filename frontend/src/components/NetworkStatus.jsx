@@ -18,7 +18,7 @@ const NetworkStatus = () => {
 
     window.addEventListener('online', updateStatus);
     window.addEventListener('offline', updateStatus);
-    
+
     // Check sync status periodically
     const interval = setInterval(updateSyncStatus, 10000);
     updateSyncStatus();
