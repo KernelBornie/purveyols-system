@@ -48,6 +48,7 @@ router.post('/', auth, async (req, res) => {
     });
     await message.save();
 
+    // ─── Notify the recipient ──────────────────────────────
     await createNotification(
       recipient._id,
       'message_received',
