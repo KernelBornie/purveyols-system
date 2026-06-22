@@ -4,7 +4,7 @@ const Bid = require('../models/Bid');
 const Project = require('../models/Project');
 const auth = require('../middleware/auth');
 
-// Get all bids for current user
+// ─── Get all bids for current user ──────────────────────────
 router.get('/', auth, async (req, res) => {
   try {
     const bids = await Bid.find({ user: req.user.id }).sort({ createdAt: -1 });
@@ -14,7 +14,7 @@ router.get('/', auth, async (req, res) => {
   }
 });
 
-// Get single bid
+// ─── Get single bid ──────────────────────────────────────────
 router.get('/:id', auth, async (req, res) => {
   try {
     const bid = await Bid.findOne({ _id: req.params.id, user: req.user.id });
@@ -25,7 +25,7 @@ router.get('/:id', auth, async (req, res) => {
   }
 });
 
-// Create a bid from advertised project
+// ─── Create a bid from advertised project ──────────────────
 router.post('/', auth, async (req, res) => {
   try {
     const bidData = { ...req.body, user: req.user.id, bidDate: new Date(), status: 'bidded' };
@@ -37,7 +37,7 @@ router.post('/', auth, async (req, res) => {
   }
 });
 
-// Update bid
+// ─── Update bid ──────────────────────────────────────────────
 router.put('/:id', auth, async (req, res) => {
   try {
     const bid = await Bid.findOne({ _id: req.params.id, user: req.user.id });
@@ -52,7 +52,7 @@ router.put('/:id', auth, async (req, res) => {
   }
 });
 
-// Delete bid
+// ─── Delete bid ──────────────────────────────────────────────
 router.delete('/:id', auth, async (req, res) => {
   try {
     const bid = await Bid.findOneAndDelete({ _id: req.params.id, user: req.user.id });
@@ -75,7 +75,6 @@ router.post('/:id/convert-to-project', auth, async (req, res) => {
       return res.status(400).json({ error: 'This bid has already been converted to a project' });
     }
 
-    // Create a new Project from the bid data
     const project = new Project({
       name: bid.projectTitle || 'Project from Bid',
       location: bid.location || '',
@@ -96,7 +95,6 @@ router.post('/:id/convert-to-project', auth, async (req, res) => {
 
     await project.save();
 
-    // Mark bid as converted
     bid.convertedToProject = project._id;
     bid.isConverted = true;
     bid.updatedAt = new Date();
