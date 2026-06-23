@@ -36,6 +36,10 @@ import Notifications from './pages/Notifications';
 import SparePartList from './pages/spare-parts/SparePartList';
 import SparePartForm from './pages/spare-parts/SparePartForm';
 
+// ─── Safety Report Imports ──────────────────────────────
+import SafetyReportList from './pages/safety/SafetyReportList';
+import SafetyReportForm from './pages/safety/SafetyReportForm';
+
 const AuthRedirect = () => {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
@@ -136,6 +140,12 @@ function App() {
             <Route path="/spare-parts/new" element={<SparePartForm />} />
             <Route path="/spare-parts/:id" element={<SparePartForm />} />
             <Route path="/spare-parts/:id/edit" element={<SparePartForm />} />
+
+            {/* ─── Safety Reports ──────────────────────────── */}
+            <Route path="/safety-reports" element={<SafetyReportList />} />
+            <Route path="/safety-reports/new" element={<SafetyReportForm />} />
+            <Route path="/safety-reports/:id" element={<SafetyReportForm />} />
+            <Route path="/safety-reports/:id/edit" element={<SafetyReportForm />} />
           </Route>
         </Routes>
       </BrowserRouter>
