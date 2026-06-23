@@ -26,6 +26,7 @@ import ArchitectureIcon from '@mui/icons-material/Architecture';
 import SurveyIcon from '@mui/icons-material/Map';
 import SmartToyIcon from '@mui/icons-material/SmartToy';
 import SafetyIcon from '@mui/icons-material/SafetyCheck';
+import PaymentsIcon from '@mui/icons-material/Payments'; // 👈 NEW
 import { useAuth } from '../context/AuthContext';
 
 const drawerWidth = 240;
@@ -50,7 +51,8 @@ const Sidebar = ({ mobileOpen, handleDrawerToggle, isMobile }) => {
     { text: 'Drawings', icon: <DescriptionIcon />, path: '/drawings' },
     { text: 'Surveys', icon: <SurveyIcon />, path: '/surveys' },
     { text: 'Messages', icon: <MessageIcon />, path: '/messages' },
-    { text: 'Safety Reports', icon: <SafetyIcon />, path: '/safety-reports' }, // 👈 NEW
+    { text: 'Safety Reports', icon: <SafetyIcon />, path: '/safety-reports' },
+    { text: 'Payment Notifications', icon: <PaymentsIcon />, path: '/payment-notifications' }, // 👈 NEW
     { text: 'Profile', icon: <PersonIcon />, path: '/profile' },
     { text: 'Settings', icon: <SettingsIcon />, path: '/settings' },
   ];
@@ -61,7 +63,7 @@ const Sidebar = ({ mobileOpen, handleDrawerToggle, isMobile }) => {
   // ─── Always show these items (regardless of role) ─────────
   const alwaysVisible = [
     'Dashboard',
-    'Safety Reports',      // 👈 Force it to always appear
+    'Safety Reports',
     'Messages',
     'Profile',
     'Settings'
@@ -70,6 +72,11 @@ const Sidebar = ({ mobileOpen, handleDrawerToggle, isMobile }) => {
   const visibleMenuItems = allMenuItems.filter(item => {
     // Always show essential items
     if (alwaysVisible.includes(item.text)) return true;
+
+    // ─── Payment Notifications – only for accountants, admins, directors ───
+    if (item.text === 'Payment Notifications') {
+      return ['accountant', 'admin', 'director'].includes(role);
+    }
 
     // Hide restricted items for certain roles
     if (restrictedRoles.includes(role) && hiddenItems.includes(item.text)) {
