@@ -158,4 +158,35 @@ router.get('/workers/search', auth, async (req, res) => {
   }
 });
 
+// ─── Mark payment as failed (NEW) ──────────────────────────
+router.put('/:id/fail', auth, authorize('admin', 'director', 'accountant'), async (req, res) => {
+  try {
+    const payment = await Payment.findById(req.params.id);
+    if (!payment) return res.status(404).json({ error: 'Payment not found' });
+    if (payment.status === 'failed') return res.status(400).json({ error: 'Already failed' });
+
+    payment.status = 'failed';
+    payment.notes = payment.notes ? `${payment.notes} (Failed)` : 'Failed';
+    await payment.save();
+
+    const senderName = await getSenderName(req.user.id);
+
+    // ─── Notify all accountants ──────────────────────────
+    const accountants = await User.find({ role: 'accountant' });
+    for (let accountant of accountants) {
+      await createNotification(
+        accountant._id,
+        'payment_failed',
+        'Payment Failed',
+        `Payment of ZMW ${payment.amount} to ${payment.recipientName} failed. Please review.`,
+        `/payments/${payment._id}`
+      );
+    }
+
+    res.json({ message: 'Payment marked as failed', payment });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
 module.exports = router;
