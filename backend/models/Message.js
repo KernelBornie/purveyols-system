@@ -6,7 +6,7 @@ const MessageSchema = new mongoose.Schema({
   subject: { type: String, default: '' },
   content: { type: String, required: true },
   read: { type: Boolean, default: false },
-  deletedBy: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }], // 👈 NEW
+  deletedBy: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
   createdAt: { type: Date, default: Date.now },
 });
 
