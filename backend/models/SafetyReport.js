@@ -7,8 +7,8 @@ const SafetyReportSchema = new mongoose.Schema({
   date: { type: Date, default: Date.now },
   status: {
     type: String,
-    enum: ['draft', 'submitted', 'reviewed', 'resolved'],
-    default: 'draft'
+    enum: ['draft', 'pending', 'submitted', 'reviewed', 'resolved', 'passed', 'failed'],
+    default: 'pending'
   },
   createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   createdAt: { type: Date, default: Date.now },
