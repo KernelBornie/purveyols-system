@@ -17,7 +17,7 @@ import WorkerSearch from '../../components/WorkerSearch';
 import PaymentModal from '../../components/PaymentModal';
 import { useAuth } from '../../context/AuthContext';
 
-// ─── Simple cache ──────────────────────────────────────────────
+// ─── Simple cache with TTL ──────────────────────────────────
 const cache = {};
 const CACHE_TTL = 5 * 60 * 1000;
 
@@ -38,6 +38,7 @@ const setCached = (key, data) => {
 const AccountantDashboard = () => {
   const { user, updateUser } = useAuth();
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [stats, setStats] = useState({ workers: 0, projects: 0, totalReleased: 0, fundingRequests: 0 });
   const [workers, setWorkers] = useState([]);
   const [projects, setProjects] = useState([]);
@@ -63,13 +64,17 @@ const AccountantDashboard = () => {
   // ─── Refresh user data from backend ──────────────────────────
   const refreshUser = useCallback(async () => {
     try {
-      const res = await api.get('/api/users/me');
+      const res = await api.get('/api/users/me', {
+        headers: { 'Cache-Control': 'no-cache' }
+      });
       if (res.data) {
         updateUser(res.data);
+        return res.data;
       }
     } catch (err) {
       console.error('Failed to refresh user:', err);
     }
+    return null;
   }, [updateUser]);
 
   // ─── Fetch all dashboard data ──────────────────────────────
@@ -221,15 +226,26 @@ const AccountantDashboard = () => {
     }
   }, []);
 
-  // ─── Combined refresh ─────────────────────────────────────────
+  // ─── Combined refresh – update user + dashboard ──────────────
   const refreshAll = useCallback(async () => {
-    await refreshUser();
-    await fetchDashboardData(true);
+    setRefreshing(true);
+    try {
+      await refreshUser();
+      await fetchDashboardData(true);
+      setMessage({ type: 'success', text: 'Data refreshed successfully' });
+      setTimeout(() => setMessage(null), 3000);
+    } catch (err) {
+      setMessage({ type: 'error', text: 'Refresh failed' });
+    } finally {
+      setRefreshing(false);
+    }
   }, [refreshUser, fetchDashboardData]);
 
+  // ─── Initial load ──────────────────────────────────────────────
   useEffect(() => {
     refreshAll();
-  }, [refreshAll]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // ─── Worker search / payment modal handlers ───────────────────
   const handleWorkerSelect = useCallback((worker) => {
@@ -316,8 +332,13 @@ const AccountantDashboard = () => {
             control={<Switch checked={showCharts} onChange={(e) => setShowCharts(e.target.checked)} />}
             label="Show Charts"
           />
-          <Button variant="contained" startIcon={<RefreshIcon />} onClick={refreshAll}>
-            Refresh
+          <Button
+            variant="contained"
+            startIcon={<RefreshIcon />}
+            onClick={refreshAll}
+            disabled={refreshing}
+          >
+            {refreshing ? 'Refreshing...' : 'Refresh'}
           </Button>
         </Box>
       </Box>
