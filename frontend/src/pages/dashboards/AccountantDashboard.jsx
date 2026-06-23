@@ -36,7 +36,7 @@ const setCached = (key, data) => {
 };
 
 const AccountantDashboard = () => {
-  const { user, updateUser } = useAuth(); // 👈 Get updateUser
+  const { user, updateUser } = useAuth();
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({ workers: 0, projects: 0, totalReleased: 0, fundingRequests: 0 });
   const [workers, setWorkers] = useState([]);
@@ -51,9 +51,6 @@ const AccountantDashboard = () => {
   const [reportData, setReportData] = useState(null);
   const [showCharts, setShowCharts] = useState(true);
   const [message, setMessage] = useState(null);
-  const [airtelStatus, setAirtelStatus] = useState(null);
-  const [payAmount, setPayAmount] = useState('');
-  const [workerPhone, setWorkerPhone] = useState('');
 
   const [searchOpen, setSearchOpen] = useState(false);
   const [paymentOpen, setPaymentOpen] = useState(false);
@@ -224,60 +221,15 @@ const AccountantDashboard = () => {
     }
   }, []);
 
-  // ─── Fetch logged‑in accountant's phone ──────────────────────
-  const fetchProfile = useCallback(async () => {
-    try {
-      const res = await api.get('/api/users/me');
-      if (res.data && res.data.phone) setWorkerPhone(res.data.phone);
-    } catch (err) {
-      console.error('Profile fetch error:', err);
-    }
-  }, []);
-
   // ─── Combined refresh ─────────────────────────────────────────
   const refreshAll = useCallback(async () => {
-    await refreshUser();     // Update context
+    await refreshUser();
     await fetchDashboardData(true);
-    await fetchProfile();
-  }, [refreshUser, fetchDashboardData, fetchProfile]);
+  }, [refreshUser, fetchDashboardData]);
 
   useEffect(() => {
     refreshAll();
   }, [refreshAll]);
-
-  // ─── Airtel Money direct payment ─────────────────────────────
-  const handleAirtelPay = useCallback(async () => {
-    if (!user?.mobileMoneyNumber) {
-      alert('Please set your mobile money number in your profile first.');
-      return;
-    }
-    if (!payAmount || parseFloat(payAmount) <= 0) {
-      alert('Enter a valid amount');
-      return;
-    }
-    if (!workerPhone) {
-      alert('Your phone number is not set in your profile.');
-      return;
-    }
-    setAirtelStatus({ type: 'info', text: 'Initiating Airtel Money request...' });
-    try {
-      const res = await api.post('/api/mobile-money/initiate', {
-        recipientPhone: workerPhone,
-        amount: parseFloat(payAmount),
-        workerId: null,
-        note: 'Direct Airtel payment from dashboard',
-      });
-      setAirtelStatus({
-        type: 'success',
-        text: `✅ Payment sent! Reference: ${res.data.reference || 'N/A'}`
-      });
-    } catch (err) {
-      setAirtelStatus({
-        type: 'error',
-        text: err.response?.data?.error || 'Payment failed. Check backend logs.'
-      });
-    }
-  }, [payAmount, workerPhone, user]);
 
   // ─── Worker search / payment modal handlers ───────────────────
   const handleWorkerSelect = useCallback((worker) => {
@@ -289,7 +241,7 @@ const AccountantDashboard = () => {
   const handlePaymentClose = useCallback(() => {
     setPaymentOpen(false);
     setSelectedWorker(null);
-    refreshAll(); // refresh user and dashboard
+    refreshAll();
   }, [refreshAll]);
 
   // ─── Bulk payment ─────────────────────────────────────────────
@@ -383,7 +335,7 @@ const AccountantDashboard = () => {
         </Button>
         {!user?.mobileMoneyNumber && (
           <Alert severity="warning" sx={{ ml: 2 }}>
-            Accountant mobile money number not set. 
+            Accountant mobile money number not set.
             <Button size="small" color="inherit" href="/profile" sx={{ ml: 1 }}>
               Update Profile
             </Button>
@@ -394,8 +346,6 @@ const AccountantDashboard = () => {
       <Typography variant="caption" display="block" sx={{ mb: 2 }}>
         Total pending: {formatCurrency(totalPending)} ({pendingWorkers.length} workers) | {pendingFunding} pending funding requests
       </Typography>
-
-      {/* ─── Rest of the dashboard (same as before) ─────────────── */}
 
       <Grid container spacing={3} sx={{ mb: 3 }}>
         <Grid item xs={12} sm={6} md={3}>
@@ -576,29 +526,6 @@ const AccountantDashboard = () => {
             <Grid item xs={6} sm={3}><Typography variant="body2">Total Released</Typography><Typography variant="h6">{formatCurrency(reportData.totalAmountReleased)}</Typography></Grid>
           </Grid>
         ) : <Typography>No report data.</Typography>}
-      </Paper>
-
-      <Paper sx={{ p: 2 }}>
-        <Typography variant="h6" gutterBottom>Pay Worker via Airtel Money</Typography>
-        <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap' }}>
-          <TextField
-            label="Amount (ZMW)"
-            type="number"
-            size="small"
-            value={payAmount}
-            onChange={e => setPayAmount(e.target.value)}
-            inputProps={{ min: 0, step: 0.01 }}
-            sx={{ width: 150 }}
-          />
-          <Button variant="contained" onClick={handleAirtelPay}>
-            Initiate
-          </Button>
-        </Box>
-        {airtelStatus && (
-          <Alert severity={airtelStatus.type} sx={{ mt: 2 }}>
-            {airtelStatus.text}
-          </Alert>
-        )}
       </Paper>
 
       <WorkerSearch open={searchOpen} onClose={() => setSearchOpen(false)} onSelect={handleWorkerSelect} />
