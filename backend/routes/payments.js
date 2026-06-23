@@ -3,7 +3,7 @@ const router = express.Router();
 const Payment = require('../models/Payment');
 const Worker = require('../models/Worker');
 const User = require('../models/User');
-const Notification = require('../models/Notification'); // 👈 Added
+const Notification = require('../models/Notification');
 const auth = require('../middleware/auth');
 const authorize = require('../middleware/rbac');
 const crypto = require('crypto');
@@ -178,11 +178,11 @@ router.put('/:id/fail', auth, authorize('admin', 'director', 'accountant'), asyn
     // ─── Create notifications directly using Notification model ───
     for (let user of users) {
       await Notification.create({
-        recipient: user._id,
+        user: user._id,        // ✅ CORRECT FIELD NAME
         type: 'payment_failed',
         title: 'Payment Failed',
         message: `Payment of ZMW ${payment.amount} to ${payment.recipientName} failed. Please review.`,
-        link: `/payments/${payment._id}`,   // ✅ LINK INCLUDED
+        link: `/payments/${payment._id}`,
         read: false,
       });
     }
