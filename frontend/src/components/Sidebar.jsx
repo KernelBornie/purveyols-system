@@ -25,7 +25,7 @@ import SettingsIcon from '@mui/icons-material/Settings';
 import ArchitectureIcon from '@mui/icons-material/Architecture';
 import SurveyIcon from '@mui/icons-material/Map';
 import SmartToyIcon from '@mui/icons-material/SmartToy';
-import SafetyIcon from '@mui/icons-material/SafetyCheck'; // 👈 NEW
+import SafetyIcon from '@mui/icons-material/SafetyCheck';
 import { useAuth } from '../context/AuthContext';
 
 const drawerWidth = 240;
@@ -58,7 +58,20 @@ const Sidebar = ({ mobileOpen, handleDrawerToggle, isMobile }) => {
   const restrictedRoles = ['receptionist', 'safety', 'driver'];
   const hiddenItems = ['BOQs', 'Subcontracts', 'Site Plans', 'Drawings', 'Surveys'];
 
+  // ─── Always show these items (regardless of role) ─────────
+  const alwaysVisible = [
+    'Dashboard',
+    'Safety Reports',      // 👈 Force it to always appear
+    'Messages',
+    'Profile',
+    'Settings'
+  ];
+
   const visibleMenuItems = allMenuItems.filter(item => {
+    // Always show essential items
+    if (alwaysVisible.includes(item.text)) return true;
+
+    // Hide restricted items for certain roles
     if (restrictedRoles.includes(role) && hiddenItems.includes(item.text)) {
       return false;
     }
