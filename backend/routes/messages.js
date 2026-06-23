@@ -102,12 +102,27 @@ router.put('/:id/read', auth, async (req, res) => {
 // ─── Delete ────────────────────────────────────────────────
 router.delete('/:id', auth, async (req, res) => {
   try {
-    const message = await Message.findOne({ _id: req.params.id });
-    if (!message) return res.status(404).json({ error: 'Message not found' });
-    if (message.from.toString() !== req.user.id && message.to.toString() !== req.user.id) {
-      return res.status(403).json({ error: 'Not authorized' });
+    console.log(`🗑️ Delete request for message ${req.params.id} by user ${req.user.id}`);
+
+    const message = await Message.findById(req.params.id);
+    if (!message) {
+      console.log('❌ Message not found');
+      return res.status(404).json({ error: 'Message not found' });
     }
+
+    console.log(`📄 Message: from=${message.from}, to=${message.to}`);
+
+    // Allow deletion only if user is sender or recipient
+    const isSender = message.from.toString() === req.user.id;
+    const isRecipient = message.to.toString() === req.user.id;
+
+    if (!isSender && !isRecipient) {
+      console.log('❌ Unauthorized delete attempt');
+      return res.status(403).json({ error: 'Not authorized to delete this message' });
+    }
+
     await Message.findByIdAndDelete(req.params.id);
+    console.log('✅ Message deleted successfully');
     res.json({ message: 'Deleted' });
   } catch (err) {
     console.error('Delete error:', err);
