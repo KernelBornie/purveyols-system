@@ -5,7 +5,7 @@ import {
   Alert, CircularProgress, Chip, IconButton, Tooltip, Divider,
   Dialog, DialogTitle, DialogContent, DialogActions, List, ListItem,
   ListItemText, ListItemSecondaryAction,
-  Tab, Tabs, FormControl, InputLabel, Select
+  Tab, Tabs
 } from '@mui/material';
 import SaveIcon from '@mui/icons-material/Save';
 import UndoIcon from '@mui/icons-material/Undo';
@@ -24,6 +24,7 @@ import BackButton from '../../components/BackButton';
 import * as fabric from 'fabric';
 import { useDropzone } from 'react-dropzone';
 
+// ─── Constants ──────────────────────────────────────────────────
 const LAYER_TYPES = [
   { key: 'survey', label: 'Survey', icon: '🌐' },
   { key: 'boundary', label: 'Boundary', icon: '📍' },
@@ -49,6 +50,7 @@ const DrawingForm = () => {
   const [message, setMessage] = useState(null);
   const [canvas, setCanvas] = useState(null);
   const [canvasError, setCanvasError] = useState(null);
+  const [canvasReady, setCanvasReady] = useState(false);
 
   const [form, setForm] = useState({
     name: '',
@@ -77,6 +79,7 @@ const DrawingForm = () => {
   const [historyIndex, setHistoryIndex] = useState(-1);
   const [approvalStep, setApprovalStep] = useState(0);
   const [importDialog, setImportDialog] = useState(false);
+
   const { getRootProps, getInputProps } = useDropzone({
     onDrop: (files) => {
       if (files.length) {
@@ -88,75 +91,135 @@ const DrawingForm = () => {
       'application/dxf': ['.dxf'],
       'application/pdf': ['.pdf'],
       'text/csv': ['.csv'],
+      'image/*': ['.png', '.jpg', '.jpeg', '.gif', '.svg'],
     },
   });
 
   // ─── Canvas setup ──────────────────────────────────────────────────
   useEffect(() => {
-    if (!canvasRef.current) {
-      console.warn('Canvas ref not ready');
-      return;
-    }
+    if (!canvasRef.current) return;
+
     try {
-      console.log('🖌️ Initializing canvas...');
+      console.log('🖌️ Initializing fabric canvas...');
       const fabricCanvas = new fabric.Canvas(canvasRef.current, {
         width: 900,
         height: 600,
         backgroundColor: '#f5f5f5',
         selection: true,
+        preserveObjectStacking: true,
       });
-      if (showGrid) drawGrid(fabricCanvas);
-      if (form.drawingData) {
-        fabricCanvas.loadFromJSON(JSON.parse(form.drawingData), () => {
-          fabricCanvas.renderAll();
-          saveHistory(fabricCanvas);
+
+      // ─── Grid ──────────────────────────────────────────────────
+      const drawGrid = (fc) => {
+        const gridSize = 20;
+        const w = fc.getWidth() || 900;
+        const h = fc.getHeight() || 600;
+        // Remove old grid lines
+        const old = fc.getObjects().filter(o => o.excludeFromExport);
+        old.forEach(o => fc.remove(o));
+        for (let i = 0; i < w; i += gridSize) {
+          fc.add(new fabric.Line([i, 0, i, h], {
+            stroke: '#ddd',
+            strokeWidth: 0.5,
+            selectable: false,
+            evented: false,
+            excludeFromExport: true,
+          }));
+        }
+        for (let i = 0; i < h; i += gridSize) {
+          fc.add(new fabric.Line([0, i, w, i], {
+            stroke: '#ddd',
+            strokeWidth: 0.5,
+            selectable: false,
+            evented: false,
+            excludeFromExport: true,
+          }));
+        }
+        fc.renderAll();
+      };
+
+      // ─── History ──────────────────────────────────────────────
+      const saveHistory = () => {
+        const json = fabricCanvas.toJSON();
+        setHistory(prev => {
+          const newHistory = prev.slice(0, historyIndex + 1);
+          newHistory.push(json);
+          setHistoryIndex(newHistory.length - 1);
+          return newHistory;
         });
+      };
+
+      // ─── Load saved data ──────────────────────────────────────
+      if (form.drawingData) {
+        try {
+          fabricCanvas.loadFromJSON(JSON.parse(form.drawingData), () => {
+            fabricCanvas.renderAll();
+            saveHistory();
+          });
+        } catch (e) {
+          console.warn('Failed to load drawing data', e);
+        }
       } else {
-        saveHistory(fabricCanvas);
+        saveHistory();
       }
-      fabricCanvas.on('object:added', () => saveHistory(fabricCanvas));
-      fabricCanvas.on('object:modified', () => saveHistory(fabricCanvas));
-      fabricCanvas.on('object:removed', () => saveHistory(fabricCanvas));
+
+      // ─── Events ──────────────────────────────────────────────
+      fabricCanvas.on('object:added', saveHistory);
+      fabricCanvas.on('object:modified', saveHistory);
+      fabricCanvas.on('object:removed', saveHistory);
+
+      if (showGrid) drawGrid(fabricCanvas);
+
       setCanvas(fabricCanvas);
+      setCanvasReady(true);
       setCanvasError(null);
       console.log('✅ Canvas ready');
+
       return () => {
         fabricCanvas.dispose();
         console.log('🖌️ Canvas disposed');
       };
     } catch (err) {
       console.error('Canvas init error:', err);
-      setCanvasError(err.message);
+      setCanvasError(err.message || 'Unknown error');
     }
-  }, []); // Only run once on mount
+  }, []); // only once
 
-  // ─── Grid helper ──────────────────────────────────────────────────
-  const drawGrid = (fabricCanvas) => {
-    if (!fabricCanvas) return;
-    const gridSize = 20;
-    const w = fabricCanvas.getWidth() || 900;
-    const h = fabricCanvas.getHeight() || 600;
-    const old = fabricCanvas.getObjects().filter(o => o.excludeFromExport);
-    old.forEach(o => fabricCanvas.remove(o));
-    for (let i = 0; i < w; i += gridSize) {
-      fabricCanvas.add(new fabric.Line([i, 0, i, h], { stroke: '#ddd', strokeWidth: 0.5, selectable: false, evented: false, excludeFromExport: true }));
-    }
-    for (let i = 0; i < h; i += gridSize) {
-      fabricCanvas.add(new fabric.Line([0, i, w, i], { stroke: '#ddd', strokeWidth: 0.5, selectable: false, evented: false, excludeFromExport: true }));
-    }
-    fabricCanvas.renderAll();
-  };
+  // ─── Re-draw grid when toggled ──────────────────────────────────
+  useEffect(() => {
+    if (!canvas) return;
+    const drawGrid = (fc) => {
+      const gridSize = 20;
+      const w = fc.getWidth() || 900;
+      const h = fc.getHeight() || 600;
+      const old = fc.getObjects().filter(o => o.excludeFromExport);
+      old.forEach(o => fc.remove(o));
+      if (showGrid) {
+        for (let i = 0; i < w; i += gridSize) {
+          fc.add(new fabric.Line([i, 0, i, h], {
+            stroke: '#ddd',
+            strokeWidth: 0.5,
+            selectable: false,
+            evented: false,
+            excludeFromExport: true,
+          }));
+        }
+        for (let i = 0; i < h; i += gridSize) {
+          fc.add(new fabric.Line([0, i, w, i], {
+            stroke: '#ddd',
+            strokeWidth: 0.5,
+            selectable: false,
+            evented: false,
+            excludeFromExport: true,
+          }));
+        }
+      }
+      fc.renderAll();
+    };
+    drawGrid(canvas);
+  }, [showGrid, canvas]);
 
-  // ─── History ──────────────────────────────────────────────────────
-  const saveHistory = (fabricCanvas) => {
-    if (!fabricCanvas) return;
-    const json = fabricCanvas.toJSON();
-    const newHistory = history.slice(0, historyIndex + 1);
-    newHistory.push(json);
-    setHistory(newHistory);
-    setHistoryIndex(newHistory.length - 1);
-  };
-
+  // ─── History helpers ──────────────────────────────────────────
   const undo = () => {
     if (historyIndex > 0 && canvas) {
       const newIndex = historyIndex - 1;
@@ -173,7 +236,7 @@ const DrawingForm = () => {
     }
   };
 
-  // ─── Shape tools ──────────────────────────────────────────────────
+  // ─── Tools ──────────────────────────────────────────────────────
   const addShape = useCallback((type, props = {}) => {
     if (!canvas) {
       alert('Canvas not ready. Please refresh.');
@@ -200,10 +263,21 @@ const DrawingForm = () => {
         shape = new fabric.Line([50, 50, 200, 200], { stroke: '#dc3545', strokeWidth: 3, selectable: true });
         break;
       case 'polygon':
-        shape = new fabric.Polygon([{ x: 0, y: 0 }, { x: 50, y: 0 }, { x: 50, y: 50 }, { x: 0, y: 50 }], { ...merged, fill: 'rgba(40,167,69,0.3)', stroke: '#28a745' });
+        shape = new fabric.Polygon([{ x: 0, y: 0 }, { x: 50, y: 0 }, { x: 50, y: 50 }, { x: 0, y: 50 }], {
+          ...merged,
+          fill: 'rgba(40,167,69,0.3)',
+          stroke: '#28a745',
+        });
         break;
       case 'text':
-        shape = new fabric.Textbox('Edit me', { left: 200, top: 200, fontSize: 20, fill: '#333', width: 200, selectable: true });
+        shape = new fabric.Textbox('Edit me', {
+          left: 200,
+          top: 200,
+          fontSize: 20,
+          fill: '#333',
+          width: 200,
+          selectable: true,
+        });
         break;
       default:
         return;
@@ -234,7 +308,6 @@ const DrawingForm = () => {
     if (active) {
       canvas.remove(active);
       canvas.renderAll();
-      saveHistory(canvas);
     } else {
       alert('Select an object first.');
     }
@@ -245,35 +318,47 @@ const DrawingForm = () => {
     if (window.confirm('Clear all drawing?')) {
       canvas.clear();
       canvas.backgroundColor = '#f5f5f5';
-      if (showGrid) drawGrid(canvas);
       canvas.renderAll();
-      saveHistory(canvas);
     }
-  }, [canvas, showGrid]);
+  }, [canvas]);
 
   // ─── Specialised tools ──────────────────────────────────────────
   const addFenceLine = useCallback(() => {
     if (!canvas) return;
-    const line = new fabric.Line([50, 50, 300, 50], { stroke: '#8B4513', strokeWidth: 4, selectable: true });
+    const line = new fabric.Line([50, 50, 300, 50], {
+      stroke: '#8B4513',
+      strokeWidth: 4,
+      selectable: true,
+    });
     const posts = [];
     for (let i = 0; i < 6; i++) {
-      const post = new fabric.Rect({ left: 50 + i * 50, top: 40, width: 6, height: 20, fill: '#8B4513', selectable: true });
+      const post = new fabric.Rect({
+        left: 50 + i * 50,
+        top: 40,
+        width: 6,
+        height: 20,
+        fill: '#8B4513',
+        selectable: true,
+      });
       posts.push(post);
     }
     const group = new fabric.Group([line, ...posts], { selectable: true });
     canvas.add(group);
     canvas.renderAll();
-    saveHistory(canvas);
   }, [canvas]);
 
   const addBuildingFootprint = useCallback(() => addShape('rect', { fill: 'rgba(255,0,0,0.1)', stroke: '#dc3545' }), [addShape]);
   const addRoadAlignment = useCallback(() => addShape('line', { stroke: '#ff9800', strokeWidth: 6 }), [addShape]);
   const addDrainage = useCallback(() => {
     if (!canvas) return;
-    const line = new fabric.Line([50, 150, 350, 150], { stroke: '#007bff', strokeWidth: 6, strokeDashArray: [8, 4], selectable: true });
+    const line = new fabric.Line([50, 150, 350, 150], {
+      stroke: '#007bff',
+      strokeWidth: 6,
+      strokeDashArray: [8, 4],
+      selectable: true,
+    });
     canvas.add(line);
     canvas.renderAll();
-    saveHistory(canvas);
   }, [canvas]);
   const addGate = useCallback(() => addShape('rect', { fill: 'transparent', stroke: '#28a745', strokeWidth: 4, width: 40, height: 60 }), [addShape]);
   const addCCTV = useCallback(() => {
@@ -283,23 +368,25 @@ const DrawingForm = () => {
     const group = new fabric.Group([circle, text], { selectable: true });
     canvas.add(group);
     canvas.renderAll();
-    saveHistory(canvas);
   }, [canvas]);
   const addGuardHouse = useCallback(() => addShape('rect', { fill: '#ffc107', stroke: '#333', strokeWidth: 2, width: 20, height: 30 }), [addShape]);
-
   const measureDistance = useCallback(() => alert('Click two points to measure distance (simulated).'), []);
 
   // ─── Save canvas ──────────────────────────────────────────────────
   const saveDrawingToForm = useCallback(() => {
     if (!canvas) return;
-    const json = canvas.toJSON();
-    const dataUrl = canvas.toDataURL('image/png');
-    setForm(prev => ({
-      ...prev,
-      drawingData: JSON.stringify(json),
-      drawingImage: dataUrl,
-    }));
-    setMessage({ type: 'success', text: 'Drawing saved!' });
+    try {
+      const json = canvas.toJSON();
+      const dataUrl = canvas.toDataURL('image/png');
+      setForm(prev => ({
+        ...prev,
+        drawingData: JSON.stringify(json),
+        drawingImage: dataUrl,
+      }));
+      setMessage({ type: 'success', text: 'Drawing saved!' });
+    } catch (err) {
+      setMessage({ type: 'error', text: 'Failed to save canvas: ' + err.message });
+    }
   }, [canvas]);
 
   // ─── File upload ──────────────────────────────────────────────────
@@ -308,6 +395,7 @@ const DrawingForm = () => {
     const reader = new FileReader();
     reader.onload = (e) => {
       const content = e.target.result;
+      // CSV upload
       if (file.name.endsWith('.csv')) {
         const lines = content.split('\n');
         lines.forEach(line => {
@@ -322,8 +410,10 @@ const DrawingForm = () => {
           }
         });
         canvas.renderAll();
-        saveHistory(canvas);
+        setImportDialog(false);
+        return;
       }
+      // Image upload
       if (file.type.startsWith('image/')) {
         const img = new Image();
         img.src = URL.createObjectURL(file);
@@ -331,9 +421,12 @@ const DrawingForm = () => {
           const fabricImg = new fabric.Image(img, { left: 50, top: 50, scaleX: 0.5, scaleY: 0.5, selectable: true });
           canvas.add(fabricImg);
           canvas.renderAll();
-          saveHistory(canvas);
+          setImportDialog(false);
         };
+        return;
       }
+      // Other files (PDF, DWG, DXF) – just placeholder
+      alert(`File "${file.name}" uploaded, but parsing is not fully implemented.`);
       setImportDialog(false);
     };
     if (file.type.startsWith('image/')) {
@@ -359,7 +452,6 @@ const DrawingForm = () => {
           const drawingRes = await api.get(`/api/drawings/${id}`);
           const data = drawingRes.data;
           setForm(prev => ({ ...prev, ...data }));
-          // Set approval step based on status
           const stepIndex = APP_STEPS.indexOf(data.status);
           if (stepIndex !== -1) setApprovalStep(stepIndex);
         }
@@ -652,7 +744,7 @@ const DrawingForm = () => {
             <input {...getInputProps()} />
             <UploadFileIcon fontSize="large" />
             <Typography>Drag & drop a file, or click to select</Typography>
-            <Typography variant="caption">Supports: DWG, DXF, PDF, CSV (coordinates)</Typography>
+            <Typography variant="caption">Supports: DWG, DXF, PDF, CSV (coordinates), Images</Typography>
           </Box>
         </DialogContent>
         <DialogActions>
