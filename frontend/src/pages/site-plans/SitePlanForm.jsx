@@ -1,30 +1,20 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   Paper, Typography, Box, Grid, TextField, Button, MenuItem,
-  Alert, CircularProgress, Chip, IconButton, Tooltip, Divider,
+  Alert, Chip, IconButton, Tooltip, Divider,
   Dialog, DialogTitle, DialogContent, DialogActions, List, ListItem,
   ListItemText, ListItemSecondaryAction,
   Tab, Tabs, FormControl, InputLabel, Select
 } from '@mui/material';
 import SaveIcon from '@mui/icons-material/Save';
-import UndoIcon from '@mui/icons-material/Undo';
-import RedoIcon from '@mui/icons-material/Redo';
 import DeleteIcon from '@mui/icons-material/Delete';
-import ClearIcon from '@mui/icons-material/Clear';
-import ZoomInIcon from '@mui/icons-material/ZoomIn';
-import ZoomOutIcon from '@mui/icons-material/ZoomOut';
-import GridOnIcon from '@mui/icons-material/GridOn';
-import UploadFileIcon from '@mui/icons-material/UploadFile';
-import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-import PrintIcon from '@mui/icons-material/Print';
-import FileDownloadIcon from '@mui/icons-material/FileDownload';
 import AddIcon from '@mui/icons-material/Add';
 import RemoveIcon from '@mui/icons-material/Remove';
+import UploadFileIcon from '@mui/icons-material/UploadFile';
 import api from '../../api/axios';
 import BackButton from '../../components/BackButton';
-import * as fabric from 'fabric';
-import { useDropzone } from 'react-dropzone';
+import DrawingCanvas from '../../components/DrawingCanvas'; // <-- new
 
 // ─── Layer definitions ──────────────────────────────────────────────────
 const LAYER_TYPES = [
@@ -42,16 +32,13 @@ const LAYER_TYPES = [
 
 const APP_STEPS = ['draft', 'submitted', 'survey_review', 'engineering_review', 'qs_review', 'director_approval', 'issued', 'as_built'];
 
-// ─── Main component ──────────────────────────────────────────────────────
 const SitePlanForm = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const canvasRef = useRef(null);
   const [loading, setLoading] = useState(false);
   const [projects, setProjects] = useState([]);
   const [users, setUsers] = useState([]);
   const [message, setMessage] = useState(null);
-  const [canvas, setCanvas] = useState(null);
 
   // ─── Form state ──────────────────────────────────────────────────────
   const [form, setForm] = useState({
@@ -89,324 +76,11 @@ const SitePlanForm = () => {
     layers: LAYER_TYPES.map(l => ({ ...l, visible: true, locked: false })),
   });
 
-  // ─── Coordinate entry state ──────────────────────────────────────────
   const [coords, setCoords] = useState([]);
   const [newCoord, setNewCoord] = useState({ northing: '', easting: '', elevation: '' });
-
   const [activeTab, setActiveTab] = useState(0);
-  const [selectedTool, setSelectedTool] = useState('select');
-  const [showGrid, setShowGrid] = useState(true);
-  const [history, setHistory] = useState([]);
-  const [historyIndex, setHistoryIndex] = useState(-1);
   const [approvalStep, setApprovalStep] = useState(0);
   const [importDialog, setImportDialog] = useState(false);
-  const [uploadedFile, setUploadedFile] = useState(null);
-  const { getRootProps, getInputProps } = useDropzone({
-    onDrop: (files) => {
-      if (files.length) {
-        setUploadedFile(files[0]);
-        handleFileUpload(files[0]);
-      }
-    },
-    accept: {
-      'application/dwg': ['.dwg'],
-      'application/dxf': ['.dxf'],
-      'application/pdf': ['.pdf'],
-      'text/csv': ['.csv'],
-    },
-  });
-
-  // ─── Fabric.js canvas setup ──────────────────────────────────────────
-  useEffect(() => {
-    if (!canvasRef.current) return;
-    const fabricCanvas = new fabric.Canvas(canvasRef.current, {
-      width: 900,
-      height: 600,
-      backgroundColor: '#f5f5f5',
-      selection: true,
-    });
-    if (showGrid) drawGrid(fabricCanvas);
-    if (form.drawingData) {
-      fabricCanvas.loadFromJSON(JSON.parse(form.drawingData), () => {
-        fabricCanvas.renderAll();
-        saveHistory(fabricCanvas);
-      });
-    } else {
-      saveHistory(fabricCanvas);
-    }
-    fabricCanvas.on('object:added', () => saveHistory(fabricCanvas));
-    fabricCanvas.on('object:modified', () => saveHistory(fabricCanvas));
-    fabricCanvas.on('object:removed', () => saveHistory(fabricCanvas));
-    setCanvas(fabricCanvas);
-    return () => fabricCanvas.dispose();
-  }, []);
-
-  // ─── Grid helper ──────────────────────────────────────────────────────
-  const drawGrid = (fabricCanvas) => {
-    const gridSize = 20;
-    const w = fabricCanvas.getWidth();
-    const h = fabricCanvas.getHeight();
-    const old = fabricCanvas.getObjects().filter(o => o.excludeFromExport);
-    old.forEach(o => fabricCanvas.remove(o));
-    for (let i = 0; i < w; i += gridSize) {
-      fabricCanvas.add(new fabric.Line([i, 0, i, h], { stroke: '#ddd', strokeWidth: 0.5, selectable: false, evented: false, excludeFromExport: true }));
-    }
-    for (let i = 0; i < h; i += gridSize) {
-      fabricCanvas.add(new fabric.Line([0, i, w, i], { stroke: '#ddd', strokeWidth: 0.5, selectable: false, evented: false, excludeFromExport: true }));
-    }
-    fabricCanvas.renderAll();
-  };
-
-  // ─── History ──────────────────────────────────────────────────────────
-  const saveHistory = (fabricCanvas) => {
-    const json = fabricCanvas.toJSON();
-    const newHistory = history.slice(0, historyIndex + 1);
-    newHistory.push(json);
-    setHistory(newHistory);
-    setHistoryIndex(newHistory.length - 1);
-  };
-
-  const undo = () => {
-    if (historyIndex > 0 && canvas) {
-      const newIndex = historyIndex - 1;
-      setHistoryIndex(newIndex);
-      canvas.loadFromJSON(history[newIndex], () => canvas.renderAll());
-    }
-  };
-
-  const redo = () => {
-    if (historyIndex < history.length - 1 && canvas) {
-      const newIndex = historyIndex + 1;
-      setHistoryIndex(newIndex);
-      canvas.loadFromJSON(history[newIndex], () => canvas.renderAll());
-    }
-  };
-
-  // ─── Tool handlers ────────────────────────────────────────────────────
-  const addShape = (type, props = {}) => {
-    if (!canvas) return;
-    let shape;
-    const defaultProps = {
-      left: 100 + Math.random() * 200,
-      top: 100 + Math.random() * 200,
-      fill: 'rgba(0,123,255,0.2)',
-      stroke: '#007bff',
-      strokeWidth: 2,
-      selectable: true,
-    };
-    const merged = { ...defaultProps, ...props };
-    switch (type) {
-      case 'rect':
-        shape = new fabric.Rect({ ...merged, width: 80, height: 60 });
-        break;
-      case 'circle':
-        shape = new fabric.Circle({ ...merged, radius: 40 });
-        break;
-      case 'line':
-        shape = new fabric.Line([50, 50, 200, 200], { stroke: '#dc3545', strokeWidth: 3, selectable: true });
-        break;
-      case 'polygon':
-        shape = new fabric.Polygon([{ x: 0, y: 0 }, { x: 50, y: 0 }, { x: 50, y: 50 }, { x: 0, y: 50 }], { ...merged, fill: 'rgba(40,167,69,0.3)', stroke: '#28a745' });
-        break;
-      case 'text':
-        shape = new fabric.Textbox('Edit me', { left: 200, top: 200, fontSize: 20, fill: '#333', width: 200, selectable: true });
-        break;
-      default:
-        return;
-    }
-    canvas.add(shape);
-    canvas.setActiveObject(shape);
-    canvas.renderAll();
-  };
-
-  const enableFreehand = () => {
-    if (!canvas) return;
-    canvas.isDrawingMode = true;
-    canvas.freeDrawingBrush = new fabric.PencilBrush(canvas);
-    canvas.freeDrawingBrush.color = '#000';
-    canvas.freeDrawingBrush.width = 2;
-    setSelectedTool('pencil');
-  };
-
-  const disableFreehand = () => {
-    if (!canvas) return;
-    canvas.isDrawingMode = false;
-    setSelectedTool('select');
-  };
-
-  const handleDeleteSelected = () => {
-    if (!canvas) return;
-    const active = canvas.getActiveObject();
-    if (active) {
-      canvas.remove(active);
-      canvas.renderAll();
-      saveHistory(canvas);
-    } else {
-      alert('Select an object first.');
-    }
-  };
-
-  const handleClearCanvas = () => {
-    if (!canvas) return;
-    if (window.confirm('Clear all drawing?')) {
-      canvas.clear();
-      canvas.backgroundColor = '#f5f5f5';
-      if (showGrid) drawGrid(canvas);
-      canvas.renderAll();
-      saveHistory(canvas);
-    }
-  };
-
-  // ─── Specific tools ──────────────────────────────────────────────────
-  const addFenceLine = () => {
-    if (!canvas) return;
-    const line = new fabric.Line([50, 50, 300, 50], { stroke: '#8B4513', strokeWidth: 4, selectable: true });
-    const posts = [];
-    for (let i = 0; i < 6; i++) {
-      const post = new fabric.Rect({ left: 50 + i * 50, top: 40, width: 6, height: 20, fill: '#8B4513', selectable: true });
-      posts.push(post);
-    }
-    const group = new fabric.Group([line, ...posts], { selectable: true });
-    canvas.add(group);
-    canvas.renderAll();
-    saveHistory(canvas);
-  };
-
-  const addBuildingFootprint = () => addShape('rect', { fill: 'rgba(255,0,0,0.1)', stroke: '#dc3545' });
-  const addRoadAlignment = () => addShape('line', { stroke: '#ff9800', strokeWidth: 6 });
-  const addDrainage = () => {
-    if (!canvas) return;
-    const line = new fabric.Line([50, 150, 350, 150], { stroke: '#007bff', strokeWidth: 6, strokeDashArray: [8, 4], selectable: true });
-    canvas.add(line);
-    canvas.renderAll();
-    saveHistory(canvas);
-  };
-  const addGate = () => addShape('rect', { fill: 'transparent', stroke: '#28a745', strokeWidth: 4, width: 40, height: 60 });
-  const addCCTV = () => {
-    if (!canvas) return;
-    const circle = new fabric.Circle({ left: 150, top: 150, radius: 12, fill: '#dc3545', stroke: '#fff', strokeWidth: 2, selectable: true });
-    const text = new fabric.Text('CCTV', { left: 160, top: 140, fontSize: 12, fill: '#dc3545' });
-    const group = new fabric.Group([circle, text], { selectable: true });
-    canvas.add(group);
-    canvas.renderAll();
-    saveHistory(canvas);
-  };
-  const addGuardHouse = () => addShape('rect', { fill: '#ffc107', stroke: '#333', strokeWidth: 2, width: 20, height: 30 });
-
-  // ─── Measure tool ────────────────────────────────────────────────────
-  const measureDistance = () => {
-    alert('Click two points to measure distance (simulated).');
-  };
-
-  // ─── Auto calculations ──────────────────────────────────────────────
-  const calculateQuantities = () => {
-    if (!canvas) return;
-    const objects = canvas.getObjects();
-    const fenceGroup = objects.find(o => o.type === 'group' && o._objects && o._objects.length > 1);
-    if (fenceGroup) {
-      const length = 250; // dummy
-      const postSpacing = 3;
-      const posts = Math.floor(length / postSpacing) + 1;
-      const concrete = posts * 0.15;
-      const chainLink = length * 1.1;
-      const razorWire = length * 0.5;
-      setForm(prev => ({
-        ...prev,
-        fenceLength: length,
-        posts,
-        concreteVolume: concrete,
-        chainLinkQty: chainLink,
-        razorWireQty: razorWire,
-      }));
-    }
-    const roadLines = objects.filter(o => o.type === 'line' && o.stroke === '#ff9800');
-    if (roadLines.length) {
-      const length = 200;
-      setForm(prev => ({
-        ...prev,
-        roadLength: length,
-        subgradeVol: length * 7 * 0.2,
-        subbaseVol: length * 7 * 0.15,
-        baseCourseVol: length * 7 * 0.1,
-        asphaltQty: length * 7 * 0.05,
-      }));
-    }
-    const polygons = objects.filter(o => o.type === 'polygon');
-    if (polygons.length) {
-      const area = 1500;
-      const perimeter = 200;
-      setForm(prev => ({ ...prev, area, perimeter }));
-    }
-  };
-
-  // ─── File upload ──────────────────────────────────────────────────────
-  const handleFileUpload = (file) => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const content = e.target.result;
-      if (file.name.endsWith('.csv')) {
-        const lines = content.split('\n');
-        lines.forEach(line => {
-          const parts = line.split(',');
-          if (parts.length >= 2) {
-            const x = parseFloat(parts[0]);
-            const y = parseFloat(parts[1]);
-            if (!isNaN(x) && !isNaN(y)) {
-              const circle = new fabric.Circle({ left: x, top: y, radius: 4, fill: '#dc3545', selectable: true });
-              canvas.add(circle);
-            }
-          }
-        });
-        canvas.renderAll();
-        saveHistory(canvas);
-      }
-      if (file.type.startsWith('image/')) {
-        const img = new Image();
-        img.src = URL.createObjectURL(file);
-        img.onload = () => {
-          const fabricImg = new fabric.Image(img, { left: 50, top: 50, scaleX: 0.5, scaleY: 0.5, selectable: true });
-          canvas.add(fabricImg);
-          canvas.renderAll();
-          saveHistory(canvas);
-        };
-      }
-      setImportDialog(false);
-    };
-    reader.readAsText(file);
-  };
-
-  // ─── Save drawing ────────────────────────────────────────────────────
-  const saveDrawingToForm = () => {
-    if (!canvas) return;
-    const json = canvas.toJSON();
-    const dataUrl = canvas.toDataURL('image/png');
-    setForm(prev => ({
-      ...prev,
-      drawingData: JSON.stringify(json),
-      drawingImage: dataUrl,
-    }));
-    calculateQuantities();
-    setMessage({ type: 'success', text: 'Drawing saved to plan!' });
-  };
-
-  // ─── Export PDF ──────────────────────────────────────────────────────
-  const exportPDF = () => {
-    if (!canvas) return;
-    const dataUrl = canvas.toDataURL('image/png');
-    alert('PDF export would be generated here.');
-  };
-
-  // ─── Submit for approval ────────────────────────────────────────────
-  const submitForApproval = () => {
-    const nextStep = approvalStep + 1;
-    if (nextStep < APP_STEPS.length) {
-      setApprovalStep(nextStep);
-      setForm(prev => ({ ...prev, status: APP_STEPS[nextStep] }));
-      setMessage({ type: 'success', text: `Advanced to ${APP_STEPS[nextStep].replace('_', ' ')}` });
-    } else {
-      alert('Already at final step.');
-    }
-  };
 
   // ─── Fetch projects & users ─────────────────────────────────────────
   useEffect(() => {
@@ -427,12 +101,6 @@ const SitePlanForm = () => {
             layers: data.layers || LAYER_TYPES.map(l => ({ ...l, visible: true, locked: false })),
           }));
           setCoords(data.coordinates || []);
-          if (data.drawingData && canvas) {
-            canvas.loadFromJSON(JSON.parse(data.drawingData), () => {
-              canvas.renderAll();
-              saveHistory(canvas);
-            });
-          }
           if (data.status) {
             const idx = APP_STEPS.indexOf(data.status);
             if (idx !== -1) setApprovalStep(idx);
@@ -443,12 +111,11 @@ const SitePlanForm = () => {
       }
     };
     fetchData();
-  }, [id, canvas]);
+  }, [id]);
 
   // ─── Submit form ────────────────────────────────────────────────────
   const handleSubmit = async (e) => {
     e.preventDefault();
-    saveDrawingToForm();
     setLoading(true);
     setMessage(null);
     try {
@@ -484,34 +151,17 @@ const SitePlanForm = () => {
 
   // ─── Layer controls ──────────────────────────────────────────────────
   const toggleLayerVisibility = (key) => {
-    if (!canvas) return;
-    const objects = canvas.getObjects();
-    const layerObjects = objects.filter(o => o.layer === key);
-    const layer = form.layers.find(l => l.key === key);
-    if (layer) {
-      const newVisible = !layer.visible;
-      layerObjects.forEach(o => o.visible = newVisible);
-      setForm(prev => ({
-        ...prev,
-        layers: prev.layers.map(l => l.key === key ? { ...l, visible: newVisible } : l),
-      }));
-      canvas.renderAll();
-    }
+    setForm(prev => ({
+      ...prev,
+      layers: prev.layers.map(l => l.key === key ? { ...l, visible: !l.visible } : l),
+    }));
   };
 
   const toggleLayerLock = (key) => {
-    if (!canvas) return;
-    const objects = canvas.getObjects();
-    const layerObjects = objects.filter(o => o.layer === key);
-    const layer = form.layers.find(l => l.key === key);
-    if (layer) {
-      const newLock = !layer.locked;
-      layerObjects.forEach(o => o.selectable = !newLock);
-      setForm(prev => ({
-        ...prev,
-        layers: prev.layers.map(l => l.key === key ? { ...l, locked: newLock } : l),
-      }));
-    }
+    setForm(prev => ({
+      ...prev,
+      layers: prev.layers.map(l => l.key === key ? { ...l, locked: !l.locked } : l),
+    }));
   };
 
   // ─── Coordinate handlers ─────────────────────────────────────────────
@@ -523,19 +173,6 @@ const SitePlanForm = () => {
     }
     setCoords([...coords, { northing: parseFloat(northing), easting: parseFloat(easting), elevation: parseFloat(elevation || 0) }]);
     setNewCoord({ northing: '', easting: '', elevation: '' });
-    if (canvas) {
-      const circle = new fabric.Circle({
-        left: parseFloat(easting) * 10,
-        top: parseFloat(northing) * 10,
-        radius: 4,
-        fill: '#dc3545',
-        selectable: true,
-        layer: 'survey',
-      });
-      canvas.add(circle);
-      canvas.renderAll();
-      saveHistory(canvas);
-    }
   };
 
   const removeCoordinate = (index) => {
@@ -544,6 +181,18 @@ const SitePlanForm = () => {
 
   const clearCoordinates = () => {
     setCoords([]);
+  };
+
+  // ─── Submit for approval ────────────────────────────────────────────
+  const submitForApproval = () => {
+    const nextStep = approvalStep + 1;
+    if (nextStep < APP_STEPS.length) {
+      setApprovalStep(nextStep);
+      setForm(prev => ({ ...prev, status: APP_STEPS[nextStep] }));
+      setMessage({ type: 'success', text: `Advanced to ${APP_STEPS[nextStep].replace('_', ' ')}` });
+    } else {
+      alert('Already at final step.');
+    }
   };
 
   // ─── Render ────────────────────────────────────────────────────────────
@@ -628,46 +277,14 @@ const SitePlanForm = () => {
         {/* ─── Tab 1: Drawing ────────────────────────────────────────────── */}
         {activeTab === 1 && (
           <Box>
-            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 2 }}>
-              <Tooltip title="Select"><Button variant={selectedTool === 'select' ? 'contained' : 'outlined'} size="small" onClick={() => { disableFreehand(); setSelectedTool('select'); }}>Select</Button></Tooltip>
-              <Tooltip title="Move"><Button variant={selectedTool === 'move' ? 'contained' : 'outlined'} size="small" onClick={() => { disableFreehand(); setSelectedTool('move'); }}>Move</Button></Tooltip>
-              <Tooltip title="Measure"><Button variant="outlined" size="small" onClick={measureDistance}>📏</Button></Tooltip>
-              <Tooltip title="Dimension"><Button variant="outlined" size="small" onClick={() => addShape('text')}>📐</Button></Tooltip>
-              <Tooltip title="Text"><Button variant="outlined" size="small" onClick={() => addShape('text')}>T</Button></Tooltip>
-              <Tooltip title="Boundary"><Button variant="outlined" size="small" onClick={() => addShape('polygon')}>🔲</Button></Tooltip>
-              <Tooltip title="Polygon"><Button variant="outlined" size="small" onClick={() => addShape('polygon')}>△</Button></Tooltip>
-              <Tooltip title="Line"><Button variant="outlined" size="small" onClick={() => addShape('line')}>╱</Button></Tooltip>
-              <Tooltip title="Circle"><Button variant="outlined" size="small" onClick={() => addShape('circle')}>◯</Button></Tooltip>
-              <Tooltip title="Rectangle"><Button variant="outlined" size="small" onClick={() => addShape('rect')}>▭</Button></Tooltip>
-              {/* Freehand button – now visible and functional */}
-              <Tooltip title="Freehand Pencil">
-                <Button variant={selectedTool === 'pencil' ? 'contained' : 'outlined'} size="small" onClick={enableFreehand}>
-                  ✏️
-                </Button>
-              </Tooltip>
-              <Divider orientation="vertical" flexItem />
-              <Tooltip title="Fence Line"><Button variant="outlined" size="small" onClick={addFenceLine}>🔲</Button></Tooltip>
-              <Tooltip title="Building Footprint"><Button variant="outlined" size="small" onClick={addBuildingFootprint}>🏢</Button></Tooltip>
-              <Tooltip title="Road Alignment"><Button variant="outlined" size="small" onClick={addRoadAlignment}>🛣️</Button></Tooltip>
-              <Tooltip title="Drainage"><Button variant="outlined" size="small" onClick={addDrainage}>💧</Button></Tooltip>
-              <Tooltip title="Gate"><Button variant="outlined" size="small" onClick={addGate}>🚪</Button></Tooltip>
-              <Tooltip title="CCTV"><Button variant="outlined" size="small" onClick={addCCTV}>📷</Button></Tooltip>
-              <Tooltip title="Guard House"><Button variant="outlined" size="small" onClick={addGuardHouse}>🏠</Button></Tooltip>
-              <Divider orientation="vertical" flexItem />
-              <Tooltip title="Undo"><IconButton onClick={undo} disabled={historyIndex <= 0}><UndoIcon /></IconButton></Tooltip>
-              <Tooltip title="Redo"><IconButton onClick={redo} disabled={historyIndex >= history.length-1}><RedoIcon /></IconButton></Tooltip>
-              <Tooltip title="Delete selected"><IconButton color="error" onClick={handleDeleteSelected}><DeleteIcon /></IconButton></Tooltip>
-              <Tooltip title="Clear all"><IconButton color="error" onClick={handleClearCanvas}><ClearIcon /></IconButton></Tooltip>
-              <Tooltip title="Grid"><IconButton color={showGrid ? 'primary' : 'default'} onClick={() => setShowGrid(!showGrid)}><GridOnIcon /></IconButton></Tooltip>
-              <Tooltip title="Zoom In"><IconButton onClick={() => { if (canvas) canvas.setZoom(canvas.getZoom()*1.1); }}><ZoomInIcon /></IconButton></Tooltip>
-              <Tooltip title="Zoom Out"><IconButton onClick={() => { if (canvas) canvas.setZoom(canvas.getZoom()*0.9); }}><ZoomOutIcon /></IconButton></Tooltip>
-              <Tooltip title="Upload"><IconButton onClick={() => setImportDialog(true)}><UploadFileIcon /></IconButton></Tooltip>
-            </Box>
-
-            <Box sx={{ border: '2px solid #ccc', borderRadius: 2, overflow: 'auto', bgcolor: '#f5f5f5', width: '100%', minHeight: '500px' }}>
-              <canvas ref={canvasRef} style={{ width: '100%', height: '500px', display: 'block' }} />
-            </Box>
-
+            <DrawingCanvas
+              initialData={form.drawingData ? JSON.parse(form.drawingData) : null}
+              onChange={(json) => {
+                setForm(prev => ({ ...prev, drawingData: JSON.stringify(json) }));
+              }}
+              height={600}
+              width={900}
+            />
             <Box sx={{ mt: 2, display: 'flex', flexWrap: 'wrap', gap: 2 }}>
               {form.area > 0 && <Chip label={`Area: ${form.area.toFixed(2)} m²`} color="primary" />}
               {form.perimeter > 0 && <Chip label={`Perimeter: ${form.perimeter.toFixed(2)} m`} color="primary" />}
@@ -675,12 +292,10 @@ const SitePlanForm = () => {
               {form.concreteVolume > 0 && <Chip label={`Concrete: ${form.concreteVolume.toFixed(2)} m³`} color="secondary" />}
               {form.roadLength > 0 && <Chip label={`Road: ${form.roadLength}m, Asphalt: ${form.asphaltQty.toFixed(2)} m³`} color="info" />}
             </Box>
-
             <Box sx={{ mt: 2, display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-              <Button variant="contained" onClick={saveDrawingToForm} startIcon={<SaveIcon />}>Save Canvas</Button>
-              <Button variant="outlined" onClick={exportPDF} startIcon={<PrintIcon />}>Export PDF</Button>
-              <Button variant="outlined" onClick={() => alert('Generate BOQ from drawing')} startIcon={<CheckCircleIcon />}>Generate BOQ</Button>
-              <Button variant="outlined" onClick={() => alert('Generate Cost Estimate')} startIcon={<FileDownloadIcon />}>Cost Estimate</Button>
+              <Button variant="contained" onClick={() => setMessage({ type: 'success', text: 'Drawing saved to plan!' })} startIcon={<SaveIcon />}>Save Canvas</Button>
+              <Button variant="outlined" onClick={() => alert('Export PDF')} startIcon={<SaveIcon />}>Export PDF</Button>
+              <Button variant="outlined" onClick={() => alert('Generate BOQ')} startIcon={<SaveIcon />}>Generate BOQ</Button>
             </Box>
           </Box>
         )}
@@ -819,8 +434,7 @@ const SitePlanForm = () => {
       <Dialog open={importDialog} onClose={() => setImportDialog(false)} maxWidth="sm" fullWidth>
         <DialogTitle>Import Drawing</DialogTitle>
         <DialogContent>
-          <Box {...getRootProps()} sx={{ border: '2px dashed #ccc', p: 3, textAlign: 'center', cursor: 'pointer' }}>
-            <input {...getInputProps()} />
+          <Box sx={{ border: '2px dashed #ccc', p: 3, textAlign: 'center' }}>
             <UploadFileIcon fontSize="large" />
             <Typography>Drag & drop a file, or click to select</Typography>
             <Typography variant="caption">Supports: DWG, DXF, PDF, CSV (coordinates)</Typography>
