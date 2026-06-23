@@ -12,7 +12,7 @@ router.get('/', auth, async (req, res) => {
     const userId = req.user.id;
     const messages = await Message.find({
       to: userId,
-      deletedBy: { $ne: userId } // exclude messages the user has deleted
+      deletedBy: { $ne: userId }
     })
       .populate('from', 'name role')
       .populate('to', 'name role')
@@ -67,7 +67,7 @@ router.post('/', auth, async (req, res) => {
       to,
       subject: subject || '',
       content,
-      deletedBy: [], // 👈 new messages start with empty deletedBy
+      deletedBy: [],
     });
     await message.save();
 
@@ -115,33 +115,20 @@ router.delete('/:id', auth, async (req, res) => {
       return res.status(404).json({ error: 'Message not found' });
     }
 
-    // User must be sender or recipient
     const isSender = message.from.toString() === userId;
     const isRecipient = message.to.toString() === userId;
     if (!isSender && !isRecipient) {
       return res.status(403).json({ error: 'Not authorized to delete this message' });
     }
 
-    // If already deleted by this user, ignore
     if (message.deletedBy.includes(userId)) {
       return res.status(400).json({ error: 'Message already deleted by you' });
     }
 
-    // Add user to deletedBy
     message.deletedBy.push(userId);
     await message.save();
 
     console.log(`🗑️ User ${userId} soft‑deleted message ${req.params.id}`);
-
-    // (Optional) Hard‑delete if both users have deleted it
-    // const bothDeleted = message.deletedBy.length === 2 &&
-    //   message.deletedBy.includes(message.from.toString()) &&
-    //   message.deletedBy.includes(message.to.toString());
-    // if (bothDeleted) {
-    //   await Message.findByIdAndDelete(req.params.id);
-    //   console.log(`🗑️ Both users deleted – message ${req.params.id} permanently removed`);
-    // }
-
     res.json({ message: 'Message deleted for you' });
   } catch (err) {
     console.error('Delete error:', err);
@@ -176,7 +163,7 @@ router.get('/conversation/:otherUserId', auth, async (req, res) => {
         { from: req.user.id, to: otherUserId },
         { from: otherUserId, to: req.user.id }
       ],
-      deletedBy: { $ne: req.user.id } // exclude current user's deletions
+      deletedBy: { $ne: req.user.id }
     })
       .populate('from', 'name role')
       .populate('to', 'name role')
