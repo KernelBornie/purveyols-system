@@ -43,6 +43,9 @@ import SafetyReportForm from './pages/safety/SafetyReportForm';
 // ─── Payment Notifications Import ──────────────────────
 import PaymentNotifications from './pages/PaymentNotifications';
 
+// ─── Payment Details Import ─────────────────────────────
+import PaymentDetails from './pages/PaymentDetails';
+
 const AuthRedirect = () => {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
@@ -95,8 +98,8 @@ function App() {
             <Route path="/funding/:id" element={<FundingRequestForm />} />
             <Route path="/funding/:id/edit" element={<FundingRequestForm />} />
 
-            {/* Payments - redirect */}
-            <Route path="/payments/:id" element={<Navigate to="/dashboard" replace />} />
+            {/* ─── Payments ──────────────────────────────── */}
+            <Route path="/payments/:id" element={<PaymentDetails />} />
 
             {/* Subcontracts */}
             <Route path="/subcontracts" element={<SubcontractList />} />
