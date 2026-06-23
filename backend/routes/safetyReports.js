@@ -5,7 +5,6 @@ const User = require('../models/User');
 const auth = require('../middleware/auth');
 const { createNotification, getSenderName } = require('../utils/notificationHelper');
 
-// ─── GET all ──────────────────────────────────────────────────
 router.get('/', auth, async (req, res) => {
   try {
     const reports = await SafetyReport.find()
@@ -15,7 +14,6 @@ router.get('/', auth, async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// ─── GET single ──────────────────────────────────────────────
 router.get('/:id', auth, async (req, res) => {
   try {
     const report = await SafetyReport.findById(req.params.id)
@@ -25,7 +23,6 @@ router.get('/:id', auth, async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// ─── CREATE ──────────────────────────────────────────────────
 router.post('/', auth, async (req, res) => {
   try {
     const report = new SafetyReport({ ...req.body, createdBy: req.user.id });
@@ -34,21 +31,37 @@ router.post('/', auth, async (req, res) => {
       .populate('createdBy', 'name role');
 
     const senderName = await getSenderName(req.user.id);
+    const senderRole = req.user.role; // we can also get from helper
+
+    // ─── Notify creator (personal) ──────────────────────────────
+    await createNotification(
+      req.user.id,
+      'safety_report_created',
+      'Safety Report Created',
+      `✅ You created a safety report: "${report.title || 'Untitled'}"`,
+      `/safety-reports/${report._id}`
+    );
+
+    // ─── Notify others (exclude creator) ─────────────────────────
     const recipients = await User.find({ role: { $in: ['director', 'admin', 'safety-officer'] } });
-    for (let rec of recipients) {
+    const filtered = recipients.filter(r => r._id.toString() !== req.user.id);
+    for (let rec of filtered) {
       await createNotification(
         rec._id,
         'safety_report_created',
         'New Safety Report',
-        `${senderName} created a safety report: ${report.title || 'Untitled'}`,
+        `${senderName} (${senderRole}) created a safety report: "${report.title || 'Untitled'}"`,
         `/safety-reports/${report._id}`
       );
     }
+
     res.status(201).json(populated);
-  } catch (err) { res.status(400).json({ error: err.message }); }
+  } catch (err) {
+    console.error('Safety report create error:', err);
+    res.status(400).json({ error: err.message });
+  }
 });
 
-// ─── UPDATE ──────────────────────────────────────────────────
 router.put('/:id', auth, async (req, res) => {
   try {
     const report = await SafetyReport.findByIdAndUpdate(req.params.id, req.body, { new: true })
@@ -58,7 +71,6 @@ router.put('/:id', auth, async (req, res) => {
   } catch (err) { res.status(400).json({ error: err.message }); }
 });
 
-// ─── DELETE ──────────────────────────────────────────────────
 router.delete('/:id', auth, async (req, res) => {
   try {
     await SafetyReport.findByIdAndDelete(req.params.id);
