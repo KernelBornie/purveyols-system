@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   Paper, Typography, Box, Grid, TextField, Button, MenuItem,
@@ -15,7 +15,7 @@ import UploadFileIcon from '@mui/icons-material/UploadFile';
 import api from '../../api/axios';
 import BackButton from '../../components/BackButton';
 import { useDropzone } from 'react-dropzone';
-import DrawingCanvas from '../../components/DrawingCanvas'; // <-- new
+import DrawingCanvas from '../../components/DrawingCanvas';
 
 const SurveyForm = () => {
   const { id } = useParams();
@@ -25,6 +25,9 @@ const SurveyForm = () => {
   const [users, setUsers] = useState([]);
   const [message, setMessage] = useState(null);
   const [activeTab, setActiveTab] = useState(0);
+  const [drawingScale, setDrawingScale] = useState(100); // default 1:100
+  const drawingCanvasRef = useRef(null); // <-- ref to canvas
+
   const [form, setForm] = useState({
     project: '',
     surveyNumber: '',
@@ -40,7 +43,7 @@ const SurveyForm = () => {
     cutVolume: 0,
     fillVolume: 0,
     netVolume: 0,
-    drawingData: '', // new
+    drawingData: '',
   });
   const [coords, setCoords] = useState([]);
   const [newCoord, setNewCoord] = useState({ northing: '', easting: '', elevation: '' });
@@ -131,10 +134,23 @@ const SurveyForm = () => {
     reader.readAsText(file);
   };
 
-  // ─── Calculate area/perimeter ────────────────────────────────────
+  // ─── Calculate area/perimeter (from canvas or coordinates) ──────
   const calculateAreaPerimeter = () => {
+    // 1. Try to get polygon from canvas
+    const polyData = drawingCanvasRef.current?.getPolygonData();
+    if (polyData && polyData.points.length >= 3) {
+      // Convert pixels to meters using scale
+      const factor = 0.01 * (100 / drawingScale);
+      const areaM2 = polyData.area * factor * factor;
+      const perimeterM = polyData.perimeter * factor;
+      setForm(prev => ({ ...prev, area: areaM2, perimeter: perimeterM }));
+      setMessage({ type: 'success', text: `Area: ${areaM2.toFixed(2)} m², Perimeter: ${perimeterM.toFixed(2)} m` });
+      return;
+    }
+
+    // 2. Fallback to coordinate list
     if (coords.length < 3) {
-      setMessage({ type: 'warning', text: 'Need at least 3 points to calculate area.' });
+      setMessage({ type: 'warning', text: 'Need at least 3 coordinates or draw a polygon on canvas.' });
       return;
     }
     let area = 0;
@@ -149,16 +165,19 @@ const SurveyForm = () => {
       perimeter += Math.sqrt(dx * dx + dy * dy);
     }
     area = Math.abs(area) / 2;
-    const scale = 111320;
+    const scale = 111320; // crude conversion
     area = area * scale * scale;
     perimeter = perimeter * scale;
     setForm(prev => ({ ...prev, area, perimeter }));
-    setMessage({ type: 'success', text: 'Area and perimeter calculated!' });
+    setMessage({ type: 'success', text: `Area: ${area.toFixed(2)} m², Perimeter: ${perimeter.toFixed(2)} m` });
   };
 
   // ─── Compute cut/fill ─────────────────────────────────────────────
   const handleCalculateCutFill = async () => {
-    if (!id) { alert('Save the survey first.'); return; }
+    if (!id) {
+      alert('Please save the survey first, then compute cut/fill.');
+      return;
+    }
     try {
       const res = await api.post(`/api/surveys/${id}/calculate`);
       setForm(prev => ({
@@ -268,6 +287,15 @@ const SurveyForm = () => {
                 <MenuItem value="rejected">Rejected</MenuItem>
               </TextField>
             </Grid>
+            <Grid item xs={12}>
+              <TextField
+                label="Drawing Scale (1:)"
+                type="number"
+                fullWidth
+                value={drawingScale}
+                onChange={(e) => setDrawingScale(parseInt(e.target.value) || 100)}
+              />
+            </Grid>
           </Grid>
         )}
 
@@ -308,8 +336,8 @@ const SurveyForm = () => {
 
             <Box sx={{ mt: 2, display: 'flex', gap: 1, flexWrap: 'wrap' }}>
               <Button variant="outlined" onClick={clearCoordinates} disabled={coords.length === 0} color="error">Clear All</Button>
-              <Button variant="outlined" onClick={calculateAreaPerimeter} disabled={coords.length < 3}>Calculate Area & Perimeter</Button>
-              <Button variant="outlined" onClick={handleCalculateCutFill} disabled={!id}>Compute Cut/Fill</Button>
+              <Button variant="outlined" onClick={calculateAreaPerimeter}>Calculate Area & Perimeter</Button>
+              <Button variant="outlined" onClick={handleCalculateCutFill}>Compute Cut/Fill</Button>
               <Button variant="outlined" startIcon={<UploadFileIcon />} onClick={() => setImportDialog(true)}>Import CSV</Button>
             </Box>
 
@@ -333,16 +361,21 @@ const SurveyForm = () => {
         {activeTab === 2 && (
           <Box>
             <DrawingCanvas
+              ref={drawingCanvasRef}
               initialData={form.drawingData ? JSON.parse(form.drawingData) : null}
               onChange={(json) => {
                 setForm(prev => ({ ...prev, drawingData: JSON.stringify(json) }));
               }}
               height={600}
               width={900}
+              scale={drawingScale}
             />
-            <Box sx={{ mt: 2 }}>
+            <Box sx={{ mt: 2, display: 'flex', gap: 2 }}>
               <Button variant="contained" onClick={() => setMessage({ type: 'success', text: 'Drawing saved to survey!' })} startIcon={<SaveIcon />}>
                 Save Drawing
+              </Button>
+              <Button variant="outlined" onClick={calculateAreaPerimeter} startIcon={<SaveIcon />}>
+                Calculate Area from Canvas
               </Button>
             </Box>
           </Box>
