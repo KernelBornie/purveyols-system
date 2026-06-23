@@ -9,7 +9,8 @@ const LogoutButton = () => {
 
   const handleLogout = () => {
     logout();
-    navigate('/login');
+    // Use replace to remove the current page from history
+    navigate('/login', { replace: true });
   };
 
   return (
