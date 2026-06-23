@@ -53,7 +53,8 @@ const Layout = () => {
 
   const handleLogout = () => {
     logout();
-    navigate('/login');
+    // Use replace to prevent going back to the protected page
+    navigate('/login', { replace: true });
     handleClose();
   };
 
