@@ -22,6 +22,22 @@ router.get('/', auth, async (req, res) => {
   }
 });
 
+// ─── GET single payment by ID ─────────────────────────────
+router.get('/:id', auth, async (req, res) => {
+  try {
+    const payment = await Payment.findById(req.params.id)
+      .populate('paidBy', 'name')
+      .populate('project', 'name')
+      .populate('worker', 'name nrc phone');
+    if (!payment) {
+      return res.status(404).json({ error: 'Payment not found' });
+    }
+    res.json(payment);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ─── CREATE single payment ─────────────────────────────────
 router.post('/', auth, authorize('admin', 'director', 'accountant'), async (req, res) => {
   try {
@@ -159,7 +175,7 @@ router.get('/workers/search', auth, async (req, res) => {
   }
 });
 
-// ─── Mark payment as failed (FIXED) ──────────────────────────
+// ─── Mark payment as failed ──────────────────────────
 router.put('/:id/fail', auth, authorize('admin', 'director', 'accountant'), async (req, res) => {
   try {
     const payment = await Payment.findById(req.params.id);
@@ -178,7 +194,7 @@ router.put('/:id/fail', auth, authorize('admin', 'director', 'accountant'), asyn
     // ─── Create notifications directly using Notification model ───
     for (let user of users) {
       await Notification.create({
-        user: user._id,        // ✅ CORRECT FIELD NAME
+        user: user._id,
         type: 'payment_failed',
         title: 'Payment Failed',
         message: `Payment of ZMW ${payment.amount} to ${payment.recipientName} failed. Please review.`,
