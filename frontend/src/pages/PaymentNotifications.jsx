@@ -20,13 +20,11 @@ import {
   InputLabel,
   CircularProgress,
   Alert,
-  Divider,
 } from '@mui/material';
 import {
   CheckCircle as CheckCircleIcon,
   Error as ErrorIcon,
   Refresh as RefreshIcon,
-  Receipt as ReceiptIcon,
   Payments as PaymentsIcon,
 } from '@mui/icons-material';
 import { useAuth } from '../context/AuthContext';
@@ -38,7 +36,7 @@ const PaymentNotifications = () => {
   const navigate = useNavigate();
   const [notifications, setNotifications] = useState([]);
   const [filtered, setFiltered] = useState([]);
-  const [filter, setFilter] = useState('all'); // 'all', 'success', 'failed'
+  const [filter, setFilter] = useState('all');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -58,11 +56,9 @@ const PaymentNotifications = () => {
     setError(null);
     try {
       const res = await api.get('/api/notifications');
-      // Filter only payment-related notifications
       const paymentTypes = ['payment_made', 'payment_failed', 'payment_confirmed'];
       const all = res.data || [];
       const payments = all.filter(n => paymentTypes.includes(n.type));
-      // Sort by newest first
       payments.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
       setNotifications(payments);
       setFiltered(payments);
@@ -124,7 +120,6 @@ const PaymentNotifications = () => {
 
   // ─── Extract recipient from message ──────────────────────
   const extractRecipient = (message) => {
-    // Try to find recipient name after "paid" or "to"
     const match = message.match(/paid\s+(.+?)\s+ZMW/);
     return match ? match[1] : 'Unknown';
   };
