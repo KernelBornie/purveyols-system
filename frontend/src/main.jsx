@@ -2,12 +2,9 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App.jsx';
 import './index.css';
-import { ThemeProvider } from './context/ThemeContext';
 import { AuthProvider } from './context/AuthContext';
 import { CssBaseline } from '@mui/material';
-import { initOfflineSync } from './utils/offlineSync';
-import { syncAllData } from './services/dataSyncService';
-import api from './api/axios';
+import { initSync, syncAllData } from './services/dataSyncService';
 
 // ─── Register service worker ──────────────────────────────────
 if ('serviceWorker' in navigator) {
@@ -28,12 +25,12 @@ if ('serviceWorker' in navigator) {
 }
 
 // ─── Initialize offline sync ──────────────────────────────────
-const cleanup = initOfflineSync(api);
+initSync();
 
 // ─── Preload data from API into persistent storage ──────────
 setTimeout(() => {
   syncAllData().then(results => {
-    console.log('📦 Data preloaded into persistent storage:', Object.keys(results));
+    console.log('📦 Data preloaded:', Object.keys(results).filter(k => results[k].success));
   }).catch(err => {
     console.log('Data preload failed:', err);
   });
@@ -42,10 +39,8 @@ setTimeout(() => {
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <AuthProvider>
-      <ThemeProvider>
-        <CssBaseline />
-        <App />
-      </ThemeProvider>
+      <CssBaseline />
+      <App />
     </AuthProvider>
   </React.StrictMode>
 );
