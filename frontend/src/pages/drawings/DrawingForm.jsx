@@ -19,6 +19,7 @@ import UploadFileIcon from '@mui/icons-material/UploadFile';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import PrintIcon from '@mui/icons-material/Print';
 import FileDownloadIcon from '@mui/icons-material/FileDownload';
+import RefreshIcon from '@mui/icons-material/Refresh';
 import api from '../../api/axios';
 import BackButton from '../../components/BackButton';
 import * as fabric from 'fabric';
@@ -45,12 +46,14 @@ const DrawingForm = () => {
   const navigate = useNavigate();
   const canvasRef = useRef(null);
   const [loading, setLoading] = useState(false);
+  const [canvasLoading, setCanvasLoading] = useState(true);
   const [projects, setProjects] = useState([]);
   const [users, setUsers] = useState([]);
   const [message, setMessage] = useState(null);
   const [canvas, setCanvas] = useState(null);
   const [canvasError, setCanvasError] = useState(null);
   const [canvasReady, setCanvasReady] = useState(false);
+  const [initAttempts, setInitAttempts] = useState(0);
 
   const [form, setForm] = useState({
     name: '',
@@ -95,9 +98,14 @@ const DrawingForm = () => {
     },
   });
 
-  // ─── Canvas setup ──────────────────────────────────────────────────
-  useEffect(() => {
-    if (!canvasRef.current) return;
+  // ─── Canvas initialization ──────────────────────────────────────
+  const initCanvas = useCallback(() => {
+    if (!canvasRef.current) {
+      console.warn('Canvas ref not available yet');
+      setCanvasError('Canvas element not found. Please refresh.');
+      setCanvasLoading(false);
+      return false;
+    }
 
     try {
       console.log('🖌️ Initializing fabric canvas...');
@@ -109,36 +117,37 @@ const DrawingForm = () => {
         preserveObjectStacking: true,
       });
 
-      // ─── Grid ──────────────────────────────────────────────────
+      // ─── Grid drawing ──────────────────────────────────────
       const drawGrid = (fc) => {
         const gridSize = 20;
         const w = fc.getWidth() || 900;
         const h = fc.getHeight() || 600;
-        // Remove old grid lines
         const old = fc.getObjects().filter(o => o.excludeFromExport);
         old.forEach(o => fc.remove(o));
-        for (let i = 0; i < w; i += gridSize) {
-          fc.add(new fabric.Line([i, 0, i, h], {
-            stroke: '#ddd',
-            strokeWidth: 0.5,
-            selectable: false,
-            evented: false,
-            excludeFromExport: true,
-          }));
-        }
-        for (let i = 0; i < h; i += gridSize) {
-          fc.add(new fabric.Line([0, i, w, i], {
-            stroke: '#ddd',
-            strokeWidth: 0.5,
-            selectable: false,
-            evented: false,
-            excludeFromExport: true,
-          }));
+        if (showGrid) {
+          for (let i = 0; i < w; i += gridSize) {
+            fc.add(new fabric.Line([i, 0, i, h], {
+              stroke: '#ddd',
+              strokeWidth: 0.5,
+              selectable: false,
+              evented: false,
+              excludeFromExport: true,
+            }));
+          }
+          for (let i = 0; i < h; i += gridSize) {
+            fc.add(new fabric.Line([0, i, w, i], {
+              stroke: '#ddd',
+              strokeWidth: 0.5,
+              selectable: false,
+              evented: false,
+              excludeFromExport: true,
+            }));
+          }
         }
         fc.renderAll();
       };
 
-      // ─── History ──────────────────────────────────────────────
+      // ─── History ────────────────────────────────────────────
       const saveHistory = () => {
         const json = fabricCanvas.toJSON();
         setHistory(prev => {
@@ -149,7 +158,7 @@ const DrawingForm = () => {
         });
       };
 
-      // ─── Load saved data ──────────────────────────────────────
+      // ─── Load saved data ────────────────────────────────────
       if (form.drawingData) {
         try {
           fabricCanvas.loadFromJSON(JSON.parse(form.drawingData), () => {
@@ -163,27 +172,60 @@ const DrawingForm = () => {
         saveHistory();
       }
 
-      // ─── Events ──────────────────────────────────────────────
+      // ─── Events ────────────────────────────────────────────
       fabricCanvas.on('object:added', saveHistory);
       fabricCanvas.on('object:modified', saveHistory);
       fabricCanvas.on('object:removed', saveHistory);
 
-      if (showGrid) drawGrid(fabricCanvas);
+      drawGrid(fabricCanvas);
 
       setCanvas(fabricCanvas);
       setCanvasReady(true);
       setCanvasError(null);
+      setCanvasLoading(false);
       console.log('✅ Canvas ready');
-
-      return () => {
-        fabricCanvas.dispose();
-        console.log('🖌️ Canvas disposed');
-      };
+      return true;
     } catch (err) {
       console.error('Canvas init error:', err);
-      setCanvasError(err.message || 'Unknown error');
+      setCanvasError(err.message || 'Unknown error initializing canvas');
+      setCanvasLoading(false);
+      return false;
     }
-  }, []); // only once
+  }, [form.drawingData, historyIndex, showGrid]);
+
+  // ─── Auto‑init on mount and on retry ──────────────────────────
+  useEffect(() => {
+    let mounted = true;
+    const attemptInit = () => {
+      if (!mounted) return;
+      const success = initCanvas();
+      if (!success && mounted) {
+        // Retry after a short delay if canvas ref still missing
+        setTimeout(() => {
+          if (mounted && !canvasReady) {
+            setInitAttempts(prev => prev + 1);
+            attemptInit();
+          }
+        }, 500);
+      }
+    };
+    attemptInit();
+    return () => { mounted = false; };
+  }, [initCanvas, canvasReady]);
+
+  // ─── Manual retry ──────────────────────────────────────────────
+  const handleRetryCanvas = () => {
+    setCanvasLoading(true);
+    setCanvasError(null);
+    if (canvas) {
+      canvas.dispose();
+      setCanvas(null);
+    }
+    setCanvasReady(false);
+    setTimeout(() => {
+      initCanvas();
+    }, 300);
+  };
 
   // ─── Re-draw grid when toggled ──────────────────────────────────
   useEffect(() => {
@@ -239,7 +281,7 @@ const DrawingForm = () => {
   // ─── Tools ──────────────────────────────────────────────────────
   const addShape = useCallback((type, props = {}) => {
     if (!canvas) {
-      alert('Canvas not ready. Please refresh.');
+      alert('Canvas not ready. Please refresh or click "Retry Canvas".');
       return;
     }
     let shape;
@@ -374,7 +416,10 @@ const DrawingForm = () => {
 
   // ─── Save canvas ──────────────────────────────────────────────────
   const saveDrawingToForm = useCallback(() => {
-    if (!canvas) return;
+    if (!canvas) {
+      setMessage({ type: 'error', text: 'Canvas not ready. Please retry.' });
+      return;
+    }
     try {
       const json = canvas.toJSON();
       const dataUrl = canvas.toDataURL('image/png');
@@ -391,11 +436,13 @@ const DrawingForm = () => {
 
   // ─── File upload ──────────────────────────────────────────────────
   const handleFileUpload = useCallback((file) => {
-    if (!canvas) return;
+    if (!canvas) {
+      alert('Canvas not ready. Please retry.');
+      return;
+    }
     const reader = new FileReader();
     reader.onload = (e) => {
       const content = e.target.result;
-      // CSV upload
       if (file.name.endsWith('.csv')) {
         const lines = content.split('\n');
         lines.forEach(line => {
@@ -413,7 +460,6 @@ const DrawingForm = () => {
         setImportDialog(false);
         return;
       }
-      // Image upload
       if (file.type.startsWith('image/')) {
         const img = new Image();
         img.src = URL.createObjectURL(file);
@@ -425,7 +471,6 @@ const DrawingForm = () => {
         };
         return;
       }
-      // Other files (PDF, DWG, DXF) – just placeholder
       alert(`File "${file.name}" uploaded, but parsing is not fully implemented.`);
       setImportDialog(false);
     };
@@ -540,7 +585,21 @@ const DrawingForm = () => {
       </Typography>
 
       {message && <Alert severity={message.type} sx={{ mb: 2 }}>{message.text}</Alert>}
-      {canvasError && <Alert severity="error" sx={{ mb: 2 }}>Canvas error: {canvasError}. Please refresh or check console.</Alert>}
+      {canvasError && (
+        <Alert severity="error" sx={{ mb: 2 }} action={
+          <Button color="inherit" size="small" onClick={handleRetryCanvas} startIcon={<RefreshIcon />}>
+            Retry Canvas
+          </Button>
+        }>
+          Canvas error: {canvasError}
+        </Alert>
+      )}
+      {canvasLoading && (
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, my: 2 }}>
+          <CircularProgress size={24} />
+          <Typography>Initializing drawing canvas...</Typography>
+        </Box>
+      )}
 
       <form onSubmit={handleSubmit}>
         <Tabs value={activeTab} onChange={(e, v) => setActiveTab(v)} sx={{ mb: 2 }}>
