@@ -40,6 +40,12 @@ import SparePartForm from './pages/spare-parts/SparePartForm';
 import SafetyReportList from './pages/safety/SafetyReportList';
 import SafetyReportForm from './pages/safety/SafetyReportForm';
 
+// ─── Payment Notifications Import ──────────────────────
+import PaymentNotifications from './pages/PaymentNotifications';
+
+// ─── Payment Details Import ─────────────────────────────
+import PaymentDetails from './pages/PaymentDetails';
+
 const AuthRedirect = () => {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
@@ -92,8 +98,8 @@ function App() {
             <Route path="/funding/:id" element={<FundingRequestForm />} />
             <Route path="/funding/:id/edit" element={<FundingRequestForm />} />
 
-            {/* Payments - redirect */}
-            <Route path="/payments/:id" element={<Navigate to="/dashboard" replace />} />
+            {/* ─── Payments ──────────────────────────────── */}
+            <Route path="/payments/:id" element={<PaymentDetails />} />
 
             {/* Subcontracts */}
             <Route path="/subcontracts" element={<SubcontractList />} />
@@ -146,6 +152,9 @@ function App() {
             <Route path="/safety-reports/new" element={<SafetyReportForm />} />
             <Route path="/safety-reports/:id" element={<SafetyReportForm />} />
             <Route path="/safety-reports/:id/edit" element={<SafetyReportForm />} />
+
+            {/* ─── Payment Notifications ───────────────────── */}
+            <Route path="/payment-notifications" element={<PaymentNotifications />} />
           </Route>
         </Routes>
       </BrowserRouter>
