@@ -5,6 +5,8 @@ import './index.css';
 import { AuthProvider } from './context/AuthContext';
 import { CssBaseline } from '@mui/material';
 import { initSync, syncAllData } from './services/dataSyncService';
+import { initOfflineSync, processQueue } from './utils/offlineSync';
+import api from './api/axios';
 
 // ─── Register service worker ──────────────────────────────────
 if ('serviceWorker' in navigator) {
@@ -24,7 +26,10 @@ if ('serviceWorker' in navigator) {
   });
 }
 
-// ─── Initialize offline sync ──────────────────────────────────
+// ─── Initialize offline sync (legacy queue) ──────────────────
+const cleanup = initOfflineSync(api);
+
+// ─── Initialize new sync (IndexedDB endpoints) ──────────────
 initSync();
 
 // ─── Preload data from API into persistent storage ──────────
