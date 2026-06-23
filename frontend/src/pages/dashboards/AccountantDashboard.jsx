@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import DeliveryNote from "../../components/DeliveryNote";
 import {
   Box, Typography, Grid, Card, CardContent, Button,
@@ -60,6 +60,9 @@ const AccountantDashboard = () => {
   const [payAllStatus, setPayAllStatus] = useState(null);
 
   const COLORS = ['#8884d8', '#82ca9d', '#ffc658', '#ff8042', '#0088FE'];
+
+  // ─── Guard to prevent multiple initial loads ──────────────
+  const initialLoadDone = useRef(false);
 
   // ─── Refresh user data from backend ──────────────────────────
   const refreshUser = useCallback(async () => {
@@ -241,11 +244,14 @@ const AccountantDashboard = () => {
     }
   }, [refreshUser, fetchDashboardData]);
 
-  // ─── Initial load ──────────────────────────────────────────────
+  // ─── Initial load – runs only once ────────────────────────────
   useEffect(() => {
-    refreshAll();
+    if (!initialLoadDone.current) {
+      initialLoadDone.current = true;
+      refreshAll();
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, []); // empty dependency array – runs exactly once
 
   // ─── Worker search / payment modal handlers ───────────────────
   const handleWorkerSelect = useCallback((worker) => {
@@ -257,7 +263,7 @@ const AccountantDashboard = () => {
   const handlePaymentClose = useCallback(() => {
     setPaymentOpen(false);
     setSelectedWorker(null);
-    refreshAll();
+    refreshAll(); // optional: refresh after payment
   }, [refreshAll]);
 
   // ─── Bulk payment ─────────────────────────────────────────────
@@ -368,7 +374,6 @@ const AccountantDashboard = () => {
         Total pending: {formatCurrency(totalPending)} ({pendingWorkers.length} workers) | {pendingFunding} pending funding requests
       </Typography>
 
-      {/* Stats Cards */}
       <Grid container spacing={3} sx={{ mb: 3 }}>
         <Grid item xs={12} sm={6} md={3}>
           <Card><CardContent>
@@ -396,7 +401,6 @@ const AccountantDashboard = () => {
         </Grid>
       </Grid>
 
-      {/* Charts */}
       {showCharts && (
         <Grid container spacing={3} sx={{ mb: 3 }}>
           {paymentTrends.length > 0 && (
@@ -464,7 +468,6 @@ const AccountantDashboard = () => {
         </Grid>
       )}
 
-      {/* Tables */}
       <Paper sx={{ p: 2, mb: 3 }}>
         <Typography variant="h6">Projects by Creator</Typography>
         <Table size="small">
@@ -552,7 +555,6 @@ const AccountantDashboard = () => {
         ) : <Typography>No report data.</Typography>}
       </Paper>
 
-      {/* Payment Modals */}
       <WorkerSearch open={searchOpen} onClose={() => setSearchOpen(false)} onSelect={handleWorkerSelect} />
       {selectedWorker && (
         <PaymentModal open={paymentOpen} onClose={handlePaymentClose} worker={selectedWorker} onSuccess={refreshAll} />
