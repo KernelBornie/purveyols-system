@@ -7,36 +7,67 @@ import {
 } from '@mui/material';
 import {
   // Basic
-  CropSquare as RectIcon, Circle as CircleIcon, HorizontalRule as LineIcon,
-  TextFields as TextIcon, Edit as PenIcon,
+  CropSquare as RectIcon,
+  Circle as CircleIcon,
+  HorizontalRule as LineIcon,
+  TextFields as TextIcon,
+  Edit as PenIcon,
   // Actions
-  Delete as DeleteIcon, Undo as UndoIcon, Redo as RedoIcon,
-  Clear as ClearIcon, Save as SaveIcon, FolderOpen as LoadIcon,
-  // Electrical
-  Power as OutletIcon, ToggleOn as SwitchIcon, Lightbulb as LightIcon,
-  Dashboard as PanelIcon, Bolt as CableIcon,
-  // Structural
-  ViewColumn as ColumnIcon, Build as BeamIcon, Wallpaper as WallIcon,
-  // Floor & Foundation
-  SquareFoot as SlabIcon, Layers as FootingIcon,
-  HolidayVillage as PileIcon, Architecture as RaftIcon,
-  // Plumbing & Drainage
-  Water as PipeIcon, Drain as DrainIcon, WaterDrop as WaterLineIcon,
-  // Water Reticulation
-  Valve as ValveIcon, Grass as SprinklerIcon, FireHydrant as HydrantIcon,
-  // Fencing
-  Fence as FenceIcon, DoorFront as GateIcon,
-  // Bridges & Civil
-  Bridge as BridgeIcon, Tunnel as CulvertIcon,
-  // Evaluation & Water Table
-  Science as BoreholeIcon, Grass as TestPitIcon,
-  Height as WaterTableIcon, Radar as PiezometerIcon,
-  // Site & Survey
-  ShowChart as ContourIcon, Place as PointIcon,
-  CompassCalibration as NorthIcon, Straighten as ScaleIcon,
-  // Annotations
-  Straighten as DimIcon, GridOn as GridIcon,
-  MergeType as HatchIcon, PinDrop as SpotElevationIcon,
+  Delete as DeleteIcon,
+  Undo as UndoIcon,
+  Redo as RedoIcon,
+  Clear as ClearIcon,
+  Save as SaveIcon,
+  FolderOpen as LoadIcon,
+  // Electrical (valid)
+  Power as OutletIcon,
+  ToggleOn as SwitchIcon,
+  Lightbulb as LightIcon,
+  Dashboard as PanelIcon,
+  Bolt as CableIcon,
+  // Structural (valid)
+  ViewColumn as ColumnIcon,
+  Build as BeamIcon,
+  Wallpaper as WallIcon,
+  // Floor & Foundation (valid)
+  SquareFoot as SlabIcon,
+  Layers as FootingIcon,        // for strip footing
+  Layers as RaftIcon,           // we reuse for raft, but we can differentiate
+  Layers as PileIcon,           // reuse – or use another
+  // Plumbing & Drainage (valid)
+  WaterDrop as PipeIcon,        // pipe line
+  ClearAll as DrainIcon,        // drain (manhole)
+  WaterDrop as WaterLineIcon,   // water line (we'll reuse but okay)
+  // Water Reticulation (valid)
+  Tune as ValveIcon,
+  Park as SprinklerIcon,
+  LocalFireDepartment as HydrantIcon,
+  // Fencing (valid)
+  BorderAll as FenceIcon,       // fence line
+  DoorFront as GateIcon,
+  // Bridges & Civil (valid)
+  Construction as BridgeIcon,
+  Router as CulvertIcon,
+  // Evaluation & Water Table (valid)
+  Science as BoreholeIcon,
+  Park as TestPitIcon,          // reuse Park for test pit
+  Radar as PiezometerIcon,
+  WaterDrop as WaterTableIcon,  // reuse WaterDrop for groundwater level
+  // Site & Survey (valid)
+  ShowChart as ContourIcon,
+  Place as PointIcon,
+  CompassCalibration as NorthIcon,
+  Straighten as ScaleIcon,
+  // Annotations (valid)
+  Straighten as DimIcon,
+  GridOn as GridIcon,
+  MergeType as HatchIcon,
+  PinDrop as SpotElevationIcon,
+  // CCTV (valid)
+  Videocam as CameraIcon,
+  Monitor as MonitorIcon,
+  // extra for cable (CCTV)
+  Cable as CCTVCableIcon,
 } from '@mui/icons-material';
 
 const CategoryLabel = ({ children }) => (
@@ -56,7 +87,7 @@ const DrawingForm = () => {
   const [history, setHistory] = useState([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
 
-  // --- Canvas Init ---
+  // --- Canvas Init (unchanged) ---
   useEffect(() => {
     if (!canvasRef.current) {
       setCanvasError('Canvas element not found.');
@@ -75,7 +106,6 @@ const DrawingForm = () => {
       });
       fabricCanvasRef.current = fc;
 
-      // Grid
       const gs = 10;
       for (let i = 0; i < 1200; i += gs) {
         fc.add(new fabric.Line([i, 0, i, 800], { stroke: '#e8e8e8', selectable: false, evented: false, excludeFromExport: true }));
@@ -117,7 +147,7 @@ const DrawingForm = () => {
     };
   }, []);
 
-  // --- Helpers ---
+  // --- Helpers (unchanged) ---
   const getCanvas = () => {
     const fc = fabricCanvasRef.current;
     if (!fc) { setCanvasError('Canvas not ready'); return null; }
@@ -143,7 +173,7 @@ const DrawingForm = () => {
   };
 
   // ================================================================
-  //  BASIC TOOLS
+  //  BASIC TOOLS (unchanged)
   // ================================================================
   const addRectangle = () => {
     const fc = getCanvas();
@@ -210,7 +240,7 @@ const DrawingForm = () => {
   };
 
   // ================================================================
-  //  ELECTRICAL
+  //  ELECTRICAL (unchanged)
   // ================================================================
   const addOutlet = () => {
     const fc = getCanvas();
@@ -257,7 +287,7 @@ const DrawingForm = () => {
   };
 
   // ================================================================
-  //  STRUCTURAL
+  //  STRUCTURAL (unchanged)
   // ================================================================
   const addColumn = () => {
     const fc = getCanvas();
@@ -279,14 +309,13 @@ const DrawingForm = () => {
   };
 
   // ================================================================
-  //  FLOOR & FOUNDATION
+  //  FLOOR & FOUNDATION (unchanged, but use correct icon names)
   // ================================================================
   const addFloorSlab = () => {
     const fc = getCanvas();
     if (!fc) return;
     const slab = new fabric.Rect({ left: 400, top: 400, width: 150, height: 100, fill: '#f5f5f5', stroke: '#000', strokeWidth: 2 });
     fc.add(slab);
-    // Add simple hatch lines
     for (let i = 0; i < 10; i++) {
       fc.add(new fabric.Line([400 + i * 15, 400, 400 + i * 15, 500], { stroke: '#ccc', strokeWidth: 1, selectable: false }));
     }
@@ -302,7 +331,6 @@ const DrawingForm = () => {
     const fc = getCanvas();
     if (!fc) return;
     fc.add(new fabric.Rect({ left: 300, top: 600, width: 160, height: 80, fill: '#a0a0a0', stroke: '#000', strokeWidth: 2 }));
-    // Grid inside
     for (let i = 0; i < 4; i++) fc.add(new fabric.Line([300 + i * 40, 600, 300 + i * 40, 680], { stroke: '#666', strokeWidth: 1 }));
     for (let i = 0; i < 2; i++) fc.add(new fabric.Line([300, 600 + i * 40, 460, 600 + i * 40], { stroke: '#666', strokeWidth: 1 }));
     fc.renderAll();
@@ -319,7 +347,7 @@ const DrawingForm = () => {
   };
 
   // ================================================================
-  //  PLUMBING & DRAINAGE
+  //  PLUMBING & DRAINAGE (unchanged)
   // ================================================================
   const addPipe = () => {
     const fc = getCanvas();
@@ -345,7 +373,7 @@ const DrawingForm = () => {
   };
 
   // ================================================================
-  //  WATER RETICULATION
+  //  WATER RETICULATION (unchanged)
   // ================================================================
   const addValve = () => {
     const fc = getCanvas();
@@ -379,7 +407,7 @@ const DrawingForm = () => {
   };
 
   // ================================================================
-  //  FENCING
+  //  FENCING (unchanged)
   // ================================================================
   const addFencePost = () => {
     const fc = getCanvas();
@@ -408,7 +436,7 @@ const DrawingForm = () => {
   };
 
   // ================================================================
-  //  BRIDGES & CIVIL
+  //  BRIDGES & CIVIL (unchanged)
   // ================================================================
   const addBridge = () => {
     const fc = getCanvas();
@@ -557,7 +585,6 @@ const DrawingForm = () => {
   const addHatch = () => {
     const fc = getCanvas();
     if (!fc) return;
-    // Place a hatched rectangle pattern (concrete hatch)
     const rect = new fabric.Rect({ left: 700, top: 400, width: 80, height: 60, fill: '#e0e0e0', stroke: '#000', strokeWidth: 1 });
     fc.add(rect);
     for (let i = 0; i < 6; i++) {
@@ -570,7 +597,7 @@ const DrawingForm = () => {
   };
 
   // ================================================================
-  //  CCTV
+  //  CCTV (unchanged)
   // ================================================================
   const addCamera = () => {
     const fc = getCanvas();
@@ -599,7 +626,7 @@ const DrawingForm = () => {
   };
 
   // ================================================================
-  //  RENDER
+  //  RENDER (with corrected icons in toolbar)
   // ================================================================
   if (canvasError) return <Alert severity="error" sx={{ m: 2 }}>Error: {canvasError}</Alert>;
 
