@@ -15,7 +15,6 @@ import {
   CheckCircle as CheckCircleIcon,
   Error as ErrorIcon,
   Pending as PendingIcon,
-  ArrowBack as ArrowBackIcon,
 } from '@mui/icons-material';
 import { useAuth } from '../context/AuthContext';
 import api from '../api/axios';
