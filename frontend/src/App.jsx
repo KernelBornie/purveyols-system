@@ -40,6 +40,9 @@ import SparePartForm from './pages/spare-parts/SparePartForm';
 import SafetyReportList from './pages/safety/SafetyReportList';
 import SafetyReportForm from './pages/safety/SafetyReportForm';
 
+// ─── Payment Notifications Import ──────────────────────
+import PaymentNotifications from './pages/PaymentNotifications';
+
 const AuthRedirect = () => {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
@@ -146,6 +149,9 @@ function App() {
             <Route path="/safety-reports/new" element={<SafetyReportForm />} />
             <Route path="/safety-reports/:id" element={<SafetyReportForm />} />
             <Route path="/safety-reports/:id/edit" element={<SafetyReportForm />} />
+
+            {/* ─── Payment Notifications ───────────────────── */}
+            <Route path="/payment-notifications" element={<PaymentNotifications />} />
           </Route>
         </Routes>
       </BrowserRouter>
