@@ -1,8 +1,8 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import api from '../api/axios';
 
-// If you use IndexedDB (offline sync), import the clearing function
-// import { clearAllData } from '../utils/offlineSync'; // optional
+// Optional: if you use IndexedDB for offline sync
+// import { clearAllOfflineData } from '../utils/offlineSync';
 
 const AuthContext = createContext();
 
@@ -11,10 +11,10 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Try sessionStorage first, then localStorage
+    // Read from sessionStorage first, then localStorage
     const token = sessionStorage.getItem('token');
     const storedUser = sessionStorage.getItem('user');
-    
+
     if (token && storedUser) {
       try {
         const parsedUser = JSON.parse(storedUser);
@@ -22,24 +22,22 @@ export const AuthProvider = ({ children }) => {
         api.defaults.headers.common.Authorization = `Bearer ${token}`;
         setLoading(false);
         return;
-      } catch (e) {
+      } catch {
         sessionStorage.removeItem('token');
         sessionStorage.removeItem('user');
       }
     }
 
-    // Fallback to localStorage
     const localToken = localStorage.getItem('token');
     const localUser = localStorage.getItem('user');
     if (localToken && localUser) {
       try {
         const parsedUser = JSON.parse(localUser);
         setUser(parsedUser);
-        // Sync to sessionStorage for this session
         sessionStorage.setItem('token', localToken);
         sessionStorage.setItem('user', localUser);
         api.defaults.headers.common.Authorization = `Bearer ${localToken}`;
-      } catch (e) {
+      } catch {
         localStorage.removeItem('token');
         localStorage.removeItem('user');
       }
@@ -48,40 +46,37 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   const login = async (email, password) => {
-    try {
-      const res = await api.post('/api/auth/login', { email, password });
-      const { token, user } = res.data;
-      
-      // Store in both sessionStorage and localStorage for persistence
-      sessionStorage.setItem('token', token);
-      sessionStorage.setItem('user', JSON.stringify(user));
-      localStorage.setItem('token', token);
-      localStorage.setItem('user', JSON.stringify(user));
-      
-      api.defaults.headers.common.Authorization = `Bearer ${token}`;
-      setUser(user);
-      return user;
-    } catch (error) {
-      throw error;
-    }
+    const res = await api.post('/api/auth/login', { email, password });
+    const { token, user } = res.data;
+
+    sessionStorage.setItem('token', token);
+    sessionStorage.setItem('user', JSON.stringify(user));
+    localStorage.setItem('token', token);
+    localStorage.setItem('user', JSON.stringify(user));
+
+    api.defaults.headers.common.Authorization = `Bearer ${token}`;
+    setUser(user);
+    return user;
   };
 
   const logout = () => {
-    // ─── Clear all authentication data ──────────────────────
+    // ─── Clear all storage ──────────────────────────────────
     sessionStorage.removeItem('token');
     sessionStorage.removeItem('user');
     localStorage.removeItem('token');
     localStorage.removeItem('user');
-    
-    // ─── Remove Authorization header from axios ─────────────
+
+    // ─── Remove Authorization header ──────────────────────
     delete api.defaults.headers.common.Authorization;
-    
-    // ─── (Optional) Clear IndexedDB / offline data ──────────
-    // if (window.indexedDB) {
-    //   // Call a function to clear your offline store
-    //   clearAllData().catch(console.error);
+
+    // ─── (Optional) Clear IndexedDB / offline data ────────
+    // if (typeof clearAllOfflineData === 'function') {
+    //   clearAllOfflineData().catch(console.error);
     // }
-    
+    // If you use localForage:
+    // import localForage from 'localforage';
+    // localForage.clear();
+
     // ─── Reset React state ──────────────────────────────────
     setUser(null);
   };
