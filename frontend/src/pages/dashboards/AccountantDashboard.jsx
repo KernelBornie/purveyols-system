@@ -15,8 +15,9 @@ import {
 import api from '../../api/axios';
 import WorkerSearch from '../../components/WorkerSearch';
 import PaymentModal from '../../components/PaymentModal';
+import { useAuth } from '../../context/AuthContext';
 
-// Simple in‑memory cache with TTL (5 minutes)
+// ─── Simple cache ──────────────────────────────────────────────
 const cache = {};
 const CACHE_TTL = 5 * 60 * 1000;
 
@@ -35,6 +36,7 @@ const setCached = (key, data) => {
 };
 
 const AccountantDashboard = () => {
+  const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({ workers: 0, projects: 0, totalReleased: 0, fundingRequests: 0 });
   const [workers, setWorkers] = useState([]);
@@ -61,6 +63,7 @@ const AccountantDashboard = () => {
 
   const COLORS = ['#8884d8', '#82ca9d', '#ffc658', '#ff8042', '#0088FE'];
 
+  // ─── Fetch all dashboard data ──────────────────────────────
   const fetchDashboardData = useCallback(async (force = false) => {
     const cacheKey = 'accountant_dashboard';
     if (!force) {
@@ -100,6 +103,7 @@ const AccountantDashboard = () => {
       const projectsData = Array.isArray(projectsRes.data) ? projectsRes.data : (projectsRes.data?.data || []);
       const fundingData = Array.isArray(fundingRes.data) ? fundingRes.data : (fundingRes.data?.data || []);
 
+      // ─── Compute worker balances ──────────────────────────────
       const workersWithBalance = workersData.map(w => {
         const workerAttendance = attendanceData.filter(a => a.worker === w._id || a.worker?._id === w._id);
         const totalEarned = workerAttendance.reduce((sum, a) => sum + (a.rate || 0), 0);
@@ -113,6 +117,7 @@ const AccountantDashboard = () => {
       const totalReleased = completedPayments.reduce((sum, p) => sum + (p.amount || 0), 0);
       const totalFunding = fundingData.length;
 
+      // ─── Top workers ────────────────────────────────────────────
       const workerEarnings = {};
       completedPayments.forEach(p => {
         const workerId = p.worker?._id || p.worker;
@@ -128,6 +133,7 @@ const AccountantDashboard = () => {
         .sort((a, b) => b.amount - a.amount)
         .slice(0, 5);
 
+      // ─── Payment trends ────────────────────────────────────────
       const trends = {};
       const now = new Date();
       for (let i = 6; i >= 0; i--) {
@@ -142,6 +148,7 @@ const AccountantDashboard = () => {
       });
       const trendData = Object.entries(trends).map(([date, amount]) => ({ date, amount }));
 
+      // ─── Project spending ──────────────────────────────────────
       const projectSpendingMap = {};
       completedPayments.forEach(p => {
         const projectId = p.project?._id || p.project;
@@ -153,6 +160,7 @@ const AccountantDashboard = () => {
       });
       const spendingData = Object.entries(projectSpendingMap).map(([name, amount]) => ({ name, amount }));
 
+      // ─── Approval ratio ────────────────────────────────────────
       const pending = fundingData.filter(f => f.status === 'pending').length;
       const approved = fundingData.filter(f => f.status === 'approved').length;
       const rejected = fundingData.filter(f => f.status === 'rejected').length;
@@ -204,9 +212,10 @@ const AccountantDashboard = () => {
     }
   }, []);
 
+  // ─── Fetch logged‑in accountant's phone ──────────────────────
   const fetchProfile = useCallback(async () => {
     try {
-      const res = await api.get('/api/auth/me');
+      const res = await api.get('/api/users/me');
       if (res.data && res.data.phone) setWorkerPhone(res.data.phone);
     } catch (err) {
       console.error('Profile fetch error:', err);
@@ -218,6 +227,7 @@ const AccountantDashboard = () => {
     fetchProfile();
   }, [fetchDashboardData, fetchProfile]);
 
+  // ─── Airtel Money direct payment ─────────────────────────────
   const handleAirtelPay = useCallback(async () => {
     if (!payAmount || parseFloat(payAmount) <= 0) {
       alert('Enter a valid amount');
@@ -247,6 +257,7 @@ const AccountantDashboard = () => {
     }
   }, [payAmount, workerPhone]);
 
+  // ─── Worker search / payment modal handlers ───────────────────
   const handleWorkerSelect = useCallback((worker) => {
     setSelectedWorker(worker);
     setSearchOpen(false);
@@ -259,17 +270,26 @@ const AccountantDashboard = () => {
     fetchDashboardData(true);
   }, [fetchDashboardData]);
 
+  // ─── Bulk payment ─────────────────────────────────────────────
   const handlePayAll = useCallback(() => {
+    if (!user?.mobileMoneyNumber) {
+      alert('Please set your mobile money number in your profile first.');
+      return;
+    }
     const pending = workers.filter(w => (w.balance || 0) > 0);
     if (pending.length === 0) {
       alert('No pending balances to pay.');
       return;
     }
     setPayAllOpen(true);
-  }, [workers]);
+  }, [workers, user]);
 
   const handlePayAllConfirm = useCallback(async () => {
     setPayAllStatus(null);
+    if (!user?.mobileMoneyNumber) {
+      alert('Please set your mobile money number in your profile first.');
+      return;
+    }
     const pending = workers.filter(w => (w.balance || 0) > 0);
     try {
       const paymentsData = pending.map(w => ({
@@ -286,7 +306,7 @@ const AccountantDashboard = () => {
     } catch (err) {
       setPayAllStatus({ type: 'error', message: err.response?.data?.error || 'Bulk payment failed' });
     }
-  }, [workers, fetchDashboardData]);
+  }, [workers, fetchDashboardData, user]);
 
   const formatCurrency = useCallback((amount) => {
     return new Intl.NumberFormat('en-ZM', { style: 'currency', currency: 'ZMW' }).format(amount || 0);
