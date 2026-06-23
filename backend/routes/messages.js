@@ -9,7 +9,11 @@ const { createNotification, getSenderName } = require('../utils/notificationHelp
 // ─── Inbox ──────────────────────────────────────────────────
 router.get('/', auth, async (req, res) => {
   try {
-    const messages = await Message.find({ to: req.user.id })
+    const userId = req.user.id;
+    const messages = await Message.find({
+      to: userId,
+      deletedBy: { $ne: userId } // exclude messages the user has deleted
+    })
       .populate('from', 'name role')
       .populate('to', 'name role')
       .sort({ read: 1, createdAt: -1 });
@@ -23,7 +27,11 @@ router.get('/', auth, async (req, res) => {
 // ─── Sent messages ──────────────────────────────────────────
 router.get('/sent', auth, async (req, res) => {
   try {
-    const messages = await Message.find({ from: req.user.id })
+    const userId = req.user.id;
+    const messages = await Message.find({
+      from: userId,
+      deletedBy: { $ne: userId }
+    })
       .populate('from', 'name role')
       .populate('to', 'name role')
       .sort({ createdAt: -1 });
@@ -43,7 +51,6 @@ router.post('/', auth, async (req, res) => {
       return res.status(400).json({ error: 'Recipient and content are required' });
     }
 
-    // ─── Validate that `to` is a valid ObjectId ────────────
     if (!mongoose.Types.ObjectId.isValid(to)) {
       return res.status(400).json({ error: 'Invalid recipient ID format' });
     }
@@ -60,12 +67,12 @@ router.post('/', auth, async (req, res) => {
       to,
       subject: subject || '',
       content,
+      deletedBy: [], // 👈 new messages start with empty deletedBy
     });
     await message.save();
 
     console.log(`📩 Message from ${req.user.id} to ${to}`);
 
-    // ─── Notify only the recipient ──────────────────────────
     await createNotification(
       recipient._id,
       'message_received',
@@ -99,31 +106,43 @@ router.put('/:id/read', auth, async (req, res) => {
   }
 });
 
-// ─── Delete ────────────────────────────────────────────────
+// ─── Soft Delete (per user) ──────────────────────────────
 router.delete('/:id', auth, async (req, res) => {
   try {
-    console.log(`🗑️ Delete request for message ${req.params.id} by user ${req.user.id}`);
-
+    const userId = req.user.id;
     const message = await Message.findById(req.params.id);
     if (!message) {
-      console.log('❌ Message not found');
       return res.status(404).json({ error: 'Message not found' });
     }
 
-    console.log(`📄 Message: from=${message.from}, to=${message.to}`);
-
-    // Allow deletion only if user is sender or recipient
-    const isSender = message.from.toString() === req.user.id;
-    const isRecipient = message.to.toString() === req.user.id;
-
+    // User must be sender or recipient
+    const isSender = message.from.toString() === userId;
+    const isRecipient = message.to.toString() === userId;
     if (!isSender && !isRecipient) {
-      console.log('❌ Unauthorized delete attempt');
       return res.status(403).json({ error: 'Not authorized to delete this message' });
     }
 
-    await Message.findByIdAndDelete(req.params.id);
-    console.log('✅ Message deleted successfully');
-    res.json({ message: 'Deleted' });
+    // If already deleted by this user, ignore
+    if (message.deletedBy.includes(userId)) {
+      return res.status(400).json({ error: 'Message already deleted by you' });
+    }
+
+    // Add user to deletedBy
+    message.deletedBy.push(userId);
+    await message.save();
+
+    console.log(`🗑️ User ${userId} soft‑deleted message ${req.params.id}`);
+
+    // (Optional) Hard‑delete if both users have deleted it
+    // const bothDeleted = message.deletedBy.length === 2 &&
+    //   message.deletedBy.includes(message.from.toString()) &&
+    //   message.deletedBy.includes(message.to.toString());
+    // if (bothDeleted) {
+    //   await Message.findByIdAndDelete(req.params.id);
+    //   console.log(`🗑️ Both users deleted – message ${req.params.id} permanently removed`);
+    // }
+
+    res.json({ message: 'Message deleted for you' });
   } catch (err) {
     console.error('Delete error:', err);
     res.status(500).json({ error: err.message });
@@ -133,7 +152,11 @@ router.delete('/:id', auth, async (req, res) => {
 // ─── Unread count ──────────────────────────────────────────
 router.get('/unread-count', auth, async (req, res) => {
   try {
-    const count = await Message.countDocuments({ to: req.user.id, read: false });
+    const count = await Message.countDocuments({
+      to: req.user.id,
+      read: false,
+      deletedBy: { $ne: req.user.id }
+    });
     res.json({ count });
   } catch (err) {
     console.error('Unread count error:', err);
@@ -141,7 +164,7 @@ router.get('/unread-count', auth, async (req, res) => {
   }
 });
 
-// ─── Conversation between two users (optional) ────────────
+// ─── Conversation between two users ──────────────────────────
 router.get('/conversation/:otherUserId', auth, async (req, res) => {
   try {
     const { otherUserId } = req.params;
@@ -152,7 +175,8 @@ router.get('/conversation/:otherUserId', auth, async (req, res) => {
       $or: [
         { from: req.user.id, to: otherUserId },
         { from: otherUserId, to: req.user.id }
-      ]
+      ],
+      deletedBy: { $ne: req.user.id } // exclude current user's deletions
     })
       .populate('from', 'name role')
       .populate('to', 'name role')
