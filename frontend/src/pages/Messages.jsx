@@ -3,8 +3,7 @@ import React, { useState, useEffect } from 'react';
 import {
   Box, Typography, Paper, Table, TableHead, TableRow, TableCell, TableBody,
   Chip, IconButton, Dialog, DialogTitle, DialogContent, DialogContentText,
-  Button, Badge, Tabs, Tab, CircularProgress, Alert, TextField, Avatar,
-  ListItemIcon, MenuItem, Select, FormControl, InputLabel
+  Button, Badge, Tabs, Tab, CircularProgress, Alert, TextField, Snackbar
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import RefreshIcon from '@mui/icons-material/Refresh';
@@ -12,7 +11,6 @@ import DoneAllIcon from '@mui/icons-material/DoneAll';
 import DeleteIcon from '@mui/icons-material/Delete';
 import ReplyIcon from '@mui/icons-material/Reply';
 import SendIcon from '@mui/icons-material/Send';
-import PersonIcon from '@mui/icons-material/Person';
 import api from '../api/axios';
 
 const Messages = () => {
@@ -30,6 +28,7 @@ const Messages = () => {
   const [sending, setSending] = useState(false);
   const [replyError, setReplyError] = useState(null);
   const [replySuccess, setReplySuccess] = useState(false);
+  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'info' });
   const navigate = useNavigate();
 
   const fetchMessages = async () => {
@@ -47,6 +46,7 @@ const Messages = () => {
       setUnreadCount(unread);
     } catch (err) {
       console.error(err);
+      setSnackbar({ open: true, message: 'Failed to load messages', severity: 'error' });
     } finally {
       setLoading(false);
     }
@@ -62,15 +62,30 @@ const Messages = () => {
     try {
       await api.put(`/api/messages/${id}/read`);
       fetchMessages();
-    } catch (err) { console.error(err); }
+    } catch (err) {
+      console.error(err);
+      setSnackbar({ open: true, message: 'Failed to mark as read', severity: 'error' });
+    }
   };
 
   const handleDelete = async (id) => {
     if (!window.confirm('Delete this message?')) return;
     try {
       await api.delete(`/api/messages/${id}`);
+      setSnackbar({ open: true, message: 'Message deleted', severity: 'success' });
       fetchMessages();
-    } catch (err) { console.error(err); }
+    } catch (err) {
+      console.error('Delete error:', err);
+      let errorMsg = 'Failed to delete message. ';
+      if (err.response) {
+        errorMsg += err.response.data?.error || `Server error (${err.response.status})`;
+      } else if (err.request) {
+        errorMsg += 'No response from server. Check your connection.';
+      } else {
+        errorMsg += err.message;
+      }
+      setSnackbar({ open: true, message: errorMsg, severity: 'error' });
+    }
   };
 
   const handleViewMessage = (msg) => {
@@ -115,6 +130,8 @@ const Messages = () => {
   };
 
   const filteredMessages = tabValue === 0 ? messages : (tabValue === 1 ? messages.filter(m => m.read) : sentMessages);
+
+  const handleCloseSnackbar = () => setSnackbar({ ...snackbar, open: false });
 
   return (
     <Box>
@@ -186,6 +203,18 @@ const Messages = () => {
           </Table>
         )}
       </Paper>
+
+      {/* Snackbar for notifications */}
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={4000}
+        onClose={handleCloseSnackbar}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert onClose={handleCloseSnackbar} severity={snackbar.severity} sx={{ width: '100%' }}>
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
 
       {/* View Message Dialog */}
       <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} maxWidth="sm" fullWidth>
