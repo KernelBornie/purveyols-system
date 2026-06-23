@@ -3,6 +3,7 @@ const router = express.Router();
 const Payment = require('../models/Payment');
 const Worker = require('../models/Worker');
 const User = require('../models/User');
+const Notification = require('../models/Notification'); // 👈 Added
 const auth = require('../middleware/auth');
 const authorize = require('../middleware/rbac');
 const crypto = require('crypto');
@@ -171,16 +172,19 @@ router.put('/:id/fail', auth, authorize('admin', 'director', 'accountant'), asyn
 
     const senderName = await getSenderName(req.user.id);
 
-    // ─── Notify accountants AND admins ──────────────────────────
-    const users = await User.find({ role: { $in: ['accountant', 'admin'] } });
+    // ─── Get admin and accountant users ──────────────────────────
+    const users = await User.find({ role: { $in: ['admin', 'accountant'] } });
+
+    // ─── Create notifications directly using Notification model ───
     for (let user of users) {
-      await createNotification(
-        user._id,
-        'payment_failed',
-        'Payment Failed',
-        `Payment of ZMW ${payment.amount} to ${payment.recipientName} failed. Please review.`,
-        `/payments/${payment._id}`   // ✅ LINK INCLUDED
-      );
+      await Notification.create({
+        recipient: user._id,
+        type: 'payment_failed',
+        title: 'Payment Failed',
+        message: `Payment of ZMW ${payment.amount} to ${payment.recipientName} failed. Please review.`,
+        link: `/payments/${payment._id}`,   // ✅ LINK INCLUDED
+        read: false,
+      });
     }
 
     res.json({ message: 'Payment marked as failed', payment });
