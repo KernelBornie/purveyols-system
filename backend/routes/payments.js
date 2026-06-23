@@ -44,7 +44,7 @@ router.post('/', auth, authorize('admin', 'director', 'accountant'), async (req,
 
     const senderName = await getSenderName(req.user.id);
 
-    // ─── Notify ONLY accountants ──────────────────────────
+    // ─── Notify accountants ──────────────────────────
     const accountants = await User.find({ role: 'accountant' });
     for (let accountant of accountants) {
       await createNotification(
@@ -115,7 +115,7 @@ router.post('/bulk', auth, authorize('admin', 'director', 'accountant'), async (
       }
     }
 
-    // ─── Notify ONLY accountants about bulk payments ──────
+    // ─── Notify accountants about bulk payments ──────
     const accountants = await User.find({ role: 'accountant' });
     for (let accountant of accountants) {
       await createNotification(
@@ -158,7 +158,7 @@ router.get('/workers/search', auth, async (req, res) => {
   }
 });
 
-// ─── Mark payment as failed (NEW) ──────────────────────────
+// ─── Mark payment as failed (FIXED) ──────────────────────────
 router.put('/:id/fail', auth, authorize('admin', 'director', 'accountant'), async (req, res) => {
   try {
     const payment = await Payment.findById(req.params.id);
@@ -171,15 +171,15 @@ router.put('/:id/fail', auth, authorize('admin', 'director', 'accountant'), asyn
 
     const senderName = await getSenderName(req.user.id);
 
-    // ─── Notify all accountants ──────────────────────────
-    const accountants = await User.find({ role: 'accountant' });
-    for (let accountant of accountants) {
+    // ─── Notify accountants AND admins ──────────────────────────
+    const users = await User.find({ role: { $in: ['accountant', 'admin'] } });
+    for (let user of users) {
       await createNotification(
-        accountant._id,
+        user._id,
         'payment_failed',
         'Payment Failed',
         `Payment of ZMW ${payment.amount} to ${payment.recipientName} failed. Please review.`,
-        `/payments/${payment._id}`
+        `/payments/${payment._id}`   // ✅ LINK INCLUDED
       );
     }
 
