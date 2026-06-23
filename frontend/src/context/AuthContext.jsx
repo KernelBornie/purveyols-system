@@ -33,7 +33,6 @@ export const AuthProvider = ({ children }) => {
       const res = await api.post('/api/auth/login', { email, password });
       const { token, user: userData } = res.data;
 
-      // Store in IndexedDB
       await saveAuth('token', token);
       await saveAuth('user', userData);
 
@@ -41,7 +40,6 @@ export const AuthProvider = ({ children }) => {
       setUser(userData);
       return { success: true, user: userData };
     } catch (err) {
-      // If offline, try using stored credentials
       if (!navigator.onLine || err.message === 'Network Error') {
         const token = await getAuth('token');
         const storedUser = await getAuth('user');
@@ -62,14 +60,14 @@ export const AuthProvider = ({ children }) => {
     setUser(null);
   };
 
-  // ─── Update user (sync state + storage) ─────────────────────
+  // ─── Update user – syncs with IndexedDB and storage ────────
   const updateUser = (updatedData) => {
     if (!user) return;
     const newUser = { ...user, ...updatedData };
     setUser(newUser);
-    // Update IndexedDB (persistentStore)
+    // Critical: update IndexedDB
     saveAuth('user', newUser);
-    // Also update localStorage/sessionStorage if used elsewhere
+    // Also update localStorage/sessionStorage for any fallback
     localStorage.setItem('user', JSON.stringify(newUser));
     sessionStorage.setItem('user', JSON.stringify(newUser));
   };

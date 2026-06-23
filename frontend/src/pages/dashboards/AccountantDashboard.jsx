@@ -3,7 +3,7 @@ import DeliveryNote from "../../components/DeliveryNote";
 import {
   Box, Typography, Grid, Card, CardContent, Button,
   Table, TableHead, TableRow, TableCell, TableBody,
-  Chip, Paper, CircularProgress, Alert, TextField,
+  Chip, Paper, CircularProgress, Alert,
   FormControlLabel, Switch, Dialog, DialogTitle,
   DialogContent, DialogActions, Skeleton
 } from '@mui/material';
@@ -368,6 +368,7 @@ const AccountantDashboard = () => {
         Total pending: {formatCurrency(totalPending)} ({pendingWorkers.length} workers) | {pendingFunding} pending funding requests
       </Typography>
 
+      {/* Stats Cards */}
       <Grid container spacing={3} sx={{ mb: 3 }}>
         <Grid item xs={12} sm={6} md={3}>
           <Card><CardContent>
@@ -395,6 +396,7 @@ const AccountantDashboard = () => {
         </Grid>
       </Grid>
 
+      {/* Charts */}
       {showCharts && (
         <Grid container spacing={3} sx={{ mb: 3 }}>
           {paymentTrends.length > 0 && (
@@ -462,6 +464,7 @@ const AccountantDashboard = () => {
         </Grid>
       )}
 
+      {/* Tables */}
       <Paper sx={{ p: 2, mb: 3 }}>
         <Typography variant="h6">Projects by Creator</Typography>
         <Table size="small">
@@ -549,6 +552,7 @@ const AccountantDashboard = () => {
         ) : <Typography>No report data.</Typography>}
       </Paper>
 
+      {/* Payment Modals */}
       <WorkerSearch open={searchOpen} onClose={() => setSearchOpen(false)} onSelect={handleWorkerSelect} />
       {selectedWorker && (
         <PaymentModal open={paymentOpen} onClose={handlePaymentClose} worker={selectedWorker} onSuccess={refreshAll} />

@@ -5,18 +5,18 @@ import api from '../api/axios';
 import BackButton from '../components/BackButton';
 
 const Profile = () => {
-  const { user, updateUser } = useAuth(); // Use updateUser
-  const [form, setForm] = useState({ 
-    name: '', 
-    email: '', 
-    phone: '', 
-    nrc: '', 
-    mobileMoneyNumber: '' 
+  const { user, updateUser } = useAuth();
+  const [form, setForm] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    nrc: '',
+    mobileMoneyNumber: '',
   });
-  const [passwordForm, setPasswordForm] = useState({ 
-    currentPassword: '', 
-    newPassword: '', 
-    confirmPassword: '' 
+  const [passwordForm, setPasswordForm] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: '',
   });
   const [message, setMessage] = useState(null);
   const [error, setError] = useState(null);
@@ -50,10 +50,8 @@ const Profile = () => {
     try {
       const res = await api.put('/api/users/profile', form);
       setMessage('Profile updated successfully');
-      // Update the user context with the new data
       if (res.data.user) {
-        await updateUser(res.data.user); // Use updateUser
-        // No need to manually update storage; updateUser handles it
+        updateUser(res.data.user); // updates context + IndexedDB
       }
     } catch (err) {
       setError(err.response?.data?.message || 'Update failed');
@@ -89,18 +87,13 @@ const Profile = () => {
     <Paper sx={{ p: 3, maxWidth: 700, mx: 'auto' }}>
       <BackButton />
       <Typography variant="h4" gutterBottom>Edit Profile</Typography>
-      
-      {/* Tracking Info */}
+
       {trackingInfo && (
         <Box sx={{ mb: 3, p: 2, bgcolor: 'action.hover', borderRadius: 1 }}>
           <Typography variant="subtitle2" color="textSecondary">
             <Chip label={trackingInfo.role} size="small" color="primary" sx={{ mr: 1 }} />
-            {trackingInfo.createdAt && (
-              <span>Joined: {new Date(trackingInfo.createdAt).toLocaleDateString()} | </span>
-            )}
-            {trackingInfo.lastLogin && (
-              <span>Last Login: {new Date(trackingInfo.lastLogin).toLocaleString()}</span>
-            )}
+            {trackingInfo.createdAt && <span>Joined: {new Date(trackingInfo.createdAt).toLocaleDateString()} | </span>}
+            {trackingInfo.lastLogin && <span>Last Login: {new Date(trackingInfo.lastLogin).toLocaleString()}</span>}
           </Typography>
         </Box>
       )}
@@ -111,43 +104,16 @@ const Profile = () => {
       <form onSubmit={handleProfileUpdate}>
         <Grid container spacing={2}>
           <Grid item xs={12} sm={6}>
-            <TextField 
-              label="Name" 
-              fullWidth 
-              margin="normal" 
-              value={form.name} 
-              onChange={(e) => setForm({ ...form, name: e.target.value })} 
-              required 
-            />
+            <TextField label="Name" fullWidth margin="normal" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
           </Grid>
           <Grid item xs={12} sm={6}>
-            <TextField 
-              label="Email" 
-              fullWidth 
-              margin="normal" 
-              value={form.email} 
-              onChange={(e) => setForm({ ...form, email: e.target.value })} 
-              required 
-              type="email" 
-            />
+            <TextField label="Email" fullWidth margin="normal" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required type="email" />
           </Grid>
           <Grid item xs={12} sm={6}>
-            <TextField 
-              label="Phone" 
-              fullWidth 
-              margin="normal" 
-              value={form.phone || ''} 
-              onChange={(e) => setForm({ ...form, phone: e.target.value })} 
-            />
+            <TextField label="Phone" fullWidth margin="normal" value={form.phone || ''} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
           </Grid>
           <Grid item xs={12} sm={6}>
-            <TextField 
-              label="NRC" 
-              fullWidth 
-              margin="normal" 
-              value={form.nrc || ''} 
-              onChange={(e) => setForm({ ...form, nrc: e.target.value })} 
-            />
+            <TextField label="NRC" fullWidth margin="normal" value={form.nrc || ''} onChange={(e) => setForm({ ...form, nrc: e.target.value })} />
           </Grid>
           {isAccountant && (
             <Grid item xs={12}>
@@ -172,33 +138,9 @@ const Profile = () => {
 
       <Typography variant="h6" gutterBottom>Change Password</Typography>
       <form onSubmit={handlePasswordChange}>
-        <TextField 
-          label="Current Password" 
-          type="password" 
-          fullWidth 
-          margin="normal" 
-          value={passwordForm.currentPassword} 
-          onChange={(e) => setPasswordForm({ ...passwordForm, currentPassword: e.target.value })} 
-          required 
-        />
-        <TextField 
-          label="New Password" 
-          type="password" 
-          fullWidth 
-          margin="normal" 
-          value={passwordForm.newPassword} 
-          onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })} 
-          required 
-        />
-        <TextField 
-          label="Confirm New Password" 
-          type="password" 
-          fullWidth 
-          margin="normal" 
-          value={passwordForm.confirmPassword} 
-          onChange={(e) => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })} 
-          required 
-        />
+        <TextField label="Current Password" type="password" fullWidth margin="normal" value={passwordForm.currentPassword} onChange={(e) => setPasswordForm({ ...passwordForm, currentPassword: e.target.value })} required />
+        <TextField label="New Password" type="password" fullWidth margin="normal" value={passwordForm.newPassword} onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })} required />
+        <TextField label="Confirm New Password" type="password" fullWidth margin="normal" value={passwordForm.confirmPassword} onChange={(e) => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })} required />
         <Button type="submit" variant="outlined" sx={{ mt: 2 }} disabled={loading}>
           {loading ? 'Changing...' : 'Change Password'}
         </Button>
