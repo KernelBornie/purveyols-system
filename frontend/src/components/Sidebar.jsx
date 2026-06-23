@@ -25,6 +25,7 @@ import SettingsIcon from '@mui/icons-material/Settings';
 import ArchitectureIcon from '@mui/icons-material/Architecture';
 import SurveyIcon from '@mui/icons-material/Map';
 import SmartToyIcon from '@mui/icons-material/SmartToy';
+import SafetyIcon from '@mui/icons-material/SafetyCheck'; // 👈 NEW
 import { useAuth } from '../context/AuthContext';
 
 const drawerWidth = 240;
@@ -49,6 +50,7 @@ const Sidebar = ({ mobileOpen, handleDrawerToggle, isMobile }) => {
     { text: 'Drawings', icon: <DescriptionIcon />, path: '/drawings' },
     { text: 'Surveys', icon: <SurveyIcon />, path: '/surveys' },
     { text: 'Messages', icon: <MessageIcon />, path: '/messages' },
+    { text: 'Safety Reports', icon: <SafetyIcon />, path: '/safety-reports' }, // 👈 NEW
     { text: 'Profile', icon: <PersonIcon />, path: '/profile' },
     { text: 'Settings', icon: <SettingsIcon />, path: '/settings' },
   ];
