@@ -5,7 +5,7 @@ import api from '../api/axios';
 import BackButton from '../components/BackButton';
 
 const Profile = () => {
-  const { user, setUser } = useAuth();
+  const { user, updateUser } = useAuth(); // Use updateUser
   const [form, setForm] = useState({ 
     name: '', 
     email: '', 
@@ -52,11 +52,8 @@ const Profile = () => {
       setMessage('Profile updated successfully');
       // Update the user context with the new data
       if (res.data.user) {
-        setUser(res.data.user);
-        // Also update session storage
-        const storedUser = JSON.parse(sessionStorage.getItem('user') || '{}');
-        const updatedUser = { ...storedUser, ...res.data.user };
-        sessionStorage.setItem('user', JSON.stringify(updatedUser));
+        await updateUser(res.data.user); // Use updateUser
+        // No need to manually update storage; updateUser handles it
       }
     } catch (err) {
       setError(err.response?.data?.message || 'Update failed');

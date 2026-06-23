@@ -62,8 +62,24 @@ export const AuthProvider = ({ children }) => {
     setUser(null);
   };
 
+  // ─── Update user ────────────────────────────────────────────
+  const updateUser = async (updatedData) => {
+    if (!user) return;
+    const newUser = { ...user, ...updatedData };
+    setUser(newUser);
+    // Update IndexedDB
+    await saveAuth('user', newUser);
+    // Also update localStorage and sessionStorage (if used elsewhere)
+    try {
+      localStorage.setItem('user', JSON.stringify(newUser));
+      sessionStorage.setItem('user', JSON.stringify(newUser));
+    } catch (e) {
+      // Ignore storage errors
+    }
+  };
+
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout, setUser }}>
+    <AuthContext.Provider value={{ user, loading, login, logout, updateUser, setUser }}>
       {children}
     </AuthContext.Provider>
   );
