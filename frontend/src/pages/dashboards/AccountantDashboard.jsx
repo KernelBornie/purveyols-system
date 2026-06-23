@@ -36,7 +36,7 @@ const setCached = (key, data) => {
 };
 
 const AccountantDashboard = () => {
-  const { user } = useAuth();
+  const { user, updateUser } = useAuth(); // 👈 Get updateUser
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({ workers: 0, projects: 0, totalReleased: 0, fundingRequests: 0 });
   const [workers, setWorkers] = useState([]);
@@ -62,6 +62,18 @@ const AccountantDashboard = () => {
   const [payAllStatus, setPayAllStatus] = useState(null);
 
   const COLORS = ['#8884d8', '#82ca9d', '#ffc658', '#ff8042', '#0088FE'];
+
+  // ─── Refresh user data from backend ──────────────────────────
+  const refreshUser = useCallback(async () => {
+    try {
+      const res = await api.get('/api/users/me');
+      if (res.data) {
+        updateUser(res.data);
+      }
+    } catch (err) {
+      console.error('Failed to refresh user:', err);
+    }
+  }, [updateUser]);
 
   // ─── Fetch all dashboard data ──────────────────────────────
   const fetchDashboardData = useCallback(async (force = false) => {
@@ -222,13 +234,23 @@ const AccountantDashboard = () => {
     }
   }, []);
 
+  // ─── Combined refresh ─────────────────────────────────────────
+  const refreshAll = useCallback(async () => {
+    await refreshUser();     // Update context
+    await fetchDashboardData(true);
+    await fetchProfile();
+  }, [refreshUser, fetchDashboardData, fetchProfile]);
+
   useEffect(() => {
-    fetchDashboardData();
-    fetchProfile();
-  }, [fetchDashboardData, fetchProfile]);
+    refreshAll();
+  }, [refreshAll]);
 
   // ─── Airtel Money direct payment ─────────────────────────────
   const handleAirtelPay = useCallback(async () => {
+    if (!user?.mobileMoneyNumber) {
+      alert('Please set your mobile money number in your profile first.');
+      return;
+    }
     if (!payAmount || parseFloat(payAmount) <= 0) {
       alert('Enter a valid amount');
       return;
@@ -255,7 +277,7 @@ const AccountantDashboard = () => {
         text: err.response?.data?.error || 'Payment failed. Check backend logs.'
       });
     }
-  }, [payAmount, workerPhone]);
+  }, [payAmount, workerPhone, user]);
 
   // ─── Worker search / payment modal handlers ───────────────────
   const handleWorkerSelect = useCallback((worker) => {
@@ -267,8 +289,8 @@ const AccountantDashboard = () => {
   const handlePaymentClose = useCallback(() => {
     setPaymentOpen(false);
     setSelectedWorker(null);
-    fetchDashboardData(true);
-  }, [fetchDashboardData]);
+    refreshAll(); // refresh user and dashboard
+  }, [refreshAll]);
 
   // ─── Bulk payment ─────────────────────────────────────────────
   const handlePayAll = useCallback(() => {
@@ -301,12 +323,12 @@ const AccountantDashboard = () => {
       setTimeout(() => {
         setPayAllOpen(false);
         setPayAllStatus(null);
-        fetchDashboardData(true);
+        refreshAll();
       }, 1500);
     } catch (err) {
       setPayAllStatus({ type: 'error', message: err.response?.data?.error || 'Bulk payment failed' });
     }
-  }, [workers, fetchDashboardData, user]);
+  }, [workers, refreshAll, user]);
 
   const formatCurrency = useCallback((amount) => {
     return new Intl.NumberFormat('en-ZM', { style: 'currency', currency: 'ZMW' }).format(amount || 0);
@@ -342,7 +364,7 @@ const AccountantDashboard = () => {
             control={<Switch checked={showCharts} onChange={(e) => setShowCharts(e.target.checked)} />}
             label="Show Charts"
           />
-          <Button variant="contained" startIcon={<RefreshIcon />} onClick={() => fetchDashboardData(true)}>
+          <Button variant="contained" startIcon={<RefreshIcon />} onClick={refreshAll}>
             Refresh
           </Button>
         </Box>
@@ -359,11 +381,21 @@ const AccountantDashboard = () => {
         <Button variant="contained" color="secondary" onClick={handlePayAll}>
           Pay All Pending
         </Button>
+        {!user?.mobileMoneyNumber && (
+          <Alert severity="warning" sx={{ ml: 2 }}>
+            Accountant mobile money number not set. 
+            <Button size="small" color="inherit" href="/profile" sx={{ ml: 1 }}>
+              Update Profile
+            </Button>
+          </Alert>
+        )}
       </Box>
 
       <Typography variant="caption" display="block" sx={{ mb: 2 }}>
         Total pending: {formatCurrency(totalPending)} ({pendingWorkers.length} workers) | {pendingFunding} pending funding requests
       </Typography>
+
+      {/* ─── Rest of the dashboard (same as before) ─────────────── */}
 
       <Grid container spacing={3} sx={{ mb: 3 }}>
         <Grid item xs={12} sm={6} md={3}>
@@ -571,7 +603,7 @@ const AccountantDashboard = () => {
 
       <WorkerSearch open={searchOpen} onClose={() => setSearchOpen(false)} onSelect={handleWorkerSelect} />
       {selectedWorker && (
-        <PaymentModal open={paymentOpen} onClose={handlePaymentClose} worker={selectedWorker} onSuccess={() => fetchDashboardData(true)} />
+        <PaymentModal open={paymentOpen} onClose={handlePaymentClose} worker={selectedWorker} onSuccess={refreshAll} />
       )}
 
       <Dialog open={payAllOpen} onClose={() => setPayAllOpen(false)} maxWidth="sm" fullWidth>
