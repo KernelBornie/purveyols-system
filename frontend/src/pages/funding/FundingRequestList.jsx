@@ -10,6 +10,7 @@ import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import CheckIcon from '@mui/icons-material/Check';
 import CloseIcon from '@mui/icons-material/Close';
+import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
 import api from '../../api/axios';
 import { useAuth } from '../../context/AuthContext';
 import BackButton from '../../components/BackButton';
@@ -21,6 +22,7 @@ const FundingRequestList = () => {
   const { user } = useAuth();
 
   const canApprove = ['admin', 'director', 'accountant'].includes(user?.role);
+  const canFund = ['admin', 'accountant'].includes(user?.role);
   const canEdit = ['admin', 'director', 'civil-engineer', 'quantity-surveyor', 'foreman', 'driver', 'safety-officer', 'procurement-officer', 'accountant'].includes(user?.role);
 
   useEffect(() => {
@@ -60,6 +62,16 @@ const FundingRequestList = () => {
     }
   };
 
+  const handleFund = async (id) => {
+    if (!window.confirm('Release funds for this approved request?')) return;
+    try {
+      await api.put(`/api/funding-requests/${id}/fund`);
+      fetchRequests();
+    } catch (err) {
+      alert('Funding failed: ' + (err.response?.data?.error || err.message));
+    }
+  };
+
   const handleDelete = async (id) => {
     if (!window.confirm('Delete this request?')) return;
     try {
@@ -92,7 +104,7 @@ const FundingRequestList = () => {
             <TableCell>Amount</TableCell>
             <TableCell>Status</TableCell>
             <TableCell>Requested By</TableCell>
-            <TableCell>Approved By</TableCell>   {/* 👈 NEW COLUMN */}
+            <TableCell>Approved By</TableCell>
             <TableCell>Actions</TableCell>
           </TableRow>
         </TableHead>
@@ -104,12 +116,12 @@ const FundingRequestList = () => {
               <TableCell>
                 <Chip
                   label={r.status}
-                  color={r.status === 'approved' ? 'success' : r.status === 'rejected' ? 'error' : 'warning'}
+                  color={r.status === 'funded' ? 'info' : r.status === 'approved' ? 'success' : r.status === 'rejected' ? 'error' : 'warning'}
                   size="small"
                 />
               </TableCell>
               <TableCell>{r.requestedBy?.name || 'N/A'}</TableCell>
-              <TableCell>{r.approvedBy?.name || '—'}</TableCell>   {/* 👈 RENDER APPROVER */}
+              <TableCell>{r.approvedBy?.name || '—'}</TableCell>
               <TableCell>
                 <Tooltip title="View">
                   <IconButton component={Link} to={`/funding/${r._id}`} size="small">
@@ -143,6 +155,13 @@ const FundingRequestList = () => {
                       </IconButton>
                     </Tooltip>
                   </>
+                )}
+                {canFund && r.status === 'approved' && (
+                  <Tooltip title="Fund (Release Money)">
+                    <IconButton size="small" color="primary" onClick={() => handleFund(r._id)}>
+                      <AttachMoneyIcon fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
                 )}
               </TableCell>
             </TableRow>

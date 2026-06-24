@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const FundingRequest = require('../models/FundingRequest');
+const Payment = require('../models/Payment'); // 👈 ADDED
 const User = require('../models/User');
 const auth = require('../middleware/auth');
 const authorize = require('../middleware/rbac');
@@ -131,6 +132,73 @@ router.put('/:id/reject', auth, authorize('admin', 'director', 'accountant'), as
     );
     res.json(populated);
   } catch (err) { res.status(400).json({ error: err.message }); }
+});
+
+// ─── FUND an approved request ──────────────────────────────────────
+router.put('/:id/fund', auth, authorize('admin', 'accountant'), async (req, res) => {
+  try {
+    const request = await FundingRequest.findById(req.params.id);
+    if (!request) return res.status(404).json({ error: 'Request not found' });
+    if (request.status !== 'approved') {
+      return res.status(400).json({ error: 'Only approved requests can be funded' });
+    }
+
+    // Mark as funded
+    request.status = 'funded';
+    request.fundedBy = req.user.id;
+    request.fundedAt = new Date();
+    await request.save();
+
+    // ─── Create a Payment record ──────────────────────────────
+    const payment = new Payment({
+      type: 'funding',
+      recipientName: request.project?.name || 'Project Funding',
+      recipientPhone: '',
+      amount: request.amount,
+      reference: `FUND-${Date.now()}-${Math.random().toString(36).substr(2, 6).toUpperCase()}`,
+      paidBy: req.user.id,
+      project: request.project,
+      status: 'completed',
+      notes: `Funding for request ${request._id}`,
+    });
+    await payment.save();
+
+    // ─── Notify requester ────────────────────────────────────────
+    const senderName = await getSenderName(req.user.id);
+    const projectName = request.project?.name || 'Unknown Project';
+    const amount = formatCurrency(request.amount);
+
+    await createNotification(
+      request.requestedBy,
+      'funding_funded',
+      'Funding Released',
+      `💰 Your request for ${amount} for "${projectName}" has been funded by ${senderName}`,
+      `/funding/${request._id}`
+    );
+
+    // ─── Notify accountants/admins (optional) ────────────────────
+    const recipients = await User.find({ role: { $in: ['admin', 'accountant'] } });
+    const filtered = recipients.filter(r => r._id.toString() !== req.user.id);
+    for (let recipient of filtered) {
+      await createNotification(
+        recipient._id,
+        'funding_funded',
+        'Funding Released',
+        `${senderName} funded ${amount} for "${projectName}"`,
+        `/funding/${request._id}`
+      );
+    }
+
+    const populated = await FundingRequest.findById(request._id)
+      .populate('project', 'name')
+      .populate('requestedBy', 'name role')
+      .populate('approvedBy', 'name role')
+      .populate('fundedBy', 'name role');
+
+    res.json(populated);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
 });
 
 router.delete('/:id', auth, authorize('admin', 'director'), async (req, res) => {

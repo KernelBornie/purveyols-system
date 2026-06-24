@@ -77,6 +77,7 @@ const Notifications = () => {
       funding_requested: 'Funding Requested',
       funding_approved: 'Funding Approved',
       funding_rejected: 'Funding Rejected',
+      funding_funded: 'Funding Released',   // 👈 NEW
       procurement_ordered: 'Procurement Ordered',
       procurement_funded: 'Procurement Funded',
       procurement_approved: 'Procurement Approved',
@@ -107,6 +108,7 @@ const Notifications = () => {
       funding_requested: '#ff9800',
       funding_approved: '#4caf50',
       funding_rejected: '#f44336',
+      funding_funded: '#00bcd4',   // 👈 NEW (teal)
       procurement_ordered: '#2196f3',
       procurement_funded: '#4caf50',
       procurement_approved: '#4caf50',
