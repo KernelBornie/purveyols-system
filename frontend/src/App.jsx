@@ -32,14 +32,14 @@ import DrawingForm from './pages/drawings/DrawingForm';
 import SurveyList from './pages/surveys/SurveyList';
 import SurveyForm from './pages/surveys/SurveyForm';
 import ProjectPlanning from './pages/projects/ProjectPlanning';
-import Notifications from './pages/Notifications';
+// ─── FIX: Correct import path for Notifications ──────────────────
+import Notifications from './pages/notifications/Notifications';
 import SparePartList from './pages/spare-parts/SparePartList';
 import SparePartForm from './pages/spare-parts/SparePartForm';
 import SafetyReportList from './pages/safety/SafetyReportList';
 import SafetyReportForm from './pages/safety/SafetyReportForm';
 import PaymentNotifications from './pages/PaymentNotifications';
 import PaymentDetails from './pages/PaymentDetails';
-// ─── NEW: PaymentList ──────────────────────────────────────────────
 import PaymentList from './pages/payments/PaymentList';
 
 const AuthRedirect = () => {
