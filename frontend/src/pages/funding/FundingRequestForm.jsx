@@ -22,8 +22,9 @@ const FundingRequestForm = () => {
     description: '',
     status: 'pending',
   });
-  const [creator, setCreator] = useState(null);
-  const [approver, setApprover] = useState(null);
+  const [creator, setCreator] = useState(null);        // { _id, name, role }
+  const [createdAt, setCreatedAt] = useState(null);
+  const [approver, setApprover] = useState(null);      // { _id, name, role }
   const [approvedAt, setApprovedAt] = useState(null);
   const [message, setMessage] = useState(null);
 
@@ -43,10 +44,12 @@ const FundingRequestForm = () => {
             status: data.status || 'pending',
           });
           setCreator(data.requestedBy);
+          setCreatedAt(data.createdAt || data.requestedAt);
           setApprover(data.approvedBy);
           setApprovedAt(data.approvedAt);
         } else {
           setCreator(user);
+          setCreatedAt(new Date().toISOString());
         }
       } catch (err) {
         console.error('Error fetching data:', err);
@@ -89,6 +92,11 @@ const FundingRequestForm = () => {
 
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat('en-ZM', { style: 'currency', currency: 'ZMW' }).format(amount || 0);
+  };
+
+  const formatDate = (dateStr) => {
+    if (!dateStr) return '—';
+    return new Date(dateStr).toLocaleString();
   };
 
   return (
@@ -140,11 +148,14 @@ const FundingRequestForm = () => {
           </Typography>
         </Box>
 
-        {/* Creator Info */}
+        {/* Creator Info with Date/Time */}
         {creator && (
           <Box sx={{ mb: 2 }}>
             <Typography variant="body2">
-              Requested by (you): <strong>{creator.name}</strong> ({creator.role})
+              Requested by: <strong>{creator.name}</strong> ({creator.role})
+            </Typography>
+            <Typography variant="body2" color="textSecondary">
+              Requested on: {formatDate(createdAt)}
             </Typography>
           </Box>
         )}
@@ -168,7 +179,7 @@ const FundingRequestForm = () => {
           </Grid>
         </Grid>
 
-        {/* Amount and Description */}
+        {/* Amount and Status */}
         <Grid container spacing={2} sx={{ mb: 3 }}>
           <Grid item xs={12} md={6}>
             <TextField
@@ -214,7 +225,7 @@ const FundingRequestForm = () => {
           </Grid>
         </Grid>
 
-        {/* Approval Section – now populated from backend */}
+        {/* Approval Section – with Approver and Date/Time */}
         <Box sx={{ mt: 4, borderTop: '1px solid #000', pt: 3 }}>
           <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 2 }}>
             Approval
@@ -222,12 +233,19 @@ const FundingRequestForm = () => {
           <Grid container spacing={2}>
             <Grid item xs={12} md={6}>
               <Typography variant="body2">Requested by:</Typography>
-              <Typography variant="body1" sx={{ fontWeight: 'bold' }}>{creator?.name || 'N/A'}</Typography>
+              <Typography variant="body1" sx={{ fontWeight: 'bold' }}>
+                {creator?.name || 'N/A'}
+              </Typography>
+              {creator && (
+                <Typography variant="caption" color="textSecondary">
+                  {creator.role} • {formatDate(createdAt)}
+                </Typography>
+              )}
             </Grid>
             <Grid item xs={12} md={6}>
               <Typography variant="body2">Date:</Typography>
               <Typography variant="body1" sx={{ fontWeight: 'bold' }}>
-                {new Date().toLocaleDateString()}
+                {formatDate(createdAt)}
               </Typography>
             </Grid>
           </Grid>
@@ -238,7 +256,7 @@ const FundingRequestForm = () => {
                   Approved by: <strong>{approver.name}</strong> ({approver.role})
                 </Typography>
                 <Typography variant="body2">
-                  Approved on: {new Date(approvedAt).toLocaleString()}
+                  Approved on: <strong>{formatDate(approvedAt)}</strong>
                 </Typography>
               </>
             ) : (
@@ -255,6 +273,7 @@ const FundingRequestForm = () => {
           {form.status === 'pending' && <Chip label="Pending" color="warning" size="small" />}
           {form.status === 'approved' && <Chip label="Approved" color="success" size="small" />}
           {form.status === 'rejected' && <Chip label="Rejected" color="error" size="small" />}
+          {form.status === 'funded' && <Chip label="Funded" color="info" size="small" />}
         </Box>
 
         {/* Action Buttons */}
