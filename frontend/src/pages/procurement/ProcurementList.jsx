@@ -1,15 +1,17 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import {
-  Table, TableHead, TableRow, TableCell, TableBody, Button, Paper, Typography,
-  Chip, IconButton, Tooltip, Box, Alert, CircularProgress
+  Paper, Typography, Box, Table, TableHead, TableRow, TableCell, TableBody,
+  Button, IconButton, Tooltip, Alert, CircularProgress, Chip
 } from '@mui/material';
+import AddIcon from '@mui/icons-material/Add';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
+import CheckIcon from '@mui/icons-material/Check';
+import CloseIcon from '@mui/icons-material/Close';
 import PrintIcon from '@mui/icons-material/Print';
-import AddIcon from '@mui/icons-material/Add';
 import api from '../../api/axios';
-import { Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import BackButton from '../../components/BackButton';
 
@@ -19,8 +21,8 @@ const ProcurementList = () => {
   const [error, setError] = useState(null);
   const { user } = useAuth();
 
-  // ✅ Foreman added
-  const canEdit = ['procurement-officer', 'civil-engineer', 'quantity-surveyor', 'director', 'admin', 'driver', 'safety-officer', 'accountant', 'foreman'].includes(user?.role);
+  const canFund = ['admin', 'director', 'accountant'].includes(user?.role);
+  const canEdit = ['admin', 'director', 'procurement-officer', 'civil-engineer', 'quantity-surveyor', 'driver', 'safety-officer', 'accountant', 'foreman'].includes(user?.role);
 
   useEffect(() => {
     fetchOrders();
@@ -36,6 +38,25 @@ const ProcurementList = () => {
       setError('Failed to load orders');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleFund = async (id) => {
+    try {
+      await api.put(`/api/procurement/${id}/fund`);
+      fetchOrders();
+    } catch (err) {
+      alert('Fund action failed');
+    }
+  };
+
+  const handleReject = async (id) => {
+    if (!window.confirm('Reject this procurement order?')) return;
+    try {
+      await api.put(`/api/procurement/${id}/reject`);
+      fetchOrders();
+    } catch (err) {
+      alert('Rejection failed');
     }
   };
 
@@ -107,7 +128,7 @@ const ProcurementList = () => {
                       <VisibilityIcon fontSize="small" />
                     </IconButton>
                   </Tooltip>
-                  {canEdit && (
+                  {canEdit && o.status === 'pending' && (
                     <>
                       <Tooltip title="Edit">
                         <IconButton component={Link} to={`/procurement/${o._id}/edit`} size="small" color="primary">
@@ -117,6 +138,20 @@ const ProcurementList = () => {
                       <Tooltip title="Delete">
                         <IconButton size="small" color="error" onClick={() => handleDelete(o._id)}>
                           <DeleteIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                    </>
+                  )}
+                  {canFund && o.status === 'pending' && (
+                    <>
+                      <Tooltip title="Fund">
+                        <IconButton size="small" color="success" onClick={() => handleFund(o._id)}>
+                          <CheckIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                      <Tooltip title="Reject">
+                        <IconButton size="small" color="error" onClick={() => handleReject(o._id)}>
+                          <CloseIcon fontSize="small" />
                         </IconButton>
                       </Tooltip>
                     </>

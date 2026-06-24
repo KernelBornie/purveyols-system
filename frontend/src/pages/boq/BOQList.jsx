@@ -8,6 +8,8 @@ import AddIcon from '@mui/icons-material/Add';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
+import CheckIcon from '@mui/icons-material/Check';
+import CloseIcon from '@mui/icons-material/Close';
 import api from '../../api/axios';
 import { useAuth } from '../../context/AuthContext';
 import BackButton from '../../components/BackButton';
@@ -18,8 +20,8 @@ const BOQList = () => {
   const [error, setError] = useState(null);
   const { user } = useAuth();
 
-  // ✅ Foreman added
-  const canEdit = ['civil-engineer', 'quantity-surveyor', 'procurement-officer', 'director', 'admin', 'accountant', 'foreman'].includes(user?.role);
+  const canApprove = ['admin', 'director', 'accountant'].includes(user?.role);
+  const canEdit = ['admin', 'director', 'civil-engineer', 'quantity-surveyor', 'procurement-officer', 'accountant', 'foreman'].includes(user?.role);
 
   useEffect(() => {
     fetchBOQs();
@@ -35,6 +37,26 @@ const BOQList = () => {
       setError('Failed to load BOQs');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleApprove = async (id) => {
+    try {
+      await api.put(`/api/boq/${id}/approve`);
+      fetchBOQs();
+    } catch (err) {
+      alert('Approval failed');
+    }
+  };
+
+  const handleReject = async (id) => {
+    const reason = prompt('Rejection reason:');
+    if (reason === null) return;
+    try {
+      await api.put(`/api/boq/${id}/reject`, { reason });
+      fetchBOQs();
+    } catch (err) {
+      alert('Rejection failed');
     }
   };
 
@@ -83,7 +105,11 @@ const BOQList = () => {
               <TableCell>{boq.items?.length || 0}</TableCell>
               <TableCell>ZMW {boq.grandTotal?.toLocaleString() || '0'}</TableCell>
               <TableCell>
-                <Chip label={boq.status} size="small" color={boq.status === 'approved' ? 'success' : boq.status === 'submitted' ? 'warning' : 'default'} />
+                <Chip
+                  label={boq.status}
+                  color={boq.status === 'approved' ? 'success' : boq.status === 'submitted' ? 'warning' : 'default'}
+                  size="small"
+                />
               </TableCell>
               <TableCell>{boq.createdBy?.name || '—'}</TableCell>
               <TableCell>
@@ -92,7 +118,7 @@ const BOQList = () => {
                     <VisibilityIcon fontSize="small" />
                   </IconButton>
                 </Tooltip>
-                {canEdit && (
+                {canEdit && boq.status !== 'approved' && (
                   <>
                     <Tooltip title="Edit">
                       <IconButton component={Link} to={`/boq/${boq._id}/edit`} size="small" color="primary">
@@ -102,6 +128,20 @@ const BOQList = () => {
                     <Tooltip title="Delete">
                       <IconButton size="small" color="error" onClick={() => handleDelete(boq._id)}>
                         <DeleteIcon fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
+                  </>
+                )}
+                {canApprove && boq.status === 'submitted' && (
+                  <>
+                    <Tooltip title="Approve">
+                      <IconButton size="small" color="success" onClick={() => handleApprove(boq._id)}>
+                        <CheckIcon fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
+                    <Tooltip title="Reject">
+                      <IconButton size="small" color="error" onClick={() => handleReject(boq._id)}>
+                        <CloseIcon fontSize="small" />
                       </IconButton>
                     </Tooltip>
                   </>

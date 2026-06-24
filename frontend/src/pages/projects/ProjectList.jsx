@@ -9,6 +9,8 @@ import VisibilityIcon from '@mui/icons-material/Visibility';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import TimelineIcon from '@mui/icons-material/Timeline';
+import CheckIcon from '@mui/icons-material/Check';
+import CloseIcon from '@mui/icons-material/Close';
 import api from '../../api/axios';
 import { useAuth } from '../../context/AuthContext';
 import BackButton from '../../components/BackButton';
@@ -18,8 +20,8 @@ const ProjectList = () => {
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
 
-  const viewOnlyRoles = ['driver', 'receptionist', 'safety-officer'];
-  const isViewOnly = viewOnlyRoles.includes(user?.role);
+  const canApprove = ['admin', 'director'].includes(user?.role);
+  const canEdit = !['driver', 'receptionist', 'safety-officer'].includes(user?.role);
 
   useEffect(() => {
     fetchProjects();
@@ -33,6 +35,25 @@ const ProjectList = () => {
       console.error(err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleApprove = async (id) => {
+    try {
+      await api.put(`/api/projects/${id}/approve`);
+      fetchProjects();
+    } catch (err) {
+      alert('Approval failed');
+    }
+  };
+
+  const handleReject = async (id) => {
+    if (!window.confirm('Reject this project?')) return;
+    try {
+      await api.put(`/api/projects/${id}/reject`);
+      fetchProjects();
+    } catch (err) {
+      alert('Rejection failed');
     }
   };
 
@@ -63,7 +84,7 @@ const ProjectList = () => {
         <Typography variant="h5" sx={{ fontWeight: 'bold' }}>
           Projects
         </Typography>
-        {!isViewOnly && (
+        {canEdit && (
           <Button
             component={Link}
             to="/projects/new"
@@ -75,7 +96,7 @@ const ProjectList = () => {
         )}
       </Box>
 
-      {isViewOnly && (
+      {!canEdit && (
         <Alert severity="info" sx={{ mb: 2 }}>
           You have view‑only access. You can view projects but cannot create, edit, or delete them.
         </Alert>
@@ -155,7 +176,7 @@ const ProjectList = () => {
                     </IconButton>
                   </Tooltip>
 
-                  {!isViewOnly && (
+                  {canEdit && (
                     <>
                       <Tooltip title="Edit">
                         <IconButton component={Link} to={`/projects/${project._id}/edit`} size="small" color="primary">
@@ -170,6 +191,21 @@ const ProjectList = () => {
                       <Tooltip title="Delete">
                         <IconButton size="small" color="error" onClick={() => handleDelete(project._id)}>
                           <DeleteIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                    </>
+                  )}
+
+                  {canApprove && project.status === 'planning' && (
+                    <>
+                      <Tooltip title="Approve">
+                        <IconButton size="small" color="success" onClick={() => handleApprove(project._id)}>
+                          <CheckIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                      <Tooltip title="Reject">
+                        <IconButton size="small" color="error" onClick={() => handleReject(project._id)}>
+                          <CloseIcon fontSize="small" />
                         </IconButton>
                       </Tooltip>
                     </>

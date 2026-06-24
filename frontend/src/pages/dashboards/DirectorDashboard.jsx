@@ -1,14 +1,15 @@
-import DashboardActions from '../../components/DashboardActions';
 import React, { useState, useEffect } from 'react';
 import DeliveryNote from "../../components/DeliveryNote";
 import {
   Box, Typography, Grid, Card, CardContent, Button, Table, TableHead, TableRow, TableCell, TableBody,
-  Chip, Paper, CircularProgress, Link as MuiLink
+  Chip, Paper, CircularProgress, IconButton, Tooltip
 } from '@mui/material';
 import { Link } from 'react-router-dom';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, PieChart, Pie, Cell } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, PieChart, Pie, Cell } from 'recharts';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import EditIcon from '@mui/icons-material/Edit';
+import CheckIcon from '@mui/icons-material/Check';
+import CloseIcon from '@mui/icons-material/Close';
 import api from '../../api/axios';
 
 const DirectorDashboard = () => {
@@ -70,13 +71,7 @@ const DirectorDashboard = () => {
 
   useEffect(() => { fetchData(); }, []);
 
-  const handleApproveBOQ = async (id) => {
-    try {
-      await api.put(`/api/boq/${id}/approve`);
-      fetchData();
-    } catch (err) { alert('Approval failed'); }
-  };
-
+  // ─── Funding actions ──────────────────────────────────────────
   const handleApproveFunding = async (id) => {
     try {
       await api.put(`/api/funding-requests/${id}/approve`);
@@ -89,6 +84,44 @@ const DirectorDashboard = () => {
     if (reason === null) return;
     try {
       await api.put(`/api/funding-requests/${id}/reject`, { reason });
+      fetchData();
+    } catch (err) { alert('Rejection failed'); }
+  };
+
+  // ─── BOQ actions ──────────────────────────────────────────────
+  const handleApproveBOQ = async (id) => {
+    try {
+      await api.put(`/api/boq/${id}/approve`);
+      fetchData();
+    } catch (err) { alert('Approval failed'); }
+  };
+
+  const handleRejectBOQ = async (id) => {
+    const reason = prompt('Rejection reason:');
+    if (reason === null) return;
+    try {
+      // Assuming you have a reject endpoint for BOQ – if not, you can implement one.
+      // For now, we'll use a custom route if it exists, or just alert.
+      // If no reject route, you can simply update status to 'rejected' via a custom call.
+      await api.put(`/api/boq/${id}/reject`, { reason });
+      fetchData();
+    } catch (err) {
+      alert('Rejection failed. The backend may not support BOQ rejection yet.');
+    }
+  };
+
+  // ─── Procurement actions ──────────────────────────────────────
+  const handleFundProcurement = async (id) => {
+    try {
+      await api.put(`/api/procurement/${id}/fund`);
+      fetchData();
+    } catch (err) { alert('Funding failed'); }
+  };
+
+  const handleRejectProcurement = async (id) => {
+    if (!window.confirm('Reject this procurement order?')) return;
+    try {
+      await api.put(`/api/procurement/${id}/reject`);
       fetchData();
     } catch (err) { alert('Rejection failed'); }
   };
@@ -151,7 +184,6 @@ const DirectorDashboard = () => {
           </Paper>
 
           {/* Stats Cards */}
-      <DeliveryNote />
           <Grid container spacing={3} sx={{ mb: 3 }}>
             <Grid item xs={12} sm={6} md={3}>
               <Card><CardContent>
@@ -184,7 +216,6 @@ const DirectorDashboard = () => {
           </Grid>
 
           {/* Charts */}
-      <DeliveryNote />
           <Grid container spacing={3} sx={{ mb: 3 }}>
             <Grid item xs={12} md={6}>
               <Paper sx={{ p: 2 }}>
@@ -195,7 +226,7 @@ const DirectorDashboard = () => {
                       <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                     ))}
                   </Pie>
-                  <Tooltip />
+                  <RechartsTooltip />
                   <Legend />
                 </PieChart>
               </Paper>
@@ -207,7 +238,7 @@ const DirectorDashboard = () => {
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="name" />
                   <YAxis />
-                  <Tooltip />
+                  <RechartsTooltip />
                   <Legend />
                   <Bar dataKey="amount" fill="#8884d8" />
                 </BarChart>
@@ -271,8 +302,16 @@ const DirectorDashboard = () => {
                     <TableCell>
                       {f.status === 'pending' && (
                         <>
-                          <Button size="small" color="success" onClick={() => handleApproveFunding(f._id)}>Approve</Button>
-                          <Button size="small" color="error" onClick={() => handleRejectFunding(f._id)}>Reject</Button>
+                          <Tooltip title="Approve">
+                            <IconButton size="small" color="success" onClick={() => handleApproveFunding(f._id)}>
+                              <CheckIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                          <Tooltip title="Reject">
+                            <IconButton size="small" color="error" onClick={() => handleRejectFunding(f._id)}>
+                              <CloseIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
                         </>
                       )}
                     </TableCell>
@@ -307,7 +346,18 @@ const DirectorDashboard = () => {
                     <TableCell>{b.createdBy?.name}</TableCell>
                     <TableCell>
                       {b.status === 'submitted' && (
-                        <Button size="small" color="primary" onClick={() => handleApproveBOQ(b._id)}>Approve</Button>
+                        <>
+                          <Tooltip title="Approve">
+                            <IconButton size="small" color="success" onClick={() => handleApproveBOQ(b._id)}>
+                              <CheckIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                          <Tooltip title="Reject">
+                            <IconButton size="small" color="error" onClick={() => handleRejectBOQ(b._id)}>
+                              <CloseIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                        </>
                       )}
                     </TableCell>
                   </TableRow>
@@ -330,6 +380,7 @@ const DirectorDashboard = () => {
                   <TableCell>Items</TableCell>
                   <TableCell>Status</TableCell>
                   <TableCell>Created By</TableCell>
+                  <TableCell>Actions</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -339,6 +390,22 @@ const DirectorDashboard = () => {
                     <TableCell>{o.items?.length || 0}</TableCell>
                     <TableCell><Chip label={o.status} color={o.status === 'funded' ? 'success' : o.status === 'purchased' ? 'info' : 'warning'} /></TableCell>
                     <TableCell>{o.createdBy?.name}</TableCell>
+                    <TableCell>
+                      {o.status === 'pending' && (
+                        <>
+                          <Tooltip title="Fund">
+                            <IconButton size="small" color="success" onClick={() => handleFundProcurement(o._id)}>
+                              <CheckIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                          <Tooltip title="Reject">
+                            <IconButton size="small" color="error" onClick={() => handleRejectProcurement(o._id)}>
+                              <CloseIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                        </>
+                      )}
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>

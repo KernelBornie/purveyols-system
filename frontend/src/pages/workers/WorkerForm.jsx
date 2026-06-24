@@ -25,8 +25,8 @@ const WorkerForm = () => {
   const [enroller, setEnroller] = useState(null);
   const [message, setMessage] = useState(null);
 
-  // ✅ Allowed to edit: admin, director, civil-engineer, foreman, accountant, qs
-  const canEditWorker = ['admin', 'director', 'civil-engineer', 'foreman', 'accountant', 'qs'].includes(user?.role);
+  // ✅ Allow: admin, director, civil-engineer, foreman, accountant, qs, quantity-surveyor
+  const canEditWorker = ['admin', 'director', 'civil-engineer', 'foreman', 'accountant', 'qs', 'quantity-surveyor'].includes(user?.role);
 
   useEffect(() => {
     if (id) {

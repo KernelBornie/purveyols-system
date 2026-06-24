@@ -1,2 +1,4 @@
 *.env
 frontend/package-lock.json
+.vercel
+.env*
