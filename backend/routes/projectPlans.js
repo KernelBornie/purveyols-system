@@ -18,13 +18,24 @@ router.get('/project/:projectId', auth, async (req, res) => {
 // CREATE or UPDATE a plan
 router.post('/', auth, async (req, res) => {
   try {
-    let plan = await ProjectPlan.findOne({ project: req.body.project });
+    const { project, tasks, milestones, baselineStart, baselineEnd } = req.body;
+
+    // ─── VALIDATION: ensure all tasks have a name ──────────────
+    if (tasks && tasks.some(t => !t.name || t.name.trim() === '')) {
+      return res.status(400).json({ error: 'All tasks must have a non‑empty name.' });
+    }
+    // Also validate milestone names (if any)
+    if (milestones && milestones.some(m => !m.name || m.name.trim() === '')) {
+      return res.status(400).json({ error: 'All milestones must have a non‑empty name.' });
+    }
+
+    let plan = await ProjectPlan.findOne({ project });
     if (plan) {
       // Update existing
-      plan.tasks = req.body.tasks || plan.tasks;
-      plan.milestones = req.body.milestones || plan.milestones;
-      plan.baselineStart = req.body.baselineStart || plan.baselineStart;
-      plan.baselineEnd = req.body.baselineEnd || plan.baselineEnd;
+      plan.tasks = tasks || plan.tasks;
+      plan.milestones = milestones || plan.milestones;
+      plan.baselineStart = baselineStart || plan.baselineStart;
+      plan.baselineEnd = baselineEnd || plan.baselineEnd;
       plan.updatedAt = Date.now();
     } else {
       plan = new ProjectPlan({ ...req.body, createdBy: req.user.id });
@@ -39,7 +50,7 @@ router.post('/', auth, async (req, res) => {
   }
 });
 
-// DELETE a plan (soft remove tasks/milestones)
+// DELETE a plan
 router.delete('/:id', auth, async (req, res) => {
   try {
     await ProjectPlan.findByIdAndDelete(req.params.id);

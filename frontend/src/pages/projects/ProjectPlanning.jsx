@@ -58,17 +58,32 @@ const ProjectPlanning = () => {
     }
   };
 
+  // ─── Save plan with validation ──────────────────────────────
   const savePlan = async () => {
     if (isViewOnly) return;
+    // Filter out tasks with empty names
+    const validTasks = plan.tasks.filter(t => t.name && t.name.trim() !== '');
+    const validMilestones = plan.milestones.filter(m => m.name && m.name.trim() !== '');
+
+    if (validTasks.length !== plan.tasks.length) {
+      setMessage({ type: 'error', text: 'Some tasks have empty names. Please remove or rename them.' });
+      return;
+    }
+    if (validMilestones.length !== plan.milestones.length) {
+      setMessage({ type: 'error', text: 'Some milestones have empty names. Please remove or rename them.' });
+      return;
+    }
+
     try {
-      await api.post('/api/project-plans', { ...plan, project: projectId });
+      await api.post('/api/project-plans', { ...plan, tasks: validTasks, milestones: validMilestones, project: projectId });
       setMessage({ type: 'success', text: 'Plan saved!' });
+      setTimeout(() => setMessage(null), 3000);
     } catch (err) {
       setMessage({ type: 'error', text: err.response?.data?.error || 'Save failed' });
     }
   };
 
-  // ─── Task handlers ──────────────────────────────────
+  // ─── Task handlers ──────────────────────────────────────────
   const handleAddTask = () => {
     if (isViewOnly) return;
     setEditingTask(null);
@@ -84,7 +99,12 @@ const ProjectPlanning = () => {
   };
 
   const handleSaveTask = () => {
-    const newTask = { ...taskForm };
+    // ─── VALIDATE task name ──────────────────────────────────
+    if (!taskForm.name || taskForm.name.trim() === '') {
+      setMessage({ type: 'error', text: 'Task name is required.' });
+      return;
+    }
+    const newTask = { ...taskForm, name: taskForm.name.trim() };
     if (editingTask !== null) {
       const tasks = [...plan.tasks];
       tasks[editingTask] = newTask;
@@ -93,6 +113,7 @@ const ProjectPlanning = () => {
       setPlan({ ...plan, tasks: [...plan.tasks, newTask] });
     }
     setTaskDialog(false);
+    setMessage(null);
   };
 
   const handleDeleteTask = (idx) => {
@@ -110,8 +131,13 @@ const ProjectPlanning = () => {
   };
 
   const handleSaveMilestone = () => {
-    setPlan({ ...plan, milestones: [...plan.milestones, milestoneForm] });
+    if (!milestoneForm.name || milestoneForm.name.trim() === '') {
+      setMessage({ type: 'error', text: 'Milestone name is required.' });
+      return;
+    }
+    setPlan({ ...plan, milestones: [...plan.milestones, { ...milestoneForm, name: milestoneForm.name.trim() }] });
     setMilestoneDialog(false);
+    setMessage(null);
   };
 
   const handleDeleteMilestone = (idx) => {
@@ -174,6 +200,9 @@ const ProjectPlanning = () => {
                   )}
                 </Card>
               ))}
+              {plan.tasks.length === 0 && (
+                <Typography variant="body2" color="textSecondary" sx={{ p: 2 }}>No tasks added yet.</Typography>
+              )}
             </Box>
           </Paper>
 
@@ -198,6 +227,9 @@ const ProjectPlanning = () => {
                   )}
                 </Card>
               ))}
+              {plan.milestones.length === 0 && (
+                <Typography variant="body2" color="textSecondary" sx={{ p: 2 }}>No milestones set.</Typography>
+              )}
             </Box>
           </Paper>
         </>
@@ -207,7 +239,16 @@ const ProjectPlanning = () => {
       <Dialog open={taskDialog} onClose={() => setTaskDialog(false)} maxWidth="sm" fullWidth>
         <DialogTitle>{editingTask !== null ? 'Edit Task' : 'New Task'}</DialogTitle>
         <DialogContent>
-          <TextField label="Task Name" fullWidth margin="dense" value={taskForm.name} onChange={e => setTaskForm({ ...taskForm, name: e.target.value })} />
+          <TextField
+            label="Task Name *"
+            fullWidth
+            margin="dense"
+            value={taskForm.name}
+            onChange={e => setTaskForm({ ...taskForm, name: e.target.value })}
+            required
+            error={!taskForm.name || taskForm.name.trim() === ''}
+            helperText={!taskForm.name || taskForm.name.trim() === '' ? 'Task name is required' : ''}
+          />
           <Box sx={{ display: 'flex', gap: 2 }}>
             <DatePicker selected={taskForm.startDate} onChange={date => setTaskForm({ ...taskForm, startDate: date })} customInput={<TextField label="Start Date" fullWidth margin="dense" />} />
             <DatePicker selected={taskForm.endDate} onChange={date => setTaskForm({ ...taskForm, endDate: date })} customInput={<TextField label="End Date" fullWidth margin="dense" />} />
@@ -236,7 +277,16 @@ const ProjectPlanning = () => {
       <Dialog open={milestoneDialog} onClose={() => setMilestoneDialog(false)} maxWidth="sm" fullWidth>
         <DialogTitle>New Milestone</DialogTitle>
         <DialogContent>
-          <TextField label="Milestone Name" fullWidth margin="dense" value={milestoneForm.name} onChange={e => setMilestoneForm({ ...milestoneForm, name: e.target.value })} />
+          <TextField
+            label="Milestone Name *"
+            fullWidth
+            margin="dense"
+            value={milestoneForm.name}
+            onChange={e => setMilestoneForm({ ...milestoneForm, name: e.target.value })}
+            required
+            error={!milestoneForm.name || milestoneForm.name.trim() === ''}
+            helperText={!milestoneForm.name || milestoneForm.name.trim() === '' ? 'Milestone name is required' : ''}
+          />
           <DatePicker selected={milestoneForm.dueDate} onChange={date => setMilestoneForm({ ...milestoneForm, dueDate: date })} customInput={<TextField label="Due Date" fullWidth margin="dense" />} />
           <TextField select label="Status" fullWidth margin="dense" value={milestoneForm.status} onChange={e => setMilestoneForm({ ...milestoneForm, status: e.target.value })}>
             <MenuItem value="pending">Pending</MenuItem>
