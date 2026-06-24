@@ -9,7 +9,7 @@ const SubcontractSchema = new mongoose.Schema({
   endDate: Date,
   status: {
     type: String,
-    enum: ['draft', 'pending', 'active', 'completed', 'terminated'],
+    enum: ['draft', 'pending', 'approved', 'funded', 'active', 'completed', 'terminated'],
     default: 'draft'
   },
   createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
@@ -17,6 +17,9 @@ const SubcontractSchema = new mongoose.Schema({
   // ─── Approval fields ────────────────────────────────────────
   approvedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   approvedAt: Date,
+  // ─── Funding fields ─────────────────────────────────────────
+  fundedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  fundedAt: Date,
 });
 
 module.exports = mongoose.model('Subcontract', SubcontractSchema);

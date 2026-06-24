@@ -48,6 +48,7 @@ const AccountantDashboard = () => {
   const [projects, setProjects] = useState([]);
   const [fundingRequests, setFundingRequests] = useState([]);
   const [procurementOrders, setProcurementOrders] = useState([]);
+  const [subcontracts, setSubcontracts] = useState([]); // 👈 NEW
   const [payments, setPayments] = useState([]);
   const [attendance, setAttendance] = useState([]);
   const [topWorkers, setTopWorkers] = useState([]);
@@ -69,6 +70,7 @@ const AccountantDashboard = () => {
   const [recipientPhone, setRecipientPhone] = useState('');
   const [fundAmount, setFundAmount] = useState(0);
   const [fundRequesterName, setFundRequesterName] = useState('');
+  const [fundType, setFundType] = useState('funding'); // 'funding' | 'subcontract'
 
   const COLORS = ['#8884d8', '#82ca9d', '#ffc658', '#ff8042', '#0088FE'];
 
@@ -99,6 +101,7 @@ const AccountantDashboard = () => {
         setProjects(cached.projects);
         setFundingRequests(cached.fundingRequests);
         setProcurementOrders(cached.procurementOrders || []);
+        setSubcontracts(cached.subcontracts || []); // 👈 LOAD
         setPayments(cached.payments);
         setAttendance(cached.attendance);
         setTopWorkers(cached.topWorkers);
@@ -114,13 +117,14 @@ const AccountantDashboard = () => {
     setLoading(true);
     setMessage(null);
     try {
-      const [workersRes, attendanceRes, paymentsRes, projectsRes, fundingRes, procurementRes] = await Promise.all([
+      const [workersRes, attendanceRes, paymentsRes, projectsRes, fundingRes, procurementRes, subcontractsRes] = await Promise.all([
         api.get('/api/workers'),
         api.get('/api/attendance'),
         api.get('/api/payments'),
         api.get('/api/projects'),
         api.get('/api/funding-requests').catch(() => api.get('/api/funding')),
-        api.get('/api/procurement')
+        api.get('/api/procurement'),
+        api.get('/api/subcontracts') // 👈 FETCH subcontracts
       ]);
 
       const workersData = Array.isArray(workersRes.data) ? workersRes.data : (workersRes.data?.data || []);
@@ -130,10 +134,11 @@ const AccountantDashboard = () => {
       const projectsData = Array.isArray(projectsRes.data) ? projectsRes.data : (projectsRes.data?.data || []);
       const fundingData = Array.isArray(fundingRes.data) ? fundingRes.data : (fundingRes.data?.data || []);
       const procurementData = Array.isArray(procurementRes.data) ? procurementRes.data : (procurementRes.data?.data || []);
+      const subcontractsData = Array.isArray(subcontractsRes.data) ? subcontractsRes.data : (subcontractsRes.data?.data || []);
 
       const workersWithBalance = workersData.map(w => {
         const workerAttendance = attendanceData.filter(a => a.worker === w._id || a.worker?._id === w._id);
-        const totalEarned = workerAttendance.reduce((sum, a) => sum + (a.rate || 0), 0);
+        const totalEarned = workerAttendance.reduce((sum, a) => sum + (a.days * a.rate || a.rate), 0);
         const workerPayments = completedPayments.filter(p => p.worker === w._id || p.worker?._id === w._id);
         const totalPaid = workerPayments.reduce((sum, p) => sum + (p.amount || 0), 0);
         return { ...w, balance: totalEarned - totalPaid };
@@ -206,6 +211,7 @@ const AccountantDashboard = () => {
       setProjects(projectsData);
       setFundingRequests(fundingData);
       setProcurementOrders(procurementData);
+      setSubcontracts(subcontractsData); // 👈 SET
       setPayments(completedPayments);
       setAttendance(attendanceData);
       setTopWorkers(top);
@@ -220,6 +226,7 @@ const AccountantDashboard = () => {
         projects: projectsData,
         fundingRequests: fundingData,
         procurementOrders: procurementData,
+        subcontracts: subcontractsData,
         payments: completedPayments,
         attendance: attendanceData,
         topWorkers: top,
@@ -278,6 +285,17 @@ const AccountantDashboard = () => {
     }
   };
 
+  // ─── Subcontract funding ────────────────────────────────────────
+  const handleFundSubcontract = async (id) => {
+    try {
+      await api.put(`/api/subcontracts/${id}/fund`);
+      setMessage({ type: 'success', text: 'Subcontract funded!' });
+      refreshAll();
+    } catch (err) {
+      setMessage({ type: 'error', text: err.response?.data?.error || 'Funding failed' });
+    }
+  };
+
   // ─── Existing handlers ──────────────────────────────────────────
   const handleFundClick = (request) => {
     const requester = request.requestedBy;
@@ -285,6 +303,7 @@ const AccountantDashboard = () => {
     setFundAmount(request.amount);
     setFundRequesterName(requester?.name || 'Unknown');
     setRecipientPhone(requester?.mobileMoneyNumber || requester?.phone || '');
+    setFundType('funding');
     setFundModalOpen(true);
   };
 
@@ -655,11 +674,15 @@ const AccountantDashboard = () => {
                 <TableCell>{fr.requestedBy?.name || 'N/A'}</TableCell>
                 <TableCell>
                   {fr.status === 'approved' && (
-                    <Tooltip title="Fund this request">
-                      <IconButton color="primary" onClick={() => handleFundClick(fr)}>
-                        <AttachMoneyIcon />
-                      </IconButton>
-                    </Tooltip>
+                    <Button
+                      variant="contained"
+                      color="success"
+                      size="small"
+                      startIcon={<AttachMoneyIcon />}
+                      onClick={() => handleFundClick(fr)}
+                    >
+                      Fund
+                    </Button>
                   )}
                   <Tooltip title="View">
                     <IconButton component={Link} to={`/funding/${fr._id}`} size="small" color="info">
@@ -673,7 +696,7 @@ const AccountantDashboard = () => {
         </Table>
       </Paper>
 
-      {/* Procurement Orders Table with Final Approve and Fund */}
+      {/* Procurement Orders Table */}
       <Paper sx={{ p: 2, mb: 3 }}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <Typography variant="h6">Procurement Orders (Pending Funding)</Typography>
@@ -710,15 +733,81 @@ const AccountantDashboard = () => {
                     </Tooltip>
                   )}
                   {o.status === 'approved' && (
-                    <Tooltip title="Fund">
-                      <IconButton size="small" color="success" onClick={() => handleFundProcurement(o._id)}>
-                        <AttachMoneyIcon fontSize="small" />
-                      </IconButton>
-                    </Tooltip>
+                    <Button
+                      variant="contained"
+                      color="success"
+                      size="small"
+                      startIcon={<AttachMoneyIcon />}
+                      onClick={() => handleFundProcurement(o._id)}
+                    >
+                      Fund
+                    </Button>
                   )}
                 </TableCell>
               </TableRow>
             ))}
+          </TableBody>
+        </Table>
+      </Paper>
+
+      {/* ─── NEW: Subcontracts Table ────────────────────────────────────── */}
+      <Paper sx={{ p: 2, mb: 3 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Typography variant="h6">Subcontracts (Pending Funding)</Typography>
+          <Button component={Link} to="/subcontracts" size="small">View All</Button>
+        </Box>
+        <Table size="small">
+          <TableHead>
+            <TableRow>
+              <TableCell>Name</TableCell>
+              <TableCell>Project</TableCell>
+              <TableCell>Contractor</TableCell>
+              <TableCell>Amount</TableCell>
+              <TableCell>Status</TableCell>
+              <TableCell>Actions</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {subcontracts.slice(0, 5).map(s => (
+              <TableRow key={s._id}>
+                <TableCell>{s.name}</TableCell>
+                <TableCell>{s.project?.name || 'N/A'}</TableCell>
+                <TableCell>{s.contractor?.name || s.contractor || 'N/A'}</TableCell>
+                <TableCell>{formatCurrency(s.amount)}</TableCell>
+                <TableCell>
+                  <Chip
+                    label={s.status}
+                    color={s.status === 'funded' ? 'success' : s.status === 'approved' ? 'info' : s.status === 'pending' ? 'warning' : 'default'}
+                    size="small"
+                  />
+                </TableCell>
+                <TableCell>
+                  <Tooltip title="View">
+                    <IconButton component={Link} to={`/subcontracts/${s._id}`} size="small" color="info">
+                      <VisibilityIcon fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
+                  {s.status === 'approved' && (
+                    <Button
+                      variant="contained"
+                      color="success"
+                      size="small"
+                      startIcon={<AttachMoneyIcon />}
+                      onClick={() => handleFundSubcontract(s._id)}
+                    >
+                      Fund
+                    </Button>
+                  )}
+                </TableCell>
+              </TableRow>
+            ))}
+            {subcontracts.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={6} align="center">
+                  <Typography variant="body2" color="textSecondary">No subcontracts found.</Typography>
+                </TableCell>
+              </TableRow>
+            )}
           </TableBody>
         </Table>
       </Paper>
