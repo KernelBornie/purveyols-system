@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
-  Paper, Typography, Box, Grid, TextField, Button, MenuItem, Alert, Chip
+  Paper, Typography, Box, Grid, TextField, Button, MenuItem, Alert, Chip,
+  Dialog, DialogTitle, DialogContent, DialogActions
 } from '@mui/material';
 import SaveIcon from '@mui/icons-material/Save';
 import PrintIcon from '@mui/icons-material/Print';
+import CheckInIcon from '@mui/icons-material/AssignmentTurnedIn';
 import api from '../../api/axios';
 import { useAuth } from '../../context/AuthContext';
 import BackButton from '../../components/BackButton';
@@ -22,28 +24,32 @@ const WorkerForm = () => {
     dailyRate: '',
     site: '',
     status: 'active',
-    project: '', // 👈 new field
+    project: '',
   });
   const [enroller, setEnroller] = useState(null);
   const [message, setMessage] = useState(null);
+  const [balance, setBalance] = useState(0);
+  const [checkInOpen, setCheckInOpen] = useState(false);
+  const [checkInForm, setCheckInForm] = useState({
+    date: new Date().toISOString().split('T')[0],
+    days: 1,
+    rate: 0,
+    site: '',
+    notes: '',
+  });
 
-  const canEditWorker = ['admin', 'director', 'civil-engineer', 'foreman', 'accountant', 'qs', 'quantity-surveyor'].includes(user?.role);
+  const canEdit = ['admin', 'director', 'civil-engineer', 'foreman', 'accountant', 'qs', 'quantity-surveyor'].includes(user?.role);
+  const canCheckIn = canEdit;
 
-  // Fetch projects for dropdown
   useEffect(() => {
-    api.get('/api/projects')
-      .then(res => {
-        const data = Array.isArray(res.data) ? res.data : (res.data?.data || []);
-        setProjects(data);
-      })
-      .catch(err => console.error('Failed to load projects', err));
-  }, []);
+    const fetchData = async () => {
+      try {
+        const projectsRes = await api.get('/api/projects');
+        setProjects(Array.isArray(projectsRes.data) ? projectsRes.data : []);
 
-  useEffect(() => {
-    if (id) {
-      api.get(`/api/workers/${id}`)
-        .then(res => {
-          const data = res.data;
+        if (id) {
+          const workerRes = await api.get(`/api/workers/${id}`);
+          const data = workerRes.data;
           setForm({
             name: data.name || '',
             nrc: data.nrc || '',
@@ -51,25 +57,28 @@ const WorkerForm = () => {
             dailyRate: data.dailyRate || '',
             site: data.site || '',
             status: data.status || 'active',
-            project: data.project?._id || data.project || '', // 👈 set project
+            project: data.project?._id || data.project || '',
           });
           setEnroller(data.enrolledBy);
-        })
-        .catch(err => {
-          setMessage({ type: 'error', text: 'Failed to load worker' });
-        });
-    } else {
-      if (!canEditWorker) {
-        navigate('/workers');
-        return;
+          setBalance(data.balance || 0);
+        } else {
+          if (!canEdit) {
+            navigate('/workers');
+            return;
+          }
+          setEnroller(user);
+        }
+      } catch (err) {
+        console.error(err);
+        setMessage({ type: 'error', text: 'Failed to load data' });
       }
-      setEnroller(user);
-    }
-  }, [id, user, canEditWorker, navigate]);
+    };
+    fetchData();
+  }, [id, user, canEdit, navigate]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!canEditWorker) return;
+    if (!canEdit) return;
     setLoading(true);
     setMessage(null);
     try {
@@ -80,7 +89,7 @@ const WorkerForm = () => {
         dailyRate: parseFloat(form.dailyRate) || 0,
         site: form.site || '',
         status: form.status,
-        project: form.project || null, // 👈 send project
+        project: form.project || null,
       };
       if (id) {
         await api.put(`/api/workers/${id}`, payload);
@@ -97,26 +106,60 @@ const WorkerForm = () => {
     }
   };
 
+  const handleCheckInOpen = () => {
+    if (!id) {
+      setMessage({ type: 'error', text: 'Please save the worker first before checking in.' });
+      return;
+    }
+    setCheckInForm({
+      date: new Date().toISOString().split('T')[0],
+      days: 1,
+      rate: form.dailyRate || 0,
+      site: form.site || '',
+      notes: '',
+    });
+    setCheckInOpen(true);
+  };
+
+  const handleCheckInSubmit = async () => {
+    if (!id) return;
+    if (!checkInForm.date || checkInForm.days <= 0 || checkInForm.rate < 0) {
+      setMessage({ type: 'error', text: 'Please fill all fields correctly.' });
+      return;
+    }
+    try {
+      await api.post('/api/attendance', {
+        workerId: id,
+        date: checkInForm.date,
+        days: checkInForm.days,
+        rate: checkInForm.rate,
+        site: checkInForm.site,
+        notes: checkInForm.notes,
+      });
+      setCheckInOpen(false);
+      setMessage({ type: 'success', text: `Checked in for ${checkInForm.days} day(s)` });
+      // Refresh balance
+      const updated = await api.get(`/api/workers/${id}`);
+      setBalance(updated.data.balance || 0);
+      setTimeout(() => setMessage(null), 3000);
+    } catch (err) {
+      setMessage({ type: 'error', text: err.response?.data?.error || 'Check‑in failed' });
+    }
+  };
+
   const handlePrint = () => window.print();
 
   return (
     <Paper sx={{ p: 3, maxWidth: '700px', mx: 'auto' }}>
       <BackButton />
       {message && <Alert severity={message.type} sx={{ mb: 2 }}>{message.text}</Alert>}
-      {!canEditWorker && (
-        <Alert severity="info" sx={{ mb: 2 }}>
-          You have view‑only access. Edits are disabled.
-        </Alert>
+      {!canEdit && (
+        <Alert severity="info" sx={{ mb: 2 }}>You have view‑only access. Edits are disabled.</Alert>
       )}
 
       <form onSubmit={handleSubmit}>
-        {/* Company header */}
-        <Box sx={{
-          textAlign: 'center',
-          borderBottom: '2px solid #000',
-          pb: 2,
-          mb: 2,
-        }}>
+        {/* Company Header */}
+        <Box sx={{ textAlign: 'center', borderBottom: '2px solid #000', pb: 2, mb: 2 }}>
           <Typography variant="h4" sx={{ fontWeight: 'bold', letterSpacing: 2 }}>PURVEYOLS</Typography>
           <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>Building and Civil Construction</Typography>
           <Typography variant="body2">Plot No. 8, Buchi Road - Northmead, P.O. Box NH 87 Lusaka, Zambia</Typography>
@@ -139,6 +182,23 @@ const WorkerForm = () => {
           </Typography>
         )}
 
+        {id && (
+          <Box sx={{ mb: 2 }}>
+            <Chip label={`Pending: K ${balance}`} color={balance > 0 ? 'warning' : 'success'} size="medium" />
+            {canCheckIn && (
+              <Button
+                variant="outlined"
+                startIcon={<CheckInIcon />}
+                onClick={handleCheckInOpen}
+                sx={{ ml: 2 }}
+                size="small"
+              >
+                Check In
+              </Button>
+            )}
+          </Box>
+        )}
+
         <Grid container spacing={2}>
           <Grid item xs={12}>
             <TextField
@@ -147,9 +207,7 @@ const WorkerForm = () => {
               value={form.name}
               onChange={e => setForm({ ...form, name: e.target.value })}
               required
-              placeholder="Enter worker's full name..."
-              disabled={!canEditWorker}
-              InputProps={{ readOnly: !canEditWorker }}
+              disabled={!canEdit}
             />
           </Grid>
           <Grid item xs={12} md={6}>
@@ -159,9 +217,7 @@ const WorkerForm = () => {
               value={form.nrc}
               onChange={e => setForm({ ...form, nrc: e.target.value })}
               required
-              placeholder="e.g., 123456/78/9"
-              disabled={!canEditWorker}
-              InputProps={{ readOnly: !canEditWorker }}
+              disabled={!canEdit}
             />
           </Grid>
           <Grid item xs={12} md={6}>
@@ -170,9 +226,7 @@ const WorkerForm = () => {
               fullWidth
               value={form.phone}
               onChange={e => setForm({ ...form, phone: e.target.value })}
-              placeholder="e.g., +260 97 1234567"
-              disabled={!canEditWorker}
-              InputProps={{ readOnly: !canEditWorker }}
+              disabled={!canEdit}
             />
           </Grid>
           <Grid item xs={12} md={6}>
@@ -183,9 +237,7 @@ const WorkerForm = () => {
               value={form.dailyRate}
               onChange={e => setForm({ ...form, dailyRate: e.target.value })}
               inputProps={{ min: 0, step: 0.01 }}
-              placeholder="0.00"
-              disabled={!canEditWorker}
-              InputProps={{ readOnly: !canEditWorker }}
+              disabled={!canEdit}
             />
           </Grid>
           <Grid item xs={12} md={6}>
@@ -194,13 +246,9 @@ const WorkerForm = () => {
               fullWidth
               value={form.site}
               onChange={e => setForm({ ...form, site: e.target.value })}
-              placeholder="e.g., Lusaka, Site A"
-              disabled={!canEditWorker}
-              InputProps={{ readOnly: !canEditWorker }}
+              disabled={!canEdit}
             />
           </Grid>
-
-          {/* ─── NEW: Project dropdown ─── */}
           <Grid item xs={12}>
             <TextField
               select
@@ -208,7 +256,7 @@ const WorkerForm = () => {
               fullWidth
               value={form.project}
               onChange={e => setForm({ ...form, project: e.target.value })}
-              disabled={!canEditWorker}
+              disabled={!canEdit}
               required
             >
               <MenuItem value="">Select a project</MenuItem>
@@ -217,7 +265,6 @@ const WorkerForm = () => {
               ))}
             </TextField>
           </Grid>
-
           <Grid item xs={12}>
             <TextField
               select
@@ -225,7 +272,7 @@ const WorkerForm = () => {
               fullWidth
               value={form.status}
               onChange={e => setForm({ ...form, status: e.target.value })}
-              disabled={!canEditWorker}
+              disabled={!canEdit}
             >
               <MenuItem value="active">Active</MenuItem>
               <MenuItem value="suspended">Suspended</MenuItem>
@@ -234,7 +281,7 @@ const WorkerForm = () => {
           </Grid>
         </Grid>
 
-        {/* Approval / Signature Section */}
+        {/* Approval Section */}
         <Box sx={{ mt: 4, borderTop: '1px solid #000', pt: 3 }}>
           <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 2 }}>Approval</Typography>
           <Grid container spacing={2}>
@@ -244,9 +291,7 @@ const WorkerForm = () => {
             </Grid>
             <Grid item xs={12} md={6}>
               <Typography variant="body2">Date:</Typography>
-              <Typography variant="body1" sx={{ fontWeight: 'bold' }}>
-                {new Date().toLocaleDateString()}
-              </Typography>
+              <Typography variant="body1" sx={{ fontWeight: 'bold' }}>{new Date().toLocaleDateString()}</Typography>
             </Grid>
           </Grid>
           <Box sx={{ mt: 2, display: 'flex', gap: 2 }}>
@@ -255,17 +300,75 @@ const WorkerForm = () => {
           </Box>
         </Box>
 
-        {/* Buttons */}
         <Box sx={{ mt: 4, display: 'flex', gap: 2 }}>
-          {canEditWorker && (
+          {canEdit && (
             <Button type="submit" variant="contained" startIcon={<SaveIcon />} disabled={loading}>
               {loading ? 'Saving...' : 'Save Worker'}
+            </Button>
+          )}
+          {id && canCheckIn && (
+            <Button variant="outlined" startIcon={<CheckInIcon />} onClick={handleCheckInOpen}>
+              Check In
             </Button>
           )}
           <Button variant="outlined" startIcon={<PrintIcon />} onClick={handlePrint}>Print</Button>
           <Button variant="outlined" onClick={() => navigate('/workers')}>Cancel</Button>
         </Box>
       </form>
+
+      {/* Check‑in Modal */}
+      <Dialog open={checkInOpen} onClose={() => setCheckInOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Check In Worker</DialogTitle>
+        <DialogContent>
+          <TextField
+            label="Date"
+            type="date"
+            fullWidth
+            margin="dense"
+            value={checkInForm.date}
+            onChange={e => setCheckInForm({ ...checkInForm, date: e.target.value })}
+            InputLabelProps={{ shrink: true }}
+          />
+          <TextField
+            label="Days Worked"
+            type="number"
+            fullWidth
+            margin="dense"
+            value={checkInForm.days}
+            onChange={e => setCheckInForm({ ...checkInForm, days: Math.max(1, Number(e.target.value)) })}
+            inputProps={{ min: 1 }}
+          />
+          <TextField
+            label="Rate (ZMW per day)"
+            type="number"
+            fullWidth
+            margin="dense"
+            value={checkInForm.rate}
+            onChange={e => setCheckInForm({ ...checkInForm, rate: Math.max(0, Number(e.target.value)) })}
+            inputProps={{ min: 0, step: 0.01 }}
+          />
+          <TextField
+            label="Site"
+            fullWidth
+            margin="dense"
+            value={checkInForm.site}
+            onChange={e => setCheckInForm({ ...checkInForm, site: e.target.value })}
+          />
+          <TextField
+            label="Notes"
+            fullWidth
+            margin="dense"
+            value={checkInForm.notes}
+            onChange={e => setCheckInForm({ ...checkInForm, notes: e.target.value })}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setCheckInOpen(false)}>Cancel</Button>
+          <Button variant="contained" color="primary" onClick={handleCheckInSubmit}>
+            Confirm Check‑in
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Paper>
   );
 };
