@@ -17,7 +17,6 @@ const WorkerList = () => {
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
 
-  // ✅ Allow: admin, director, civil-engineer, foreman, accountant, qs, quantity-surveyor
   const canEditWorker = ['admin', 'director', 'civil-engineer', 'foreman', 'accountant', 'qs', 'quantity-surveyor'].includes(user?.role);
 
   useEffect(() => {
@@ -83,11 +82,12 @@ const WorkerList = () => {
         <CircularProgress />
       ) : (
         <Table size="small">
-          <TableHead>
-            <TableRow sx={{ bgcolor: '#f5f5f5' }}>
+          <TableHead sx={{ bgcolor: '#f5f5f5' }}>
+            <TableRow>
               <TableCell>Name</TableCell>
               <TableCell>NRC</TableCell>
               <TableCell>Phone</TableCell>
+              <TableCell>Project</TableCell>  {/* 👈 New column */}
               <TableCell>Status</TableCell>
               <TableCell>Daily Rate</TableCell>
               <TableCell>Site</TableCell>
@@ -100,6 +100,7 @@ const WorkerList = () => {
                 <TableCell>{worker.name}</TableCell>
                 <TableCell>{worker.nrc}</TableCell>
                 <TableCell>{worker.phone}</TableCell>
+                <TableCell>{worker.project?.name || '—'}</TableCell>  {/* 👈 Show project name */}
                 <TableCell>
                   <Chip label={worker.status} color={getStatusColor(worker.status)} size="small" />
                 </TableCell>
@@ -132,7 +133,7 @@ const WorkerList = () => {
             ))}
             {workers.length === 0 && (
               <TableRow>
-                <TableCell colSpan={7} align="center" sx={{ py: 3 }}>
+                <TableCell colSpan={8} align="center" sx={{ py: 3 }}>
                   <Typography variant="body2" color="textSecondary">No workers enrolled yet.</Typography>
                 </TableCell>
               </TableRow>

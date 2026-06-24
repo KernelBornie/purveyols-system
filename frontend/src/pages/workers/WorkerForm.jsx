@@ -14,6 +14,7 @@ const WorkerForm = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
+  const [projects, setProjects] = useState([]);
   const [form, setForm] = useState({
     name: '',
     nrc: '',
@@ -21,12 +22,22 @@ const WorkerForm = () => {
     dailyRate: '',
     site: '',
     status: 'active',
+    project: '', // 👈 new field
   });
   const [enroller, setEnroller] = useState(null);
   const [message, setMessage] = useState(null);
 
-  // ✅ Allow: admin, director, civil-engineer, foreman, accountant, qs, quantity-surveyor
   const canEditWorker = ['admin', 'director', 'civil-engineer', 'foreman', 'accountant', 'qs', 'quantity-surveyor'].includes(user?.role);
+
+  // Fetch projects for dropdown
+  useEffect(() => {
+    api.get('/api/projects')
+      .then(res => {
+        const data = Array.isArray(res.data) ? res.data : (res.data?.data || []);
+        setProjects(data);
+      })
+      .catch(err => console.error('Failed to load projects', err));
+  }, []);
 
   useEffect(() => {
     if (id) {
@@ -40,6 +51,7 @@ const WorkerForm = () => {
             dailyRate: data.dailyRate || '',
             site: data.site || '',
             status: data.status || 'active',
+            project: data.project?._id || data.project || '', // 👈 set project
           });
           setEnroller(data.enrolledBy);
         })
@@ -68,6 +80,7 @@ const WorkerForm = () => {
         dailyRate: parseFloat(form.dailyRate) || 0,
         site: form.site || '',
         status: form.status,
+        project: form.project || null, // 👈 send project
       };
       if (id) {
         await api.put(`/api/workers/${id}`, payload);
@@ -97,7 +110,7 @@ const WorkerForm = () => {
       )}
 
       <form onSubmit={handleSubmit}>
-        {/* Header */}
+        {/* Company header */}
         <Box sx={{
           textAlign: 'center',
           borderBottom: '2px solid #000',
@@ -186,6 +199,25 @@ const WorkerForm = () => {
               InputProps={{ readOnly: !canEditWorker }}
             />
           </Grid>
+
+          {/* ─── NEW: Project dropdown ─── */}
+          <Grid item xs={12}>
+            <TextField
+              select
+              label="Project *"
+              fullWidth
+              value={form.project}
+              onChange={e => setForm({ ...form, project: e.target.value })}
+              disabled={!canEditWorker}
+              required
+            >
+              <MenuItem value="">Select a project</MenuItem>
+              {projects.map(p => (
+                <MenuItem key={p._id} value={p._id}>{p.name}</MenuItem>
+              ))}
+            </TextField>
+          </Grid>
+
           <Grid item xs={12}>
             <TextField
               select
