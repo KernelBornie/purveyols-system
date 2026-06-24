@@ -172,17 +172,22 @@ const AccountantDashboard = () => {
         .sort((a, b) => b.amount - a.amount)
         .slice(0, 5);
 
+      // ─── Safe trend calculation ──────────────────────────────────
       const trends = {};
       const now = new Date();
       for (let i = 6; i >= 0; i--) {
         const d = new Date(now);
         d.setDate(d.getDate() - i);
-        const key = d.toISOString().split('T')[0];
-        trends[key] = 0;
+        if (d) {
+          const key = d.toISOString().split('T')[0];
+          trends[key] = 0;
+        }
       }
       completedPayments.forEach(p => {
-        const date = new Date(p.createdAt).toISOString().split('T')[0];
-        if (trends[date] !== undefined) trends[date] += p.amount;
+        if (p.createdAt) {
+          const date = new Date(p.createdAt).toISOString().split('T')[0];
+          if (trends[date] !== undefined) trends[date] += p.amount;
+        }
       });
       const trendData = Object.entries(trends).map(([date, amount]) => ({ date, amount }));
 

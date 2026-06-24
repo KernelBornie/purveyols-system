@@ -119,7 +119,7 @@ router.put('/:id/approve', auth, authorize('admin', 'director', 'accountant'), a
   } catch (err) { res.status(400).json({ error: err.message }); }
 });
 
-// ─── FUND (with credential check) ────────────────────────────────────
+// ─── FUND ─────────────────────────────────────────────────────────────
 router.put('/:id/fund', auth, authorize('admin', 'director', 'accountant'), async (req, res) => {
   try {
     const { recipientPhone } = req.body;
@@ -132,6 +132,7 @@ router.put('/:id/fund', auth, authorize('admin', 'director', 'accountant'), asyn
       .populate('createdBy', 'name role phone mobileMoneyNumber');
     if (!sub) return res.status(404).json({ error: 'Subcontract not found' });
 
+    // Only allow funding if not completed/terminated
     if (sub.status === 'completed' || sub.status === 'terminated') {
       return res.status(400).json({ error: 'Cannot fund a completed or terminated subcontract' });
     }

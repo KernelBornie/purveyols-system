@@ -32,18 +32,12 @@ import DrawingForm from './pages/drawings/DrawingForm';
 import SurveyList from './pages/surveys/SurveyList';
 import SurveyForm from './pages/surveys/SurveyForm';
 import ProjectPlanning from './pages/projects/ProjectPlanning';
-import Notifications from './pages/Notifications';
+import Notifications from './pages/Notifications'; // 👈 Already imported
 import SparePartList from './pages/spare-parts/SparePartList';
 import SparePartForm from './pages/spare-parts/SparePartForm';
-
-// ─── Safety Report Imports ──────────────────────────────
 import SafetyReportList from './pages/safety/SafetyReportList';
 import SafetyReportForm from './pages/safety/SafetyReportForm';
-
-// ─── Payment Notifications Import ──────────────────────
 import PaymentNotifications from './pages/PaymentNotifications';
-
-// ─── Payment Details Import ─────────────────────────────
 import PaymentDetails from './pages/PaymentDetails';
 
 const AuthRedirect = () => {
@@ -71,6 +65,8 @@ function App() {
             <Route path="/settings" element={<Settings />} />
             <Route path="/messages" element={<Messages />} />
             <Route path="/messages/:id" element={<Navigate to="/messages" replace />} />
+            
+            {/* ─── Notifications Landing Page ─── */}
             <Route path="/notifications" element={<Notifications />} />
 
             {/* Workers */}
@@ -86,7 +82,7 @@ function App() {
             <Route path="/projects/:id/edit" element={<ProjectForm />} />
             <Route path="/projects/:projectId/planning" element={<ProjectPlanning />} />
 
-            {/* Procurement / Material Requisition */}
+            {/* Procurement */}
             <Route path="/procurement" element={<ProcurementList />} />
             <Route path="/procurement/new" element={<ProcurementForm />} />
             <Route path="/procurement/:id" element={<ProcurementForm />} />
@@ -98,7 +94,7 @@ function App() {
             <Route path="/funding/:id" element={<FundingRequestForm />} />
             <Route path="/funding/:id/edit" element={<FundingRequestForm />} />
 
-            {/* ─── Payments ──────────────────────────────── */}
+            {/* Payments */}
             <Route path="/payments/:id" element={<PaymentDetails />} />
 
             {/* Subcontracts */}
@@ -147,13 +143,13 @@ function App() {
             <Route path="/spare-parts/:id" element={<SparePartForm />} />
             <Route path="/spare-parts/:id/edit" element={<SparePartForm />} />
 
-            {/* ─── Safety Reports ──────────────────────────── */}
+            {/* Safety Reports */}
             <Route path="/safety-reports" element={<SafetyReportList />} />
             <Route path="/safety-reports/new" element={<SafetyReportForm />} />
             <Route path="/safety-reports/:id" element={<SafetyReportForm />} />
             <Route path="/safety-reports/:id/edit" element={<SafetyReportForm />} />
 
-            {/* ─── Payment Notifications ───────────────────── */}
+            {/* Payment Notifications */}
             <Route path="/payment-notifications" element={<PaymentNotifications />} />
           </Route>
         </Routes>
