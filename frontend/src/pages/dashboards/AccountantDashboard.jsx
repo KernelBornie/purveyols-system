@@ -64,6 +64,7 @@ const AccountantDashboard = () => {
   const [payAllOpen, setPayAllOpen] = useState(false);
   const [payAllStatus, setPayAllStatus] = useState(null);
 
+  // ─── Funding Request Modal ──────────────────────────────────────
   const [fundModalOpen, setFundModalOpen] = useState(false);
   const [fundRequestId, setFundRequestId] = useState(null);
   const [recipientPhone, setRecipientPhone] = useState('');
@@ -71,7 +72,11 @@ const AccountantDashboard = () => {
   const [fundRequesterName, setFundRequesterName] = useState('');
   const [fundType, setFundType] = useState('funding');
 
-  // ─── NEW: Subcontract funding modal state ────────────────────────
+  // ─── Procurement Funding Modal ──────────────────────────────────
+  const [procurementFundOpen, setProcurementFundOpen] = useState(false);
+  const [procurementToFund, setProcurementToFund] = useState(null);
+
+  // ─── Subcontract Funding Modal ──────────────────────────────────
   const [subcontractFundOpen, setSubcontractFundOpen] = useState(false);
   const [subcontractToFund, setSubcontractToFund] = useState(null);
 
@@ -278,17 +283,17 @@ const AccountantDashboard = () => {
     }
   };
 
-  const handleFundProcurement = async (id) => {
+  // ─── Funding handlers ──────────────────────────────────────────
+  const handleFundProcurement = async (id, recipientPhone) => {
     try {
-      await api.put(`/api/procurement/${id}/fund`);
-      setMessage({ type: 'success', text: 'Order funded!' });
+      await api.put(`/api/procurement/${id}/fund`, { recipientPhone });
+      setMessage({ type: 'success', text: 'Procurement order funded!' });
       refreshAll();
     } catch (err) {
       setMessage({ type: 'error', text: err.response?.data?.error || 'Funding failed' });
     }
   };
 
-  // ─── Subcontract funding ────────────────────────────────────────
   const handleFundSubcontract = async (id, recipientPhone) => {
     try {
       await api.put(`/api/subcontracts/${id}/fund`, { recipientPhone });
@@ -628,7 +633,7 @@ const AccountantDashboard = () => {
         </Table>
       </Paper>
 
-      {/* ─── Workers by Project ────────────────────────────────────── */}
+      {/* Workers by Project */}
       <Paper sx={{ p: 2, mb: 3 }}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
           <Typography variant="h6">Workers by Project</Typography>
@@ -732,7 +737,7 @@ const AccountantDashboard = () => {
         </Table>
       </Paper>
 
-      {/* Procurement Orders Table – with FINAL APPROVE button */}
+      {/* Procurement Orders Table */}
       <Paper sx={{ p: 2, mb: 3 }}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <Typography variant="h6">Procurement Orders (Pending Funding)</Typography>
@@ -778,8 +783,10 @@ const AccountantDashboard = () => {
                       color="success"
                       size="small"
                       startIcon={<AttachMoneyIcon />}
-                      onClick={() => handleFundProcurement(o._id)}
-                      sx={{ ml: 1 }}
+                      onClick={() => {
+                        setProcurementToFund(o);
+                        setProcurementFundOpen(true);
+                      }}
                     >
                       Fund
                     </Button>
@@ -791,7 +798,7 @@ const AccountantDashboard = () => {
         </Table>
       </Paper>
 
-      {/* ─── Subcontracts Table ─────────────────────────────────────── */}
+      {/* Subcontracts Table */}
       <Paper sx={{ p: 2, mb: 3 }}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <Typography variant="h6">Subcontracts (Pending Funding)</Typography>
@@ -828,7 +835,6 @@ const AccountantDashboard = () => {
                       <VisibilityIcon fontSize="small" />
                     </IconButton>
                   </Tooltip>
-                  {/* ─── Fund button for all statuses except completed/terminated ─── */}
                   {s.status !== 'completed' && s.status !== 'terminated' && (
                     <Button
                       variant="contained"
@@ -918,7 +924,44 @@ const AccountantDashboard = () => {
         </DialogActions>
       </Dialog>
 
-      {/* ─── NEW: Subcontract Funding Modal ──────────────────────────── */}
+      {/* ─── Procurement Funding Modal ────────────────────────────────── */}
+      <Dialog open={procurementFundOpen} onClose={() => setProcurementFundOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Fund Procurement Order</DialogTitle>
+        <DialogContent>
+          <Typography variant="body1" gutterBottom>
+            You are about to fund procurement order <strong>{procurementToFund?.orderNumber || procurementToFund?._id?.slice(-6)}</strong> for <strong>{formatCurrency(procurementToFund?.grandTotal || procurementToFund?.total || 0)}</strong>.
+          </Typography>
+          <TextField
+            label="Recipient Phone Number (Airtel Money)"
+            fullWidth
+            margin="normal"
+            value={procurementToFund?.recipientPhone || ''}
+            onChange={(e) => setProcurementToFund({ ...procurementToFund, recipientPhone: e.target.value })}
+            placeholder="e.g., 0971234567"
+            helperText="This is the phone number that will receive the funds."
+            required
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setProcurementFundOpen(false)}>Cancel</Button>
+          <Button
+            variant="contained"
+            color="primary"
+            onClick={async () => {
+              if (!procurementToFund?.recipientPhone) {
+                alert('Please enter the recipient\'s phone number.');
+                return;
+              }
+              await handleFundProcurement(procurementToFund._id, procurementToFund.recipientPhone);
+              setProcurementFundOpen(false);
+            }}
+          >
+            Confirm & Send Money
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* ─── Subcontract Funding Modal ─────────────────────────────────── */}
       <Dialog open={subcontractFundOpen} onClose={() => setSubcontractFundOpen(false)} maxWidth="sm" fullWidth>
         <DialogTitle>Fund Subcontract</DialogTitle>
         <DialogContent>

@@ -38,7 +38,6 @@ router.get('/:id', auth, async (req, res) => {
 router.post('/', auth, authorize('admin', 'director', 'civil-engineer', 'quantity-surveyor', 'foreman', 'driver', 'safety-officer', 'procurement-officer', 'accountant'), async (req, res) => {
   try {
     const { status } = req.body;
-    // If no status provided, default to 'pending'
     const request = new FundingRequest({
       ...req.body,
       requestedBy: req.user.id,
@@ -55,7 +54,6 @@ router.post('/', auth, authorize('admin', 'director', 'civil-engineer', 'quantit
     const projectName = populated.project?.name || 'Unknown Project';
     const amount = formatCurrency(request.amount);
 
-    // Notify creator
     await createNotification(
       req.user.id,
       'funding_requested',
@@ -64,7 +62,6 @@ router.post('/', auth, authorize('admin', 'director', 'civil-engineer', 'quantit
       `/funding/${request._id}`
     );
 
-    // Notify accountants and directors (exclude creator)
     const recipients = await User.find({ role: { $in: ['accountant', 'director'] } });
     const filtered = recipients.filter(r => r._id.toString() !== req.user.id);
     for (let recipient of filtered) {
@@ -80,24 +77,19 @@ router.post('/', auth, authorize('admin', 'director', 'civil-engineer', 'quantit
   } catch (err) { res.status(400).json({ error: err.message }); }
 });
 
-// ─── UPDATE (EDIT) – only if status is 'draft' or 'pending' ──────────
+// ─── UPDATE (EDIT) ──────────────────────────────────────────────────
 router.put('/:id', auth, authorize('admin', 'director', 'accountant', 'civil-engineer', 'quantity-surveyor', 'procurement-officer'), async (req, res) => {
   try {
     const request = await FundingRequest.findById(req.params.id);
     if (!request) return res.status(404).json({ error: 'Request not found' });
-
-    // Only allow editing if status is draft or pending
     if (!['draft', 'pending'].includes(request.status)) {
       return res.status(400).json({ error: 'Cannot edit approved/rejected/funded request' });
     }
-
-    // Allow editing by creator or authorized roles
     const isCreator = request.requestedBy.toString() === req.user.id;
     const isAuthorized = ['admin', 'director', 'accountant'].includes(req.user.role);
     if (!isCreator && !isAuthorized) {
       return res.status(403).json({ error: 'Not authorized to edit this request' });
     }
-
     const { project, amount, description, status } = req.body;
     if (project !== undefined) request.project = project;
     if (amount !== undefined) request.amount = amount;
@@ -113,7 +105,6 @@ router.put('/:id', auth, authorize('admin', 'director', 'accountant', 'civil-eng
       .populate('requestedBy', 'name role')
       .populate('approvedBy', 'name role')
       .populate('fundedBy', 'name role');
-
     res.json(populated);
   } catch (err) { res.status(400).json({ error: err.message }); }
 });
@@ -181,7 +172,7 @@ router.put('/:id/reject', auth, authorize('admin', 'director', 'accountant'), as
   } catch (err) { res.status(400).json({ error: err.message }); }
 });
 
-// ─── FUND (with Airtel payment) ─────────────────────────────────────
+// ─── FUND ──────────────────────────────────────────────────────────
 router.put('/:id/fund', auth, authorize('admin', 'accountant'), async (req, res) => {
   try {
     const { recipientPhone } = req.body;
@@ -197,7 +188,6 @@ router.put('/:id/fund', auth, authorize('admin', 'accountant'), async (req, res)
       return res.status(400).json({ error: 'Only approved requests can be funded' });
     }
 
-    // ─── Get accountant (sender) ────────────────────────────────────
     const accountant = await User.findById(req.user.id);
     if (!accountant.mobileMoneyNumber) {
       return res.status(400).json({
@@ -205,7 +195,6 @@ router.put('/:id/fund', auth, authorize('admin', 'accountant'), async (req, res)
       });
     }
 
-    // ─── Send money via Airtel ──────────────────────────────────────
     const reference = `FUND-${Date.now()}-${Math.random().toString(36).substr(2, 6).toUpperCase()}`;
     let airtelResponse = null;
     let paymentStatus = 'pending';
@@ -225,7 +214,6 @@ router.put('/:id/fund', auth, authorize('admin', 'accountant'), async (req, res)
       paymentStatus = 'failed';
     }
 
-    // ─── Create Payment record ──────────────────────────────────────
     const payment = new Payment({
       type: 'funding',
       recipientName: request.requestedBy?.name || 'Funding Recipient',
@@ -234,18 +222,18 @@ router.put('/:id/fund', auth, authorize('admin', 'accountant'), async (req, res)
       reference,
       paidBy: req.user.id,
       project: request.project,
+      fundingRequest: request._id,
       status: paymentStatus,
       notes: `Funding for request ${request._id}`,
+      airtelResponse,
     });
     await payment.save();
 
-    // ─── Mark request as funded ─────────────────────────────────────
     request.status = 'funded';
     request.fundedBy = req.user.id;
     request.fundedAt = new Date();
     await request.save();
 
-    // ─── Notifications ──────────────────────────────────────────────
     const senderName = await getSenderName(req.user.id);
     const projectName = request.project?.name || 'Unknown Project';
     const amount = formatCurrency(request.amount);
@@ -291,12 +279,10 @@ router.put('/:id/fund', auth, authorize('admin', 'accountant'), async (req, res)
 });
 
 // ─── DELETE ──────────────────────────────────────────────────────────
-// Only Accountant, Director, or Admin can delete
 router.delete('/:id', auth, authorize('admin', 'director', 'accountant'), async (req, res) => {
   try {
     const request = await FundingRequest.findById(req.params.id);
     if (!request) return res.status(404).json({ error: 'Request not found' });
-    // Allow deletion of any status
     await FundingRequest.findByIdAndDelete(req.params.id);
     res.json({ message: 'Funding request deleted' });
   } catch (err) { res.status(400).json({ error: err.message }); }
