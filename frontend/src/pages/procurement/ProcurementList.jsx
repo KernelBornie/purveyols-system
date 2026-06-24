@@ -21,8 +21,9 @@ const ProcurementList = () => {
   const [error, setError] = useState(null);
   const { user } = useAuth();
 
-  const canFund = ['admin', 'director', 'accountant'].includes(user?.role);
+  // ─── Permission checks ──────────────────────────────────────────────
   const canEdit = ['admin', 'director', 'procurement-officer', 'civil-engineer', 'quantity-surveyor', 'driver', 'safety-officer', 'accountant', 'foreman'].includes(user?.role);
+  const canApprove = ['admin', 'director', 'accountant'].includes(user?.role); // 👈 NEW – also includes Fund
 
   useEffect(() => {
     fetchOrders();
@@ -42,6 +43,7 @@ const ProcurementList = () => {
   };
 
   const handleFund = async (id) => {
+    if (!canApprove) return; // 👈 Only admin/director/accountant can fund
     try {
       await api.put(`/api/procurement/${id}/fund`);
       fetchOrders();
@@ -51,6 +53,7 @@ const ProcurementList = () => {
   };
 
   const handleReject = async (id) => {
+    if (!canApprove) return; // 👈 Only admin/director/accountant can reject
     if (!window.confirm('Reject this procurement order?')) return;
     try {
       await api.put(`/api/procurement/${id}/reject`);
@@ -61,6 +64,7 @@ const ProcurementList = () => {
   };
 
   const handleDelete = async (id) => {
+    if (!canEdit) return;
     if (!window.confirm('Delete this order?')) return;
     try {
       await api.delete(`/api/procurement/${id}`);
@@ -142,7 +146,7 @@ const ProcurementList = () => {
                       </Tooltip>
                     </>
                   )}
-                  {canFund && o.status === 'pending' && (
+                  {canApprove && o.status === 'pending' && (
                     <>
                       <Tooltip title="Fund">
                         <IconButton size="small" color="success" onClick={() => handleFund(o._id)}>

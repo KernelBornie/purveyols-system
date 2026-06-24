@@ -47,7 +47,9 @@ const ProcurementForm = () => {
   });
   const [isEditMode, setIsEditMode] = useState(!!id);
 
+  // ─── Permission checks ──────────────────────────────────────────────
   const canEdit = ['procurement-officer', 'civil-engineer', 'quantity-surveyor', 'director', 'admin', 'driver', 'safety-officer', 'accountant', 'foreman'].includes(user?.role);
+  const canApprove = ['admin', 'director', 'accountant'].includes(user?.role); // 👈 NEW
 
   const generateOrderNumber = () => {
     const date = new Date();
@@ -201,7 +203,7 @@ const ProcurementForm = () => {
   };
 
   const handleApprove = async () => {
-    if (!canEdit) return;
+    if (!canApprove) return; // 👈 Only admin/director/accountant can approve
     if (!window.confirm('Approve this procurement order?')) return;
     setLoading(true);
     try {
@@ -234,7 +236,7 @@ const ProcurementForm = () => {
   };
 
   const handleReject = async () => {
-    if (!canEdit) return;
+    if (!canApprove) return; // 👈 Only admin/director/accountant can reject
     if (!window.confirm('Reject this procurement order?')) return;
     setLoading(true);
     try {
@@ -359,7 +361,6 @@ const ProcurementForm = () => {
           </Grid>
         </Grid>
 
-        {/* Items Table */}
         <Box sx={{ mt: 2, overflowX: 'auto' }}>
           <Table size="small" sx={{ border: '1px solid #000' }}>
             <TableHead>
@@ -375,9 +376,7 @@ const ProcurementForm = () => {
             </TableHead>
             <TableBody>
               {items.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={7} sx={{ textAlign: 'center', py: 3, border: '1px solid #000' }}>No items added yet.</TableCell>
-                </TableRow>
+                <TableRow><TableCell colSpan={7} sx={{ textAlign: 'center', py: 3, border: '1px solid #000' }}>No items added yet.</TableCell></TableRow>
               ) : (
                 totals.itemsWithTotal.map((item, idx) => (
                   <TableRow key={idx}>
@@ -421,7 +420,6 @@ const ProcurementForm = () => {
           <Typography variant="h6" sx={{ fontWeight: 'bold' }}>GRAND TOTAL: {new Intl.NumberFormat('en-ZM', { style: 'currency', currency: 'ZMW' }).format(totals.grandTotal)}</Typography>
         </Box>
 
-        {/* Approval / Funding Info */}
         <Box sx={{ mt: 4, borderTop: '1px solid #000', pt: 3 }}>
           <Grid container spacing={2}>
             <Grid item xs={12} md={4}>
@@ -479,7 +477,7 @@ const ProcurementForm = () => {
         </Box>
 
         <Box sx={{ mt: 4, display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-          {canEdit && isEditMode && form.status === 'pending' && (
+          {canApprove && isEditMode && form.status === 'pending' && (
             <>
               <Button variant="contained" color="success" startIcon={<CheckCircleIcon />} onClick={handleApprove} disabled={loading}>Approve</Button>
               <Button variant="contained" color="error" startIcon={<CancelIcon />} onClick={handleReject} disabled={loading}>Reject</Button>
