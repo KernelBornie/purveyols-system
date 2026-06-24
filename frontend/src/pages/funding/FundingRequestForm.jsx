@@ -23,6 +23,8 @@ const FundingRequestForm = () => {
     status: 'pending',
   });
   const [creator, setCreator] = useState(null);
+  const [approver, setApprover] = useState(null);
+  const [approvedAt, setApprovedAt] = useState(null);
   const [message, setMessage] = useState(null);
 
   useEffect(() => {
@@ -35,12 +37,14 @@ const FundingRequestForm = () => {
           const fundingRes = await api.get(`/api/funding/${id}`);
           const data = fundingRes.data;
           setForm({
-            project: data.project || '',
+            project: data.project?._id || data.project || '',
             amount: data.amount || '',
             description: data.description || '',
             status: data.status || 'pending',
           });
           setCreator(data.requestedBy);
+          setApprover(data.approvedBy);
+          setApprovedAt(data.approvedAt);
         } else {
           setCreator(user);
         }
@@ -210,7 +214,7 @@ const FundingRequestForm = () => {
           </Grid>
         </Grid>
 
-        {/* Approval Section (Optional - simple preview) */}
+        {/* Approval Section – now populated from backend */}
         <Box sx={{ mt: 4, borderTop: '1px solid #000', pt: 3 }}>
           <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 2 }}>
             Approval
@@ -227,9 +231,22 @@ const FundingRequestForm = () => {
               </Typography>
             </Grid>
           </Grid>
-          <Box sx={{ mt: 2, display: 'flex', gap: 2 }}>
-            <Typography variant="body2">Approved by: _________________</Typography>
-            <Typography variant="body2">Date: _________________</Typography>
+          <Box sx={{ mt: 2, display: 'flex', flexDirection: 'column', gap: 1 }}>
+            {approver ? (
+              <>
+                <Typography variant="body2">
+                  Approved by: <strong>{approver.name}</strong> ({approver.role})
+                </Typography>
+                <Typography variant="body2">
+                  Approved on: {new Date(approvedAt).toLocaleString()}
+                </Typography>
+              </>
+            ) : (
+              <>
+                <Typography variant="body2">Approved by: _________________</Typography>
+                <Typography variant="body2">Date: _________________</Typography>
+              </>
+            )}
           </Box>
         </Box>
 

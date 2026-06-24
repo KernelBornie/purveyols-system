@@ -92,6 +92,7 @@ const FundingRequestList = () => {
             <TableCell>Amount</TableCell>
             <TableCell>Status</TableCell>
             <TableCell>Requested By</TableCell>
+            <TableCell>Approved By</TableCell>   {/* 👈 NEW COLUMN */}
             <TableCell>Actions</TableCell>
           </TableRow>
         </TableHead>
@@ -108,6 +109,7 @@ const FundingRequestList = () => {
                 />
               </TableCell>
               <TableCell>{r.requestedBy?.name || 'N/A'}</TableCell>
+              <TableCell>{r.approvedBy?.name || '—'}</TableCell>   {/* 👈 RENDER APPROVER */}
               <TableCell>
                 <Tooltip title="View">
                   <IconButton component={Link} to={`/funding/${r._id}`} size="small">
@@ -147,7 +149,7 @@ const FundingRequestList = () => {
           ))}
           {requests.length === 0 && (
             <TableRow>
-              <TableCell colSpan={5} align="center">No funding requests yet.</TableCell>
+              <TableCell colSpan={6} align="center">No funding requests yet.</TableCell>
             </TableRow>
           )}
         </TableBody>
