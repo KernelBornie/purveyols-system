@@ -70,7 +70,6 @@ router.post('/', auth, authorize('admin', 'director', 'procurement-officer', 'ci
 
     const senderName = await getSenderName(req.user.id);
 
-    // ─── Notify creator ──────────────────────────────────────
     await createNotification(
       req.user.id,
       'procurement_ordered',
@@ -79,8 +78,7 @@ router.post('/', auth, authorize('admin', 'director', 'procurement-officer', 'ci
       `/procurement/${order._id}`
     );
 
-    // ─── Notify directors and accountants (exclude creator) ─
-    const recipients = await User.find({ role: { $in: ['director', 'admin', 'accountant'] } });
+    const recipients = await User.find({ role: { $in: ['director', 'admin', 'accountant', 'procurement-officer'] } });
     const filtered = recipients.filter(r => r._id.toString() !== req.user.id);
     for (let recipient of filtered) {
       await createNotification(
@@ -102,8 +100,8 @@ router.put('/:id', auth, authorize('admin', 'director', 'procurement-officer', '
     if ((req.user.role === 'driver' || req.user.role === 'safety-officer') && order.createdBy.toString() !== req.user.id) {
       return res.status(403).json({ error: 'Access denied' });
     }
-    if (order.status !== 'pending') {
-      return res.status(400).json({ error: 'Only pending orders can be edited' });
+    if (order.status !== 'pending' && order.status !== 'procurement_approved') {
+      return res.status(400).json({ error: 'Only pending or procurement-approved orders can be edited' });
     }
 
     const {
@@ -142,40 +140,48 @@ router.put('/:id', auth, authorize('admin', 'director', 'procurement-officer', '
   } catch (err) { res.status(400).json({ error: err.message }); }
 });
 
-router.put('/:id/approve', auth, authorize('admin', 'director', 'accountant'), async (req, res) => {
+// ─── Procurement Officer Approve ──────────────────────────────
+router.put('/:id/procurement-approve', auth, authorize('admin', 'director', 'procurement-officer', 'accountant'), async (req, res) => {
   try {
     const order = await ProcurementOrder.findById(req.params.id);
     if (!order) return res.status(404).json({ error: 'Order not found' });
     if (order.status !== 'pending') {
-      return res.status(400).json({ error: 'Only pending orders can be approved' });
+      return res.status(400).json({ error: 'Only pending orders can be approved by procurement' });
     }
-    order.status = 'funded';
-    order.fundedBy = req.user.id;
-    order.fundedAt = new Date();
+    order.status = 'procurement_approved';
     await order.save();
 
     const senderName = await getSenderName(req.user.id);
-    if (order.createdBy) {
-      await createNotification(
-        order.createdBy,
-        'procurement_approved',
-        'Procurement Order Approved',
-        `✅ Your requisition was approved by ${senderName}`,
-        `/procurement/${order._id}`
-      );
+    await createNotification(
+      order.createdBy,
+      'procurement_approved',
+      'Procurement Order Approved (Preliminary)',
+      `Your requisition has been approved by Procurement Officer ${senderName}`,
+      `/procurement/${order._id}`
+    );
+    const recipients = await User.find({ role: { $in: ['director', 'admin', 'accountant'] } });
+    for (let recipient of recipients) {
+      if (recipient._id.toString() !== req.user.id) {
+        await createNotification(
+          recipient._id,
+          'procurement_approved',
+          'Procurement Order Pending Final Approval',
+          `${senderName} approved a requisition. Please review and final approve.`,
+          `/procurement/${order._id}`
+        );
+      }
     }
-
     const populated = await ProcurementOrder.findById(order._id)
       .populate('project', 'name')
       .populate('createdBy', 'name role')
       .populate('fundedBy', 'name role')
       .populate('procurementOfficer', 'name role');
-
     res.json(populated);
   } catch (err) { res.status(400).json({ error: err.message }); }
 });
 
-router.put('/:id/reject', auth, authorize('admin', 'director', 'accountant'), async (req, res) => {
+// ─── Procurement Officer Reject ──────────────────────────────
+router.put('/:id/procurement-reject', auth, authorize('admin', 'director', 'procurement-officer', 'accountant'), async (req, res) => {
   try {
     const order = await ProcurementOrder.findById(req.params.id);
     if (!order) return res.status(404).json({ error: 'Order not found' });
@@ -184,32 +190,58 @@ router.put('/:id/reject', auth, authorize('admin', 'director', 'accountant'), as
     }
     order.status = 'rejected';
     await order.save();
-
     const senderName = await getSenderName(req.user.id);
-    if (order.createdBy) {
-      await createNotification(
-        order.createdBy,
-        'procurement_rejected',
-        'Procurement Order Rejected',
-        `❌ Your requisition was rejected by ${senderName}`,
-        `/procurement/${order._id}`
-      );
-    }
-
+    await createNotification(
+      order.createdBy,
+      'procurement_rejected',
+      'Procurement Order Rejected',
+      `Your requisition was rejected by Procurement Officer ${senderName}`,
+      `/procurement/${order._id}`
+    );
     const populated = await ProcurementOrder.findById(order._id)
       .populate('project', 'name')
       .populate('createdBy', 'name role')
       .populate('fundedBy', 'name role')
       .populate('procurementOfficer', 'name role');
-
     res.json(populated);
   } catch (err) { res.status(400).json({ error: err.message }); }
 });
 
+// ─── Final Approve (Director/Accountant) ──────────────────────
+router.put('/:id/final-approve', auth, authorize('admin', 'director', 'accountant'), async (req, res) => {
+  try {
+    const order = await ProcurementOrder.findById(req.params.id);
+    if (!order) return res.status(404).json({ error: 'Order not found' });
+    if (order.status !== 'procurement_approved') {
+      return res.status(400).json({ error: 'Order must be procurement-approved first' });
+    }
+    order.status = 'approved';
+    await order.save();
+    const senderName = await getSenderName(req.user.id);
+    await createNotification(
+      order.createdBy,
+      'procurement_approved',
+      'Procurement Order Final Approved',
+      `Your requisition has been final approved by ${senderName}`,
+      `/procurement/${order._id}`
+    );
+    const populated = await ProcurementOrder.findById(order._id)
+      .populate('project', 'name')
+      .populate('createdBy', 'name role')
+      .populate('fundedBy', 'name role')
+      .populate('procurementOfficer', 'name role');
+    res.json(populated);
+  } catch (err) { res.status(400).json({ error: err.message }); }
+});
+
+// ─── Fund ──────────────────────────────────────────────────────
 router.put('/:id/fund', auth, authorize('admin', 'director', 'accountant'), async (req, res) => {
   try {
     const order = await ProcurementOrder.findById(req.params.id);
     if (!order) return res.status(404).json({ error: 'Order not found' });
+    if (order.status !== 'approved') {
+      return res.status(400).json({ error: 'Only approved orders can be funded' });
+    }
     order.status = 'funded';
     order.fundedBy = req.user.id;
     order.fundedAt = new Date();
@@ -225,6 +257,7 @@ router.put('/:id/fund', auth, authorize('admin', 'director', 'accountant'), asyn
   } catch (err) { res.status(400).json({ error: err.message }); }
 });
 
+// ─── Delete ────────────────────────────────────────────────────
 router.delete('/:id', auth, authorize('admin', 'director', 'procurement-officer', 'civil-engineer', 'quantity-surveyor', 'driver', 'safety-officer', 'accountant', 'foreman'), async (req, res) => {
   try {
     const order = await ProcurementOrder.findById(req.params.id);
@@ -233,7 +266,7 @@ router.delete('/:id', auth, authorize('admin', 'director', 'procurement-officer'
       if (order.createdBy.toString() !== req.user.id) {
         return res.status(403).json({ error: 'Access denied' });
       }
-      if (order.status !== 'pending') {
+      if (order.status !== 'pending' && order.status !== 'procurement_approved') {
         return res.status(400).json({ error: 'Cannot delete approved/rejected order' });
       }
     }
