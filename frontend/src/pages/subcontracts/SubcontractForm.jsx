@@ -21,7 +21,7 @@ const SubcontractForm = () => {
   const [form, setForm] = useState({
     project: '',
     vendor: '',
-    vendorPhone: '', // 👈 NEW
+    vendorPhone: '',
     service: '',
     amount: '',
     startDate: '',

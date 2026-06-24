@@ -3,7 +3,7 @@ const mongoose = require('mongoose');
 const SubcontractSchema = new mongoose.Schema({
   project: { type: mongoose.Schema.Types.ObjectId, ref: 'Project' },
   vendor: String,
-  vendorPhone: String, // 👈 NEW
+  vendorPhone: String,
   service: String,
   amount: Number,
   startDate: Date,
