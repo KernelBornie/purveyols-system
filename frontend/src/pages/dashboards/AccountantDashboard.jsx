@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { Link } from 'react-router-dom'; // 👈 ADDED
+import { Link } from 'react-router-dom';
 import DeliveryNote from "../../components/DeliveryNote";
 import {
   Box, Typography, Grid, Card, CardContent, Button,
@@ -11,7 +11,7 @@ import {
 } from '@mui/material';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
-import VisibilityIcon from '@mui/icons-material/Visibility'; // 👈 ADDED
+import VisibilityIcon from '@mui/icons-material/Visibility';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip,
   Legend, LineChart, Line, PieChart, Pie, Cell
@@ -46,6 +46,7 @@ const AccountantDashboard = () => {
   const [workers, setWorkers] = useState([]);
   const [projects, setProjects] = useState([]);
   const [fundingRequests, setFundingRequests] = useState([]);
+  const [procurementOrders, setProcurementOrders] = useState([]); // 👈 ADDED
   const [payments, setPayments] = useState([]);
   const [attendance, setAttendance] = useState([]);
   const [topWorkers, setTopWorkers] = useState([]);
@@ -62,7 +63,6 @@ const AccountantDashboard = () => {
   const [payAllOpen, setPayAllOpen] = useState(false);
   const [payAllStatus, setPayAllStatus] = useState(null);
 
-  // ─── Funding modal state ──────────────────────────────────────────
   const [fundModalOpen, setFundModalOpen] = useState(false);
   const [fundRequestId, setFundRequestId] = useState(null);
   const [recipientPhone, setRecipientPhone] = useState('');
@@ -73,7 +73,6 @@ const AccountantDashboard = () => {
 
   const initialLoadDone = useRef(false);
 
-  // ─── Refresh user data ──────────────────────────────────────────
   const refreshUser = useCallback(async () => {
     try {
       const res = await api.get('/api/users/me', {
@@ -89,7 +88,6 @@ const AccountantDashboard = () => {
     return null;
   }, [updateUser]);
 
-  // ─── Fetch all dashboard data ──────────────────────────────────
   const fetchDashboardData = useCallback(async (force = false) => {
     const cacheKey = 'accountant_dashboard';
     if (!force) {
@@ -99,6 +97,7 @@ const AccountantDashboard = () => {
         setWorkers(cached.workers);
         setProjects(cached.projects);
         setFundingRequests(cached.fundingRequests);
+        setProcurementOrders(cached.procurementOrders || []); // 👈 LOAD
         setPayments(cached.payments);
         setAttendance(cached.attendance);
         setTopWorkers(cached.topWorkers);
@@ -114,12 +113,13 @@ const AccountantDashboard = () => {
     setLoading(true);
     setMessage(null);
     try {
-      const [workersRes, attendanceRes, paymentsRes, projectsRes, fundingRes] = await Promise.all([
+      const [workersRes, attendanceRes, paymentsRes, projectsRes, fundingRes, procurementRes] = await Promise.all([
         api.get('/api/workers'),
         api.get('/api/attendance'),
         api.get('/api/payments'),
         api.get('/api/projects'),
-        api.get('/api/funding-requests').catch(() => api.get('/api/funding'))
+        api.get('/api/funding-requests').catch(() => api.get('/api/funding')),
+        api.get('/api/procurement') // 👈 FETCH procurement
       ]);
 
       const workersData = Array.isArray(workersRes.data) ? workersRes.data : (workersRes.data?.data || []);
@@ -128,6 +128,7 @@ const AccountantDashboard = () => {
       const completedPayments = paymentsData.filter(p => p.status === 'completed');
       const projectsData = Array.isArray(projectsRes.data) ? projectsRes.data : (projectsRes.data?.data || []);
       const fundingData = Array.isArray(fundingRes.data) ? fundingRes.data : (fundingRes.data?.data || []);
+      const procurementData = Array.isArray(procurementRes.data) ? procurementRes.data : (procurementRes.data?.data || []);
 
       const workersWithBalance = workersData.map(w => {
         const workerAttendance = attendanceData.filter(a => a.worker === w._id || a.worker?._id === w._id);
@@ -203,6 +204,7 @@ const AccountantDashboard = () => {
       setWorkers(workersWithBalance);
       setProjects(projectsData);
       setFundingRequests(fundingData);
+      setProcurementOrders(procurementData); // 👈 SET
       setPayments(completedPayments);
       setAttendance(attendanceData);
       setTopWorkers(top);
@@ -216,6 +218,7 @@ const AccountantDashboard = () => {
         workers: workersWithBalance,
         projects: projectsData,
         fundingRequests: fundingData,
+        procurementOrders: procurementData, // 👈 SAVE
         payments: completedPayments,
         attendance: attendanceData,
         topWorkers: top,
@@ -232,7 +235,6 @@ const AccountantDashboard = () => {
     }
   }, []);
 
-  // ─── Combined refresh ──────────────────────────────────────────
   const refreshAll = useCallback(async () => {
     setRefreshing(true);
     try {
@@ -255,7 +257,6 @@ const AccountantDashboard = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ─── Funding handlers ──────────────────────────────────────────
   const handleFundClick = (request) => {
     const requester = request.requestedBy;
     setFundRequestId(request._id);
@@ -279,7 +280,6 @@ const AccountantDashboard = () => {
     }
   };
 
-  // ─── Worker search / payment modal ─────────────────────────────
   const handleWorkerSelect = useCallback((worker) => {
     setSelectedWorker(worker);
     setSearchOpen(false);
@@ -292,7 +292,6 @@ const AccountantDashboard = () => {
     refreshAll();
   }, [refreshAll]);
 
-  // ─── Bulk payment ──────────────────────────────────────────────
   const handlePayAll = useCallback(() => {
     if (!user?.mobileMoneyNumber) {
       alert('Please set your mobile money number in your profile first.');
@@ -375,7 +374,7 @@ const AccountantDashboard = () => {
         </Box>
       </Box>
 
-      {/* ─── Quick Actions ────────────────────────────────────────── */}
+      {/* Quick Actions */}
       <Paper sx={{ p: 2, mb: 3 }}>
         <Typography variant="h6" gutterBottom>Quick Actions</Typography>
         <Grid container spacing={2}>
@@ -525,7 +524,7 @@ const AccountantDashboard = () => {
         </Grid>
       )}
 
-      {/* ─── Projects Table ────────────────────────────────────────── */}
+      {/* Projects Table */}
       <Paper sx={{ p: 2, mb: 3 }}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <Typography variant="h6">Projects by Creator</Typography>
@@ -563,7 +562,7 @@ const AccountantDashboard = () => {
         </Table>
       </Paper>
 
-      {/* ─── Workers Table ────────────────────────────────────────── */}
+      {/* Workers Table */}
       <Paper sx={{ p: 2, mb: 3 }}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <Typography variant="h6">Enrolled Workers</Typography>
@@ -603,7 +602,7 @@ const AccountantDashboard = () => {
         </Table>
       </Paper>
 
-      {/* ─── Funding Requests Table ─────────────────────────────── */}
+      {/* Funding Requests Table */}
       <Paper sx={{ p: 2, mb: 3 }}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <Typography variant="h6">Funding Requests</Typography>
@@ -652,7 +651,7 @@ const AccountantDashboard = () => {
         </Table>
       </Paper>
 
-      {/* ─── Procurement Orders Table ────────────────────────────── */}
+      {/* Procurement Orders Table */}
       <Paper sx={{ p: 2, mb: 3 }}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <Typography variant="h6">Procurement Orders (Pending Funding)</Typography>
@@ -688,7 +687,7 @@ const AccountantDashboard = () => {
         </Table>
       </Paper>
 
-      {/* ─── Weekly Report ────────────────────────────────────────── */}
+      {/* Weekly Report */}
       <Paper sx={{ p: 2, mb: 3 }}>
         <Typography variant="h6">Weekly Report</Typography>
         {reportData ? (
@@ -723,7 +722,7 @@ const AccountantDashboard = () => {
         </DialogActions>
       </Dialog>
 
-      {/* ─── Funding Modal ────────────────────────────────────────── */}
+      {/* Funding Modal */}
       <Dialog open={fundModalOpen} onClose={() => setFundModalOpen(false)} maxWidth="sm" fullWidth>
         <DialogTitle>Fund Request</DialogTitle>
         <DialogContent>
