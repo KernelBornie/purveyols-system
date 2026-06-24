@@ -2,10 +2,10 @@ const express = require('express');
 const router = express.Router();
 const Attendance = require('../models/Attendance');
 const Worker = require('../models/Worker');
+const User = require('../models/User');
 const auth = require('../middleware/auth');
 const authorize = require('../middleware/rbac');
-const { createNotification } = require('../utils/notificationHelper');
-const User = require('../models/User');
+const { createNotification, formatRole } = require('../utils/notificationHelper');
 
 // ─── GET all attendance ──────────────────────────────────────────────
 router.get('/', auth, async (req, res) => {
@@ -36,9 +36,7 @@ router.post('/', auth, authorize('admin', 'director', 'civil-engineer', 'foreman
     const worker = await Worker.findById(workerId);
     if (!worker) return res.status(404).json({ error: 'Worker not found' });
 
-    // Calculate total
     const total = days * rate;
-
     const attendance = new Attendance({
       worker: workerId,
       date: new Date(date),
@@ -51,7 +49,7 @@ router.post('/', auth, authorize('admin', 'director', 'civil-engineer', 'foreman
     });
     await attendance.save();
 
-    // Optionally update worker's daily rate and site
+    // Update worker's daily rate and site if provided
     if (rate && rate !== worker.dailyRate) {
       worker.dailyRate = rate;
       await worker.save();
@@ -61,17 +59,21 @@ router.post('/', auth, authorize('admin', 'director', 'civil-engineer', 'foreman
       await worker.save();
     }
 
-    // Notify accountant and director
-    const recipients = await User.find({ role: { $in: ['accountant', 'director'] } });
+    // ─── Notify with formatted role ──────────────────────────────
     const sender = await User.findById(req.user.id);
+    const formattedRole = formatRole(sender.role);
+
+    const recipients = await User.find({ role: { $in: ['accountant', 'director'] } });
     for (let recipient of recipients) {
-      await createNotification(
-        recipient._id,
-        'worker_checked_in',
-        'Worker Checked In',
-        `${worker.name} checked in for ${days} day(s) at rate ${rate} (total ${total}) by ${sender.name}`,
-        `/workers/${worker._id}`
-      );
+      if (recipient._id.toString() !== req.user.id) {
+        await createNotification(
+          recipient._id,
+          'worker_checked_in',
+          'Worker Checked In',
+          `${formattedRole} checked in ${worker.name} for ${days} day(s) at rate ${rate} (total ${total})`,
+          `/workers/${worker._id}`
+        );
+      }
     }
 
     const populated = await Attendance.findById(attendance._id)
@@ -89,7 +91,6 @@ router.post('/', auth, authorize('admin', 'director', 'civil-engineer', 'foreman
 router.put('/:id', auth, authorize('admin', 'director', 'accountant'), async (req, res) => {
   try {
     const { days, rate } = req.body;
-    // Recalculate total if days or rate changed
     if (days || rate) {
       const existing = await Attendance.findById(req.params.id);
       if (existing) {
