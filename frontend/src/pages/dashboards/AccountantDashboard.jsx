@@ -84,6 +84,10 @@ const AccountantDashboard = () => {
 
   const initialLoadDone = useRef(false);
 
+  // ─── Permission checks ──────────────────────────────────────────
+  const canApprove = ['admin', 'director', 'accountant'].includes(user?.role);
+  const canFund = ['admin', 'accountant'].includes(user?.role);
+
   const refreshUser = useCallback(async () => {
     try {
       const res = await api.get('/api/users/me', {
@@ -172,7 +176,6 @@ const AccountantDashboard = () => {
         .sort((a, b) => b.amount - a.amount)
         .slice(0, 5);
 
-      // ─── Safe trend calculation ──────────────────────────────────
       const trends = {};
       const now = new Date();
       for (let i = 6; i >= 0; i--) {
@@ -276,6 +279,29 @@ const AccountantDashboard = () => {
       refreshAll();
     }
   }, []);
+
+  // ─── Funding request approve/reject handlers ────────────────────
+  const handleApproveFunding = async (id) => {
+    try {
+      await api.put(`/api/funding-requests/${id}/approve`);
+      setMessage({ type: 'success', text: 'Funding request approved!' });
+      refreshAll();
+    } catch (err) {
+      setMessage({ type: 'error', text: err.response?.data?.error || 'Approval failed' });
+    }
+  };
+
+  const handleRejectFunding = async (id) => {
+    const reason = prompt('Rejection reason:');
+    if (reason === null) return;
+    try {
+      await api.put(`/api/funding-requests/${id}/reject`, { reason });
+      setMessage({ type: 'success', text: 'Funding request rejected.' });
+      refreshAll();
+    } catch (err) {
+      setMessage({ type: 'error', text: err.response?.data?.error || 'Rejection failed' });
+    }
+  };
 
   // ─── Procurement action handlers ──────────────────────────────
   const handleFinalApproveProcurement = async (id) => {
@@ -689,7 +715,7 @@ const AccountantDashboard = () => {
         )}
       </Paper>
 
-      {/* Funding Requests Table */}
+      {/* ─── Funding Requests Table (with Approve/Reject & Fund) ─── */}
       <Paper sx={{ p: 2, mb: 3 }}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <Typography variant="h6">Funding Requests</Typography>
@@ -719,7 +745,30 @@ const AccountantDashboard = () => {
                 </TableCell>
                 <TableCell>{fr.requestedBy?.name || 'N/A'}</TableCell>
                 <TableCell>
-                  {fr.status === 'approved' && (
+                  {/* ─── Approve / Reject for pending ─── */}
+                  {fr.status === 'pending' && canApprove && (
+                    <>
+                      <Button
+                        variant="contained"
+                        color="success"
+                        size="small"
+                        onClick={() => handleApproveFunding(fr._id)}
+                        sx={{ mr: 1 }}
+                      >
+                        Approve
+                      </Button>
+                      <Button
+                        variant="contained"
+                        color="error"
+                        size="small"
+                        onClick={() => handleRejectFunding(fr._id)}
+                      >
+                        Reject
+                      </Button>
+                    </>
+                  )}
+                  {/* ─── Fund for approved ─── */}
+                  {fr.status === 'approved' && canFund && (
                     <Button
                       variant="contained"
                       color="success"
@@ -730,6 +779,7 @@ const AccountantDashboard = () => {
                       Fund
                     </Button>
                   )}
+                  {/* ─── View ─── */}
                   <Tooltip title="View">
                     <IconButton component={Link} to={`/funding/${fr._id}`} size="small" color="info">
                       <VisibilityIcon fontSize="small" />
