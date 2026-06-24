@@ -25,11 +25,8 @@ const WorkerForm = () => {
   const [enroller, setEnroller] = useState(null);
   const [message, setMessage] = useState(null);
 
-  const viewOnlyRoles = ['driver', 'receptionist', 'safety-officer'];
-  const isViewOnly = viewOnlyRoles.includes(user?.role);
-  // ✅ Allow accountant to edit
-  const canEdit = !isViewOnly || user?.role === 'accountant'; // More precisely:
-  const canEditWorker = ['admin', 'director', 'civil-engineer', 'foreman', 'accountant'].includes(user?.role);
+  // ✅ Allowed to edit: admin, director, civil-engineer, foreman, accountant, qs
+  const canEditWorker = ['admin', 'director', 'civil-engineer', 'foreman', 'accountant', 'qs'].includes(user?.role);
 
   useEffect(() => {
     if (id) {
