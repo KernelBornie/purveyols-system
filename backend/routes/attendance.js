@@ -23,7 +23,7 @@ router.get('/worker/:workerId', auth, async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// ─── ADD attendance (check‑in) ──────────────────────────────────────
+// ─── ADD or UPDATE attendance (check‑in) ────────────────────────────
 router.post('/', auth, authorize('admin', 'director', 'civil-engineer', 'foreman', 'accountant', 'qs'), async (req, res) => {
   try {
     const { workerId, date, days, rate, site, notes } = req.body;
@@ -36,18 +36,42 @@ router.post('/', auth, authorize('admin', 'director', 'civil-engineer', 'foreman
     const worker = await Worker.findById(workerId);
     if (!worker) return res.status(404).json({ error: 'Worker not found' });
 
-    const total = days * rate;
-    const attendance = new Attendance({
+    // ─── Check if attendance for this worker+date already exists ──
+    const startOfDay = new Date(date);
+    startOfDay.setHours(0, 0, 0, 0);
+    const endOfDay = new Date(date);
+    endOfDay.setHours(23, 59, 59, 999);
+
+    const existing = await Attendance.findOne({
       worker: workerId,
-      date: new Date(date),
-      days,
-      rate,
-      total,
-      site: site || worker.site || '',
-      notes: notes || 'Checked in',
-      recordedBy: req.user.id,
+      date: { $gte: startOfDay, $lte: endOfDay }
     });
-    await attendance.save();
+
+    let attendance;
+    if (existing) {
+      // Update existing record – add days and total, update rate if changed
+      existing.days += days;
+      existing.rate = rate;
+      existing.total = existing.days * rate;
+      existing.site = site || existing.site;
+      existing.notes = notes || existing.notes;
+      await existing.save();
+      attendance = existing;
+    } else {
+      // Create new record
+      const total = days * rate;
+      attendance = new Attendance({
+        worker: workerId,
+        date: new Date(date),
+        days,
+        rate,
+        total,
+        site: site || worker.site || '',
+        notes: notes || 'Checked in',
+        recordedBy: req.user.id,
+      });
+      await attendance.save();
+    }
 
     // Update worker's daily rate and site if provided
     if (rate && rate !== worker.dailyRate) {
@@ -70,7 +94,7 @@ router.post('/', auth, authorize('admin', 'director', 'civil-engineer', 'foreman
           recipient._id,
           'worker_checked_in',
           'Worker Checked In',
-          `${formattedRole} checked in ${worker.name} for ${days} day(s) at rate ${rate} (total ${total})`,
+          `${formattedRole} checked in ${worker.name} for ${attendance.days} day(s) at rate ${attendance.rate} (total ${attendance.total})`,
           `/workers/${worker._id}`
         );
       }
