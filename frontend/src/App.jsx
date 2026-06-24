@@ -32,13 +32,15 @@ import DrawingForm from './pages/drawings/DrawingForm';
 import SurveyList from './pages/surveys/SurveyList';
 import SurveyForm from './pages/surveys/SurveyForm';
 import ProjectPlanning from './pages/projects/ProjectPlanning';
-import Notifications from './pages/Notifications'; // 👈 Already imported
+import Notifications from './pages/Notifications';
 import SparePartList from './pages/spare-parts/SparePartList';
 import SparePartForm from './pages/spare-parts/SparePartForm';
 import SafetyReportList from './pages/safety/SafetyReportList';
 import SafetyReportForm from './pages/safety/SafetyReportForm';
 import PaymentNotifications from './pages/PaymentNotifications';
 import PaymentDetails from './pages/PaymentDetails';
+// ─── NEW: PaymentList ──────────────────────────────────────────────
+import PaymentList from './pages/payments/PaymentList';
 
 const AuthRedirect = () => {
   const { user, loading } = useAuth();
@@ -65,8 +67,6 @@ function App() {
             <Route path="/settings" element={<Settings />} />
             <Route path="/messages" element={<Messages />} />
             <Route path="/messages/:id" element={<Navigate to="/messages" replace />} />
-            
-            {/* ─── Notifications Landing Page ─── */}
             <Route path="/notifications" element={<Notifications />} />
 
             {/* Workers */}
@@ -94,7 +94,8 @@ function App() {
             <Route path="/funding/:id" element={<FundingRequestForm />} />
             <Route path="/funding/:id/edit" element={<FundingRequestForm />} />
 
-            {/* Payments */}
+            {/* ─── Payments ────────────────────────────────────────────── */}
+            <Route path="/payments" element={<PaymentList />} />
             <Route path="/payments/:id" element={<PaymentDetails />} />
 
             {/* Subcontracts */}
