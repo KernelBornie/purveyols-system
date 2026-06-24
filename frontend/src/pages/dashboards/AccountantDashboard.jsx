@@ -5,9 +5,10 @@ import {
   Table, TableHead, TableRow, TableCell, TableBody,
   Chip, Paper, CircularProgress, Alert,
   FormControlLabel, Switch, Dialog, DialogTitle,
-  DialogContent, DialogActions, Skeleton
+  DialogContent, DialogActions, Skeleton, IconButton, Tooltip
 } from '@mui/material';
 import RefreshIcon from '@mui/icons-material/Refresh';
+import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip,
   Legend, LineChart, Line, PieChart, Pie, Cell
@@ -251,7 +252,18 @@ const AccountantDashboard = () => {
       refreshAll();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // empty dependency array – runs exactly once
+  }, []);
+
+  // ─── Handle funding a request ───────────────────────────────
+  const handleFundRequest = async (id) => {
+    if (!window.confirm('Release funds for this approved request?')) return;
+    try {
+      await api.put(`/api/funding-requests/${id}/fund`);
+      refreshAll();
+    } catch (err) {
+      alert('Funding failed: ' + (err.response?.data?.error || err.message));
+    }
+  };
 
   // ─── Worker search / payment modal handlers ───────────────────
   const handleWorkerSelect = useCallback((worker) => {
@@ -263,7 +275,7 @@ const AccountantDashboard = () => {
   const handlePaymentClose = useCallback(() => {
     setPaymentOpen(false);
     setSelectedWorker(null);
-    refreshAll(); // optional: refresh after payment
+    refreshAll();
   }, [refreshAll]);
 
   // ─── Bulk payment ─────────────────────────────────────────────
@@ -511,22 +523,48 @@ const AccountantDashboard = () => {
         </Table>
       </Paper>
 
+      {/* ─── Funding Requests Table ─────────────────────────────── */}
       <Paper sx={{ p: 2, mb: 3 }}>
-        <Typography variant="h6">Funding Requests</Typography>
+        <Typography variant="h6" gutterBottom>Funding Requests</Typography>
         <Table size="small">
           <TableHead>
-            <TableRow><TableCell>Project</TableCell><TableCell>Amount</TableCell><TableCell>Status</TableCell><TableCell>Requested By</TableCell></TableRow>
+            <TableRow>
+              <TableCell>Project</TableCell>
+              <TableCell>Amount</TableCell>
+              <TableCell>Status</TableCell>
+              <TableCell>Requested By</TableCell>
+              <TableCell>Action</TableCell>
+            </TableRow>
           </TableHead>
           <TableBody>
             {fundingRequests.slice(0, 5).map(fr => (
               <TableRow key={fr._id}>
                 <TableCell>{fr.project?.name || 'N/A'}</TableCell>
                 <TableCell>{formatCurrency(fr.amount)}</TableCell>
-                <TableCell><Chip label={fr.status} color={fr.status === 'approved' ? 'success' : fr.status === 'rejected' ? 'error' : 'warning'} size="small" /></TableCell>
+                <TableCell>
+                  <Chip
+                    label={fr.status}
+                    color={fr.status === 'funded' ? 'info' : fr.status === 'approved' ? 'success' : fr.status === 'rejected' ? 'error' : 'warning'}
+                    size="small"
+                  />
+                </TableCell>
                 <TableCell>{fr.requestedBy?.name || 'N/A'}</TableCell>
+                <TableCell>
+                  {fr.status === 'approved' && (
+                    <Tooltip title="Fund this request">
+                      <IconButton color="primary" onClick={() => handleFundRequest(fr._id)}>
+                        <AttachMoneyIcon />
+                      </IconButton>
+                    </Tooltip>
+                  )}
+                </TableCell>
               </TableRow>
             ))}
-            {fundingRequests.length === 0 && <TableRow><TableCell colSpan={4}>No funding requests</TableCell></TableRow>}
+            {fundingRequests.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={5} align="center">No funding requests.</TableCell>
+              </TableRow>
+            )}
           </TableBody>
         </Table>
       </Paper>
