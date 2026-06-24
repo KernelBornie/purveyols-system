@@ -11,7 +11,6 @@ const api = axios.create({
   },
 });
 
-// ─── Request interceptor ──────────────────────────────────────
 api.interceptors.request.use(
   async (config) => {
     const token = await getAuth('token');
@@ -23,15 +22,12 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// ─── Response interceptor ──────────────────────────────────────
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
     const { config, response } = error;
 
-    // If offline or network error, queue the request
     if (!navigator.onLine || !response || response.status === 0) {
-      // Only queue non-GET requests (POST, PUT, DELETE, PATCH)
       if (config && config.method && config.method.toLowerCase() !== 'get') {
         const operation = {
           method: config.method.toUpperCase(),
@@ -40,7 +36,6 @@ api.interceptors.response.use(
           id: config.params?.id || undefined
         };
         await addToSyncQueue(operation);
-        // Return a custom rejection so the app knows it's queued
         return Promise.reject({
           ...error,
           offline: true,
@@ -50,9 +45,7 @@ api.interceptors.response.use(
       }
     }
 
-    // Handle 401 Unauthorized – redirect to login
     if (response && response.status === 401) {
-      // Clear auth and redirect
       const { clearAuth } = await import('../services/persistentStore');
       await clearAuth();
       if (window.location.pathname !== '/login') {
