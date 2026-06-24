@@ -47,6 +47,27 @@ router.post('/', auth, authorize('admin', 'director', 'accountant'), async (req,
 
     // ─── Check for missing Airtel credentials ──────────────────────
     if (!process.env.AIRTEL_CLIENT_ID || !process.env.AIRTEL_CLIENT_SECRET) {
+      // ─── Create notification for the user ────────────────────────
+      await createNotification(
+        req.user.id,
+        'payment_failed',
+        'Payment Failed',
+        `❌ Payment of ${formatCurrency(amount)} to ${recipientName} failed because Airtel credentials are missing. Please contact system administrator.`,
+        `/payments`
+      );
+      // ─── Also notify admins ──────────────────────────────────────
+      const admins = await User.find({ role: 'admin' });
+      for (let admin of admins) {
+        if (admin._id.toString() !== req.user.id) {
+          await createNotification(
+            admin._id,
+            'payment_failed',
+            'Payment Failed',
+            `Payment of ${formatCurrency(amount)} to ${recipientName} failed due to missing Airtel credentials.`,
+            `/payments`
+          );
+        }
+      }
       return res.status(500).json({
         error: 'Airtel credentials missing. Please set AIRTEL_CLIENT_ID and AIRTEL_CLIENT_SECRET in environment variables.'
       });
@@ -143,6 +164,27 @@ router.post('/bulk', auth, authorize('admin', 'director', 'accountant'), async (
 
     // ─── Check Airtel credentials ────────────────────────────────────
     if (!process.env.AIRTEL_CLIENT_ID || !process.env.AIRTEL_CLIENT_SECRET) {
+      // ─── Create notification for the user ────────────────────────
+      await createNotification(
+        req.user.id,
+        'payment_failed',
+        'Bulk Payment Failed',
+        `❌ Bulk payment failed because Airtel credentials are missing. Please contact system administrator.`,
+        `/payments`
+      );
+      // ─── Also notify admins ──────────────────────────────────────
+      const admins = await User.find({ role: 'admin' });
+      for (let admin of admins) {
+        if (admin._id.toString() !== req.user.id) {
+          await createNotification(
+            admin._id,
+            'payment_failed',
+            'Bulk Payment Failed',
+            `Bulk payment failed due to missing Airtel credentials.`,
+            `/payments`
+          );
+        }
+      }
       return res.status(500).json({
         error: 'Airtel credentials missing. Please set AIRTEL_CLIENT_ID and AIRTEL_CLIENT_SECRET in environment variables.'
       });
