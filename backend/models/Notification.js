@@ -13,14 +13,15 @@ const NotificationSchema = new mongoose.Schema({
       'funding_requested',
       'funding_approved',
       'funding_rejected',
-      'funding_funded',           // 👈 NEW
+      'funding_funded',
+      'funding_forwarded', // 👈 NEW
       'procurement_ordered',
-      'procurement_funded',       // 👈 NEW
+      'procurement_funded',
       'procurement_approved',
       'procurement_rejected',
       'subcontract_created',
       'subcontract_approved',
-      'subcontract_funded',       // 👈 NEW
+      'subcontract_funded',
       'worker_checked_in',
       'message_received',
       'project_approved',

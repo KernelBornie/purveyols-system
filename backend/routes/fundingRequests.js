@@ -173,8 +173,49 @@ router.put('/:id/reject', auth, authorize('admin', 'director', 'accountant'), as
   } catch (err) { res.status(400).json({ error: err.message }); }
 });
 
+// ─── FORWARD to Director ──────────────────────────────────────────
+router.put('/:id/forward', auth, authorize('admin', 'accountant'), async (req, res) => {
+  try {
+    const request = await FundingRequest.findById(req.params.id);
+    if (!request) return res.status(404).json({ error: 'Request not found' });
+    if (request.status !== 'pending') {
+      return res.status(400).json({ error: 'Only pending requests can be forwarded' });
+    }
+
+    // ─── Send notification to all directors ──────────────────────
+    const directors = await User.find({ role: 'director' });
+    const senderName = await getSenderName(req.user.id);
+    const projectName = request.project?.name || 'Unknown Project';
+    const amount = formatCurrency(request.amount);
+
+    for (let director of directors) {
+      await createNotification(
+        director._id,
+        'funding_forwarded',
+        'Funding Request Forwarded',
+        `${senderName} forwarded a funding request for "${projectName}" (${amount}) for your approval.`,
+        `/funding/${request._id}`
+      );
+    }
+
+    // ─── Also notify the requester ──────────────────────────────
+    await createNotification(
+      request.requestedBy,
+      'funding_forwarded',
+      'Your Request Forwarded',
+      `Your funding request for "${projectName}" (${amount}) has been forwarded to the Director for approval.`,
+      `/funding/${request._id}`
+    );
+
+    res.json({ message: 'Request forwarded to Director', request });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
 // ─── FUND ──────────────────────────────────────────────────────────
 router.put('/:id/fund', auth, authorize('admin', 'accountant'), async (req, res) => {
+  // ... (existing fund route, unchanged) ...
   try {
     const { recipientPhone } = req.body;
     if (!recipientPhone) {
@@ -196,7 +237,6 @@ router.put('/:id/fund', auth, authorize('admin', 'accountant'), async (req, res)
       });
     }
 
-    // ─── Check for missing Airtel credentials ──────────────────────
     if (!process.env.AIRTEL_CLIENT_ID || !process.env.AIRTEL_CLIENT_SECRET) {
       const reference = `FUND-${Date.now()}-${Math.random().toString(36).substr(2, 6).toUpperCase()}`;
       const payment = new Payment({
@@ -228,7 +268,6 @@ router.put('/:id/fund', auth, authorize('admin', 'accountant'), async (req, res)
       });
     }
 
-    // ─── Send money via Airtel ──────────────────────────────────────
     const reference = `FUND-${Date.now()}-${Math.random().toString(36).substr(2, 6).toUpperCase()}`;
     let airtelResponse = null;
     let paymentStatus = 'pending';
@@ -251,7 +290,6 @@ router.put('/:id/fund', auth, authorize('admin', 'accountant'), async (req, res)
       airtelResponse = { error: err.message };
     }
 
-    // ─── Create Payment record ──────────────────────────────────────
     const payment = new Payment({
       type: 'funding',
       recipientName: request.requestedBy?.name || 'Funding Recipient',
@@ -283,13 +321,11 @@ router.put('/:id/fund', auth, authorize('admin', 'accountant'), async (req, res)
       });
     }
 
-    // ─── Mark request as funded ─────────────────────────────────────
     request.status = 'funded';
     request.fundedBy = req.user.id;
     request.fundedAt = new Date();
     await request.save();
 
-    // ─── Notifications ──────────────────────────────────────────────
     const senderName = await getSenderName(req.user.id);
     const projectName = request.project?.name || 'Unknown Project';
     const amount = formatCurrency(request.amount);

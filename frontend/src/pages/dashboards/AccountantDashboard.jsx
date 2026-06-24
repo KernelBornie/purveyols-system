@@ -303,6 +303,17 @@ const AccountantDashboard = () => {
     }
   };
 
+  // ─── Forward to Director ──────────────────────────────────────────
+  const handleForwardFunding = async (id) => {
+    try {
+      await api.put(`/api/funding-requests/${id}/forward`);
+      setMessage({ type: 'success', text: 'Funding request forwarded to Director!' });
+      refreshAll();
+    } catch (err) {
+      setMessage({ type: 'error', text: err.response?.data?.error || 'Forward failed' });
+    }
+  };
+
   // ─── Procurement action handlers ──────────────────────────────
   const handleFinalApproveProcurement = async (id) => {
     try {
@@ -715,7 +726,7 @@ const AccountantDashboard = () => {
         )}
       </Paper>
 
-      {/* ─── Funding Requests Table (with Approve/Reject & Fund) ─── */}
+      {/* ─── Funding Requests Table (with Forward, Approve, Reject, Fund) ─── */}
       <Paper sx={{ p: 2, mb: 3 }}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <Typography variant="h6">Funding Requests</Typography>
@@ -745,9 +756,18 @@ const AccountantDashboard = () => {
                 </TableCell>
                 <TableCell>{fr.requestedBy?.name || 'N/A'}</TableCell>
                 <TableCell>
-                  {/* ─── Approve / Reject for pending ─── */}
+                  {/* ─── Forward / Approve / Reject for pending ─── */}
                   {fr.status === 'pending' && canApprove && (
                     <>
+                      <Button
+                        variant="contained"
+                        color="info"
+                        size="small"
+                        onClick={() => handleForwardFunding(fr._id)}
+                        sx={{ mr: 1 }}
+                      >
+                        Forward
+                      </Button>
                       <Button
                         variant="contained"
                         color="success"
