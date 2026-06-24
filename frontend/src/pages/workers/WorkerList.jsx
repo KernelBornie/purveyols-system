@@ -17,13 +17,8 @@ const WorkerList = () => {
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
 
-  const viewOnlyRoles = ['driver', 'receptionist', 'safety-officer'];
-  const isViewOnly = viewOnlyRoles.includes(user?.role);
-  
-  // ✅ Allow accountant to edit workers
-  const canEdit = !isViewOnly || user?.role === 'accountant'; // Actually we want accountant to be able to edit even if they are in viewOnly? We'll separate logic.
-  // Let's use: edit allowed if role is admin, director, civil-engineer, foreman, OR accountant
-  const canEditWorker = ['admin', 'director', 'civil-engineer', 'foreman', 'accountant'].includes(user?.role);
+  // ✅ Allowed to edit: admin, director, civil-engineer, foreman, accountant, qs
+  const canEditWorker = ['admin', 'director', 'civil-engineer', 'foreman', 'accountant', 'qs'].includes(user?.role);
 
   useEffect(() => {
     fetchWorkers();
@@ -108,7 +103,7 @@ const WorkerList = () => {
                 <TableCell>
                   <Chip label={worker.status} color={getStatusColor(worker.status)} size="small" />
                 </TableCell>
-                <TableCell>K {worker.dailyRate}</TableCell>
+                <TableCell>K {worker.rate || worker.dailyRate}</TableCell>
                 <TableCell>{worker.site || '—'}</TableCell>
                 <TableCell>
                   <Tooltip title="View">

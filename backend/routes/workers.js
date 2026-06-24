@@ -22,7 +22,9 @@ router.get('/', auth, async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-router.post('/', auth, authorize('admin', 'director', 'civil-engineer', 'foreman', 'accountant'), async (req, res) => {
+// ─── CREATE ────────────────────────────────────────────────────────
+// ✅ Added 'qs' to authorize
+router.post('/', auth, authorize('admin', 'director', 'civil-engineer', 'foreman', 'accountant', 'qs'), async (req, res) => {
   try {
     const worker = new Worker({ ...req.body, enrolledBy: req.user.id });
     await worker.save();
@@ -31,7 +33,7 @@ router.post('/', auth, authorize('admin', 'director', 'civil-engineer', 'foreman
     const senderName = await getSenderName(req.user.id);
     const senderRole = await getSenderRole(req.user.id);
 
-    // ─── Notify creator ──────────────────────────────────────
+    // Notify creator
     await createNotification(
       req.user.id,
       'worker_enrolled',
@@ -40,7 +42,7 @@ router.post('/', auth, authorize('admin', 'director', 'civil-engineer', 'foreman
       `/workers/${worker._id}`
     );
 
-    // ─── Notify accountants and directors (exclude creator) ─
+    // Notify accountants and directors (exclude creator)
     const recipients = await User.find({ role: { $in: ['accountant', 'director'] } });
     const filtered = recipients.filter(r => r._id.toString() !== req.user.id);
     for (let recipient of filtered) {
@@ -56,14 +58,18 @@ router.post('/', auth, authorize('admin', 'director', 'civil-engineer', 'foreman
   } catch (err) { res.status(400).json({ error: err.message }); }
 });
 
-router.put('/:id', auth, authorize('admin', 'director', 'civil-engineer', 'foreman', 'accountant'), async (req, res) => {
+// ─── UPDATE ────────────────────────────────────────────────────────
+// ✅ Added 'qs'
+router.put('/:id', auth, authorize('admin', 'director', 'civil-engineer', 'foreman', 'accountant', 'qs'), async (req, res) => {
   try {
     const worker = await Worker.findByIdAndUpdate(req.params.id, req.body, { new: true }).populate('enrolledBy', 'name role');
     res.json(worker);
   } catch (err) { res.status(400).json({ error: err.message }); }
 });
 
-router.delete('/:id', auth, authorize('admin', 'director', 'accountant'), async (req, res) => {
+// ─── DELETE ────────────────────────────────────────────────────────
+// ✅ Added 'qs'
+router.delete('/:id', auth, authorize('admin', 'director', 'accountant', 'qs'), async (req, res) => {
   try {
     const worker = await Worker.findById(req.params.id);
     if (!worker) return res.status(404).json({ error: 'Worker not found' });
@@ -72,7 +78,9 @@ router.delete('/:id', auth, authorize('admin', 'director', 'accountant'), async 
   } catch (err) { res.status(400).json({ error: err.message }); }
 });
 
-router.put('/:id/activate', auth, authorize('admin', 'director', 'accountant'), async (req, res) => {
+// ─── ACTIVATE ──────────────────────────────────────────────────────
+// ✅ Added 'qs'
+router.put('/:id/activate', auth, authorize('admin', 'director', 'accountant', 'qs'), async (req, res) => {
   try {
     const worker = await Worker.findById(req.params.id);
     if (!worker) return res.status(404).json({ error: 'Worker not found' });
@@ -83,7 +91,9 @@ router.put('/:id/activate', auth, authorize('admin', 'director', 'accountant'), 
   } catch (err) { res.status(400).json({ error: err.message }); }
 });
 
-router.put('/:id/deactivate', auth, authorize('admin', 'director', 'accountant'), async (req, res) => {
+// ─── DEACTIVATE ────────────────────────────────────────────────────
+// ✅ Added 'qs'
+router.put('/:id/deactivate', auth, authorize('admin', 'director', 'accountant', 'qs'), async (req, res) => {
   try {
     const worker = await Worker.findById(req.params.id);
     if (!worker) return res.status(404).json({ error: 'Worker not found' });
@@ -94,7 +104,9 @@ router.put('/:id/deactivate', auth, authorize('admin', 'director', 'accountant')
   } catch (err) { res.status(400).json({ error: err.message }); }
 });
 
-router.put('/:id/suspend', auth, authorize('admin', 'director', 'accountant'), async (req, res) => {
+// ─── SUSPEND ───────────────────────────────────────────────────────
+// ✅ Added 'qs'
+router.put('/:id/suspend', auth, authorize('admin', 'director', 'accountant', 'qs'), async (req, res) => {
   try {
     const worker = await Worker.findById(req.params.id);
     if (!worker) return res.status(404).json({ error: 'Worker not found' });
@@ -105,6 +117,7 @@ router.put('/:id/suspend', auth, authorize('admin', 'director', 'accountant'), a
   } catch (err) { res.status(400).json({ error: err.message }); }
 });
 
+// ─── GET SINGLE WORKER ────────────────────────────────────────────
 router.get('/:id', auth, async (req, res) => {
   try {
     const worker = await Worker.findById(req.params.id).populate('enrolledBy', 'name role');
