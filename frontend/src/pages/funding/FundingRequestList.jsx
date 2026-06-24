@@ -23,7 +23,8 @@ const FundingRequestList = () => {
 
   const canApprove = ['admin', 'director', 'accountant'].includes(user?.role);
   const canFund = ['admin', 'accountant'].includes(user?.role);
-  const canEdit = ['admin', 'director', 'civil-engineer', 'quantity-surveyor', 'foreman', 'driver', 'safety-officer', 'procurement-officer', 'accountant'].includes(user?.role);
+  const canDelete = ['admin', 'director', 'accountant'].includes(user?.role);
+  const canEdit = ['admin', 'director', 'accountant', 'civil-engineer', 'quantity-surveyor', 'foreman', 'driver', 'safety-officer', 'procurement-officer'].includes(user?.role);
 
   useEffect(() => {
     fetchRequests();
@@ -73,7 +74,7 @@ const FundingRequestList = () => {
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm('Delete this request?')) return;
+    if (!window.confirm('Delete this request permanently?')) return;
     try {
       await api.delete(`/api/funding-requests/${id}`);
       fetchRequests();
@@ -112,36 +113,43 @@ const FundingRequestList = () => {
           {requests.map((r) => (
             <TableRow key={r._id}>
               <TableCell>{r.project?.name || 'N/A'}</TableCell>
-              <TableCell>{r.amount}</TableCell>
+              <TableCell>K {r.amount?.toLocaleString() || 0}</TableCell>
               <TableCell>
                 <Chip
                   label={r.status}
-                  color={r.status === 'funded' ? 'info' : r.status === 'approved' ? 'success' : r.status === 'rejected' ? 'error' : 'warning'}
+                  color={r.status === 'funded' ? 'info' : r.status === 'approved' ? 'success' : r.status === 'rejected' ? 'error' : r.status === 'draft' ? 'default' : 'warning'}
                   size="small"
                 />
               </TableCell>
               <TableCell>{r.requestedBy?.name || 'N/A'}</TableCell>
               <TableCell>{r.approvedBy?.name || '—'}</TableCell>
               <TableCell>
+                {/* View */}
                 <Tooltip title="View">
                   <IconButton component={Link} to={`/funding/${r._id}`} size="small">
                     <VisibilityIcon fontSize="small" />
                   </IconButton>
                 </Tooltip>
-                {canEdit && r.status === 'pending' && (
-                  <>
-                    <Tooltip title="Edit">
-                      <IconButton component={Link} to={`/funding/${r._id}/edit`} size="small" color="primary">
-                        <EditIcon fontSize="small" />
-                      </IconButton>
-                    </Tooltip>
-                    <Tooltip title="Delete">
-                      <IconButton size="small" color="error" onClick={() => handleDelete(r._id)}>
-                        <DeleteIcon fontSize="small" />
-                      </IconButton>
-                    </Tooltip>
-                  </>
+
+                {/* Edit – only if draft/pending and user has permission */}
+                {canEdit && (r.status === 'draft' || r.status === 'pending') && (
+                  <Tooltip title="Edit">
+                    <IconButton component={Link} to={`/funding/${r._id}/edit`} size="small" color="primary">
+                      <EditIcon fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
                 )}
+
+                {/* Delete – only for accountant, director, admin */}
+                {canDelete && (
+                  <Tooltip title="Delete">
+                    <IconButton size="small" color="error" onClick={() => handleDelete(r._id)}>
+                      <DeleteIcon fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
+                )}
+
+                {/* Approve/Reject – only for pending */}
                 {canApprove && r.status === 'pending' && (
                   <>
                     <Tooltip title="Approve">
@@ -156,6 +164,8 @@ const FundingRequestList = () => {
                     </Tooltip>
                   </>
                 )}
+
+                {/* Fund – only for approved */}
                 {canFund && r.status === 'approved' && (
                   <Tooltip title="Fund (Release Money)">
                     <IconButton size="small" color="primary" onClick={() => handleFund(r._id)}>

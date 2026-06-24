@@ -6,7 +6,7 @@ const User = require('../models/User');
 const auth = require('../middleware/auth');
 const authorize = require('../middleware/rbac');
 const { createNotification, getSenderName, getSenderRole, formatCurrency } = require('../utils/notificationHelper');
-const { sendMoney } = require('../services/airtelMoneyService'); // 👈 ADDED
+const { sendMoney } = require('../services/airtelMoneyService');
 
 // ─── GET all ──────────────────────────────────────────────────────────
 router.get('/', auth, async (req, res) => {
@@ -15,6 +15,7 @@ router.get('/', auth, async (req, res) => {
       .populate('project', 'name')
       .populate('requestedBy', 'name role')
       .populate('approvedBy', 'name role')
+      .populate('fundedBy', 'name role')
       .sort({ createdAt: -1 });
     res.json(requests);
   } catch (err) { res.status(500).json({ error: err.message }); }
@@ -26,7 +27,8 @@ router.get('/:id', auth, async (req, res) => {
     const request = await FundingRequest.findById(req.params.id)
       .populate('project', 'name')
       .populate('requestedBy', 'name role')
-      .populate('approvedBy', 'name role');
+      .populate('approvedBy', 'name role')
+      .populate('fundedBy', 'name role');
     if (!request) return res.status(404).json({ error: 'Request not found' });
     res.json(request);
   } catch (err) { res.status(500).json({ error: err.message }); }
@@ -35,7 +37,13 @@ router.get('/:id', auth, async (req, res) => {
 // ─── CREATE ──────────────────────────────────────────────────────────
 router.post('/', auth, authorize('admin', 'director', 'civil-engineer', 'quantity-surveyor', 'foreman', 'driver', 'safety-officer', 'procurement-officer', 'accountant'), async (req, res) => {
   try {
-    const request = new FundingRequest({ ...req.body, requestedBy: req.user.id });
+    const { status } = req.body;
+    // If no status provided, default to 'pending'
+    const request = new FundingRequest({
+      ...req.body,
+      requestedBy: req.user.id,
+      status: status || 'pending',
+    });
     await request.save();
     const populated = await FundingRequest.findById(request._id)
       .populate('project', 'name')
@@ -72,15 +80,41 @@ router.post('/', auth, authorize('admin', 'director', 'civil-engineer', 'quantit
   } catch (err) { res.status(400).json({ error: err.message }); }
 });
 
-// ─── UPDATE ──────────────────────────────────────────────────────────
-router.put('/:id', auth, authorize('admin', 'director', 'accountant'), async (req, res) => {
+// ─── UPDATE (EDIT) – only if status is 'draft' or 'pending' ──────────
+router.put('/:id', auth, authorize('admin', 'director', 'accountant', 'civil-engineer', 'quantity-surveyor', 'procurement-officer'), async (req, res) => {
   try {
-    const updated = await FundingRequest.findByIdAndUpdate(req.params.id, req.body, { new: true })
+    const request = await FundingRequest.findById(req.params.id);
+    if (!request) return res.status(404).json({ error: 'Request not found' });
+
+    // Only allow editing if status is draft or pending
+    if (!['draft', 'pending'].includes(request.status)) {
+      return res.status(400).json({ error: 'Cannot edit approved/rejected/funded request' });
+    }
+
+    // Allow editing by creator or authorized roles
+    const isCreator = request.requestedBy.toString() === req.user.id;
+    const isAuthorized = ['admin', 'director', 'accountant'].includes(req.user.role);
+    if (!isCreator && !isAuthorized) {
+      return res.status(403).json({ error: 'Not authorized to edit this request' });
+    }
+
+    const { project, amount, description, status } = req.body;
+    if (project !== undefined) request.project = project;
+    if (amount !== undefined) request.amount = amount;
+    if (description !== undefined) request.description = description;
+    if (status !== undefined && ['draft', 'pending'].includes(status)) {
+      request.status = status;
+    }
+    request.updatedAt = new Date();
+    await request.save();
+
+    const populated = await FundingRequest.findById(request._id)
       .populate('project', 'name')
       .populate('requestedBy', 'name role')
-      .populate('approvedBy', 'name role');
-    if (!updated) return res.status(404).json({ error: 'Request not found' });
-    res.json(updated);
+      .populate('approvedBy', 'name role')
+      .populate('fundedBy', 'name role');
+
+    res.json(populated);
   } catch (err) { res.status(400).json({ error: err.message }); }
 });
 
@@ -89,6 +123,9 @@ router.put('/:id/approve', auth, authorize('admin', 'director', 'accountant'), a
   try {
     const request = await FundingRequest.findById(req.params.id);
     if (!request) return res.status(404).json({ error: 'Request not found' });
+    if (request.status !== 'pending') {
+      return res.status(400).json({ error: 'Only pending requests can be approved' });
+    }
     request.status = 'approved';
     request.approvedBy = req.user.id;
     request.approvedAt = new Date();
@@ -118,6 +155,9 @@ router.put('/:id/reject', auth, authorize('admin', 'director', 'accountant'), as
   try {
     const request = await FundingRequest.findById(req.params.id);
     if (!request) return res.status(404).json({ error: 'Request not found' });
+    if (request.status !== 'pending') {
+      return res.status(400).json({ error: 'Only pending requests can be rejected' });
+    }
     request.status = 'rejected';
     request.rejectionReason = req.body.reason || 'No reason provided';
     await request.save();
@@ -251,11 +291,14 @@ router.put('/:id/fund', auth, authorize('admin', 'accountant'), async (req, res)
 });
 
 // ─── DELETE ──────────────────────────────────────────────────────────
-router.delete('/:id', auth, authorize('admin', 'director'), async (req, res) => {
+// Only Accountant, Director, or Admin can delete
+router.delete('/:id', auth, authorize('admin', 'director', 'accountant'), async (req, res) => {
   try {
-    const deleted = await FundingRequest.findByIdAndDelete(req.params.id);
-    if (!deleted) return res.status(404).json({ error: 'Request not found' });
-    res.json({ message: 'Deleted' });
+    const request = await FundingRequest.findById(req.params.id);
+    if (!request) return res.status(404).json({ error: 'Request not found' });
+    // Allow deletion of any status
+    await FundingRequest.findByIdAndDelete(req.params.id);
+    res.json({ message: 'Funding request deleted' });
   } catch (err) { res.status(400).json({ error: err.message }); }
 });
 

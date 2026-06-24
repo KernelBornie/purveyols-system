@@ -22,11 +22,13 @@ const FundingRequestForm = () => {
     description: '',
     status: 'pending',
   });
-  const [creator, setCreator] = useState(null);        // { _id, name, role }
+  const [creator, setCreator] = useState(null);
   const [createdAt, setCreatedAt] = useState(null);
-  const [approver, setApprover] = useState(null);      // { _id, name, role }
+  const [approver, setApprover] = useState(null);
   const [approvedAt, setApprovedAt] = useState(null);
   const [message, setMessage] = useState(null);
+
+  const canEdit = ['admin', 'director', 'accountant', 'civil-engineer', 'quantity-surveyor', 'procurement-officer'].includes(user?.role);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -35,7 +37,7 @@ const FundingRequestForm = () => {
         setProjects(Array.isArray(projectsRes.data) ? projectsRes.data : []);
 
         if (id) {
-          const fundingRes = await api.get(`/api/funding/${id}`);
+          const fundingRes = await api.get(`/api/funding-requests/${id}`);
           const data = fundingRes.data;
           setForm({
             project: data.project?._id || data.project || '',
@@ -44,7 +46,7 @@ const FundingRequestForm = () => {
             status: data.status || 'pending',
           });
           setCreator(data.requestedBy);
-          setCreatedAt(data.createdAt || data.requestedAt);
+          setCreatedAt(data.requestedAt || data.createdAt);
           setApprover(data.approvedBy);
           setApprovedAt(data.approvedAt);
         } else {
@@ -61,6 +63,7 @@ const FundingRequestForm = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!canEdit) return;
     setLoading(true);
     setMessage(null);
     try {
@@ -72,10 +75,10 @@ const FundingRequestForm = () => {
       };
 
       if (id) {
-        await api.put(`/api/funding/${id}`, payload);
+        await api.put(`/api/funding-requests/${id}`, payload);
         setMessage({ type: 'success', text: 'Funding request updated successfully!' });
       } else {
-        await api.post('/api/funding', payload);
+        await api.post('/api/funding-requests', payload);
         setMessage({ type: 'success', text: 'Funding request submitted successfully!' });
       }
       setTimeout(() => navigate('/funding'), 1500);
@@ -86,13 +89,7 @@ const FundingRequestForm = () => {
     }
   };
 
-  const handlePrint = () => {
-    window.print();
-  };
-
-  const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('en-ZM', { style: 'currency', currency: 'ZMW' }).format(amount || 0);
-  };
+  const handlePrint = () => window.print();
 
   const formatDate = (dateStr) => {
     if (!dateStr) return '—';
@@ -104,6 +101,11 @@ const FundingRequestForm = () => {
       <BackButton />
 
       {message && <Alert severity={message.type} sx={{ mb: 2 }}>{message.text}</Alert>}
+      {!canEdit && (
+        <Alert severity="info" sx={{ mb: 2 }}>
+          You have view‑only access. Edits are disabled.
+        </Alert>
+      )}
 
       <form onSubmit={handleSubmit}>
         {/* Company Header */}
@@ -114,21 +116,11 @@ const FundingRequestForm = () => {
           mb: 2,
           '@media print': { borderBottom: '2px solid #000' }
         }}>
-          <Typography variant="h4" component="div" sx={{ fontWeight: 'bold', letterSpacing: 2 }}>
-            PURVEYOLS
-          </Typography>
-          <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>
-            Building and Civil Construction
-          </Typography>
-          <Typography variant="body2">
-            Plot No. 8, Buchi Road - Northmead, P.O. Box NH 87 Lusaka, Zambia
-          </Typography>
-          <Typography variant="body2">
-            Tel: +260 211 235354 | Mobile: +260 977 393879 / +260 965 393879
-          </Typography>
-          <Typography variant="body2">
-            Email: purveyols@gmail.com
-          </Typography>
+          <Typography variant="h4" sx={{ fontWeight: 'bold', letterSpacing: 2 }}>PURVEYOLS</Typography>
+          <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>Building and Civil Construction</Typography>
+          <Typography variant="body2">Plot No. 8, Buchi Road - Northmead, P.O. Box NH 87 Lusaka, Zambia</Typography>
+          <Typography variant="body2">Tel: +260 211 235354 | Mobile: +260 977 393879 / +260 965 393879</Typography>
+          <Typography variant="body2">Email: purveyols@gmail.com</Typography>
         </Box>
 
         {/* Document Title */}
@@ -148,7 +140,7 @@ const FundingRequestForm = () => {
           </Typography>
         </Box>
 
-        {/* Creator Info with Date/Time */}
+        {/* Creator Info */}
         {creator && (
           <Box sx={{ mb: 2 }}>
             <Typography variant="body2">
@@ -160,7 +152,7 @@ const FundingRequestForm = () => {
           </Box>
         )}
 
-        {/* Project Selection */}
+        {/* Form Fields */}
         <Grid container spacing={2} sx={{ mb: 3 }}>
           <Grid item xs={12}>
             <TextField
@@ -171,6 +163,7 @@ const FundingRequestForm = () => {
               value={form.project || ''}
               onChange={e => setForm({ ...form, project: e.target.value })}
               required
+              disabled={!canEdit}
             >
               {Array.isArray(projects) && projects.map(p => (
                 <MenuItem key={p._id} value={p._id}>{p.name}</MenuItem>
@@ -179,7 +172,6 @@ const FundingRequestForm = () => {
           </Grid>
         </Grid>
 
-        {/* Amount and Status */}
         <Grid container spacing={2} sx={{ mb: 3 }}>
           <Grid item xs={12} md={6}>
             <TextField
@@ -191,6 +183,7 @@ const FundingRequestForm = () => {
               onChange={e => setForm({ ...form, amount: e.target.value })}
               required
               inputProps={{ min: 0, step: 0.01 }}
+              disabled={!canEdit}
             />
           </Grid>
           <Grid item xs={12} md={6}>
@@ -201,7 +194,9 @@ const FundingRequestForm = () => {
               size="small"
               value={form.status || 'pending'}
               onChange={e => setForm({ ...form, status: e.target.value })}
+              disabled={!canEdit}
             >
+              <MenuItem value="draft">Draft</MenuItem>
               <MenuItem value="pending">Pending</MenuItem>
               <MenuItem value="approved">Approved</MenuItem>
               <MenuItem value="rejected">Rejected</MenuItem>
@@ -209,7 +204,6 @@ const FundingRequestForm = () => {
           </Grid>
         </Grid>
 
-        {/* Description */}
         <Grid container spacing={2} sx={{ mb: 3 }}>
           <Grid item xs={12}>
             <TextField
@@ -221,21 +215,18 @@ const FundingRequestForm = () => {
               value={form.description || ''}
               onChange={e => setForm({ ...form, description: e.target.value })}
               placeholder="Provide details about the funding request..."
+              disabled={!canEdit}
             />
           </Grid>
         </Grid>
 
-        {/* Approval Section – with Approver and Date/Time */}
+        {/* Approval Section */}
         <Box sx={{ mt: 4, borderTop: '1px solid #000', pt: 3 }}>
-          <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 2 }}>
-            Approval
-          </Typography>
+          <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 2 }}>Approval</Typography>
           <Grid container spacing={2}>
             <Grid item xs={12} md={6}>
               <Typography variant="body2">Requested by:</Typography>
-              <Typography variant="body1" sx={{ fontWeight: 'bold' }}>
-                {creator?.name || 'N/A'}
-              </Typography>
+              <Typography variant="body1" sx={{ fontWeight: 'bold' }}>{creator?.name || 'N/A'}</Typography>
               {creator && (
                 <Typography variant="caption" color="textSecondary">
                   {creator.role} • {formatDate(createdAt)}
@@ -244,9 +235,7 @@ const FundingRequestForm = () => {
             </Grid>
             <Grid item xs={12} md={6}>
               <Typography variant="body2">Date:</Typography>
-              <Typography variant="body1" sx={{ fontWeight: 'bold' }}>
-                {formatDate(createdAt)}
-              </Typography>
+              <Typography variant="body1" sx={{ fontWeight: 'bold' }}>{formatDate(createdAt)}</Typography>
             </Grid>
           </Grid>
           <Box sx={{ mt: 2, display: 'flex', flexDirection: 'column', gap: 1 }}>
@@ -268,34 +257,29 @@ const FundingRequestForm = () => {
           </Box>
         </Box>
 
-        {/* Status chip */}
+        {/* Status Chip */}
         <Box sx={{ mt: 3 }}>
+          {form.status === 'draft' && <Chip label="Draft" color="default" size="small" />}
           {form.status === 'pending' && <Chip label="Pending" color="warning" size="small" />}
           {form.status === 'approved' && <Chip label="Approved" color="success" size="small" />}
           {form.status === 'rejected' && <Chip label="Rejected" color="error" size="small" />}
           {form.status === 'funded' && <Chip label="Funded" color="info" size="small" />}
         </Box>
 
-        {/* Action Buttons */}
+        {/* Buttons */}
         <Box sx={{ mt: 4, display: 'flex', gap: 2 }}>
-          <Button
-            type="submit"
-            variant="contained"
-            startIcon={<SaveIcon />}
-            disabled={loading}
-          >
-            {loading ? 'Saving...' : 'Save Request'}
-          </Button>
-          <Button
-            variant="outlined"
-            startIcon={<PrintIcon />}
-            onClick={handlePrint}
-          >
-            Print
-          </Button>
-          <Button variant="outlined" onClick={() => navigate('/funding')}>
-            Cancel
-          </Button>
+          {canEdit && (
+            <Button
+              type="submit"
+              variant="contained"
+              startIcon={<SaveIcon />}
+              disabled={loading}
+            >
+              {loading ? 'Saving...' : 'Save Request'}
+            </Button>
+          )}
+          <Button variant="outlined" startIcon={<PrintIcon />} onClick={handlePrint}>Print</Button>
+          <Button variant="outlined" onClick={() => navigate('/funding')}>Cancel</Button>
         </Box>
       </form>
     </Paper>
