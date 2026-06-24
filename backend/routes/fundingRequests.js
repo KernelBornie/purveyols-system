@@ -195,6 +195,39 @@ router.put('/:id/fund', auth, authorize('admin', 'accountant'), async (req, res)
       });
     }
 
+    // ─── Check for missing Airtel credentials ──────────────────────
+    if (!process.env.AIRTEL_CLIENT_ID || !process.env.AIRTEL_CLIENT_SECRET) {
+      const reference = `FUND-${Date.now()}-${Math.random().toString(36).substr(2, 6).toUpperCase()}`;
+      const payment = new Payment({
+        type: 'funding',
+        recipientName: request.requestedBy?.name || 'Funding Recipient',
+        recipientPhone,
+        amount: request.amount,
+        reference,
+        paidBy: req.user.id,
+        project: request.project,
+        fundingRequest: request._id,
+        status: 'failed',
+        notes: `Funding attempt failed: Airtel credentials missing.`,
+        errorMessage: 'Airtel credentials missing. Please set AIRTEL_CLIENT_ID and AIRTEL_CLIENT_SECRET in environment variables.',
+      });
+      await payment.save();
+
+      await createNotification(
+        req.user.id,
+        'payment_failed',
+        'Funding Failed',
+        `❌ Funding for request ${request._id} failed because Airtel credentials are missing. Please contact system administrator.`,
+        `/funding/${request._id}`
+      );
+
+      return res.status(500).json({
+        error: 'Airtel credentials missing. Please set AIRTEL_CLIENT_ID and AIRTEL_CLIENT_SECRET in environment variables.',
+        payment
+      });
+    }
+
+    // ─── Send money via Airtel ──────────────────────────────────────
     const reference = `FUND-${Date.now()}-${Math.random().toString(36).substr(2, 6).toUpperCase()}`;
     let airtelResponse = null;
     let paymentStatus = 'pending';
@@ -208,12 +241,16 @@ router.put('/:id/fund', auth, authorize('admin', 'accountant'), async (req, res)
       );
       if (airtelResponse?.status === 'success' || airtelResponse?.data?.status === 'SUCCESS') {
         paymentStatus = 'completed';
+      } else {
+        paymentStatus = 'failed';
       }
     } catch (err) {
       console.error('Airtel sendMoney error:', err);
       paymentStatus = 'failed';
+      airtelResponse = { error: err.message };
     }
 
+    // ─── Create Payment record ──────────────────────────────────────
     const payment = new Payment({
       type: 'funding',
       recipientName: request.requestedBy?.name || 'Funding Recipient',
@@ -226,14 +263,32 @@ router.put('/:id/fund', auth, authorize('admin', 'accountant'), async (req, res)
       status: paymentStatus,
       notes: `Funding for request ${request._id}`,
       airtelResponse,
+      errorMessage: paymentStatus === 'failed' ? (airtelResponse?.error || 'Airtel payment failed') : undefined,
     });
     await payment.save();
 
+    if (paymentStatus === 'failed') {
+      await createNotification(
+        req.user.id,
+        'payment_failed',
+        'Funding Failed',
+        `❌ Funding for request ${request._id} failed. Please check Airtel logs.`,
+        `/funding/${request._id}`
+      );
+      return res.status(500).json({
+        error: 'Airtel payment failed.',
+        payment,
+        airtelResponse,
+      });
+    }
+
+    // ─── Mark request as funded ─────────────────────────────────────
     request.status = 'funded';
     request.fundedBy = req.user.id;
     request.fundedAt = new Date();
     await request.save();
 
+    // ─── Notifications ──────────────────────────────────────────────
     const senderName = await getSenderName(req.user.id);
     const projectName = request.project?.name || 'Unknown Project';
     const amount = formatCurrency(request.amount);

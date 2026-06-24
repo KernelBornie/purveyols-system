@@ -119,7 +119,7 @@ router.put('/:id/approve', auth, authorize('admin', 'director', 'accountant'), a
   } catch (err) { res.status(400).json({ error: err.message }); }
 });
 
-// ─── FUND (upgraded) ─────────────────────────────────────────────────
+// ─── FUND (with credential check) ────────────────────────────────────
 router.put('/:id/fund', auth, authorize('admin', 'director', 'accountant'), async (req, res) => {
   try {
     const { recipientPhone } = req.body;
@@ -132,7 +132,6 @@ router.put('/:id/fund', auth, authorize('admin', 'director', 'accountant'), asyn
       .populate('createdBy', 'name role phone mobileMoneyNumber');
     if (!sub) return res.status(404).json({ error: 'Subcontract not found' });
 
-    // Only allow funding if not completed/terminated
     if (sub.status === 'completed' || sub.status === 'terminated') {
       return res.status(400).json({ error: 'Cannot fund a completed or terminated subcontract' });
     }
@@ -144,6 +143,39 @@ router.put('/:id/fund', auth, authorize('admin', 'director', 'accountant'), asyn
       });
     }
 
+    // ─── Check for missing Airtel credentials ──────────────────────
+    if (!process.env.AIRTEL_CLIENT_ID || !process.env.AIRTEL_CLIENT_SECRET) {
+      const reference = `SUB-${Date.now()}-${Math.random().toString(36).substr(2, 6).toUpperCase()}`;
+      const payment = new Payment({
+        type: 'subcontract',
+        recipientName: sub.vendor || 'Subcontract Vendor',
+        recipientPhone,
+        amount: sub.amount,
+        reference,
+        paidBy: req.user.id,
+        project: sub.project,
+        subcontract: sub._id,
+        status: 'failed',
+        notes: `Funding attempt failed: Airtel credentials missing.`,
+        errorMessage: 'Airtel credentials missing. Please set AIRTEL_CLIENT_ID and AIRTEL_CLIENT_SECRET in environment variables.',
+      });
+      await payment.save();
+
+      await createNotification(
+        req.user.id,
+        'payment_failed',
+        'Subcontract Funding Failed',
+        `❌ Funding for subcontract "${sub.vendor}" failed because Airtel credentials are missing. Please contact system administrator.`,
+        `/subcontracts/${sub._id}`
+      );
+
+      return res.status(500).json({
+        error: 'Airtel credentials missing. Please set AIRTEL_CLIENT_ID and AIRTEL_CLIENT_SECRET in environment variables.',
+        payment
+      });
+    }
+
+    // ─── Send money via Airtel ──────────────────────────────────────
     const reference = `SUB-${Date.now()}-${Math.random().toString(36).substr(2, 6).toUpperCase()}`;
     let airtelResponse = null;
     let paymentStatus = 'pending';
@@ -157,12 +189,16 @@ router.put('/:id/fund', auth, authorize('admin', 'director', 'accountant'), asyn
       );
       if (airtelResponse?.status === 'success' || airtelResponse?.data?.status === 'SUCCESS') {
         paymentStatus = 'completed';
+      } else {
+        paymentStatus = 'failed';
       }
     } catch (err) {
       console.error('Airtel sendMoney error:', err);
       paymentStatus = 'failed';
+      airtelResponse = { error: err.message };
     }
 
+    // ─── Create Payment record ──────────────────────────────────────
     const payment = new Payment({
       type: 'subcontract',
       recipientName: sub.vendor || 'Subcontract Vendor',
@@ -175,9 +211,26 @@ router.put('/:id/fund', auth, authorize('admin', 'director', 'accountant'), asyn
       status: paymentStatus,
       notes: `Subcontract payment for ${sub.vendor}`,
       airtelResponse,
+      errorMessage: paymentStatus === 'failed' ? (airtelResponse?.error || 'Airtel payment failed') : undefined,
     });
     await payment.save();
 
+    if (paymentStatus === 'failed') {
+      await createNotification(
+        req.user.id,
+        'payment_failed',
+        'Subcontract Funding Failed',
+        `❌ Funding for subcontract "${sub.vendor}" failed. Please check Airtel logs.`,
+        `/subcontracts/${sub._id}`
+      );
+      return res.status(500).json({
+        error: 'Airtel payment failed.',
+        payment,
+        airtelResponse,
+      });
+    }
+
+    // ─── Mark subcontract as funded ─────────────────────────────────
     sub.status = 'funded';
     sub.fundedBy = req.user.id;
     sub.fundedAt = new Date();
@@ -186,6 +239,7 @@ router.put('/:id/fund', auth, authorize('admin', 'director', 'accountant'), asyn
     }
     await sub.save();
 
+    // ─── Notifications ──────────────────────────────────────────────
     const senderName = await getSenderName(req.user.id);
     const projectName = sub.project?.name || 'Unknown Project';
     const amount = formatCurrency(sub.amount);

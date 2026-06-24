@@ -240,7 +240,7 @@ router.put('/:id/final-approve', auth, authorize('admin', 'director', 'accountan
   } catch (err) { res.status(400).json({ error: err.message }); }
 });
 
-// ─── FUND (upgraded) ──────────────────────────────────────────────
+// ─── FUND (with credential check) ──────────────────────────────────
 router.put('/:id/fund', auth, authorize('admin', 'director', 'accountant'), async (req, res) => {
   try {
     const { recipientPhone } = req.body;
@@ -263,6 +263,40 @@ router.put('/:id/fund', auth, authorize('admin', 'director', 'accountant'), asyn
       });
     }
 
+    // ─── Check for missing Airtel credentials ──────────────────────
+    if (!process.env.AIRTEL_CLIENT_ID || !process.env.AIRTEL_CLIENT_SECRET) {
+      const amount = order.grandTotal || order.total || 0;
+      const reference = `PROC-${Date.now()}-${Math.random().toString(36).substr(2, 6).toUpperCase()}`;
+      const payment = new Payment({
+        type: 'procurement',
+        recipientName: order.createdBy?.name || 'Procurement Recipient',
+        recipientPhone,
+        amount,
+        reference,
+        paidBy: req.user.id,
+        project: order.project,
+        procurementOrder: order._id,
+        status: 'failed',
+        notes: `Funding attempt failed: Airtel credentials missing.`,
+        errorMessage: 'Airtel credentials missing. Please set AIRTEL_CLIENT_ID and AIRTEL_CLIENT_SECRET in environment variables.',
+      });
+      await payment.save();
+
+      await createNotification(
+        req.user.id,
+        'payment_failed',
+        'Procurement Funding Failed',
+        `❌ Funding for procurement order ${order.orderNumber || order._id} failed because Airtel credentials are missing. Please contact system administrator.`,
+        `/procurement/${order._id}`
+      );
+
+      return res.status(500).json({
+        error: 'Airtel credentials missing. Please set AIRTEL_CLIENT_ID and AIRTEL_CLIENT_SECRET in environment variables.',
+        payment
+      });
+    }
+
+    // ─── Send money via Airtel ──────────────────────────────────────
     const amount = order.grandTotal || order.total || 0;
     const reference = `PROC-${Date.now()}-${Math.random().toString(36).substr(2, 6).toUpperCase()}`;
     let airtelResponse = null;
@@ -277,12 +311,16 @@ router.put('/:id/fund', auth, authorize('admin', 'director', 'accountant'), asyn
       );
       if (airtelResponse?.status === 'success' || airtelResponse?.data?.status === 'SUCCESS') {
         paymentStatus = 'completed';
+      } else {
+        paymentStatus = 'failed';
       }
     } catch (err) {
       console.error('Airtel sendMoney error:', err);
       paymentStatus = 'failed';
+      airtelResponse = { error: err.message };
     }
 
+    // ─── Create Payment record ──────────────────────────────────────
     const payment = new Payment({
       type: 'procurement',
       recipientName: order.createdBy?.name || 'Procurement Recipient',
@@ -295,14 +333,32 @@ router.put('/:id/fund', auth, authorize('admin', 'director', 'accountant'), asyn
       status: paymentStatus,
       notes: `Procurement order ${order.orderNumber || order._id}`,
       airtelResponse,
+      errorMessage: paymentStatus === 'failed' ? (airtelResponse?.error || 'Airtel payment failed') : undefined,
     });
     await payment.save();
 
+    if (paymentStatus === 'failed') {
+      await createNotification(
+        req.user.id,
+        'payment_failed',
+        'Procurement Funding Failed',
+        `❌ Funding for procurement order ${order.orderNumber || order._id} failed. Please check Airtel logs.`,
+        `/procurement/${order._id}`
+      );
+      return res.status(500).json({
+        error: 'Airtel payment failed.',
+        payment,
+        airtelResponse,
+      });
+    }
+
+    // ─── Mark order as funded ─────────────────────────────────────
     order.status = 'funded';
     order.fundedBy = req.user.id;
     order.fundedAt = new Date();
     await order.save();
 
+    // ─── Notifications ──────────────────────────────────────────────
     const senderName = await getSenderName(req.user.id);
     const projectName = order.project?.name || 'Unknown Project';
     const formattedAmount = formatCurrency(amount);
