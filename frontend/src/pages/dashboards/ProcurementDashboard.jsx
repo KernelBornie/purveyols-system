@@ -6,7 +6,7 @@ import {
   Table, TableHead, TableRow, TableCell, TableBody,
   Chip, Paper, CircularProgress, Alert, Dialog,
   DialogTitle, DialogContent, DialogActions, TextField,
-  IconButton, Tooltip
+  IconButton, Tooltip, TableContainer, MenuItem
 } from '@mui/material';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import EditIcon from '@mui/icons-material/Edit';
@@ -16,6 +16,9 @@ import VisibilityIcon from '@mui/icons-material/Visibility';
 import CheckIcon from '@mui/icons-material/Check';
 import CloseIcon from '@mui/icons-material/Close';
 import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
+import AddIcon from '@mui/icons-material/Add';
+import DeleteIcon from '@mui/icons-material/Delete';
+import SendIcon from '@mui/icons-material/Send';
 import api from '../../api/axios';
 import { useAuth } from '../../context/AuthContext';
 
@@ -35,7 +38,18 @@ const ProcurementDashboard = () => {
   const [message, setMessage] = useState(null);
   const [editOpen, setEditOpen] = useState(false);
   const [editingOrder, setEditingOrder] = useState(null);
-  const [editForm, setEditForm] = useState({ project: '', items: [], total: 0, supplier: '' });
+  const [editForm, setEditForm] = useState({
+    project: '',
+    items: [],
+    supplier: '',
+    grandTotal: 0,
+    preparedBy: '',
+    approvedBy: '',
+    authorisedBy: '',
+    preparedSign: '',
+    approvedSign: '',
+    authorisedSign: '',
+  });
 
   const userRole = user?.role;
   const canProcurementApprove = ['admin', 'director', 'procurement-officer', 'accountant'].includes(userRole);
@@ -81,6 +95,77 @@ const ProcurementDashboard = () => {
     fetchOrders();
   }, [fetchOrders]);
 
+  // ─── Edit handlers ──────────────────────────────────────────────
+  const handleEditOpen = (order) => {
+    if (!canEdit) return;
+    if (order.status !== 'pending') {
+      setMessage({ type: 'warning', text: 'Only pending orders can be edited' });
+      return;
+    }
+    setEditingOrder(order);
+    setEditForm({
+      project: order.project?._id || order.project || '',
+      items: order.items || [],
+      supplier: order.supplier || '',
+      grandTotal: order.grandTotal || order.total || 0,
+      preparedBy: order.preparedBy || '',
+      approvedBy: order.approvedBy || '',
+      authorisedBy: order.authorisedBy || '',
+      preparedSign: order.preparedSign || '',
+      approvedSign: order.approvedSign || '',
+      authorisedSign: order.authorisedSign || '',
+    });
+    setEditOpen(true);
+  };
+
+  const handleEditSave = async (submitForApproval = false) => {
+    try {
+      // Validate items
+      if (!editForm.items || editForm.items.length === 0) {
+        setMessage({ type: 'error', text: 'Add at least one item.' });
+        return;
+      }
+      // Calculate grandTotal
+      const total = editForm.items.reduce((sum, item) => {
+        const qty = Number(item.quantity) || 0;
+        const price = Number(item.unitPrice) || 0;
+        return sum + (qty * price);
+      }, 0);
+      const payload = { ...editForm, grandTotal: total };
+      await api.put(`/api/procurement/${editingOrder._id}`, payload);
+      
+      if (submitForApproval) {
+        await api.put(`/api/procurement/${editingOrder._id}/procurement-approve`);
+        setMessage({ type: 'success', text: 'Order submitted for approval!' });
+      } else {
+        setMessage({ type: 'success', text: 'Order updated!' });
+      }
+      setEditOpen(false);
+      fetchOrders();
+    } catch (err) {
+      setMessage({ type: 'error', text: err.response?.data?.error || 'Operation failed' });
+    }
+  };
+
+  const handleAddItem = () => {
+    setEditForm({
+      ...editForm,
+      items: [...editForm.items, { description: '', quantity: 1, unitPrice: 0, supplier: '', notes: '' }]
+    });
+  };
+
+  const handleRemoveItem = (index) => {
+    const items = editForm.items.filter((_, i) => i !== index);
+    setEditForm({ ...editForm, items });
+  };
+
+  const handleItemChange = (index, field, value) => {
+    const items = [...editForm.items];
+    items[index] = { ...items[index], [field]: value };
+    setEditForm({ ...editForm, items });
+  };
+
+  // ─── Action handlers ──────────────────────────────────────────────
   const handleProcurementApprove = async (id) => {
     try {
       await api.put(`/api/procurement/${id}/procurement-approve`);
@@ -119,28 +204,6 @@ const ProcurementDashboard = () => {
       fetchOrders();
     } catch (err) {
       setMessage({ type: 'error', text: err.response?.data?.error || 'Funding failed' });
-    }
-  };
-
-  const handleEditOpen = (order) => {
-    setEditingOrder(order);
-    setEditForm({
-      project: order.project?._id || order.project || '',
-      items: order.items || [],
-      total: order.grandTotal || order.total || 0,
-      supplier: order.supplier || '',
-    });
-    setEditOpen(true);
-  };
-
-  const handleEditSave = async () => {
-    try {
-      await api.put(`/api/procurement/${editingOrder._id}`, editForm);
-      setEditOpen(false);
-      setMessage({ type: 'success', text: 'Order updated!' });
-      fetchOrders();
-    } catch (err) {
-      setMessage({ type: 'error', text: err.response?.data?.error || 'Update failed' });
     }
   };
 
@@ -250,13 +313,22 @@ const ProcurementDashboard = () => {
                         <VisibilityIcon />
                       </IconButton>
                     </Tooltip>
-                    {canEdit && (order.status === 'pending' || order.status === 'procurement_approved') && (
-                      <Tooltip title="Edit">
-                        <IconButton size="small" onClick={() => handleEditOpen(order)}>
-                          <EditIcon />
-                        </IconButton>
-                      </Tooltip>
+
+                    {canEdit && (order.status === 'pending') && (
+                      <>
+                        <Tooltip title="Edit">
+                          <IconButton size="small" onClick={() => handleEditOpen(order)}>
+                            <EditIcon />
+                          </IconButton>
+                        </Tooltip>
+                        <Tooltip title="Submit for Approval">
+                          <IconButton size="small" color="primary" onClick={() => handleEditOpen(order)}>
+                            <SendIcon />
+                          </IconButton>
+                        </Tooltip>
+                      </>
                     )}
+
                     {order.status === 'pending' && canProcurementApprove && (
                       <>
                         <Tooltip title="Approve (Procurement)">
@@ -296,9 +368,10 @@ const ProcurementDashboard = () => {
         </Paper>
       )}
 
+      {/* ─── Edit Dialog with full item list ──────────────────────── */}
       <Dialog open={editOpen} onClose={() => setEditOpen(false)} maxWidth="md" fullWidth>
         <DialogTitle>Edit Procurement Order</DialogTitle>
-        <DialogContent>
+        <DialogContent dividers>
           <TextField
             label="Project ID"
             fullWidth
@@ -313,18 +386,117 @@ const ProcurementDashboard = () => {
             value={editForm.supplier}
             onChange={e => setEditForm({ ...editForm, supplier: e.target.value })}
           />
+          <Box sx={{ mt: 2 }}>
+            <Typography variant="subtitle2">Items</Typography>
+            <Button size="small" startIcon={<AddIcon />} onClick={handleAddItem}>Add Item</Button>
+            <TableContainer>
+              <Table size="small">
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Description</TableCell>
+                    <TableCell align="right">Qty</TableCell>
+                    <TableCell align="right">Unit Price</TableCell>
+                    <TableCell align="right">Total</TableCell>
+                    <TableCell>Supplier</TableCell>
+                    <TableCell>Notes</TableCell>
+                    <TableCell>Action</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {editForm.items.map((item, idx) => (
+                    <TableRow key={idx}>
+                      <TableCell>
+                        <TextField
+                          size="small"
+                          fullWidth
+                          value={item.description || ''}
+                          onChange={e => handleItemChange(idx, 'description', e.target.value)}
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <TextField
+                          size="small"
+                          type="number"
+                          fullWidth
+                          value={item.quantity || 1}
+                          onChange={e => handleItemChange(idx, 'quantity', Number(e.target.value) || 0)}
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <TextField
+                          size="small"
+                          type="number"
+                          fullWidth
+                          value={item.unitPrice || 0}
+                          onChange={e => handleItemChange(idx, 'unitPrice', Number(e.target.value) || 0)}
+                        />
+                      </TableCell>
+                      <TableCell align="right">
+                        {formatCurrency((Number(item.quantity) || 0) * (Number(item.unitPrice) || 0))}
+                      </TableCell>
+                      <TableCell>
+                        <TextField
+                          size="small"
+                          fullWidth
+                          value={item.supplier || ''}
+                          onChange={e => handleItemChange(idx, 'supplier', e.target.value)}
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <TextField
+                          size="small"
+                          fullWidth
+                          value={item.notes || ''}
+                          onChange={e => handleItemChange(idx, 'notes', e.target.value)}
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <IconButton size="small" color="error" onClick={() => handleRemoveItem(idx)}>
+                          <DeleteIcon fontSize="small" />
+                        </IconButton>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                  {editForm.items.length === 0 && (
+                    <TableRow><TableCell colSpan={7} align="center">No items added yet.</TableCell></TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          </Box>
+          <Box sx={{ mt: 2 }}>
+            <Typography variant="subtitle2">Grand Total: {formatCurrency(
+              editForm.items.reduce((sum, item) => sum + ((Number(item.quantity)||0) * (Number(item.unitPrice)||0)), 0)
+            )}</Typography>
+          </Box>
           <TextField
-            label="Total Amount (ZMW)"
-            type="number"
+            label="Prepared By"
             fullWidth
             margin="dense"
-            value={editForm.total}
-            onChange={e => setEditForm({ ...editForm, total: parseFloat(e.target.value) || 0 })}
+            value={editForm.preparedBy}
+            onChange={e => setEditForm({ ...editForm, preparedBy: e.target.value })}
+          />
+          <TextField
+            label="Approved By"
+            fullWidth
+            margin="dense"
+            value={editForm.approvedBy}
+            onChange={e => setEditForm({ ...editForm, approvedBy: e.target.value })}
+          />
+          <TextField
+            label="Authorised By"
+            fullWidth
+            margin="dense"
+            value={editForm.authorisedBy}
+            onChange={e => setEditForm({ ...editForm, authorisedBy: e.target.value })}
           />
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setEditOpen(false)}>Cancel</Button>
-          <Button variant="contained" onClick={handleEditSave}>Save</Button>
+          <Button variant="outlined" onClick={() => handleEditSave(false)}>Save Draft</Button>
+          <Button variant="contained" color="primary" startIcon={<SendIcon />} onClick={() => handleEditSave(true)}>
+            Submit for Approval
+          </Button>
         </DialogActions>
       </Dialog>
     </Box>
