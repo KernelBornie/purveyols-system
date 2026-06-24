@@ -10,14 +10,10 @@ import {
 } from '@mui/material';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import EditIcon from '@mui/icons-material/Edit';
-import CancelIcon from '@mui/icons-material/Cancel';
 import VisibilityIcon from '@mui/icons-material/Visibility';
-import CheckIcon from '@mui/icons-material/Check';
-import CloseIcon from '@mui/icons-material/Close';
 import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
 import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
-import SendIcon from '@mui/icons-material/Send';
 import api from '../../api/axios';
 import { useAuth } from '../../context/AuthContext';
 
@@ -309,11 +305,16 @@ const ProcurementDashboard = () => {
                             <EditIcon />
                           </IconButton>
                         </Tooltip>
-                        <Tooltip title="Submit for Approval">
-                          <IconButton size="small" color="primary" onClick={() => handleEditOpen(order)}>
-                            <SendIcon />
-                          </IconButton>
-                        </Tooltip>
+                        {/* ─── SUBMIT button (text) ─── */}
+                        <Button
+                          variant="contained"
+                          color="primary"
+                          size="small"
+                          onClick={() => handleEditOpen(order)}
+                          sx={{ ml: 1 }}
+                        >
+                          SUBMIT
+                        </Button>
                       </>
                     )}
 
@@ -330,11 +331,16 @@ const ProcurementDashboard = () => {
                         >
                           APPROVE
                         </Button>
-                        <Tooltip title="Reject">
-                          <IconButton size="small" color="error" onClick={() => handleProcurementReject(order._id)}>
-                            <CloseIcon />
-                          </IconButton>
-                        </Tooltip>
+                        {/* ─── REJECT button (text) ─── */}
+                        <Button
+                          variant="contained"
+                          color="error"
+                          size="small"
+                          onClick={() => handleProcurementReject(order._id)}
+                          sx={{ ml: 1 }}
+                        >
+                          REJECT
+                        </Button>
                       </>
                     )}
 
