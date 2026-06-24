@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { Link } from 'react-router-dom'; // 👈 ADDED
 import DeliveryNote from "../../components/DeliveryNote";
 import {
   Box, Typography, Grid, Card, CardContent, Button,
@@ -10,6 +11,7 @@ import {
 } from '@mui/material';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
+import VisibilityIcon from '@mui/icons-material/Visibility'; // 👈 ADDED
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip,
   Legend, LineChart, Line, PieChart, Pie, Cell
@@ -259,7 +261,6 @@ const AccountantDashboard = () => {
     setFundRequestId(request._id);
     setFundAmount(request.amount);
     setFundRequesterName(requester?.name || 'Unknown');
-    // Pre-fill with requester's mobile money number or phone
     setRecipientPhone(requester?.mobileMoneyNumber || requester?.phone || '');
     setFundModalOpen(true);
   };
@@ -373,6 +374,37 @@ const AccountantDashboard = () => {
           </Button>
         </Box>
       </Box>
+
+      {/* ─── Quick Actions ────────────────────────────────────────── */}
+      <Paper sx={{ p: 2, mb: 3 }}>
+        <Typography variant="h6" gutterBottom>Quick Actions</Typography>
+        <Grid container spacing={2}>
+          <Grid item xs={12} sm={6} md={3}>
+            <Button component={Link} to="/projects" variant="contained" fullWidth startIcon={<VisibilityIcon />}>
+              View Projects
+            </Button>
+            <Typography variant="caption" color="textSecondary">See all projects</Typography>
+          </Grid>
+          <Grid item xs={12} sm={6} md={3}>
+            <Button component={Link} to="/workers" variant="contained" fullWidth startIcon={<VisibilityIcon />}>
+              View Workers
+            </Button>
+            <Typography variant="caption" color="textSecondary">See all enrolled workers</Typography>
+          </Grid>
+          <Grid item xs={12} sm={6} md={3}>
+            <Button component={Link} to="/funding" variant="contained" fullWidth startIcon={<VisibilityIcon />}>
+              Funding Requests
+            </Button>
+            <Typography variant="caption" color="textSecondary">Manage funding requests</Typography>
+          </Grid>
+          <Grid item xs={12} sm={6} md={3}>
+            <Button component={Link} to="/procurement" variant="contained" fullWidth startIcon={<VisibilityIcon />}>
+              Procurement Orders
+            </Button>
+            <Typography variant="caption" color="textSecondary">View requisition notes</Typography>
+          </Grid>
+        </Grid>
+      </Paper>
 
       <DeliveryNote />
 
@@ -493,11 +525,22 @@ const AccountantDashboard = () => {
         </Grid>
       )}
 
+      {/* ─── Projects Table ────────────────────────────────────────── */}
       <Paper sx={{ p: 2, mb: 3 }}>
-        <Typography variant="h6">Projects by Creator</Typography>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Typography variant="h6">Projects by Creator</Typography>
+          <Button component={Link} to="/projects" size="small">View All</Button>
+        </Box>
         <Table size="small">
           <TableHead>
-            <TableRow><TableCell>Project</TableCell><TableCell>Location</TableCell><TableCell>Status</TableCell><TableCell>Budget</TableCell><TableCell>Created By</TableCell></TableRow>
+            <TableRow>
+              <TableCell>Project</TableCell>
+              <TableCell>Location</TableCell>
+              <TableCell>Status</TableCell>
+              <TableCell>Budget</TableCell>
+              <TableCell>Created By</TableCell>
+              <TableCell>Action</TableCell>
+            </TableRow>
           </TableHead>
           <TableBody>
             {projects.slice(0, 5).map(p => (
@@ -507,18 +550,36 @@ const AccountantDashboard = () => {
                 <TableCell><Chip label={p.status} size="small" color={p.status === 'active' ? 'success' : 'default'} /></TableCell>
                 <TableCell>{formatCurrency(p.budget)}</TableCell>
                 <TableCell>{p.createdBy?.name || 'N/A'}</TableCell>
+                <TableCell>
+                  <Tooltip title="View">
+                    <IconButton component={Link} to={`/projects/${p._id}`} size="small" color="info">
+                      <VisibilityIcon fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
+                </TableCell>
               </TableRow>
             ))}
-            {projects.length === 0 && <TableRow><TableCell colSpan={5}>No projects</TableCell></TableRow>}
           </TableBody>
         </Table>
       </Paper>
 
+      {/* ─── Workers Table ────────────────────────────────────────── */}
       <Paper sx={{ p: 2, mb: 3 }}>
-        <Typography variant="h6">Enrolled Workers</Typography>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Typography variant="h6">Enrolled Workers</Typography>
+          <Button component={Link} to="/workers" size="small">View All</Button>
+        </Box>
         <Table size="small">
           <TableHead>
-            <TableRow><TableCell>Name</TableCell><TableCell>NRC</TableCell><TableCell>Phone</TableCell><TableCell>Site</TableCell><TableCell>Enrolled By</TableCell><TableCell>Pending</TableCell></TableRow>
+            <TableRow>
+              <TableCell>Name</TableCell>
+              <TableCell>NRC</TableCell>
+              <TableCell>Phone</TableCell>
+              <TableCell>Site</TableCell>
+              <TableCell>Enrolled By</TableCell>
+              <TableCell>Pending</TableCell>
+              <TableCell>Action</TableCell>
+            </TableRow>
           </TableHead>
           <TableBody>
             {workers.slice(0, 5).map(w => (
@@ -529,16 +590,25 @@ const AccountantDashboard = () => {
                 <TableCell>{w.site || '—'}</TableCell>
                 <TableCell>{w.enrolledBy?.name || 'N/A'}</TableCell>
                 <TableCell>{formatCurrency(w.balance || 0)}</TableCell>
+                <TableCell>
+                  <Tooltip title="View">
+                    <IconButton component={Link} to={`/workers/${w._id}`} size="small" color="info">
+                      <VisibilityIcon fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
+                </TableCell>
               </TableRow>
             ))}
-            {workers.length === 0 && <TableRow><TableCell colSpan={6}>No workers</TableCell></TableRow>}
           </TableBody>
         </Table>
       </Paper>
 
       {/* ─── Funding Requests Table ─────────────────────────────── */}
       <Paper sx={{ p: 2, mb: 3 }}>
-        <Typography variant="h6" gutterBottom>Funding Requests</Typography>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Typography variant="h6">Funding Requests</Typography>
+          <Button component={Link} to="/funding" size="small">View All</Button>
+        </Box>
         <Table size="small">
           <TableHead>
             <TableRow>
@@ -570,30 +640,55 @@ const AccountantDashboard = () => {
                       </IconButton>
                     </Tooltip>
                   )}
+                  <Tooltip title="View">
+                    <IconButton component={Link} to={`/funding/${fr._id}`} size="small" color="info">
+                      <VisibilityIcon fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
                 </TableCell>
               </TableRow>
             ))}
-            {fundingRequests.length === 0 && (
-              <TableRow>
-                <TableCell colSpan={5} align="center">No funding requests.</TableCell>
-              </TableRow>
-            )}
           </TableBody>
         </Table>
       </Paper>
 
+      {/* ─── Procurement Orders Table ────────────────────────────── */}
       <Paper sx={{ p: 2, mb: 3 }}>
-        <Typography variant="h6">Procurement Orders (Pending Funding)</Typography>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Typography variant="h6">Procurement Orders (Pending Funding)</Typography>
+          <Button component={Link} to="/procurement" size="small">View All</Button>
+        </Box>
         <Table size="small">
           <TableHead>
-            <TableRow><TableCell>Project</TableCell><TableCell>Items</TableCell><TableCell>Status</TableCell><TableCell>Created By</TableCell></TableRow>
+            <TableRow>
+              <TableCell>Project</TableCell>
+              <TableCell>Items</TableCell>
+              <TableCell>Status</TableCell>
+              <TableCell>Created By</TableCell>
+              <TableCell>Action</TableCell>
+            </TableRow>
           </TableHead>
           <TableBody>
-            <TableRow><TableCell colSpan={4}>No pending procurement orders</TableCell></TableRow>
+            {procurementOrders.slice(0, 5).map(o => (
+              <TableRow key={o._id}>
+                <TableCell>{o.project?.name}</TableCell>
+                <TableCell>{o.items?.length || 0}</TableCell>
+                <TableCell><Chip label={o.status} color={o.status === 'funded' ? 'success' : o.status === 'purchased' ? 'info' : 'warning'} size="small" /></TableCell>
+                <TableCell>{o.createdBy?.name}</TableCell>
+                <TableCell>
+                  <Tooltip title="View">
+                    <IconButton component={Link} to={`/procurement/${o._id}`} size="small" color="info">
+                      <VisibilityIcon fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
+                </TableCell>
+              </TableRow>
+            ))}
           </TableBody>
         </Table>
       </Paper>
 
+      {/* ─── Weekly Report ────────────────────────────────────────── */}
       <Paper sx={{ p: 2, mb: 3 }}>
         <Typography variant="h6">Weekly Report</Typography>
         {reportData ? (
