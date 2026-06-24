@@ -17,6 +17,7 @@ router.get('/', auth, async (req, res) => {
     const enriched = await Promise.all(workers.map(async (worker) => {
       const attendance = await Attendance.find({ worker: worker._id });
       const totalEarned = attendance.reduce((sum, a) => sum + (a.days * a.rate || a.rate), 0);
+      // ─── Only completed payments reduce balance ──────────────
       const payments = await Payment.find({ worker: worker._id, status: 'completed' });
       const totalPaid = payments.reduce((sum, p) => sum + p.amount, 0);
       return { ...worker._doc, totalEarned, totalPaid, balance: totalEarned - totalPaid };
@@ -70,7 +71,7 @@ router.post('/', auth, authorize('admin', 'director', 'civil-engineer', 'foreman
         recipient._id,
         'worker_enrolled',
         'New Worker Enrolled',
-        `${formattedRole} enrolled ${worker.name}`,   // 👈 shows role, not name
+        `${formattedRole} enrolled ${worker.name}`,
         `/workers/${worker._id}`
       );
     }
