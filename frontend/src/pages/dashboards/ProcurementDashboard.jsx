@@ -81,7 +81,6 @@ const ProcurementDashboard = () => {
     fetchOrders();
   }, [fetchOrders]);
 
-  // ─── Updated handlers for new endpoints ──────────────────────────────
   const handleProcurementApprove = async (id) => {
     try {
       await api.put(`/api/procurement/${id}/procurement-approve`);

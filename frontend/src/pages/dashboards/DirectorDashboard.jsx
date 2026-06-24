@@ -10,6 +10,8 @@ import RefreshIcon from '@mui/icons-material/Refresh';
 import EditIcon from '@mui/icons-material/Edit';
 import CheckIcon from '@mui/icons-material/Check';
 import CloseIcon from '@mui/icons-material/Close';
+import VisibilityIcon from '@mui/icons-material/Visibility';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import api from '../../api/axios';
 
 const DirectorDashboard = () => {
@@ -100,9 +102,6 @@ const DirectorDashboard = () => {
     const reason = prompt('Rejection reason:');
     if (reason === null) return;
     try {
-      // Assuming you have a reject endpoint for BOQ – if not, you can implement one.
-      // For now, we'll use a custom route if it exists, or just alert.
-      // If no reject route, you can simply update status to 'rejected' via a custom call.
       await api.put(`/api/boq/${id}/reject`, { reason });
       fetchData();
     } catch (err) {
@@ -111,19 +110,11 @@ const DirectorDashboard = () => {
   };
 
   // ─── Procurement actions ──────────────────────────────────────
-  const handleFundProcurement = async (id) => {
+  const handleFinalApproveProcurement = async (id) => {
     try {
-      await api.put(`/api/procurement/${id}/fund`);
+      await api.put(`/api/procurement/${id}/final-approve`);
       fetchData();
-    } catch (err) { alert('Funding failed'); }
-  };
-
-  const handleRejectProcurement = async (id) => {
-    if (!window.confirm('Reject this procurement order?')) return;
-    try {
-      await api.put(`/api/procurement/${id}/reject`);
-      fetchData();
-    } catch (err) { alert('Rejection failed'); }
+    } catch (err) { alert('Final approval failed'); }
   };
 
   const projectStatusData = [
@@ -366,7 +357,7 @@ const DirectorDashboard = () => {
             </Table>
           </Paper>
 
-          {/* Procurement Orders (Oversight) */}
+          {/* Procurement Orders (Oversight) – updated */}
           <Paper sx={{ p: 2 }}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <Typography variant="h6">Procurement Orders (Oversight)</Typography>
@@ -388,22 +379,20 @@ const DirectorDashboard = () => {
                   <TableRow key={o._id}>
                     <TableCell>{o.project?.name}</TableCell>
                     <TableCell>{o.items?.length || 0}</TableCell>
-                    <TableCell><Chip label={o.status} color={o.status === 'funded' ? 'success' : o.status === 'purchased' ? 'info' : 'warning'} /></TableCell>
+                    <TableCell><Chip label={o.status} color={o.status === 'funded' ? 'success' : o.status === 'procurement_approved' ? 'info' : 'warning'} /></TableCell>
                     <TableCell>{o.createdBy?.name}</TableCell>
                     <TableCell>
-                      {o.status === 'pending' && (
-                        <>
-                          <Tooltip title="Fund">
-                            <IconButton size="small" color="success" onClick={() => handleFundProcurement(o._id)}>
-                              <CheckIcon fontSize="small" />
-                            </IconButton>
-                          </Tooltip>
-                          <Tooltip title="Reject">
-                            <IconButton size="small" color="error" onClick={() => handleRejectProcurement(o._id)}>
-                              <CloseIcon fontSize="small" />
-                            </IconButton>
-                          </Tooltip>
-                        </>
+                      <Tooltip title="View">
+                        <IconButton component={Link} to={`/procurement/${o._id}`} size="small" color="info">
+                          <VisibilityIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                      {o.status === 'procurement_approved' && (
+                        <Tooltip title="Final Approve">
+                          <IconButton size="small" color="primary" onClick={() => handleFinalApproveProcurement(o._id)}>
+                            <CheckCircleIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
                       )}
                     </TableCell>
                   </TableRow>

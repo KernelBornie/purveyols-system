@@ -12,6 +12,7 @@ import {
 import RefreshIcon from '@mui/icons-material/Refresh';
 import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
 import VisibilityIcon from '@mui/icons-material/Visibility';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip,
   Legend, LineChart, Line, PieChart, Pie, Cell
@@ -46,7 +47,7 @@ const AccountantDashboard = () => {
   const [workers, setWorkers] = useState([]);
   const [projects, setProjects] = useState([]);
   const [fundingRequests, setFundingRequests] = useState([]);
-  const [procurementOrders, setProcurementOrders] = useState([]); // 👈 ADDED
+  const [procurementOrders, setProcurementOrders] = useState([]);
   const [payments, setPayments] = useState([]);
   const [attendance, setAttendance] = useState([]);
   const [topWorkers, setTopWorkers] = useState([]);
@@ -97,7 +98,7 @@ const AccountantDashboard = () => {
         setWorkers(cached.workers);
         setProjects(cached.projects);
         setFundingRequests(cached.fundingRequests);
-        setProcurementOrders(cached.procurementOrders || []); // 👈 LOAD
+        setProcurementOrders(cached.procurementOrders || []);
         setPayments(cached.payments);
         setAttendance(cached.attendance);
         setTopWorkers(cached.topWorkers);
@@ -119,7 +120,7 @@ const AccountantDashboard = () => {
         api.get('/api/payments'),
         api.get('/api/projects'),
         api.get('/api/funding-requests').catch(() => api.get('/api/funding')),
-        api.get('/api/procurement') // 👈 FETCH procurement
+        api.get('/api/procurement')
       ]);
 
       const workersData = Array.isArray(workersRes.data) ? workersRes.data : (workersRes.data?.data || []);
@@ -204,7 +205,7 @@ const AccountantDashboard = () => {
       setWorkers(workersWithBalance);
       setProjects(projectsData);
       setFundingRequests(fundingData);
-      setProcurementOrders(procurementData); // 👈 SET
+      setProcurementOrders(procurementData);
       setPayments(completedPayments);
       setAttendance(attendanceData);
       setTopWorkers(top);
@@ -218,7 +219,7 @@ const AccountantDashboard = () => {
         workers: workersWithBalance,
         projects: projectsData,
         fundingRequests: fundingData,
-        procurementOrders: procurementData, // 👈 SAVE
+        procurementOrders: procurementData,
         payments: completedPayments,
         attendance: attendanceData,
         topWorkers: top,
@@ -254,9 +255,30 @@ const AccountantDashboard = () => {
       initialLoadDone.current = true;
       refreshAll();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // ─── Procurement action handlers ──────────────────────────────
+  const handleFinalApproveProcurement = async (id) => {
+    try {
+      await api.put(`/api/procurement/${id}/final-approve`);
+      setMessage({ type: 'success', text: 'Order final approved!' });
+      refreshAll();
+    } catch (err) {
+      setMessage({ type: 'error', text: err.response?.data?.error || 'Final approval failed' });
+    }
+  };
+
+  const handleFundProcurement = async (id) => {
+    try {
+      await api.put(`/api/procurement/${id}/fund`);
+      setMessage({ type: 'success', text: 'Order funded!' });
+      refreshAll();
+    } catch (err) {
+      setMessage({ type: 'error', text: err.response?.data?.error || 'Funding failed' });
+    }
+  };
+
+  // ─── Existing handlers ──────────────────────────────────────────
   const handleFundClick = (request) => {
     const requester = request.requestedBy;
     setFundRequestId(request._id);
@@ -651,7 +673,7 @@ const AccountantDashboard = () => {
         </Table>
       </Paper>
 
-      {/* Procurement Orders Table */}
+      {/* Procurement Orders Table with Final Approve and Fund */}
       <Paper sx={{ p: 2, mb: 3 }}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <Typography variant="h6">Procurement Orders (Pending Funding)</Typography>
@@ -664,7 +686,7 @@ const AccountantDashboard = () => {
               <TableCell>Items</TableCell>
               <TableCell>Status</TableCell>
               <TableCell>Created By</TableCell>
-              <TableCell>Action</TableCell>
+              <TableCell>Actions</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
@@ -672,7 +694,7 @@ const AccountantDashboard = () => {
               <TableRow key={o._id}>
                 <TableCell>{o.project?.name}</TableCell>
                 <TableCell>{o.items?.length || 0}</TableCell>
-                <TableCell><Chip label={o.status} color={o.status === 'funded' ? 'success' : o.status === 'purchased' ? 'info' : 'warning'} size="small" /></TableCell>
+                <TableCell><Chip label={o.status} color={o.status === 'funded' ? 'success' : o.status === 'procurement_approved' ? 'info' : 'warning'} size="small" /></TableCell>
                 <TableCell>{o.createdBy?.name}</TableCell>
                 <TableCell>
                   <Tooltip title="View">
@@ -680,6 +702,20 @@ const AccountantDashboard = () => {
                       <VisibilityIcon fontSize="small" />
                     </IconButton>
                   </Tooltip>
+                  {o.status === 'procurement_approved' && (
+                    <Tooltip title="Final Approve">
+                      <IconButton size="small" color="primary" onClick={() => handleFinalApproveProcurement(o._id)}>
+                        <CheckCircleIcon fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
+                  )}
+                  {o.status === 'approved' && (
+                    <Tooltip title="Fund">
+                      <IconButton size="small" color="success" onClick={() => handleFundProcurement(o._id)}>
+                        <AttachMoneyIcon fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
+                  )}
                 </TableCell>
               </TableRow>
             ))}
@@ -722,7 +758,6 @@ const AccountantDashboard = () => {
         </DialogActions>
       </Dialog>
 
-      {/* Funding Modal */}
       <Dialog open={fundModalOpen} onClose={() => setFundModalOpen(false)} maxWidth="sm" fullWidth>
         <DialogTitle>Fund Request</DialogTitle>
         <DialogContent>
