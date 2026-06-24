@@ -29,9 +29,11 @@ const SubcontractForm = () => {
     description: '',
   });
   const [creator, setCreator] = useState(null);
+  const [createdAt, setCreatedAt] = useState(null);
+  const [approver, setApprover] = useState(null);
+  const [approvedAt, setApprovedAt] = useState(null);
   const [message, setMessage] = useState(null);
 
-  // ✅ Foreman added
   const canEdit = ['procurement-officer', 'civil-engineer', 'quantity-surveyor', 'director', 'admin', 'accountant', 'foreman'].includes(user?.role);
 
   useEffect(() => {
@@ -55,8 +57,12 @@ const SubcontractForm = () => {
             description: data.description || '',
           });
           setCreator(data.createdBy);
+          setCreatedAt(data.createdAt);
+          setApprover(data.approvedBy);
+          setApprovedAt(data.approvedAt);
         } else {
           setCreator(user);
+          setCreatedAt(new Date().toISOString());
         }
         setMessage(null);
       } catch (err) {
@@ -84,7 +90,6 @@ const SubcontractForm = () => {
         status: form.status,
         description: form.description || '',
       };
-
       if (id) {
         await api.put(`/api/subcontracts/${id}`, payload);
         setMessage({ type: 'success', text: 'Subcontract updated successfully!' });
@@ -111,6 +116,7 @@ const SubcontractForm = () => {
   };
 
   const handlePrint = () => window.print();
+  const formatDate = (date) => date ? new Date(date).toLocaleString() : '—';
 
   if (fetching) return <CircularProgress sx={{ display: 'block', margin: '40px auto' }} />;
 
@@ -121,152 +127,62 @@ const SubcontractForm = () => {
       {!canEdit && <Alert severity="info" sx={{ mb: 2 }}>You have view‑only access.</Alert>}
 
       <form onSubmit={handleSubmit}>
-        {/* Company Header */}
-        <Box sx={{
-          textAlign: 'center',
-          borderBottom: '2px solid #000',
-          pb: 2,
-          mb: 2,
-          '@media print': { borderBottom: '2px solid #000' }
-        }}>
-          <Typography variant="h4" component="div" sx={{ fontWeight: 'bold', letterSpacing: 2 }}>
-            PURVEYOLS
-          </Typography>
-          <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>
-            Building and Civil Construction
-          </Typography>
-          <Typography variant="body2">
-            Plot No. 8, Buchi Road - Northmead, P.O. Box NH 87 Lusaka, Zambia
-          </Typography>
-          <Typography variant="body2">
-            Tel: +260 211 235354 | Mobile: +260 977 393879 / +260 965 393879
-          </Typography>
-          <Typography variant="body2">
-            Email: purveyols@gmail.com
-          </Typography>
+        <Box sx={{ textAlign: 'center', borderBottom: '2px solid #000', pb: 2, mb: 2 }}>
+          <Typography variant="h4" sx={{ fontWeight: 'bold', letterSpacing: 2 }}>PURVEYOLS</Typography>
+          <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>Building and Civil Construction</Typography>
+          <Typography variant="body2">Plot No. 8, Buchi Road - Northmead, P.O. Box NH 87 Lusaka, Zambia</Typography>
+          <Typography variant="body2">Tel: +260 211 235354 | Mobile: +260 977 393879 / +260 965 393879</Typography>
+          <Typography variant="body2">Email: purveyols@gmail.com</Typography>
         </Box>
 
-        <Box sx={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          mb: 3,
-          borderBottom: '1px solid #000',
-          pb: 1
-        }}>
-          <Typography variant="h5" sx={{ fontWeight: 'bold', letterSpacing: 1 }}>
-            {id ? 'EDIT SUBCONTRACT' : 'NEW SUBCONTRACT'}
-          </Typography>
-          <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
-            {id ? `Contract ID: ${id.slice(-6)}` : 'New'}
-          </Typography>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3, borderBottom: '1px solid #000', pb: 1 }}>
+          <Typography variant="h5" sx={{ fontWeight: 'bold', letterSpacing: 1 }}>{id ? 'EDIT SUBCONTRACT' : 'NEW SUBCONTRACT'}</Typography>
+          <Typography variant="body2" sx={{ fontWeight: 'bold' }}>{id ? `Contract ID: ${id.slice(-6)}` : 'New'}</Typography>
         </Box>
 
         {creator && (
           <Box sx={{ mb: 2 }}>
             <Typography variant="body2">
-              Created by (you): <strong>{creator.name}</strong> ({creator.role})
+              Created by: <strong>{creator.name}</strong> ({creator.role})
+            </Typography>
+            <Typography variant="body2" color="textSecondary">
+              Created on: {formatDate(createdAt)}
             </Typography>
           </Box>
         )}
 
         <Grid container spacing={2} sx={{ mb: 3 }}>
           <Grid item xs={12} md={6}>
-            <TextField
-              select
-              label="Project *"
-              fullWidth
-              size="small"
-              value={form.project || ''}
-              onChange={e => setForm({ ...form, project: e.target.value })}
-              required
-              disabled={!canEdit}
-            >
-              {Array.isArray(projects) && projects.map(p => (
-                <MenuItem key={p._id} value={p._id}>{p.name}</MenuItem>
-              ))}
+            <TextField select label="Project *" fullWidth size="small" value={form.project || ''} onChange={e => setForm({ ...form, project: e.target.value })} required disabled={!canEdit}>
+              {Array.isArray(projects) && projects.map(p => <MenuItem key={p._id} value={p._id}>{p.name}</MenuItem>)}
             </TextField>
           </Grid>
           <Grid item xs={12} md={6}>
-            <TextField
-              label="Vendor *"
-              fullWidth
-              size="small"
-              value={form.vendor || ''}
-              onChange={e => setForm({ ...form, vendor: e.target.value })}
-              required
-              placeholder="Company or individual name"
-              disabled={!canEdit}
-            />
+            <TextField label="Vendor *" fullWidth size="small" value={form.vendor || ''} onChange={e => setForm({ ...form, vendor: e.target.value })} required placeholder="Company or individual name" disabled={!canEdit} />
           </Grid>
         </Grid>
 
         <Grid container spacing={2} sx={{ mb: 3 }}>
           <Grid item xs={12} md={6}>
-            <TextField
-              label="Service *"
-              fullWidth
-              size="small"
-              value={form.service || ''}
-              onChange={e => setForm({ ...form, service: e.target.value })}
-              required
-              placeholder="e.g., Electrical, Plumbing"
-              disabled={!canEdit}
-            />
+            <TextField label="Service *" fullWidth size="small" value={form.service || ''} onChange={e => setForm({ ...form, service: e.target.value })} required placeholder="e.g., Electrical, Plumbing" disabled={!canEdit} />
           </Grid>
           <Grid item xs={12} md={6}>
-            <TextField
-              label="Amount (ZMW)"
-              type="number"
-              fullWidth
-              size="small"
-              value={form.amount || ''}
-              onChange={e => setForm({ ...form, amount: e.target.value })}
-              inputProps={{ min: 0, step: 0.01 }}
-              placeholder="0.00"
-              disabled={!canEdit}
-            />
+            <TextField label="Amount (ZMW)" type="number" fullWidth size="small" value={form.amount || ''} onChange={e => setForm({ ...form, amount: e.target.value })} inputProps={{ min: 0, step: 0.01 }} placeholder="0.00" disabled={!canEdit} />
           </Grid>
         </Grid>
 
         <Grid container spacing={2} sx={{ mb: 3 }}>
           <Grid item xs={12} md={6}>
-            <TextField
-              label="Start Date"
-              type="date"
-              fullWidth
-              size="small"
-              value={form.startDate || ''}
-              onChange={e => setForm({ ...form, startDate: e.target.value })}
-              InputLabelProps={{ shrink: true }}
-              disabled={!canEdit}
-            />
+            <TextField label="Start Date" type="date" fullWidth size="small" value={form.startDate || ''} onChange={e => setForm({ ...form, startDate: e.target.value })} InputLabelProps={{ shrink: true }} disabled={!canEdit} />
           </Grid>
           <Grid item xs={12} md={6}>
-            <TextField
-              label="End Date"
-              type="date"
-              fullWidth
-              size="small"
-              value={form.endDate || ''}
-              onChange={e => setForm({ ...form, endDate: e.target.value })}
-              InputLabelProps={{ shrink: true }}
-              disabled={!canEdit}
-            />
+            <TextField label="End Date" type="date" fullWidth size="small" value={form.endDate || ''} onChange={e => setForm({ ...form, endDate: e.target.value })} InputLabelProps={{ shrink: true }} disabled={!canEdit} />
           </Grid>
         </Grid>
 
         <Grid container spacing={2} sx={{ mb: 3 }}>
           <Grid item xs={12} md={6}>
-            <TextField
-              select
-              label="Status"
-              fullWidth
-              size="small"
-              value={form.status || 'draft'}
-              onChange={e => setForm({ ...form, status: e.target.value })}
-              disabled={!canEdit}
-            >
+            <TextField select label="Status" fullWidth size="small" value={form.status || 'draft'} onChange={e => setForm({ ...form, status: e.target.value })} disabled={!canEdit}>
               <MenuItem value="draft">Draft</MenuItem>
               <MenuItem value="active">Active</MenuItem>
               <MenuItem value="completed">Completed</MenuItem>
@@ -286,72 +202,48 @@ const SubcontractForm = () => {
 
         <Grid container spacing={2} sx={{ mb: 3 }}>
           <Grid item xs={12}>
-            <TextField
-              label="Description"
-              fullWidth
-              multiline
-              rows={3}
-              size="small"
-              value={form.description || ''}
-              onChange={e => setForm({ ...form, description: e.target.value })}
-              placeholder="Additional details about the subcontract..."
-              disabled={!canEdit}
-            />
+            <TextField label="Description" fullWidth multiline rows={3} size="small" value={form.description || ''} onChange={e => setForm({ ...form, description: e.target.value })} placeholder="Additional details about the subcontract..." disabled={!canEdit} />
           </Grid>
         </Grid>
 
         {/* Approval Section */}
         <Box sx={{ mt: 4, borderTop: '1px solid #000', pt: 3 }}>
-          <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 2 }}>
-            Approval
-          </Typography>
+          <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 2 }}>Approval</Typography>
           <Grid container spacing={2}>
             <Grid item xs={12} md={6}>
               <Typography variant="body2">Prepared by:</Typography>
               <Typography variant="body1" sx={{ fontWeight: 'bold' }}>{creator?.name || 'N/A'}</Typography>
+              <Typography variant="caption" color="textSecondary">{creator?.role || ''} • {formatDate(createdAt)}</Typography>
             </Grid>
             <Grid item xs={12} md={6}>
               <Typography variant="body2">Date:</Typography>
-              <Typography variant="body1" sx={{ fontWeight: 'bold' }}>
-                {new Date().toLocaleDateString()}
-              </Typography>
+              <Typography variant="body1" sx={{ fontWeight: 'bold' }}>{formatDate(createdAt)}</Typography>
             </Grid>
           </Grid>
-          <Box sx={{ mt: 2, display: 'flex', gap: 2 }}>
-            <Typography variant="body2">Approved by: _________________</Typography>
-            <Typography variant="body2">Date: _________________</Typography>
+          <Box sx={{ mt: 2, display: 'flex', flexDirection: 'column', gap: 1 }}>
+            {approver && form.status === 'active' ? (
+              <>
+                <Typography variant="body2">
+                  Approved by: <strong>{approver.name}</strong> ({approver.role})
+                </Typography>
+                <Typography variant="body2">
+                  Approved on: <strong>{formatDate(approvedAt)}</strong>
+                </Typography>
+              </>
+            ) : (
+              <>
+                <Typography variant="body2">Approved by: _________________</Typography>
+                <Typography variant="body2">Date: _________________</Typography>
+              </>
+            )}
           </Box>
         </Box>
 
-        {/* Action Buttons */}
         <Box sx={{ mt: 4, display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-          {canEdit && (
-            <Button
-              type="submit"
-              variant="contained"
-              startIcon={<SaveIcon />}
-              disabled={loading}
-            >
-              {loading ? 'Saving...' : 'Save Subcontract'}
-            </Button>
-          )}
-          <Button variant="outlined" startIcon={<PrintIcon />} onClick={handlePrint}>
-            Print
-          </Button>
-          <Button variant="outlined" onClick={() => navigate('/subcontracts')}>
-            Cancel
-          </Button>
-          {canEdit && id && (
-            <Button
-              variant="contained"
-              color="error"
-              startIcon={<DeleteIcon />}
-              onClick={handleDelete}
-              disabled={loading}
-            >
-              Delete
-            </Button>
-          )}
+          {canEdit && <Button type="submit" variant="contained" startIcon={<SaveIcon />} disabled={loading}>{loading ? 'Saving...' : 'Save Subcontract'}</Button>}
+          <Button variant="outlined" startIcon={<PrintIcon />} onClick={handlePrint}>Print</Button>
+          <Button variant="outlined" onClick={() => navigate('/subcontracts')}>Cancel</Button>
+          {canEdit && id && <Button variant="contained" color="error" startIcon={<DeleteIcon />} onClick={handleDelete} disabled={loading}>Delete</Button>}
         </Box>
       </form>
     </Paper>

@@ -37,14 +37,16 @@ const ProcurementForm = () => {
     authorisedSign: '',
   });
   const [creator, setCreator] = useState(null);
+  const [createdAt, setCreatedAt] = useState(null);
+  const [funder, setFunder] = useState(null);
+  const [fundedAt, setFundedAt] = useState(null);
   const [message, setMessage] = useState(null);
   const [signatureModal, setSignatureModal] = useState({
     open: false,
-    field: '', // 'prepared', 'approved', 'authorised'
+    field: '',
   });
   const [isEditMode, setIsEditMode] = useState(!!id);
 
-  // ✅ Foreman added
   const canEdit = ['procurement-officer', 'civil-engineer', 'quantity-surveyor', 'director', 'admin', 'driver', 'safety-officer', 'accountant', 'foreman'].includes(user?.role);
 
   const generateOrderNumber = () => {
@@ -79,9 +81,13 @@ const ProcurementForm = () => {
             authorisedSign: data.authorisedSign || '',
           });
           setCreator(data.createdBy);
+          setCreatedAt(data.createdAt);
+          setFunder(data.fundedBy);
+          setFundedAt(data.fundedAt);
           setIsEditMode(true);
         } else {
           setCreator(user);
+          setCreatedAt(new Date().toISOString());
           setForm(prev => ({
             ...prev,
             orderNumber: generateOrderNumber(),
@@ -100,7 +106,6 @@ const ProcurementForm = () => {
         setFetching(false);
       }
     };
-
     fetchData();
   }, [id, user]);
 
@@ -108,7 +113,6 @@ const ProcurementForm = () => {
     const items = Array.isArray(form.items) ? form.items : [];
     let itemsWithTotal = [];
     let grandTotal = 0;
-
     items.forEach(item => {
       const quantity = parseFloat(item.quantity) || 0;
       const unitPrice = parseFloat(item.unitPrice) || 0;
@@ -116,7 +120,6 @@ const ProcurementForm = () => {
       itemsWithTotal.push({ ...item, total });
       grandTotal += total;
     });
-
     return { itemsWithTotal, grandTotal };
   };
 
@@ -125,15 +128,12 @@ const ProcurementForm = () => {
   const handleItemChange = (index, field, value) => {
     const items = Array.isArray(form.items) ? [...form.items] : [];
     if (!items[index]) return;
-
     items[index][field] = value;
-
     if (field === 'quantity' || field === 'unitPrice') {
       const quantity = parseFloat(items[index].quantity) || 0;
       const unitPrice = parseFloat(items[index].unitPrice) || 0;
       items[index].total = quantity * unitPrice;
     }
-
     setForm({ ...form, items });
   };
 
@@ -185,7 +185,6 @@ const ProcurementForm = () => {
         authorisedSign: form.authorisedSign,
         grandTotal: totals.grandTotal,
       };
-
       if (id) {
         await api.put(`/api/procurement/${id}`, payload);
         setMessage({ type: 'success', text: 'Order updated successfully!' });
@@ -224,6 +223,8 @@ const ProcurementForm = () => {
         authorisedSign: data.authorisedSign || '',
       });
       setCreator(data.createdBy);
+      setFunder(data.fundedBy);
+      setFundedAt(data.fundedAt);
       setTimeout(() => navigate('/procurement'), 1500);
     } catch (err) {
       setMessage({ type: 'error', text: err.response?.data?.error || 'Approval failed' });
@@ -255,6 +256,8 @@ const ProcurementForm = () => {
         authorisedSign: data.authorisedSign || '',
       });
       setCreator(data.createdBy);
+      setFunder(data.fundedBy);
+      setFundedAt(data.fundedAt);
       setTimeout(() => navigate('/procurement'), 1500);
     } catch (err) {
       setMessage({ type: 'error', text: err.response?.data?.error || 'Rejection failed' });
@@ -277,10 +280,7 @@ const ProcurementForm = () => {
   };
 
   const handlePrint = () => window.print();
-
-  const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('en-ZM', { style: 'currency', currency: 'ZMW' }).format(amount || 0);
-  };
+  const formatDate = (date) => date ? new Date(date).toLocaleString() : '—';
 
   const items = Array.isArray(form.items) ? form.items : [];
 
@@ -305,28 +305,14 @@ const ProcurementForm = () => {
     const signature = form[signKey];
     return (
       <Box sx={{ mt: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
-        <Typography variant="body2" sx={{ fontWeight: 'bold', minWidth: '50px' }}>
-          {label}:
-        </Typography>
+        <Typography variant="body2" sx={{ fontWeight: 'bold', minWidth: '50px' }}>{label}:</Typography>
         {signature ? (
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <Avatar
-              src={signature}
-              sx={{ width: 80, height: 40, borderRadius: 1, border: '1px solid #ccc' }}
-              variant="square"
-            />
-            {canEdit && (
-              <IconButton size="small" onClick={() => openSignatureModal(field)}>
-                <EditIcon fontSize="small" />
-              </IconButton>
-            )}
+            <Avatar src={signature} sx={{ width: 80, height: 40, borderRadius: 1, border: '1px solid #ccc' }} variant="square" />
+            {canEdit && <IconButton size="small" onClick={() => openSignatureModal(field)}><EditIcon fontSize="small" /></IconButton>}
           </Box>
         ) : (
-          canEdit && (
-            <Button variant="outlined" size="small" onClick={() => openSignatureModal(field)}>
-              Sign
-            </Button>
-          )
+          canEdit && <Button variant="outlined" size="small" onClick={() => openSignatureModal(field)}>Sign</Button>
         )}
       </Box>
     );
@@ -341,76 +327,39 @@ const ProcurementForm = () => {
       {!canEdit && <Alert severity="info" sx={{ mb: 2 }}>You have view‑only access.</Alert>}
 
       <form onSubmit={handleSubmit}>
-        {/* Company Header */}
-        <Box sx={{
-          textAlign: 'center',
-          borderBottom: '2px solid #000',
-          pb: 2,
-          mb: 2,
-          '@media print': { borderBottom: '2px solid #000' }
-        }}>
-          <Typography variant="h4" component="div" sx={{ fontWeight: 'bold', letterSpacing: 2 }}>
-            PURVEYOLS
-          </Typography>
-          <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>
-            Building and Civil Construction
-          </Typography>
-          <Typography variant="body2">
-            Plot No. 8, Buchi Road - Northmead, P.O. Box NH 87 Lusaka, Zambia
-          </Typography>
-          <Typography variant="body2">
-            Tel: +260 211 235354 | Mobile: +260 977 393879 / +260 965 393879
-          </Typography>
-          <Typography variant="body2">
-            Email: purveyols@gmail.com
-          </Typography>
+        <Box sx={{ textAlign: 'center', borderBottom: '2px solid #000', pb: 2, mb: 2 }}>
+          <Typography variant="h4" sx={{ fontWeight: 'bold', letterSpacing: 2 }}>PURVEYOLS</Typography>
+          <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>Building and Civil Construction</Typography>
+          <Typography variant="body2">Plot No. 8, Buchi Road - Northmead, P.O. Box NH 87 Lusaka, Zambia</Typography>
+          <Typography variant="body2">Tel: +260 211 235354 | Mobile: +260 977 393879 / +260 965 393879</Typography>
+          <Typography variant="body2">Email: purveyols@gmail.com</Typography>
         </Box>
 
-        {/* Document Title & Order Number */}
-        <Box sx={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          mb: 3,
-          borderBottom: '1px solid #000',
-          pb: 1
-        }}>
-          <Typography variant="h5" sx={{ fontWeight: 'bold', letterSpacing: 1 }}>
-            MATERIAL REQUISITION NOTE
-          </Typography>
-          <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
-            No. {form.orderNumber || 'NEW'}
-          </Typography>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3, borderBottom: '1px solid #000', pb: 1 }}>
+          <Typography variant="h5" sx={{ fontWeight: 'bold', letterSpacing: 1 }}>MATERIAL REQUISITION NOTE</Typography>
+          <Typography variant="h6" sx={{ fontWeight: 'bold' }}>No. {form.orderNumber || 'NEW'}</Typography>
         </Box>
 
         {creator && (
           <Box sx={{ mb: 2 }}>
             <Typography variant="body2">
-              Created by (you): <strong>{creator.name}</strong> ({creator.role})
+              Created by: <strong>{creator.name}</strong> ({creator.role})
+            </Typography>
+            <Typography variant="body2" color="textSecondary">
+              Created on: {formatDate(createdAt)}
             </Typography>
           </Box>
         )}
 
         <Grid container spacing={2} sx={{ mb: 3 }}>
           <Grid item xs={12}>
-            <TextField
-              select
-              label="Project *"
-              fullWidth
-              size="small"
-              value={form.project || ''}
-              onChange={e => setForm({ ...form, project: e.target.value })}
-              required
-              disabled={!canEdit || (isEditMode && form.status !== 'pending')}
-            >
-              {Array.isArray(projects) && projects.map(p => (
-                <MenuItem key={p._id} value={p._id}>{p.name}</MenuItem>
-              ))}
+            <TextField select label="Project *" fullWidth size="small" value={form.project || ''} onChange={e => setForm({ ...form, project: e.target.value })} required disabled={!canEdit || (isEditMode && form.status !== 'pending')}>
+              {Array.isArray(projects) && projects.map(p => <MenuItem key={p._id} value={p._id}>{p.name}</MenuItem>)}
             </TextField>
           </Grid>
         </Grid>
 
-        {/* Materials Table */}
+        {/* Items Table */}
         <Box sx={{ mt: 2, overflowX: 'auto' }}>
           <Table size="small" sx={{ border: '1px solid #000' }}>
             <TableHead>
@@ -427,81 +376,30 @@ const ProcurementForm = () => {
             <TableBody>
               {items.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} sx={{ textAlign: 'center', py: 3, border: '1px solid #000' }}>
-                    No items added yet. Click "Add Row" to add items.
-                  </TableCell>
+                  <TableCell colSpan={7} sx={{ textAlign: 'center', py: 3, border: '1px solid #000' }}>No items added yet.</TableCell>
                 </TableRow>
               ) : (
                 totals.itemsWithTotal.map((item, idx) => (
                   <TableRow key={idx}>
                     <TableCell sx={{ border: '1px solid #000', p: 1 }}>
-                      <TextField
-                        size="small"
-                        fullWidth
-                        value={item.description || ''}
-                        onChange={e => handleItemChange(idx, 'description', e.target.value)}
-                        placeholder=""
-                        disabled={!canEdit || (isEditMode && form.status !== 'pending')}
-                        sx={{ '& .MuiInputBase-root': { border: 'none', '&:before': { borderBottom: 'none' }, '&:after': { borderBottom: 'none' } } }}
-                      />
+                      <TextField size="small" fullWidth value={item.description || ''} onChange={e => handleItemChange(idx, 'description', e.target.value)} disabled={!canEdit || (isEditMode && form.status !== 'pending')} sx={{ '& .MuiInputBase-root': { border: 'none' } }} />
                     </TableCell>
                     <TableCell sx={{ border: '1px solid #000', p: 1 }}>
-                      <TextField
-                        size="small"
-                        fullWidth
-                        value={item.unit || ''}
-                        onChange={e => handleItemChange(idx, 'unit', e.target.value)}
-                        placeholder=""
-                        disabled={!canEdit || (isEditMode && form.status !== 'pending')}
-                        sx={{ '& .MuiInputBase-root': { border: 'none', '&:before': { borderBottom: 'none' }, '&:after': { borderBottom: 'none' } } }}
-                      />
+                      <TextField size="small" fullWidth value={item.unit || ''} onChange={e => handleItemChange(idx, 'unit', e.target.value)} disabled={!canEdit || (isEditMode && form.status !== 'pending')} sx={{ '& .MuiInputBase-root': { border: 'none' } }} />
                     </TableCell>
                     <TableCell sx={{ border: '1px solid #000', p: 1 }}>
-                      <TextField
-                        size="small"
-                        type="number"
-                        fullWidth
-                        value={item.quantity || 0}
-                        onChange={e => handleItemChange(idx, 'quantity', e.target.value)}
-                        inputProps={{ min: 0 }}
-                        disabled={!canEdit || (isEditMode && form.status !== 'pending')}
-                        sx={{ '& .MuiInputBase-root': { border: 'none', '&:before': { borderBottom: 'none' }, '&:after': { borderBottom: 'none' } } }}
-                      />
+                      <TextField size="small" type="number" fullWidth value={item.quantity || 0} onChange={e => handleItemChange(idx, 'quantity', e.target.value)} inputProps={{ min: 0 }} disabled={!canEdit || (isEditMode && form.status !== 'pending')} sx={{ '& .MuiInputBase-root': { border: 'none' } }} />
                     </TableCell>
                     <TableCell sx={{ border: '1px solid #000', p: 1 }}>
-                      <TextField
-                        size="small"
-                        type="number"
-                        fullWidth
-                        value={item.unitPrice || 0}
-                        onChange={e => handleItemChange(idx, 'unitPrice', e.target.value)}
-                        inputProps={{ min: 0, step: 0.01 }}
-                        disabled={!canEdit || (isEditMode && form.status !== 'pending')}
-                        sx={{ '& .MuiInputBase-root': { border: 'none', '&:before': { borderBottom: 'none' }, '&:after': { borderBottom: 'none' } } }}
-                      />
+                      <TextField size="small" type="number" fullWidth value={item.unitPrice || 0} onChange={e => handleItemChange(idx, 'unitPrice', e.target.value)} inputProps={{ min: 0, step: 0.01 }} disabled={!canEdit || (isEditMode && form.status !== 'pending')} sx={{ '& .MuiInputBase-root': { border: 'none' } }} />
                     </TableCell>
                     <TableCell sx={{ border: '1px solid #000', p: 1, bgcolor: '#fafafa' }}>
-                      <TextField
-                        size="small"
-                        type="number"
-                        fullWidth
-                        value={item.total || 0}
-                        InputProps={{ readOnly: true }}
-                        sx={{ '& .MuiInputBase-root': { border: 'none', bgcolor: '#fafafa', '&:before': { borderBottom: 'none' }, '&:after': { borderBottom: 'none' } } }}
-                      />
+                      <TextField size="small" type="number" fullWidth value={item.total || 0} InputProps={{ readOnly: true }} sx={{ '& .MuiInputBase-root': { border: 'none', bgcolor: '#fafafa' } }} />
                     </TableCell>
                     <TableCell sx={{ border: '1px solid #000', p: 1 }}>
-                      <TextField
-                        size="small"
-                        fullWidth
-                        value={item.supplier || ''}
-                        onChange={e => handleItemChange(idx, 'supplier', e.target.value)}
-                        placeholder="Supplier"
-                        disabled={!canEdit || (isEditMode && form.status !== 'pending')}
-                        sx={{ '& .MuiInputBase-root': { border: 'none', '&:before': { borderBottom: 'none' }, '&:after': { borderBottom: 'none' } } }}
-                      />
+                      <TextField size="small" fullWidth value={item.supplier || ''} onChange={e => handleItemChange(idx, 'supplier', e.target.value)} disabled={!canEdit || (isEditMode && form.status !== 'pending')} sx={{ '& .MuiInputBase-root': { border: 'none' } }} />
                     </TableCell>
-                    <TableCell sx={{ border: '1px solid #000', p: 1, textAlign: 'center' }}>
+                    <TableCell sx={{ border: '1px solid #000', textAlign: 'center' }}>
                       <IconButton size="small" onClick={() => removeItem(idx)} color="error" disabled={!canEdit || (isEditMode && form.status !== 'pending')}>
                         <DeleteIcon fontSize="small" />
                       </IconButton>
@@ -515,75 +413,60 @@ const ProcurementForm = () => {
 
         {canEdit && (
           <Box sx={{ mt: 2 }}>
-            <Button variant="outlined" startIcon={<AddIcon />} onClick={addItem} size="small" disabled={isEditMode && form.status !== 'pending'}>
-              Add Row
-            </Button>
+            <Button variant="outlined" startIcon={<AddIcon />} onClick={addItem} size="small" disabled={isEditMode && form.status !== 'pending'}>Add Row</Button>
           </Box>
         )}
 
         <Box sx={{ mt: 2, display: 'flex', justifyContent: 'flex-end', borderTop: '2px solid #000', pt: 2 }}>
-          <Typography variant="h6" sx={{ fontWeight: 'bold' }}>GRAND TOTAL: {formatCurrency(totals.grandTotal)}</Typography>
+          <Typography variant="h6" sx={{ fontWeight: 'bold' }}>GRAND TOTAL: {new Intl.NumberFormat('en-ZM', { style: 'currency', currency: 'ZMW' }).format(totals.grandTotal)}</Typography>
         </Box>
 
-        {/* Approval Section with Digital Signatures */}
+        {/* Approval / Funding Info */}
         <Box sx={{ mt: 4, borderTop: '1px solid #000', pt: 3 }}>
           <Grid container spacing={2}>
             <Grid item xs={12} md={4}>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                 <Typography variant="body1" sx={{ fontWeight: 'bold' }}>PREPARED BY:</Typography>
-                <TextField
-                  size="small"
-                  fullWidth
-                  value={form.preparedBy || ''}
-                  onChange={e => setForm({ ...form, preparedBy: e.target.value })}
-                  disabled={!canEdit || (isEditMode && form.status !== 'pending')}
-                  sx={{ '& .MuiInputBase-root': { borderBottom: '1px solid #000', borderRadius: 0, '&:before': { borderBottom: 'none' }, '&:after': { borderBottom: 'none' } } }}
-                />
+                <TextField size="small" fullWidth value={form.preparedBy || ''} onChange={e => setForm({ ...form, preparedBy: e.target.value })} disabled={!canEdit || (isEditMode && form.status !== 'pending')} sx={{ '& .MuiInputBase-root': { borderBottom: '1px solid #000', borderRadius: 0 } }} />
               </Box>
               {renderSignatureField('prepared', 'SIGN', 'preparedSign')}
             </Grid>
             <Grid item xs={12} md={4}>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                 <Typography variant="body1" sx={{ fontWeight: 'bold' }}>APPROVED BY:</Typography>
-                <TextField
-                  size="small"
-                  fullWidth
-                  value={form.approvedBy || ''}
-                  onChange={e => setForm({ ...form, approvedBy: e.target.value })}
-                  disabled={!canEdit || (isEditMode && form.status !== 'pending')}
-                  sx={{ '& .MuiInputBase-root': { borderBottom: '1px solid #000', borderRadius: 0, '&:before': { borderBottom: 'none' }, '&:after': { borderBottom: 'none' } } }}
-                />
+                <TextField size="small" fullWidth value={form.approvedBy || ''} onChange={e => setForm({ ...form, approvedBy: e.target.value })} disabled={!canEdit || (isEditMode && form.status !== 'pending')} sx={{ '& .MuiInputBase-root': { borderBottom: '1px solid #000', borderRadius: 0 } }} />
               </Box>
               {renderSignatureField('approved', 'SIGN', 'approvedSign')}
             </Grid>
             <Grid item xs={12} md={4}>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                 <Typography variant="body1" sx={{ fontWeight: 'bold' }}>AUTHORISED BY:</Typography>
-                <TextField
-                  size="small"
-                  fullWidth
-                  value={form.authorisedBy || ''}
-                  onChange={e => setForm({ ...form, authorisedBy: e.target.value })}
-                  disabled={!canEdit || (isEditMode && form.status !== 'pending')}
-                  sx={{ '& .MuiInputBase-root': { borderBottom: '1px solid #000', borderRadius: 0, '&:before': { borderBottom: 'none' }, '&:after': { borderBottom: 'none' } } }}
-                />
+                <TextField size="small" fullWidth value={form.authorisedBy || ''} onChange={e => setForm({ ...form, authorisedBy: e.target.value })} disabled={!canEdit || (isEditMode && form.status !== 'pending')} sx={{ '& .MuiInputBase-root': { borderBottom: '1px solid #000', borderRadius: 0 } }} />
               </Box>
               {renderSignatureField('authorised', 'SIGN', 'authorisedSign')}
             </Grid>
           </Grid>
+          <Box sx={{ mt: 2, display: 'flex', flexDirection: 'column', gap: 1 }}>
+            {funder && form.status === 'funded' ? (
+              <>
+                <Typography variant="body2">
+                  Funded by: <strong>{funder.name}</strong> ({funder.role})
+                </Typography>
+                <Typography variant="body2">
+                  Funded on: <strong>{formatDate(fundedAt)}</strong>
+                </Typography>
+              </>
+            ) : (
+              <>
+                <Typography variant="body2">Funded by: _________________</Typography>
+                <Typography variant="body2">Date: _________________</Typography>
+              </>
+            )}
+          </Box>
         </Box>
 
-        {/* Status & Actions */}
         <Box sx={{ mt: 3, display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
-          <TextField
-            select
-            label="Status"
-            size="small"
-            sx={{ width: 150 }}
-            value={form.status || 'pending'}
-            onChange={e => setForm({ ...form, status: e.target.value })}
-            disabled={!canEdit || (isEditMode && form.status !== 'pending')}
-          >
+          <TextField select label="Status" size="small" sx={{ width: 150 }} value={form.status || 'pending'} onChange={e => setForm({ ...form, status: e.target.value })} disabled={!canEdit || (isEditMode && form.status !== 'pending')}>
             <MenuItem value="pending">Pending</MenuItem>
             <MenuItem value="funded">Funded</MenuItem>
             <MenuItem value="purchased">Purchased</MenuItem>
@@ -595,67 +478,25 @@ const ProcurementForm = () => {
           {form.status === 'delivered' && <Chip label="Delivered" color="primary" size="small" />}
         </Box>
 
-        {/* Action Buttons */}
         <Box sx={{ mt: 4, display: 'flex', gap: 2, flexWrap: 'wrap' }}>
           {canEdit && isEditMode && form.status === 'pending' && (
             <>
-              <Button
-                variant="contained"
-                color="success"
-                startIcon={<CheckCircleIcon />}
-                onClick={handleApprove}
-                disabled={loading}
-              >
-                Approve
-              </Button>
-              <Button
-                variant="contained"
-                color="error"
-                startIcon={<CancelIcon />}
-                onClick={handleReject}
-                disabled={loading}
-              >
-                Reject
-              </Button>
+              <Button variant="contained" color="success" startIcon={<CheckCircleIcon />} onClick={handleApprove} disabled={loading}>Approve</Button>
+              <Button variant="contained" color="error" startIcon={<CancelIcon />} onClick={handleReject} disabled={loading}>Reject</Button>
             </>
           )}
           {canEdit && (
-            <Button
-              type="submit"
-              variant="contained"
-              startIcon={<SaveIcon />}
-              disabled={loading || (isEditMode && form.status !== 'pending')}
-            >
+            <Button type="submit" variant="contained" startIcon={<SaveIcon />} disabled={loading || (isEditMode && form.status !== 'pending')}>
               {loading ? 'Saving...' : 'Save Order'}
             </Button>
           )}
-          <Button variant="outlined" startIcon={<PrintIcon />} onClick={handlePrint}>
-            Print
-          </Button>
-          <Button variant="outlined" onClick={() => navigate('/procurement')}>
-            Cancel
-          </Button>
-          {canEdit && id && (
-            <Button
-              variant="contained"
-              color="error"
-              startIcon={<DeleteIcon />}
-              onClick={handleDelete}
-              disabled={loading}
-            >
-              Delete
-            </Button>
-          )}
+          <Button variant="outlined" startIcon={<PrintIcon />} onClick={handlePrint}>Print</Button>
+          <Button variant="outlined" onClick={() => navigate('/procurement')}>Cancel</Button>
+          {canEdit && id && <Button variant="contained" color="error" startIcon={<DeleteIcon />} onClick={handleDelete} disabled={loading}>Delete</Button>}
         </Box>
       </form>
 
-      {/* Signature Modal */}
-      <SignaturePad
-        open={signatureModal.open}
-        onClose={() => setSignatureModal({ open: false, field: '' })}
-        onSave={saveSignature}
-        existingSignature={form[signatureModal.field === 'prepared' ? 'preparedSign' : signatureModal.field === 'approved' ? 'approvedSign' : 'authorisedSign']}
-      />
+      <SignaturePad open={signatureModal.open} onClose={() => setSignatureModal({ open: false, field: '' })} onSave={saveSignature} existingSignature={form[signatureModal.field === 'prepared' ? 'preparedSign' : signatureModal.field === 'approved' ? 'approvedSign' : 'authorisedSign']} />
     </Paper>
   );
 };

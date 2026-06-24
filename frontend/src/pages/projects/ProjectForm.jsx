@@ -25,6 +25,9 @@ const ProjectForm = () => {
     progress: 0,
   });
   const [creator, setCreator] = useState(null);
+  const [createdAt, setCreatedAt] = useState(null);
+  const [approver, setApprover] = useState(null);
+  const [approvedAt, setApprovedAt] = useState(null);
   const [message, setMessage] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
 
@@ -44,6 +47,9 @@ const ProjectForm = () => {
           });
           if (data.image) setImagePreview(data.image);
           setCreator(data.createdBy);
+          setCreatedAt(data.createdAt);
+          setApprover(data.approvedBy);
+          setApprovedAt(data.approvedAt);
         })
         .catch(err => {
           console.error('Error fetching project:', err);
@@ -51,14 +57,13 @@ const ProjectForm = () => {
         });
     } else {
       setCreator(user);
+      setCreatedAt(new Date().toISOString());
     }
   }, [id, user]);
 
-  // ─── Compress image before saving ──────────────────────────────
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (!file) return;
-
     const reader = new FileReader();
     reader.onload = (event) => {
       const img = new Image();
@@ -106,7 +111,6 @@ const ProjectForm = () => {
         image: form.image,
         progress: Number(form.progress) || 0,
       };
-
       if (id) {
         await api.put(`/api/projects/${id}`, payload);
         setMessage({ type: 'success', text: 'Project updated successfully!' });
@@ -124,15 +128,14 @@ const ProjectForm = () => {
   };
 
   const handlePrint = () => window.print();
+  const formatDate = (date) => date ? new Date(date).toLocaleString() : '—';
 
   return (
     <Paper sx={{ p: 3, maxWidth: '800px', mx: 'auto' }}>
       <BackButton />
-
       {message && <Alert severity={message.type} sx={{ mb: 2 }}>{message.text}</Alert>}
 
       <form onSubmit={handleSubmit}>
-        {/* Company Header */}
         <Box sx={{
           textAlign: 'center',
           borderBottom: '2px solid #000',
@@ -140,24 +143,13 @@ const ProjectForm = () => {
           mb: 2,
           '@media print': { borderBottom: '2px solid #000' }
         }}>
-          <Typography variant="h4" component="div" sx={{ fontWeight: 'bold', letterSpacing: 2 }}>
-            PURVEYOLS
-          </Typography>
-          <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>
-            Building and Civil Construction
-          </Typography>
-          <Typography variant="body2">
-            Plot No. 8, Buchi Road - Northmead, P.O. Box NH 87 Lusaka, Zambia
-          </Typography>
-          <Typography variant="body2">
-            Tel: +260 211 235354 | Mobile: +260 977 393879 / +260 965 393879
-          </Typography>
-          <Typography variant="body2">
-            Email: purveyols@gmail.com
-          </Typography>
+          <Typography variant="h4" component="div" sx={{ fontWeight: 'bold', letterSpacing: 2 }}>PURVEYOLS</Typography>
+          <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>Building and Civil Construction</Typography>
+          <Typography variant="body2">Plot No. 8, Buchi Road - Northmead, P.O. Box NH 87 Lusaka, Zambia</Typography>
+          <Typography variant="body2">Tel: +260 211 235354 | Mobile: +260 977 393879 / +260 965 393879</Typography>
+          <Typography variant="body2">Email: purveyols@gmail.com</Typography>
         </Box>
 
-        {/* Document Title */}
         <Box sx={{
           display: 'flex',
           justifyContent: 'space-between',
@@ -177,90 +169,46 @@ const ProjectForm = () => {
         {creator && (
           <Box sx={{ mb: 2 }}>
             <Typography variant="body2">
-              Created by (you): <strong>{creator.name}</strong> ({creator.role})
+              Created by: <strong>{creator.name}</strong> ({creator.role})
+            </Typography>
+            <Typography variant="body2" color="textSecondary">
+              Created on: {formatDate(createdAt)}
             </Typography>
           </Box>
         )}
 
-        {/* Image Upload */}
         <Box sx={{ mb: 3 }}>
           <Typography variant="subtitle1" gutterBottom>Project Photo</Typography>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <Avatar
-              src={imagePreview || '/project-placeholder.jpg'}
-              sx={{ width: 100, height: 100, borderRadius: 2, border: '1px solid #ccc' }}
-              variant="rounded"
-            />
-            <Button
-              variant="outlined"
-              component="label"
-              startIcon={<PhotoCameraIcon />}
-            >
+            <Avatar src={imagePreview || '/project-placeholder.jpg'} sx={{ width: 100, height: 100, borderRadius: 2, border: '1px solid #ccc' }} variant="rounded" />
+            <Button variant="outlined" component="label" startIcon={<PhotoCameraIcon />}>
               Upload Image
-              <input
-                type="file"
-                accept="image/*"
-                hidden
-                onChange={handleImageChange}
-              />
+              <input type="file" accept="image/*" hidden onChange={handleImageChange} />
             </Button>
             {imagePreview && (
-              <Button variant="outlined" color="error" onClick={() => { setForm({ ...form, image: '' }); setImagePreview(null); }}>
-                Remove
-              </Button>
+              <Button variant="outlined" color="error" onClick={() => { setForm({ ...form, image: '' }); setImagePreview(null); }}>Remove</Button>
             )}
           </Box>
         </Box>
 
         <Grid container spacing={2} sx={{ mb: 3 }}>
           <Grid item xs={12}>
-            <TextField
-              label="Project Name *"
-              fullWidth
-              size="small"
-              value={form.name || ''}
-              onChange={e => setForm({ ...form, name: e.target.value })}
-              required
-              placeholder="Enter project name..."
-            />
+            <TextField label="Project Name *" fullWidth size="small" value={form.name || ''} onChange={e => setForm({ ...form, name: e.target.value })} required placeholder="Enter project name..." />
           </Grid>
         </Grid>
 
         <Grid container spacing={2} sx={{ mb: 3 }}>
           <Grid item xs={12} md={6}>
-            <TextField
-              label="Location"
-              fullWidth
-              size="small"
-              value={form.location || ''}
-              onChange={e => setForm({ ...form, location: e.target.value })}
-              placeholder="City, Area, Site..."
-            />
+            <TextField label="Location" fullWidth size="small" value={form.location || ''} onChange={e => setForm({ ...form, location: e.target.value })} placeholder="City, Area, Site..." />
           </Grid>
           <Grid item xs={12} md={6}>
-            <TextField
-              label="Budget (ZMW)"
-              type="number"
-              fullWidth
-              size="small"
-              value={form.budget || ''}
-              onChange={e => setForm({ ...form, budget: e.target.value })}
-              inputProps={{ min: 0, step: 0.01 }}
-              placeholder="0.00"
-            />
+            <TextField label="Budget (ZMW)" type="number" fullWidth size="small" value={form.budget || ''} onChange={e => setForm({ ...form, budget: e.target.value })} inputProps={{ min: 0, step: 0.01 }} placeholder="0.00" />
           </Grid>
         </Grid>
 
         <Grid container spacing={2} sx={{ mb: 3 }}>
           <Grid item xs={12} md={4}>
-            <TextField
-              select
-              label="Status"
-              fullWidth
-              size="small"
-              value={form.status || 'planning'}
-              onChange={e => setForm({ ...form, status: e.target.value })}
-            >
+            <TextField select label="Status" fullWidth size="small" value={form.status || 'planning'} onChange={e => setForm({ ...form, status: e.target.value })}>
               <MenuItem value="planning">Planning</MenuItem>
               <MenuItem value="active">Active</MenuItem>
               <MenuItem value="paused">Paused</MenuItem>
@@ -269,75 +217,59 @@ const ProjectForm = () => {
           </Grid>
           <Grid item xs={12} md={8}>
             <Typography gutterBottom>Progress: {form.progress}%</Typography>
-            <Slider
-              value={form.progress}
-              onChange={(e, val) => setForm({ ...form, progress: val })}
-              min={0}
-              max={100}
-              step={1}
-              valueLabelDisplay="auto"
-            />
+            <Slider value={form.progress} onChange={(e, val) => setForm({ ...form, progress: val })} min={0} max={100} step={1} valueLabelDisplay="auto" />
           </Grid>
         </Grid>
 
         <Grid container spacing={2} sx={{ mb: 3 }}>
           <Grid item xs={12}>
-            <TextField
-              label="Description"
-              fullWidth
-              multiline
-              rows={4}
-              size="small"
-              value={form.description || ''}
-              onChange={e => setForm({ ...form, description: e.target.value })}
-              placeholder="Provide details about the project..."
-            />
+            <TextField label="Description" fullWidth multiline rows={4} size="small" value={form.description || ''} onChange={e => setForm({ ...form, description: e.target.value })} placeholder="Provide details about the project..." />
           </Grid>
         </Grid>
 
-        {/* Approval / Signature Section */}
+        {/* Approval Section */}
         <Box sx={{ mt: 4, borderTop: '1px solid #000', pt: 3 }}>
-          <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 2 }}>
-            Approval
-          </Typography>
+          <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 2 }}>Approval</Typography>
           <Grid container spacing={2}>
             <Grid item xs={12} md={6}>
               <Typography variant="body2">Prepared by:</Typography>
               <Typography variant="body1" sx={{ fontWeight: 'bold' }}>{creator?.name || 'N/A'}</Typography>
+              <Typography variant="caption" color="textSecondary">{creator?.role || ''} • {formatDate(createdAt)}</Typography>
             </Grid>
             <Grid item xs={12} md={6}>
               <Typography variant="body2">Date:</Typography>
-              <Typography variant="body1" sx={{ fontWeight: 'bold' }}>
-                {new Date().toLocaleDateString()}
-              </Typography>
+              <Typography variant="body1" sx={{ fontWeight: 'bold' }}>{formatDate(createdAt)}</Typography>
             </Grid>
           </Grid>
-          <Box sx={{ mt: 2, display: 'flex', gap: 2 }}>
-            <Typography variant="body2">Approved by: _________________</Typography>
-            <Typography variant="body2">Date: _________________</Typography>
+          <Box sx={{ mt: 2, display: 'flex', flexDirection: 'column', gap: 1 }}>
+            {approver && form.status === 'active' ? (
+              <>
+                <Typography variant="body2">
+                  Approved by: <strong>{approver.name}</strong> ({approver.role})
+                </Typography>
+                <Typography variant="body2">
+                  Approved on: <strong>{formatDate(approvedAt)}</strong>
+                </Typography>
+              </>
+            ) : (
+              <>
+                <Typography variant="body2">Approved by: _________________</Typography>
+                <Typography variant="body2">Date: _________________</Typography>
+              </>
+            )}
           </Box>
         </Box>
 
-        {/* Action Buttons */}
+        <Box sx={{ mt: 3 }}>
+          <Chip label={form.status} color={form.status === 'active' ? 'success' : 'default'} size="small" />
+        </Box>
+
         <Box sx={{ mt: 4, display: 'flex', gap: 2 }}>
-          <Button
-            type="submit"
-            variant="contained"
-            startIcon={<SaveIcon />}
-            disabled={loading}
-          >
+          <Button type="submit" variant="contained" startIcon={<SaveIcon />} disabled={loading}>
             {loading ? 'Saving...' : 'Save Project'}
           </Button>
-          <Button
-            variant="outlined"
-            startIcon={<PrintIcon />}
-            onClick={handlePrint}
-          >
-            Print
-          </Button>
-          <Button variant="outlined" onClick={() => navigate('/projects')}>
-            Cancel
-          </Button>
+          <Button variant="outlined" startIcon={<PrintIcon />} onClick={handlePrint}>Print</Button>
+          <Button variant="outlined" onClick={() => navigate('/projects')}>Cancel</Button>
         </Box>
       </form>
     </Paper>

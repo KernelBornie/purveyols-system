@@ -30,9 +30,11 @@ const BOQForm = () => {
     description: '',
   });
   const [creator, setCreator] = useState(null);
+  const [createdAt, setCreatedAt] = useState(null);
+  const [approver, setApprover] = useState(null);
+  const [approvedAt, setApprovedAt] = useState(null);
   const [message, setMessage] = useState(null);
 
-  // ✅ Foreman added
   const canEdit = ['civil-engineer', 'quantity-surveyor', 'procurement-officer', 'director', 'admin', 'accountant', 'foreman'].includes(user?.role);
 
   const sectionTemplates = [
@@ -87,8 +89,12 @@ const BOQForm = () => {
             description: data.description || '',
           });
           setCreator(data.createdBy);
+          setCreatedAt(data.createdAt);
+          setApprover(data.approvedBy);
+          setApprovedAt(data.approvedAt);
         } else {
           setCreator(user);
+          setCreatedAt(new Date().toISOString());
           const initialItems = [
             { isSection: true, sectionName: 'PRELIMINARIES AND GENERAL ITEMS' },
             ...sectionTemplates[0].items,
@@ -114,7 +120,6 @@ const BOQForm = () => {
     let itemsWithAmount = [];
     let subtotal = 0;
     const items = Array.isArray(form.items) ? form.items : [];
-
     items.forEach(item => {
       if (item.isSection) {
         itemsWithAmount.push(item);
@@ -126,13 +131,11 @@ const BOQForm = () => {
       itemsWithAmount.push({ ...item, amount });
       subtotal += amount;
     });
-
     const preliminaries = parseFloat(form.preliminaries) || 0;
     const preliminariesAmount = (subtotal * preliminaries) / 100;
     const contingency = (subtotal + preliminariesAmount) * (parseFloat(form.contingency) / 100);
     const vat = (subtotal + preliminariesAmount + contingency) * (parseFloat(form.vat) / 100);
     const grandTotal = subtotal + preliminariesAmount + contingency + vat;
-
     return {
       itemsWithAmount,
       subtotal,
@@ -163,18 +166,12 @@ const BOQForm = () => {
 
   const addItem = () => {
     if (!canEdit) return;
-    setForm({
-      ...form,
-      items: [...form.items, { description: '', quantity: 1, unit: '', rate: 0, amount: 0 }]
-    });
+    setForm({ ...form, items: [...form.items, { description: '', quantity: 1, unit: '', rate: 0, amount: 0 }] });
   };
 
   const addSection = (sectionName, templateItems) => {
     if (!canEdit) return;
-    const newItems = templateItems.map(item => ({
-      ...item,
-      amount: 0
-    }));
+    const newItems = templateItems.map(item => ({ ...item, amount: 0 }));
     setForm({
       ...form,
       items: [
@@ -210,7 +207,6 @@ const BOQForm = () => {
           rate: parseFloat(item.rate) || 0,
         };
       });
-
       const payload = {
         project: form.project,
         description: form.description,
@@ -221,7 +217,6 @@ const BOQForm = () => {
         status: form.status,
         grandTotal: totals.grandTotal,
       };
-
       if (id) {
         await api.put(`/api/boq/${id}`, payload);
         setMessage({ type: 'success', text: 'BOQ updated successfully!' });
@@ -251,7 +246,6 @@ const BOQForm = () => {
   };
 
   const handlePrint = () => window.print();
-
   const exportCSV = () => {
     let csv = 'Description,Qty,Unit,Rate,Amount\n';
     form.items.forEach(item => {
@@ -264,7 +258,6 @@ const BOQForm = () => {
     csv += `\nContingency (${totals.contingency}%),,,"${totals.contingencyAmount}"`;
     csv += `\nVAT (${totals.vat}%),,,"${totals.vatAmount}"`;
     csv += `\nGRAND TOTAL,,,${totals.grandTotal}`;
-
     const blob = new Blob([csv], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -274,122 +267,61 @@ const BOQForm = () => {
     URL.revokeObjectURL(url);
   };
 
-  const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('en-ZM', { style: 'currency', currency: 'ZMW' }).format(amount || 0);
-  };
-
-  const items = Array.isArray(form.items) ? form.items : [];
+  const formatCurrency = (amount) => new Intl.NumberFormat('en-ZM', { style: 'currency', currency: 'ZMW' }).format(amount || 0);
+  const formatDate = (date) => date ? new Date(date).toLocaleString() : '—';
 
   if (loading) {
-    return (
-      <Paper sx={{ p: 3, textAlign: 'center' }}>
-        <CircularProgress />
-      </Paper>
-    );
+    return <Paper sx={{ p: 3, textAlign: 'center' }}><CircularProgress /></Paper>;
   }
 
   return (
     <Paper sx={{ p: 3, maxWidth: '1100px', mx: 'auto' }}>
       <BackButton />
-
       {message && <Alert severity={message.type} sx={{ mb: 2 }}>{message.text}</Alert>}
       {!canEdit && <Alert severity="info" sx={{ mb: 2 }}>You have view‑only access.</Alert>}
 
       <form onSubmit={handleSubmit}>
-        {/* Company Header */}
-        <Box sx={{
-          textAlign: 'center',
-          borderBottom: '2px solid #000',
-          pb: 2,
-          mb: 2,
-          '@media print': { borderBottom: '2px solid #000' }
-        }}>
-          <Typography variant="h4" component="div" sx={{ fontWeight: 'bold', letterSpacing: 2 }}>
-            PURVEYOLS
-          </Typography>
-          <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>
-            Building and Civil Construction
-          </Typography>
-          <Typography variant="body2">
-            Plot No. 8, Buchi Road - Northmead, P.O. Box NH 87 Lusaka, Zambia
-          </Typography>
-          <Typography variant="body2">
-            Tel: +260 211 235354 | Mobile: +260 977 393879 / +260 965 393879
-          </Typography>
-          <Typography variant="body2">
-            Email: purveyols@gmail.com
-          </Typography>
+        <Box sx={{ textAlign: 'center', borderBottom: '2px solid #000', pb: 2, mb: 2 }}>
+          <Typography variant="h4" sx={{ fontWeight: 'bold', letterSpacing: 2 }}>PURVEYOLS</Typography>
+          <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>Building and Civil Construction</Typography>
+          <Typography variant="body2">Plot No. 8, Buchi Road - Northmead, P.O. Box NH 87 Lusaka, Zambia</Typography>
+          <Typography variant="body2">Tel: +260 211 235354 | Mobile: +260 977 393879 / +260 965 393879</Typography>
+          <Typography variant="body2">Email: purveyols@gmail.com</Typography>
         </Box>
 
-        {/* Document Title */}
-        <Box sx={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          mb: 3,
-          borderBottom: '1px solid #000',
-          pb: 1
-        }}>
-          <Typography variant="h5" sx={{ fontWeight: 'bold', letterSpacing: 1 }}>
-            BILL OF QUANTITIES (BOQ)
-          </Typography>
-          <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
-            {id ? `BOQ #${id.slice(-6)}` : 'New BOQ'}
-          </Typography>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3, borderBottom: '1px solid #000', pb: 1 }}>
+          <Typography variant="h5" sx={{ fontWeight: 'bold', letterSpacing: 1 }}>BILL OF QUANTITIES (BOQ)</Typography>
+          <Typography variant="body2" sx={{ fontWeight: 'bold' }}>{id ? `BOQ #${id.slice(-6)}` : 'New BOQ'}</Typography>
         </Box>
 
         {creator && (
           <Box sx={{ mb: 2 }}>
             <Typography variant="body2">
-              Created by (you): <strong>{creator.name}</strong> ({creator.role})
+              Created by: <strong>{creator.name}</strong> ({creator.role})
+            </Typography>
+            <Typography variant="body2" color="textSecondary">
+              Created on: {formatDate(createdAt)}
             </Typography>
           </Box>
         )}
 
         <Grid container spacing={2} sx={{ mb: 3 }}>
           <Grid item xs={12} md={6}>
-            <TextField
-              select
-              label="Project *"
-              fullWidth
-              size="small"
-              value={form.project || ''}
-              onChange={e => setForm({ ...form, project: e.target.value })}
-              required
-              disabled={!canEdit}
-            >
-              {Array.isArray(projects) && projects.map(p => (
-                <MenuItem key={p._id} value={p._id}>{p.name}</MenuItem>
-              ))}
+            <TextField select label="Project *" fullWidth size="small" value={form.project || ''} onChange={e => setForm({ ...form, project: e.target.value })} required disabled={!canEdit}>
+              {Array.isArray(projects) && projects.map(p => <MenuItem key={p._id} value={p._id}>{p.name}</MenuItem>)}
             </TextField>
           </Grid>
           <Grid item xs={12} md={6}>
-            <TextField
-              label="Description / Title"
-              fullWidth
-              size="small"
-              value={form.description || ''}
-              onChange={e => setForm({ ...form, description: e.target.value })}
-              placeholder="e.g., Proposed Construction of 2000m Long Boundary Fence"
-              disabled={!canEdit}
-            />
+            <TextField label="Description / Title" fullWidth size="small" value={form.description || ''} onChange={e => setForm({ ...form, description: e.target.value })} placeholder="e.g., Proposed Construction of 2000m Long Boundary Fence" disabled={!canEdit} />
           </Grid>
         </Grid>
 
         {canEdit && (
           <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 2 }}>
-            <Button variant="outlined" size="small" startIcon={<AddIcon />} onClick={() => addSection('Preliminaries', sectionTemplates[0].items)}>
-              Add Preliminaries
-            </Button>
-            <Button variant="outlined" size="small" startIcon={<AddIcon />} onClick={() => addSection('Boundary Fence', sectionTemplates[1].items)}>
-              Add Boundary Fence
-            </Button>
-            <Button variant="outlined" size="small" startIcon={<AddIcon />} onClick={() => addSection('Earthworks', sectionTemplates[2].items)}>
-              Add Earthworks
-            </Button>
-            <Button variant="contained" size="small" startIcon={<AddIcon />} onClick={addItem}>
-              Add Custom Item
-            </Button>
+            <Button variant="outlined" size="small" startIcon={<AddIcon />} onClick={() => addSection('Preliminaries', sectionTemplates[0].items)}>Add Preliminaries</Button>
+            <Button variant="outlined" size="small" startIcon={<AddIcon />} onClick={() => addSection('Boundary Fence', sectionTemplates[1].items)}>Add Boundary Fence</Button>
+            <Button variant="outlined" size="small" startIcon={<AddIcon />} onClick={() => addSection('Earthworks', sectionTemplates[2].items)}>Add Earthworks</Button>
+            <Button variant="contained" size="small" startIcon={<AddIcon />} onClick={addItem}>Add Custom Item</Button>
           </Box>
         )}
 
@@ -408,21 +340,15 @@ const BOQForm = () => {
               </TableRow>
             </TableHead>
             <TableBody>
-              {items.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={7} sx={{ textAlign: 'center', py: 3, border: '1px solid #000' }}>
-                    No items added yet.
-                  </TableCell>
-                </TableRow>
+              {totals.itemsWithAmount.length === 0 ? (
+                <TableRow><TableCell colSpan={7} sx={{ textAlign: 'center', py: 3, border: '1px solid #000' }}>No items added yet.</TableCell></TableRow>
               ) : (
                 totals.itemsWithAmount.map((item, idx) => {
                   if (item.isSection) {
                     return (
                       <TableRow key={idx}>
                         <TableCell colSpan={7} sx={{ border: '1px solid #000' }}>
-                          <Typography variant="subtitle1" fontWeight="bold" sx={{ bgcolor: '#e3f2fd', p: 1 }}>
-                            {item.sectionName}
-                          </Typography>
+                          <Typography variant="subtitle1" fontWeight="bold" sx={{ bgcolor: '#e3f2fd', p: 1 }}>{item.sectionName}</Typography>
                         </TableCell>
                       </TableRow>
                     );
@@ -431,61 +357,22 @@ const BOQForm = () => {
                     <TableRow key={idx}>
                       <TableCell sx={{ border: '1px solid #000', textAlign: 'center' }}>{idx + 1}</TableCell>
                       <TableCell sx={{ border: '1px solid #000', p: 1 }}>
-                        <TextField
-                          size="small"
-                          fullWidth
-                          value={item.description || ''}
-                          onChange={e => handleItemChange(idx, 'description', e.target.value)}
-                          placeholder="Item description..."
-                          disabled={!canEdit}
-                          sx={{ '& .MuiInputBase-root': { border: 'none', '&:before': { borderBottom: 'none' }, '&:after': { borderBottom: 'none' } } }}
-                        />
+                        <TextField size="small" fullWidth value={item.description || ''} onChange={e => handleItemChange(idx, 'description', e.target.value)} placeholder="Item description..." disabled={!canEdit} sx={{ '& .MuiInputBase-root': { border: 'none' } }} />
                       </TableCell>
                       <TableCell sx={{ border: '1px solid #000', p: 1 }}>
-                        <TextField
-                          size="small"
-                          type="number"
-                          value={item.quantity || 0}
-                          onChange={e => handleItemChange(idx, 'quantity', e.target.value)}
-                          disabled={!canEdit}
-                          sx={{ width: 80, '& .MuiInputBase-root': { border: 'none', '&:before': { borderBottom: 'none' }, '&:after': { borderBottom: 'none' } } }}
-                        />
+                        <TextField size="small" type="number" value={item.quantity || 0} onChange={e => handleItemChange(idx, 'quantity', e.target.value)} disabled={!canEdit} sx={{ width: 80, '& .MuiInputBase-root': { border: 'none' } }} />
                       </TableCell>
                       <TableCell sx={{ border: '1px solid #000', p: 1 }}>
-                        <TextField
-                          size="small"
-                          value={item.unit || ''}
-                          onChange={e => handleItemChange(idx, 'unit', e.target.value)}
-                          disabled={!canEdit}
-                          sx={{ width: 100, '& .MuiInputBase-root': { border: 'none', '&:before': { borderBottom: 'none' }, '&:after': { borderBottom: 'none' } } }}
-                          placeholder="m², m³, No."
-                        />
+                        <TextField size="small" value={item.unit || ''} onChange={e => handleItemChange(idx, 'unit', e.target.value)} disabled={!canEdit} sx={{ width: 100, '& .MuiInputBase-root': { border: 'none' } }} placeholder="m², m³, No." />
                       </TableCell>
                       <TableCell sx={{ border: '1px solid #000', p: 1 }}>
-                        <TextField
-                          size="small"
-                          type="number"
-                          value={item.rate || 0}
-                          onChange={e => handleItemChange(idx, 'rate', e.target.value)}
-                          disabled={!canEdit}
-                          sx={{ width: 120, '& .MuiInputBase-root': { border: 'none', '&:before': { borderBottom: 'none' }, '&:after': { borderBottom: 'none' } } }}
-                        />
+                        <TextField size="small" type="number" value={item.rate || 0} onChange={e => handleItemChange(idx, 'rate', e.target.value)} disabled={!canEdit} sx={{ width: 120, '& .MuiInputBase-root': { border: 'none' } }} />
                       </TableCell>
                       <TableCell sx={{ border: '1px solid #000', p: 1, bgcolor: '#fafafa' }}>
-                        <TextField
-                          size="small"
-                          type="number"
-                          value={item.amount || 0}
-                          InputProps={{ readOnly: true }}
-                          sx={{ width: 120, bgcolor: '#fafafa', '& .MuiInputBase-root': { border: 'none', '&:before': { borderBottom: 'none' }, '&:after': { borderBottom: 'none' } } }}
-                        />
+                        <TextField size="small" type="number" value={item.amount || 0} InputProps={{ readOnly: true }} sx={{ width: 120, bgcolor: '#fafafa', '& .MuiInputBase-root': { border: 'none' } }} />
                       </TableCell>
                       <TableCell sx={{ border: '1px solid #000', textAlign: 'center' }}>
-                        {canEdit && (
-                          <IconButton size="small" onClick={() => removeItem(idx)} color="error">
-                            <DeleteIcon fontSize="small" />
-                          </IconButton>
-                        )}
+                        {canEdit && <IconButton size="small" onClick={() => removeItem(idx)} color="error"><DeleteIcon fontSize="small" /></IconButton>}
                       </TableCell>
                     </TableRow>
                   );
@@ -520,45 +407,10 @@ const BOQForm = () => {
           <Box sx={{ flex: 1, minWidth: 250 }}>
             <Typography variant="h6" gutterBottom>Settings</Typography>
             <Box sx={{ p: 2, bgcolor: '#f5f5f5', borderRadius: 1 }}>
-              <TextField
-                label="Preliminaries (%)"
-                type="number"
-                size="small"
-                fullWidth
-                sx={{ mb: 2 }}
-                value={form.preliminaries || 0}
-                onChange={e => setForm({ ...form, preliminaries: e.target.value })}
-                disabled={!canEdit}
-              />
-              <TextField
-                label="Contingency (%)"
-                type="number"
-                size="small"
-                fullWidth
-                sx={{ mb: 2 }}
-                value={form.contingency || 0}
-                onChange={e => setForm({ ...form, contingency: e.target.value })}
-                disabled={!canEdit}
-              />
-              <TextField
-                label="VAT (%)"
-                type="number"
-                size="small"
-                fullWidth
-                sx={{ mb: 2 }}
-                value={form.vat || 0}
-                onChange={e => setForm({ ...form, vat: e.target.value })}
-                disabled={!canEdit}
-              />
-              <TextField
-                select
-                label="Status"
-                size="small"
-                fullWidth
-                value={form.status || 'draft'}
-                onChange={e => setForm({ ...form, status: e.target.value })}
-                disabled={!canEdit}
-              >
+              <TextField label="Preliminaries (%)" type="number" size="small" fullWidth sx={{ mb: 2 }} value={form.preliminaries || 0} onChange={e => setForm({ ...form, preliminaries: e.target.value })} disabled={!canEdit} />
+              <TextField label="Contingency (%)" type="number" size="small" fullWidth sx={{ mb: 2 }} value={form.contingency || 0} onChange={e => setForm({ ...form, contingency: e.target.value })} disabled={!canEdit} />
+              <TextField label="VAT (%)" type="number" size="small" fullWidth sx={{ mb: 2 }} value={form.vat || 0} onChange={e => setForm({ ...form, vat: e.target.value })} disabled={!canEdit} />
+              <TextField select label="Status" size="small" fullWidth value={form.status || 'draft'} onChange={e => setForm({ ...form, status: e.target.value })} disabled={!canEdit}>
                 <MenuItem value="draft">Draft</MenuItem>
                 <MenuItem value="submitted">Submitted</MenuItem>
                 <MenuItem value="approved">Approved</MenuItem>
@@ -569,48 +421,45 @@ const BOQForm = () => {
           </Box>
         </Box>
 
+        {/* Approval Section */}
         <Box sx={{ mt: 4, borderTop: '1px solid #000', pt: 3 }}>
-          <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 2 }}>
-            Approval
-          </Typography>
+          <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 2 }}>Approval</Typography>
           <Grid container spacing={2}>
             <Grid item xs={12} md={6}>
               <Typography variant="body2">Prepared by:</Typography>
               <Typography variant="body1" sx={{ fontWeight: 'bold' }}>{creator?.name || 'N/A'}</Typography>
+              <Typography variant="caption" color="textSecondary">{creator?.role || ''} • {formatDate(createdAt)}</Typography>
             </Grid>
             <Grid item xs={12} md={6}>
               <Typography variant="body2">Date:</Typography>
-              <Typography variant="body1" sx={{ fontWeight: 'bold' }}>
-                {new Date().toLocaleDateString()}
-              </Typography>
+              <Typography variant="body1" sx={{ fontWeight: 'bold' }}>{formatDate(createdAt)}</Typography>
             </Grid>
           </Grid>
-          <Box sx={{ mt: 2, display: 'flex', gap: 2 }}>
-            <Typography variant="body2">Approved by: _________________</Typography>
-            <Typography variant="body2">Date: _________________</Typography>
+          <Box sx={{ mt: 2, display: 'flex', flexDirection: 'column', gap: 1 }}>
+            {approver && form.status === 'approved' ? (
+              <>
+                <Typography variant="body2">
+                  Approved by: <strong>{approver.name}</strong> ({approver.role})
+                </Typography>
+                <Typography variant="body2">
+                  Approved on: <strong>{formatDate(approvedAt)}</strong>
+                </Typography>
+              </>
+            ) : (
+              <>
+                <Typography variant="body2">Approved by: _________________</Typography>
+                <Typography variant="body2">Date: _________________</Typography>
+              </>
+            )}
           </Box>
         </Box>
 
         <Box sx={{ mt: 4, display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-          {canEdit && (
-            <Button type="submit" variant="contained" startIcon={<SaveIcon />} disabled={loading}>
-              {loading ? 'Saving...' : 'Save BOQ'}
-            </Button>
-          )}
-          <Button variant="outlined" startIcon={<PrintIcon />} onClick={handlePrint}>
-            Print
-          </Button>
-          <Button variant="outlined" startIcon={<FileDownloadIcon />} onClick={exportCSV}>
-            Export CSV
-          </Button>
-          <Button variant="outlined" onClick={() => navigate('/boq')}>
-            Cancel
-          </Button>
-          {canEdit && id && (
-            <Button variant="contained" color="error" startIcon={<DeleteIcon />} onClick={handleDelete} disabled={loading}>
-              Delete
-            </Button>
-          )}
+          {canEdit && <Button type="submit" variant="contained" startIcon={<SaveIcon />} disabled={loading}>{loading ? 'Saving...' : 'Save BOQ'}</Button>}
+          <Button variant="outlined" startIcon={<PrintIcon />} onClick={handlePrint}>Print</Button>
+          <Button variant="outlined" startIcon={<FileDownloadIcon />} onClick={exportCSV}>Export CSV</Button>
+          <Button variant="outlined" onClick={() => navigate('/boq')}>Cancel</Button>
+          {canEdit && id && <Button variant="contained" color="error" startIcon={<DeleteIcon />} onClick={handleDelete} disabled={loading}>Delete</Button>}
         </Box>
       </form>
     </Paper>
