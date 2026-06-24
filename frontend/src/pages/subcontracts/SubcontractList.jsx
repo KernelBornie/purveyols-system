@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Paper, Typography, Box, Table, TableHead, TableRow, TableCell, TableBody,
-  Button, IconButton, Tooltip, Alert, CircularProgress
+  Button, IconButton, Tooltip, Alert, CircularProgress, Chip
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import VisibilityIcon from '@mui/icons-material/Visibility';
@@ -18,7 +18,6 @@ const SubcontractList = () => {
   const [error, setError] = useState(null);
   const { user } = useAuth();
 
-  // ✅ Foreman added
   const canEdit = ['procurement-officer', 'civil-engineer', 'quantity-surveyor', 'director', 'admin', 'accountant', 'foreman'].includes(user?.role);
 
   useEffect(() => {
@@ -48,6 +47,19 @@ const SubcontractList = () => {
     }
   };
 
+  const getStatusColor = (status) => {
+    switch (status) {
+      case 'draft': return 'default';
+      case 'pending': return 'warning';
+      case 'active': return 'info';
+      case 'approved': return 'success';
+      case 'funded': return 'primary';
+      case 'completed': return 'default';
+      case 'terminated': return 'error';
+      default: return 'default';
+    }
+  };
+
   if (loading) return <CircularProgress sx={{ display: 'block', margin: '40px auto' }} />;
   if (error) return <Alert severity="error">{error}</Alert>;
 
@@ -68,6 +80,7 @@ const SubcontractList = () => {
           <TableRow sx={{ bgcolor: '#f5f5f5' }}>
             <TableCell>Project</TableCell>
             <TableCell>Vendor</TableCell>
+            <TableCell>Vendor Phone</TableCell>
             <TableCell>Service</TableCell>
             <TableCell>Amount</TableCell>
             <TableCell>Status</TableCell>
@@ -80,9 +93,12 @@ const SubcontractList = () => {
             <TableRow key={sc._id}>
               <TableCell>{sc.project?.name || '—'}</TableCell>
               <TableCell>{sc.vendor}</TableCell>
+              <TableCell>{sc.vendorPhone || '—'}</TableCell>
               <TableCell>{sc.service}</TableCell>
               <TableCell>K {sc.amount?.toLocaleString() || '0'}</TableCell>
-              <TableCell>{sc.status}</TableCell>
+              <TableCell>
+                <Chip label={sc.status} size="small" color={getStatusColor(sc.status)} />
+              </TableCell>
               <TableCell>{sc.startDate ? new Date(sc.startDate).toLocaleDateString() : '—'}</TableCell>
               <TableCell>
                 <Tooltip title="View">
@@ -109,7 +125,7 @@ const SubcontractList = () => {
           ))}
           {subcontracts.length === 0 && (
             <TableRow>
-              <TableCell colSpan={7} align="center">No subcontracts yet.</TableCell>
+              <TableCell colSpan={8} align="center">No subcontracts yet.</TableCell>
             </TableRow>
           )}
         </TableBody>

@@ -71,6 +71,10 @@ const AccountantDashboard = () => {
   const [fundRequesterName, setFundRequesterName] = useState('');
   const [fundType, setFundType] = useState('funding');
 
+  // ─── NEW: Subcontract funding modal state ────────────────────────
+  const [subcontractFundOpen, setSubcontractFundOpen] = useState(false);
+  const [subcontractToFund, setSubcontractToFund] = useState(null);
+
   const COLORS = ['#8884d8', '#82ca9d', '#ffc658', '#ff8042', '#0088FE'];
 
   const initialLoadDone = useRef(false);
@@ -285,9 +289,9 @@ const AccountantDashboard = () => {
   };
 
   // ─── Subcontract funding ────────────────────────────────────────
-  const handleFundSubcontract = async (id) => {
+  const handleFundSubcontract = async (id, recipientPhone) => {
     try {
-      await api.put(`/api/subcontracts/${id}/fund`);
+      await api.put(`/api/subcontracts/${id}/fund`, { recipientPhone });
       setMessage({ type: 'success', text: 'Subcontract funded!' });
       refreshAll();
     } catch (err) {
@@ -787,7 +791,7 @@ const AccountantDashboard = () => {
         </Table>
       </Paper>
 
-      {/* ─── Subcontracts Table (UPDATED: Fund button for pending & approved) ─── */}
+      {/* ─── Subcontracts Table ─────────────────────────────────────── */}
       <Paper sx={{ p: 2, mb: 3 }}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <Typography variant="h6">Subcontracts (Pending Funding)</Typography>
@@ -824,14 +828,17 @@ const AccountantDashboard = () => {
                       <VisibilityIcon fontSize="small" />
                     </IconButton>
                   </Tooltip>
-                  {/* ─── Fund button for pending OR approved ─── */}
-                  {(s.status === 'pending' || s.status === 'approved') && (
+                  {/* ─── Fund button for all statuses except completed/terminated ─── */}
+                  {s.status !== 'completed' && s.status !== 'terminated' && (
                     <Button
                       variant="contained"
                       color="success"
                       size="small"
                       startIcon={<AttachMoneyIcon />}
-                      onClick={() => handleFundSubcontract(s._id)}
+                      onClick={() => {
+                        setSubcontractToFund(s);
+                        setSubcontractFundOpen(true);
+                      }}
                     >
                       Fund
                     </Button>
@@ -885,6 +892,7 @@ const AccountantDashboard = () => {
         </DialogActions>
       </Dialog>
 
+      {/* ─── Funding Request Modal ───────────────────────────────────── */}
       <Dialog open={fundModalOpen} onClose={() => setFundModalOpen(false)} maxWidth="sm" fullWidth>
         <DialogTitle>Fund Request</DialogTitle>
         <DialogContent>
@@ -905,6 +913,43 @@ const AccountantDashboard = () => {
         <DialogActions>
           <Button onClick={() => setFundModalOpen(false)}>Cancel</Button>
           <Button variant="contained" color="primary" onClick={handleFundConfirm}>
+            Confirm & Send Money
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* ─── NEW: Subcontract Funding Modal ──────────────────────────── */}
+      <Dialog open={subcontractFundOpen} onClose={() => setSubcontractFundOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Fund Subcontract</DialogTitle>
+        <DialogContent>
+          <Typography variant="body1" gutterBottom>
+            You are about to fund <strong>{subcontractToFund?.vendor}</strong> for <strong>{formatCurrency(subcontractToFund?.amount)}</strong>.
+          </Typography>
+          <TextField
+            label="Vendor Phone (Airtel Money)"
+            fullWidth
+            margin="normal"
+            value={subcontractToFund?.vendorPhone || ''}
+            onChange={(e) => setSubcontractToFund({ ...subcontractToFund, vendorPhone: e.target.value })}
+            placeholder="e.g., 0971234567"
+            helperText="This is the phone number that will receive the funds."
+            required
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setSubcontractFundOpen(false)}>Cancel</Button>
+          <Button
+            variant="contained"
+            color="primary"
+            onClick={async () => {
+              if (!subcontractToFund?.vendorPhone) {
+                alert('Please enter the vendor\'s phone number.');
+                return;
+              }
+              await handleFundSubcontract(subcontractToFund._id, subcontractToFund.vendorPhone);
+              setSubcontractFundOpen(false);
+            }}
+          >
             Confirm & Send Money
           </Button>
         </DialogActions>

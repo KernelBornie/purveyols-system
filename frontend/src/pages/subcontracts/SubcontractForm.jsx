@@ -21,6 +21,7 @@ const SubcontractForm = () => {
   const [form, setForm] = useState({
     project: '',
     vendor: '',
+    vendorPhone: '', // 👈 NEW
     service: '',
     amount: '',
     startDate: '',
@@ -49,6 +50,7 @@ const SubcontractForm = () => {
           setForm({
             project: data.project?._id || data.project || '',
             vendor: data.vendor || '',
+            vendorPhone: data.vendorPhone || '',
             service: data.service || '',
             amount: data.amount || '',
             startDate: data.startDate ? data.startDate.split('T')[0] : '',
@@ -83,6 +85,7 @@ const SubcontractForm = () => {
       const payload = {
         project: form.project,
         vendor: form.vendor,
+        vendorPhone: form.vendorPhone,
         service: form.service,
         amount: parseFloat(form.amount) || 0,
         startDate: form.startDate ? new Date(form.startDate).toISOString() : null,
@@ -164,10 +167,26 @@ const SubcontractForm = () => {
 
         <Grid container spacing={2} sx={{ mb: 3 }}>
           <Grid item xs={12} md={6}>
-            <TextField label="Service *" fullWidth size="small" value={form.service || ''} onChange={e => setForm({ ...form, service: e.target.value })} required placeholder="e.g., Electrical, Plumbing" disabled={!canEdit} />
+            <TextField label="Vendor Phone" fullWidth size="small" value={form.vendorPhone || ''} onChange={e => setForm({ ...form, vendorPhone: e.target.value })} placeholder="e.g., 0971234567" disabled={!canEdit} />
           </Grid>
           <Grid item xs={12} md={6}>
+            <TextField label="Service *" fullWidth size="small" value={form.service || ''} onChange={e => setForm({ ...form, service: e.target.value })} required placeholder="e.g., Electrical, Plumbing" disabled={!canEdit} />
+          </Grid>
+        </Grid>
+
+        <Grid container spacing={2} sx={{ mb: 3 }}>
+          <Grid item xs={12} md={6}>
             <TextField label="Amount (ZMW)" type="number" fullWidth size="small" value={form.amount || ''} onChange={e => setForm({ ...form, amount: e.target.value })} inputProps={{ min: 0, step: 0.01 }} placeholder="0.00" disabled={!canEdit} />
+          </Grid>
+          <Grid item xs={12} md={6}>
+            <TextField label="Status" select fullWidth size="small" value={form.status || 'draft'} onChange={e => setForm({ ...form, status: e.target.value })} disabled={!canEdit}>
+              <MenuItem value="draft">Draft</MenuItem>
+              <MenuItem value="pending">Pending</MenuItem>
+              <MenuItem value="active">Active</MenuItem>
+              <MenuItem value="approved">Approved</MenuItem>
+              <MenuItem value="completed">Completed</MenuItem>
+              <MenuItem value="terminated">Terminated</MenuItem>
+            </TextField>
           </Grid>
         </Grid>
 
@@ -177,26 +196,6 @@ const SubcontractForm = () => {
           </Grid>
           <Grid item xs={12} md={6}>
             <TextField label="End Date" type="date" fullWidth size="small" value={form.endDate || ''} onChange={e => setForm({ ...form, endDate: e.target.value })} InputLabelProps={{ shrink: true }} disabled={!canEdit} />
-          </Grid>
-        </Grid>
-
-        <Grid container spacing={2} sx={{ mb: 3 }}>
-          <Grid item xs={12} md={6}>
-            <TextField select label="Status" fullWidth size="small" value={form.status || 'draft'} onChange={e => setForm({ ...form, status: e.target.value })} disabled={!canEdit}>
-              <MenuItem value="draft">Draft</MenuItem>
-              <MenuItem value="active">Active</MenuItem>
-              <MenuItem value="completed">Completed</MenuItem>
-              <MenuItem value="terminated">Terminated</MenuItem>
-            </TextField>
-          </Grid>
-          <Grid item xs={12} md={6}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, height: '100%' }}>
-              <Typography variant="body2" color="textSecondary">Status:</Typography>
-              {form.status === 'draft' && <Chip label="Draft" color="info" size="small" />}
-              {form.status === 'active' && <Chip label="Active" color="success" size="small" />}
-              {form.status === 'completed' && <Chip label="Completed" color="default" size="small" />}
-              {form.status === 'terminated' && <Chip label="Terminated" color="error" size="small" />}
-            </Box>
           </Grid>
         </Grid>
 
@@ -221,7 +220,7 @@ const SubcontractForm = () => {
             </Grid>
           </Grid>
           <Box sx={{ mt: 2, display: 'flex', flexDirection: 'column', gap: 1 }}>
-            {approver && form.status === 'active' ? (
+            {approver && form.status === 'approved' ? (
               <>
                 <Typography variant="body2">
                   Approved by: <strong>{approver.name}</strong> ({approver.role})
