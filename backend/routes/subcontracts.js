@@ -123,8 +123,9 @@ router.put('/:id/fund', auth, authorize('admin', 'director', 'accountant'), asyn
     const sub = await Subcontract.findById(req.params.id);
     if (!sub) return res.status(404).json({ error: 'Subcontract not found' });
 
-    if (sub.status !== 'approved') {
-      return res.status(400).json({ error: 'Only approved subcontracts can be funded' });
+    // ✅ Allow funding for pending or approved subcontracts
+    if (sub.status !== 'pending' && sub.status !== 'approved') {
+      return res.status(400).json({ error: 'Only pending or approved subcontracts can be funded' });
     }
 
     sub.status = 'funded';

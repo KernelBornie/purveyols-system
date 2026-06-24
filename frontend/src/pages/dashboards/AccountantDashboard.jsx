@@ -624,9 +624,12 @@ const AccountantDashboard = () => {
         </Table>
       </Paper>
 
-      {/* ─── Workers by Project (new) ────────────────────────────────────── */}
+      {/* ─── Workers by Project ────────────────────────────────────── */}
       <Paper sx={{ p: 2, mb: 3 }}>
-        <Typography variant="h6" gutterBottom>Workers by Project</Typography>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+          <Typography variant="h6">Workers by Project</Typography>
+          <Button component={Link} to="/workers" size="small">View All</Button>
+        </Box>
         {Object.entries(workersByProject).length === 0 ? (
           <Typography variant="body2" color="textSecondary">No workers enrolled.</Typography>
         ) : (
@@ -784,7 +787,7 @@ const AccountantDashboard = () => {
         </Table>
       </Paper>
 
-      {/* Subcontracts Table */}
+      {/* ─── Subcontracts Table (UPDATED: Fund button for pending & approved) ─── */}
       <Paper sx={{ p: 2, mb: 3 }}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <Typography variant="h6">Subcontracts (Pending Funding)</Typography>
@@ -821,7 +824,8 @@ const AccountantDashboard = () => {
                       <VisibilityIcon fontSize="small" />
                     </IconButton>
                   </Tooltip>
-                  {s.status === 'approved' && (
+                  {/* ─── Fund button for pending OR approved ─── */}
+                  {(s.status === 'pending' || s.status === 'approved') && (
                     <Button
                       variant="contained"
                       color="success"
