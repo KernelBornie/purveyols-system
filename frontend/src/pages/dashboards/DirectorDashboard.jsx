@@ -11,7 +11,6 @@ import EditIcon from '@mui/icons-material/Edit';
 import CheckIcon from '@mui/icons-material/Check';
 import CloseIcon from '@mui/icons-material/Close';
 import VisibilityIcon from '@mui/icons-material/Visibility';
-import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import api from '../../api/axios';
 
 const DirectorDashboard = () => {
@@ -357,7 +356,7 @@ const DirectorDashboard = () => {
             </Table>
           </Paper>
 
-          {/* Procurement Orders (Oversight) – updated */}
+          {/* ─── Procurement Orders (Oversight) – with FINAL APPROVE button ─── */}
           <Paper sx={{ p: 2 }}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <Typography variant="h6">Procurement Orders (Oversight)</Typography>
@@ -388,11 +387,15 @@ const DirectorDashboard = () => {
                         </IconButton>
                       </Tooltip>
                       {o.status === 'procurement_approved' && (
-                        <Tooltip title="Final Approve">
-                          <IconButton size="small" color="primary" onClick={() => handleFinalApproveProcurement(o._id)}>
-                            <CheckCircleIcon fontSize="small" />
-                          </IconButton>
-                        </Tooltip>
+                        <Button
+                          variant="contained"
+                          color="primary"
+                          size="small"
+                          onClick={() => handleFinalApproveProcurement(o._id)}
+                          sx={{ ml: 1 }}
+                        >
+                          FINAL APPROVE
+                        </Button>
                       )}
                     </TableCell>
                   </TableRow>
