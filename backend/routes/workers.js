@@ -13,10 +13,10 @@ router.get('/', auth, async (req, res) => {
   try {
     const workers = await Worker.find()
       .populate('enrolledBy', 'name role')
-      .populate('project', 'name'); // 👈 populate project name
+      .populate('project', 'name');
     const enriched = await Promise.all(workers.map(async (worker) => {
       const attendance = await Attendance.find({ worker: worker._id });
-      const totalEarned = attendance.reduce((sum, a) => sum + a.rate, 0);
+      const totalEarned = attendance.reduce((sum, a) => sum + (a.days * a.rate || a.rate), 0);
       const payments = await Payment.find({ worker: worker._id, status: 'completed' });
       const totalPaid = payments.reduce((sum, p) => sum + p.amount, 0);
       return { ...worker._doc, totalEarned, totalPaid, balance: totalEarned - totalPaid };
@@ -30,6 +30,24 @@ router.post('/', auth, authorize('admin', 'director', 'civil-engineer', 'foreman
   try {
     const worker = new Worker({ ...req.body, enrolledBy: req.user.id });
     await worker.save();
+
+    // ─── Auto-create attendance for enrollment ──────────────────
+    const dailyRate = worker.dailyRate || 0;
+    if (dailyRate > 0) {
+      const attendance = new Attendance({
+        worker: worker._id,
+        date: new Date(),
+        days: 1,
+        rate: dailyRate,
+        total: dailyRate,
+        site: worker.site || '',
+        notes: 'Initial enrollment',
+        recordedBy: req.user.id,
+        status: 'present',
+      });
+      await attendance.save();
+    }
+
     const populated = await Worker.findById(worker._id)
       .populate('enrolledBy', 'name role')
       .populate('project', 'name');
@@ -130,7 +148,7 @@ router.get('/:id', auth, async (req, res) => {
       .populate('project', 'name');
     if (!worker) return res.status(404).json({ error: 'Worker not found' });
     const attendance = await Attendance.find({ worker: worker._id });
-    const totalEarned = attendance.reduce((sum, a) => sum + a.rate, 0);
+    const totalEarned = attendance.reduce((sum, a) => sum + (a.days * a.rate || a.rate), 0);
     const payments = await Payment.find({ worker: worker._id, status: 'completed' });
     const totalPaid = payments.reduce((sum, p) => sum + p.amount, 0);
     res.json({ ...worker._doc, totalEarned, totalPaid, balance: totalEarned - totalPaid });
