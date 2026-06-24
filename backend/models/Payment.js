@@ -3,7 +3,7 @@ const mongoose = require('mongoose');
 const PaymentSchema = new mongoose.Schema({
   type: {
     type: String,
-    enum: ['worker', 'subcontract', 'machinery'],
+    enum: ['worker', 'subcontract', 'machinery', 'funding'], // 👈 ADDED 'funding'
     required: true,
   },
   recipientName: { type: String, required: true },
@@ -21,6 +21,10 @@ const PaymentSchema = new mongoose.Schema({
   worker: { type: mongoose.Schema.Types.ObjectId, ref: 'Worker' },
   subcontract: { type: mongoose.Schema.Types.ObjectId, ref: 'Subcontract' },
   notes: String,
+  // optional fields for Airtel integration
+  airtelResponse: mongoose.Schema.Types.Mixed,
+  airtelTransactionId: String,
+  errorMessage: String,
 });
 
 module.exports = mongoose.model('Payment', PaymentSchema);
