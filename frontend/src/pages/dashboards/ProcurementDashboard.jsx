@@ -14,6 +14,7 @@ import VisibilityIcon from '@mui/icons-material/Visibility';
 import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
 import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
+import SendIcon from '@mui/icons-material/Send';   // 👈 ADDED
 import api from '../../api/axios';
 import { useAuth } from '../../context/AuthContext';
 
@@ -305,7 +306,6 @@ const ProcurementDashboard = () => {
                             <EditIcon />
                           </IconButton>
                         </Tooltip>
-                        {/* ─── SUBMIT button (text) ─── */}
                         <Button
                           variant="contained"
                           color="primary"
@@ -321,7 +321,6 @@ const ProcurementDashboard = () => {
                     {/* Approval actions for pending orders */}
                     {order.status === 'pending' && canProcurementApprove && (
                       <>
-                        {/* ─── APPROVE button (text) ─── */}
                         <Button
                           variant="contained"
                           color="success"
@@ -331,7 +330,6 @@ const ProcurementDashboard = () => {
                         >
                           APPROVE
                         </Button>
-                        {/* ─── REJECT button (text) ─── */}
                         <Button
                           variant="contained"
                           color="error"
