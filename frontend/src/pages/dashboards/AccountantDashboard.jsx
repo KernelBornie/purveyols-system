@@ -12,7 +12,6 @@ import {
 import RefreshIcon from '@mui/icons-material/Refresh';
 import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
 import VisibilityIcon from '@mui/icons-material/Visibility';
-import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip,
   Legend, LineChart, Line, PieChart, Pie, Cell
@@ -48,7 +47,7 @@ const AccountantDashboard = () => {
   const [projects, setProjects] = useState([]);
   const [fundingRequests, setFundingRequests] = useState([]);
   const [procurementOrders, setProcurementOrders] = useState([]);
-  const [subcontracts, setSubcontracts] = useState([]); // 👈 NEW
+  const [subcontracts, setSubcontracts] = useState([]);
   const [payments, setPayments] = useState([]);
   const [attendance, setAttendance] = useState([]);
   const [topWorkers, setTopWorkers] = useState([]);
@@ -70,7 +69,7 @@ const AccountantDashboard = () => {
   const [recipientPhone, setRecipientPhone] = useState('');
   const [fundAmount, setFundAmount] = useState(0);
   const [fundRequesterName, setFundRequesterName] = useState('');
-  const [fundType, setFundType] = useState('funding'); // 'funding' | 'subcontract'
+  const [fundType, setFundType] = useState('funding');
 
   const COLORS = ['#8884d8', '#82ca9d', '#ffc658', '#ff8042', '#0088FE'];
 
@@ -101,7 +100,7 @@ const AccountantDashboard = () => {
         setProjects(cached.projects);
         setFundingRequests(cached.fundingRequests);
         setProcurementOrders(cached.procurementOrders || []);
-        setSubcontracts(cached.subcontracts || []); // 👈 LOAD
+        setSubcontracts(cached.subcontracts || []);
         setPayments(cached.payments);
         setAttendance(cached.attendance);
         setTopWorkers(cached.topWorkers);
@@ -124,7 +123,7 @@ const AccountantDashboard = () => {
         api.get('/api/projects'),
         api.get('/api/funding-requests').catch(() => api.get('/api/funding')),
         api.get('/api/procurement'),
-        api.get('/api/subcontracts') // 👈 FETCH subcontracts
+        api.get('/api/subcontracts')
       ]);
 
       const workersData = Array.isArray(workersRes.data) ? workersRes.data : (workersRes.data?.data || []);
@@ -211,7 +210,7 @@ const AccountantDashboard = () => {
       setProjects(projectsData);
       setFundingRequests(fundingData);
       setProcurementOrders(procurementData);
-      setSubcontracts(subcontractsData); // 👈 SET
+      setSubcontracts(subcontractsData);
       setPayments(completedPayments);
       setAttendance(attendanceData);
       setTopWorkers(top);
@@ -377,6 +376,28 @@ const AccountantDashboard = () => {
   const pendingWorkers = useMemo(() => workers.filter(w => (w.balance || 0) > 0), [workers]);
   const totalPending = useMemo(() => pendingWorkers.reduce((sum, w) => sum + (w.balance || 0), 0), [pendingWorkers]);
   const pendingFunding = useMemo(() => fundingRequests.filter(f => f.status === 'pending').length, [fundingRequests]);
+
+  // ─── Group workers by project ──────────────────────────────────
+  const workersByProject = useMemo(() => {
+    const groups = {};
+    workers.forEach(w => {
+      const projectId = w.project?._id || w.project;
+      if (projectId) {
+        const project = projects.find(p => p._id === projectId);
+        const key = projectId.toString();
+        if (!groups[key]) {
+          groups[key] = { projectName: project?.name || 'Unknown Project', workers: [] };
+        }
+        groups[key].workers.push(w);
+      } else {
+        if (!groups['unassigned']) {
+          groups['unassigned'] = { projectName: 'Unassigned', workers: [] };
+        }
+        groups['unassigned'].workers.push(w);
+      }
+    });
+    return groups;
+  }, [workers, projects]);
 
   if (loading) {
     return (
@@ -603,44 +624,52 @@ const AccountantDashboard = () => {
         </Table>
       </Paper>
 
-      {/* Workers Table */}
+      {/* ─── Workers by Project (new) ────────────────────────────────────── */}
       <Paper sx={{ p: 2, mb: 3 }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Typography variant="h6">Enrolled Workers</Typography>
-          <Button component={Link} to="/workers" size="small">View All</Button>
-        </Box>
-        <Table size="small">
-          <TableHead>
-            <TableRow>
-              <TableCell>Name</TableCell>
-              <TableCell>NRC</TableCell>
-              <TableCell>Phone</TableCell>
-              <TableCell>Site</TableCell>
-              <TableCell>Enrolled By</TableCell>
-              <TableCell>Pending</TableCell>
-              <TableCell>Action</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {workers.slice(0, 5).map(w => (
-              <TableRow key={w._id}>
-                <TableCell>{w.name}</TableCell>
-                <TableCell>{w.nrc}</TableCell>
-                <TableCell>{w.phone}</TableCell>
-                <TableCell>{w.site || '—'}</TableCell>
-                <TableCell>{w.enrolledBy?.name || 'N/A'}</TableCell>
-                <TableCell>{formatCurrency(w.balance || 0)}</TableCell>
-                <TableCell>
-                  <Tooltip title="View">
-                    <IconButton component={Link} to={`/workers/${w._id}`} size="small" color="info">
-                      <VisibilityIcon fontSize="small" />
-                    </IconButton>
-                  </Tooltip>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+        <Typography variant="h6" gutterBottom>Workers by Project</Typography>
+        {Object.entries(workersByProject).length === 0 ? (
+          <Typography variant="body2" color="textSecondary">No workers enrolled.</Typography>
+        ) : (
+          Object.entries(workersByProject).map(([key, group]) => (
+            <Box key={key} sx={{ mb: 3 }}>
+              <Typography variant="subtitle1" sx={{ fontWeight: 'bold', borderBottom: '1px solid #ccc', pb: 1, mb: 1 }}>
+                {group.projectName} ({group.workers.length})
+              </Typography>
+              <Table size="small">
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Name</TableCell>
+                    <TableCell>NRC</TableCell>
+                    <TableCell>Phone</TableCell>
+                    <TableCell>Site</TableCell>
+                    <TableCell>Enrolled By</TableCell>
+                    <TableCell>Pending</TableCell>
+                    <TableCell>Action</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {group.workers.map(w => (
+                    <TableRow key={w._id}>
+                      <TableCell>{w.name}</TableCell>
+                      <TableCell>{w.nrc}</TableCell>
+                      <TableCell>{w.phone}</TableCell>
+                      <TableCell>{w.site || '—'}</TableCell>
+                      <TableCell>{w.enrolledBy?.name || 'N/A'}</TableCell>
+                      <TableCell>{formatCurrency(w.balance || 0)}</TableCell>
+                      <TableCell>
+                        <Tooltip title="View">
+                          <IconButton component={Link} to={`/workers/${w._id}`} size="small" color="info">
+                            <VisibilityIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </Box>
+          ))
+        )}
       </Paper>
 
       {/* Funding Requests Table */}
@@ -696,7 +725,7 @@ const AccountantDashboard = () => {
         </Table>
       </Paper>
 
-      {/* Procurement Orders Table */}
+      {/* Procurement Orders Table – with FINAL APPROVE button */}
       <Paper sx={{ p: 2, mb: 3 }}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <Typography variant="h6">Procurement Orders (Pending Funding)</Typography>
@@ -726,11 +755,15 @@ const AccountantDashboard = () => {
                     </IconButton>
                   </Tooltip>
                   {o.status === 'procurement_approved' && (
-                    <Tooltip title="Final Approve">
-                      <IconButton size="small" color="primary" onClick={() => handleFinalApproveProcurement(o._id)}>
-                        <CheckCircleIcon fontSize="small" />
-                      </IconButton>
-                    </Tooltip>
+                    <Button
+                      variant="contained"
+                      color="primary"
+                      size="small"
+                      onClick={() => handleFinalApproveProcurement(o._id)}
+                      sx={{ ml: 1 }}
+                    >
+                      FINAL APPROVE
+                    </Button>
                   )}
                   {o.status === 'approved' && (
                     <Button
@@ -739,6 +772,7 @@ const AccountantDashboard = () => {
                       size="small"
                       startIcon={<AttachMoneyIcon />}
                       onClick={() => handleFundProcurement(o._id)}
+                      sx={{ ml: 1 }}
                     >
                       Fund
                     </Button>
@@ -750,7 +784,7 @@ const AccountantDashboard = () => {
         </Table>
       </Paper>
 
-      {/* ─── NEW: Subcontracts Table ────────────────────────────────────── */}
+      {/* Subcontracts Table */}
       <Paper sx={{ p: 2, mb: 3 }}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <Typography variant="h6">Subcontracts (Pending Funding)</Typography>
