@@ -5,7 +5,8 @@ import {
   Table, TableHead, TableRow, TableCell, TableBody,
   Chip, Paper, CircularProgress, Alert,
   FormControlLabel, Switch, Dialog, DialogTitle,
-  DialogContent, DialogActions, Skeleton, IconButton, Tooltip
+  DialogContent, DialogActions, Skeleton, IconButton, Tooltip,
+  TextField
 } from '@mui/material';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
@@ -18,7 +19,6 @@ import WorkerSearch from '../../components/WorkerSearch';
 import PaymentModal from '../../components/PaymentModal';
 import { useAuth } from '../../context/AuthContext';
 
-// ─── Simple cache with TTL ──────────────────────────────────
 const cache = {};
 const CACHE_TTL = 5 * 60 * 1000;
 
@@ -60,12 +60,18 @@ const AccountantDashboard = () => {
   const [payAllOpen, setPayAllOpen] = useState(false);
   const [payAllStatus, setPayAllStatus] = useState(null);
 
+  // ─── Funding modal state ──────────────────────────────────────────
+  const [fundModalOpen, setFundModalOpen] = useState(false);
+  const [fundRequestId, setFundRequestId] = useState(null);
+  const [recipientPhone, setRecipientPhone] = useState('');
+  const [fundAmount, setFundAmount] = useState(0);
+  const [fundRequesterName, setFundRequesterName] = useState('');
+
   const COLORS = ['#8884d8', '#82ca9d', '#ffc658', '#ff8042', '#0088FE'];
 
-  // ─── Guard to prevent multiple initial loads ──────────────
   const initialLoadDone = useRef(false);
 
-  // ─── Refresh user data from backend ──────────────────────────
+  // ─── Refresh user data ──────────────────────────────────────────
   const refreshUser = useCallback(async () => {
     try {
       const res = await api.get('/api/users/me', {
@@ -81,7 +87,7 @@ const AccountantDashboard = () => {
     return null;
   }, [updateUser]);
 
-  // ─── Fetch all dashboard data ──────────────────────────────
+  // ─── Fetch all dashboard data ──────────────────────────────────
   const fetchDashboardData = useCallback(async (force = false) => {
     const cacheKey = 'accountant_dashboard';
     if (!force) {
@@ -121,7 +127,6 @@ const AccountantDashboard = () => {
       const projectsData = Array.isArray(projectsRes.data) ? projectsRes.data : (projectsRes.data?.data || []);
       const fundingData = Array.isArray(fundingRes.data) ? fundingRes.data : (fundingRes.data?.data || []);
 
-      // ─── Compute worker balances ──────────────────────────────
       const workersWithBalance = workersData.map(w => {
         const workerAttendance = attendanceData.filter(a => a.worker === w._id || a.worker?._id === w._id);
         const totalEarned = workerAttendance.reduce((sum, a) => sum + (a.rate || 0), 0);
@@ -135,7 +140,6 @@ const AccountantDashboard = () => {
       const totalReleased = completedPayments.reduce((sum, p) => sum + (p.amount || 0), 0);
       const totalFunding = fundingData.length;
 
-      // ─── Top workers ────────────────────────────────────────────
       const workerEarnings = {};
       completedPayments.forEach(p => {
         const workerId = p.worker?._id || p.worker;
@@ -151,7 +155,6 @@ const AccountantDashboard = () => {
         .sort((a, b) => b.amount - a.amount)
         .slice(0, 5);
 
-      // ─── Payment trends ────────────────────────────────────────
       const trends = {};
       const now = new Date();
       for (let i = 6; i >= 0; i--) {
@@ -166,7 +169,6 @@ const AccountantDashboard = () => {
       });
       const trendData = Object.entries(trends).map(([date, amount]) => ({ date, amount }));
 
-      // ─── Project spending ──────────────────────────────────────
       const projectSpendingMap = {};
       completedPayments.forEach(p => {
         const projectId = p.project?._id || p.project;
@@ -178,7 +180,6 @@ const AccountantDashboard = () => {
       });
       const spendingData = Object.entries(projectSpendingMap).map(([name, amount]) => ({ name, amount }));
 
-      // ─── Approval ratio ────────────────────────────────────────
       const pending = fundingData.filter(f => f.status === 'pending').length;
       const approved = fundingData.filter(f => f.status === 'approved').length;
       const rejected = fundingData.filter(f => f.status === 'rejected').length;
@@ -221,7 +222,6 @@ const AccountantDashboard = () => {
         approvalRatio: ratio,
         reportData: report,
       });
-
     } catch (err) {
       console.error('Dashboard fetch error:', err);
       setMessage({ type: 'error', text: 'Failed to load data. Check console.' });
@@ -230,7 +230,7 @@ const AccountantDashboard = () => {
     }
   }, []);
 
-  // ─── Combined refresh – update user + dashboard ──────────────
+  // ─── Combined refresh ──────────────────────────────────────────
   const refreshAll = useCallback(async () => {
     setRefreshing(true);
     try {
@@ -245,7 +245,6 @@ const AccountantDashboard = () => {
     }
   }, [refreshUser, fetchDashboardData]);
 
-  // ─── Initial load – runs only once ────────────────────────────
   useEffect(() => {
     if (!initialLoadDone.current) {
       initialLoadDone.current = true;
@@ -254,18 +253,32 @@ const AccountantDashboard = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ─── Handle funding a request ───────────────────────────────
-  const handleFundRequest = async (id) => {
-    if (!window.confirm('Release funds for this approved request?')) return;
+  // ─── Funding handlers ──────────────────────────────────────────
+  const handleFundClick = (request) => {
+    const requester = request.requestedBy;
+    setFundRequestId(request._id);
+    setFundAmount(request.amount);
+    setFundRequesterName(requester?.name || 'Unknown');
+    // Pre-fill with requester's mobile money number or phone
+    setRecipientPhone(requester?.mobileMoneyNumber || requester?.phone || '');
+    setFundModalOpen(true);
+  };
+
+  const handleFundConfirm = async () => {
+    if (!recipientPhone || recipientPhone.trim() === '') {
+      alert('Please enter the recipient\'s phone number.');
+      return;
+    }
     try {
-      await api.put(`/api/funding-requests/${id}/fund`);
+      await api.put(`/api/funding-requests/${fundRequestId}/fund`, { recipientPhone });
+      setFundModalOpen(false);
       refreshAll();
     } catch (err) {
       alert('Funding failed: ' + (err.response?.data?.error || err.message));
     }
   };
 
-  // ─── Worker search / payment modal handlers ───────────────────
+  // ─── Worker search / payment modal ─────────────────────────────
   const handleWorkerSelect = useCallback((worker) => {
     setSelectedWorker(worker);
     setSearchOpen(false);
@@ -278,7 +291,7 @@ const AccountantDashboard = () => {
     refreshAll();
   }, [refreshAll]);
 
-  // ─── Bulk payment ─────────────────────────────────────────────
+  // ─── Bulk payment ──────────────────────────────────────────────
   const handlePayAll = useCallback(() => {
     if (!user?.mobileMoneyNumber) {
       alert('Please set your mobile money number in your profile first.');
@@ -552,7 +565,7 @@ const AccountantDashboard = () => {
                 <TableCell>
                   {fr.status === 'approved' && (
                     <Tooltip title="Fund this request">
-                      <IconButton color="primary" onClick={() => handleFundRequest(fr._id)}>
+                      <IconButton color="primary" onClick={() => handleFundClick(fr)}>
                         <AttachMoneyIcon />
                       </IconButton>
                     </Tooltip>
@@ -612,6 +625,32 @@ const AccountantDashboard = () => {
         <DialogActions>
           <Button onClick={() => setPayAllOpen(false)}>Cancel</Button>
           <Button variant="contained" onClick={handlePayAllConfirm}>Confirm Payment</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* ─── Funding Modal ────────────────────────────────────────── */}
+      <Dialog open={fundModalOpen} onClose={() => setFundModalOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Fund Request</DialogTitle>
+        <DialogContent>
+          <Typography variant="body1" gutterBottom>
+            You are about to fund <strong>{fundRequesterName}</strong> for <strong>{formatCurrency(fundAmount)}</strong>.
+          </Typography>
+          <TextField
+            label="Recipient Phone Number (Airtel Money)"
+            fullWidth
+            margin="normal"
+            value={recipientPhone}
+            onChange={(e) => setRecipientPhone(e.target.value)}
+            placeholder="e.g., 0971234567"
+            helperText="This is the phone number that will receive the funds."
+            required
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setFundModalOpen(false)}>Cancel</Button>
+          <Button variant="contained" color="primary" onClick={handleFundConfirm}>
+            Confirm & Send Money
+          </Button>
         </DialogActions>
       </Dialog>
     </Box>
