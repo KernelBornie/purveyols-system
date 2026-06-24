@@ -8,8 +8,6 @@ import { Link } from 'react-router-dom';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, PieChart, Pie, Cell } from 'recharts';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import EditIcon from '@mui/icons-material/Edit';
-import CheckIcon from '@mui/icons-material/Check';
-import CloseIcon from '@mui/icons-material/Close';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import api from '../../api/axios';
 
@@ -266,7 +264,7 @@ const DirectorDashboard = () => {
             </Table>
           </Paper>
 
-          {/* Funding Requests Table */}
+          {/* ─── Funding Requests Table (text buttons) ──────────── */}
           <Paper sx={{ p: 2, mb: 3 }}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <Typography variant="h6">Funding Requests</Typography>
@@ -292,16 +290,23 @@ const DirectorDashboard = () => {
                     <TableCell>
                       {f.status === 'pending' && (
                         <>
-                          <Tooltip title="Approve">
-                            <IconButton size="small" color="success" onClick={() => handleApproveFunding(f._id)}>
-                              <CheckIcon fontSize="small" />
-                            </IconButton>
-                          </Tooltip>
-                          <Tooltip title="Reject">
-                            <IconButton size="small" color="error" onClick={() => handleRejectFunding(f._id)}>
-                              <CloseIcon fontSize="small" />
-                            </IconButton>
-                          </Tooltip>
+                          <Button
+                            variant="contained"
+                            color="success"
+                            size="small"
+                            onClick={() => handleApproveFunding(f._id)}
+                            sx={{ mr: 1 }}
+                          >
+                            Approve
+                          </Button>
+                          <Button
+                            variant="contained"
+                            color="error"
+                            size="small"
+                            onClick={() => handleRejectFunding(f._id)}
+                          >
+                            Reject
+                          </Button>
                         </>
                       )}
                     </TableCell>
@@ -311,7 +316,7 @@ const DirectorDashboard = () => {
             </Table>
           </Paper>
 
-          {/* BOQs Table */}
+          {/* ─── BOQs Table (text buttons) ──────────────────────── */}
           <Paper sx={{ p: 2, mb: 3 }}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <Typography variant="h6">BOQs</Typography>
@@ -337,16 +342,23 @@ const DirectorDashboard = () => {
                     <TableCell>
                       {b.status === 'submitted' && (
                         <>
-                          <Tooltip title="Approve">
-                            <IconButton size="small" color="success" onClick={() => handleApproveBOQ(b._id)}>
-                              <CheckIcon fontSize="small" />
-                            </IconButton>
-                          </Tooltip>
-                          <Tooltip title="Reject">
-                            <IconButton size="small" color="error" onClick={() => handleRejectBOQ(b._id)}>
-                              <CloseIcon fontSize="small" />
-                            </IconButton>
-                          </Tooltip>
+                          <Button
+                            variant="contained"
+                            color="success"
+                            size="small"
+                            onClick={() => handleApproveBOQ(b._id)}
+                            sx={{ mr: 1 }}
+                          >
+                            Approve
+                          </Button>
+                          <Button
+                            variant="contained"
+                            color="error"
+                            size="small"
+                            onClick={() => handleRejectBOQ(b._id)}
+                          >
+                            Reject
+                          </Button>
                         </>
                       )}
                     </TableCell>
@@ -356,7 +368,7 @@ const DirectorDashboard = () => {
             </Table>
           </Paper>
 
-          {/* ─── Procurement Orders (Oversight) – with FINAL APPROVE button ─── */}
+          {/* Procurement Orders (Oversight) */}
           <Paper sx={{ p: 2 }}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <Typography variant="h6">Procurement Orders (Oversight)</Typography>
