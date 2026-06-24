@@ -4,6 +4,7 @@ const FundingRequestSchema = new mongoose.Schema({
   project: { type: mongoose.Schema.Types.ObjectId, ref: 'Project' },
   amount: Number,
   description: String,
+  recipientPhone: { type: String, default: '' }, // 👈 NEW
   status: {
     type: String,
     enum: ['draft', 'pending', 'approved', 'rejected', 'funded'],

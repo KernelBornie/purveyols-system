@@ -20,6 +20,7 @@ const FundingRequestForm = () => {
     project: '',
     amount: '',
     description: '',
+    recipientPhone: '', // 👈 NEW
     status: 'pending',
   });
   const [creator, setCreator] = useState(null);
@@ -43,6 +44,7 @@ const FundingRequestForm = () => {
             project: data.project?._id || data.project || '',
             amount: data.amount || '',
             description: data.description || '',
+            recipientPhone: data.recipientPhone || '',
             status: data.status || 'pending',
           });
           setCreator(data.requestedBy);
@@ -71,6 +73,7 @@ const FundingRequestForm = () => {
         project: form.project,
         amount: parseFloat(form.amount) || 0,
         description: form.description,
+        recipientPhone: form.recipientPhone,
         status: form.status,
       };
 
@@ -188,6 +191,20 @@ const FundingRequestForm = () => {
           </Grid>
           <Grid item xs={12} md={6}>
             <TextField
+              label="Recipient Phone (Airtel Money)"
+              fullWidth
+              size="small"
+              value={form.recipientPhone || ''}
+              onChange={e => setForm({ ...form, recipientPhone: e.target.value })}
+              placeholder="e.g., 0971234567"
+              disabled={!canEdit}
+            />
+          </Grid>
+        </Grid>
+
+        <Grid container spacing={2} sx={{ mb: 3 }}>
+          <Grid item xs={12} md={6}>
+            <TextField
               label="Status"
               select
               fullWidth
@@ -201,6 +218,16 @@ const FundingRequestForm = () => {
               <MenuItem value="approved">Approved</MenuItem>
               <MenuItem value="rejected">Rejected</MenuItem>
             </TextField>
+          </Grid>
+          <Grid item xs={12} md={6}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, height: '100%' }}>
+              <Typography variant="body2" color="textSecondary">Status:</Typography>
+              {form.status === 'draft' && <Chip label="Draft" color="default" size="small" />}
+              {form.status === 'pending' && <Chip label="Pending" color="warning" size="small" />}
+              {form.status === 'approved' && <Chip label="Approved" color="success" size="small" />}
+              {form.status === 'rejected' && <Chip label="Rejected" color="error" size="small" />}
+              {form.status === 'funded' && <Chip label="Funded" color="info" size="small" />}
+            </Box>
           </Grid>
         </Grid>
 
@@ -255,15 +282,6 @@ const FundingRequestForm = () => {
               </>
             )}
           </Box>
-        </Box>
-
-        {/* Status Chip */}
-        <Box sx={{ mt: 3 }}>
-          {form.status === 'draft' && <Chip label="Draft" color="default" size="small" />}
-          {form.status === 'pending' && <Chip label="Pending" color="warning" size="small" />}
-          {form.status === 'approved' && <Chip label="Approved" color="success" size="small" />}
-          {form.status === 'rejected' && <Chip label="Rejected" color="error" size="small" />}
-          {form.status === 'funded' && <Chip label="Funded" color="info" size="small" />}
         </Box>
 
         {/* Buttons */}

@@ -90,10 +90,11 @@ router.put('/:id', auth, authorize('admin', 'director', 'accountant', 'civil-eng
     if (!isCreator && !isAuthorized) {
       return res.status(403).json({ error: 'Not authorized to edit this request' });
     }
-    const { project, amount, description, status } = req.body;
+    const { project, amount, description, status, recipientPhone } = req.body;
     if (project !== undefined) request.project = project;
     if (amount !== undefined) request.amount = amount;
     if (description !== undefined) request.description = description;
+    if (recipientPhone !== undefined) request.recipientPhone = recipientPhone;
     if (status !== undefined && ['draft', 'pending'].includes(status)) {
       request.status = status;
     }

@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Paper, Typography, Box, Table, TableHead, TableRow, TableCell, TableBody,
-  Button, IconButton, Tooltip, Alert, CircularProgress, Chip
+  Button, IconButton, Tooltip, Alert, CircularProgress, Chip,
+  Dialog, DialogTitle, DialogContent, DialogActions, TextField
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import VisibilityIcon from '@mui/icons-material/Visibility';
@@ -20,6 +21,11 @@ const FundingRequestList = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const { user } = useAuth();
+
+  // ─── Modal state ────────────────────────────────────────────────
+  const [fundModalOpen, setFundModalOpen] = useState(false);
+  const [fundingToFund, setFundingToFund] = useState(null);
+  const [recipientPhone, setRecipientPhone] = useState('');
 
   const canApprove = ['admin', 'director', 'accountant'].includes(user?.role);
   const canFund = ['admin', 'accountant'].includes(user?.role);
@@ -63,10 +69,9 @@ const FundingRequestList = () => {
     }
   };
 
-  const handleFund = async (id) => {
-    if (!window.confirm('Release funds for this approved request?')) return;
+  const handleFund = async (id, phone) => {
     try {
-      await api.put(`/api/funding-requests/${id}/fund`);
+      await api.put(`/api/funding-requests/${id}/fund`, { recipientPhone: phone });
       fetchRequests();
     } catch (err) {
       alert('Funding failed: ' + (err.response?.data?.error || err.message));
@@ -81,6 +86,21 @@ const FundingRequestList = () => {
     } catch (err) {
       alert('Delete failed');
     }
+  };
+
+  const openFundModal = (request) => {
+    setFundingToFund(request);
+    setRecipientPhone(request.recipientPhone || '');
+    setFundModalOpen(true);
+  };
+
+  const handleFundConfirm = async () => {
+    if (!recipientPhone || recipientPhone.trim() === '') {
+      alert('Please enter a valid phone number.');
+      return;
+    }
+    await handleFund(fundingToFund._id, recipientPhone);
+    setFundModalOpen(false);
   };
 
   if (loading) return <CircularProgress sx={{ display: 'block', margin: '40px auto' }} />;
@@ -131,7 +151,7 @@ const FundingRequestList = () => {
                   </IconButton>
                 </Tooltip>
 
-                {/* Edit – only if draft/pending and user has permission */}
+                {/* Edit */}
                 {canEdit && (r.status === 'draft' || r.status === 'pending') && (
                   <Tooltip title="Edit">
                     <IconButton component={Link} to={`/funding/${r._id}/edit`} size="small" color="primary">
@@ -140,7 +160,7 @@ const FundingRequestList = () => {
                   </Tooltip>
                 )}
 
-                {/* Delete – only for accountant, director, admin */}
+                {/* Delete */}
                 {canDelete && (
                   <Tooltip title="Delete">
                     <IconButton size="small" color="error" onClick={() => handleDelete(r._id)}>
@@ -149,7 +169,7 @@ const FundingRequestList = () => {
                   </Tooltip>
                 )}
 
-                {/* Approve/Reject – only for pending */}
+                {/* Approve/Reject */}
                 {canApprove && r.status === 'pending' && (
                   <>
                     <Tooltip title="Approve">
@@ -165,13 +185,17 @@ const FundingRequestList = () => {
                   </>
                 )}
 
-                {/* Fund – only for approved */}
+                {/* ─── Fund button (text) ────────────────────── */}
                 {canFund && r.status === 'approved' && (
-                  <Tooltip title="Fund (Release Money)">
-                    <IconButton size="small" color="primary" onClick={() => handleFund(r._id)}>
-                      <AttachMoneyIcon fontSize="small" />
-                    </IconButton>
-                  </Tooltip>
+                  <Button
+                    variant="contained"
+                    color="success"
+                    size="small"
+                    startIcon={<AttachMoneyIcon />}
+                    onClick={() => openFundModal(r)}
+                  >
+                    Fund
+                  </Button>
                 )}
               </TableCell>
             </TableRow>
@@ -183,6 +207,32 @@ const FundingRequestList = () => {
           )}
         </TableBody>
       </Table>
+
+      {/* ─── Funding Modal ────────────────────────────────────────── */}
+      <Dialog open={fundModalOpen} onClose={() => setFundModalOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Fund Request</DialogTitle>
+        <DialogContent>
+          <Typography variant="body1" gutterBottom>
+            You are about to fund <strong>{fundingToFund?.project?.name || 'N/A'}</strong> for <strong>K {fundingToFund?.amount?.toLocaleString() || 0}</strong>.
+          </Typography>
+          <TextField
+            label="Recipient Phone (Airtel Money)"
+            fullWidth
+            margin="normal"
+            value={recipientPhone}
+            onChange={(e) => setRecipientPhone(e.target.value)}
+            placeholder="e.g., 0971234567"
+            helperText="The phone number that will receive the funds."
+            required
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setFundModalOpen(false)}>Cancel</Button>
+          <Button variant="contained" color="primary" onClick={handleFundConfirm}>
+            Confirm & Send Money
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Paper>
   );
 };
