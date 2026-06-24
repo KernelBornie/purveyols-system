@@ -10,7 +10,6 @@ import {
 } from '@mui/material';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import EditIcon from '@mui/icons-material/Edit';
-import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import CancelIcon from '@mui/icons-material/Cancel';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import CheckIcon from '@mui/icons-material/Check';
@@ -53,7 +52,6 @@ const ProcurementDashboard = () => {
 
   const userRole = user?.role;
   const canProcurementApprove = ['admin', 'director', 'procurement-officer', 'accountant'].includes(userRole);
-  const canFinalApprove = ['admin', 'director', 'accountant'].includes(userRole);
   const canFund = ['admin', 'accountant'].includes(userRole);
   const canEdit = ['admin', 'director', 'procurement-officer', 'civil-engineer', 'quantity-surveyor', 'driver', 'safety-officer', 'accountant', 'foreman'].includes(userRole);
 
@@ -120,12 +118,10 @@ const ProcurementDashboard = () => {
 
   const handleEditSave = async (submitForApproval = false) => {
     try {
-      // Validate items
       if (!editForm.items || editForm.items.length === 0) {
         setMessage({ type: 'error', text: 'Add at least one item.' });
         return;
       }
-      // Calculate grandTotal
       const total = editForm.items.reduce((sum, item) => {
         const qty = Number(item.quantity) || 0;
         const price = Number(item.unitPrice) || 0;
@@ -184,16 +180,6 @@ const ProcurementDashboard = () => {
       fetchOrders();
     } catch (err) {
       setMessage({ type: 'error', text: err.response?.data?.error || 'Rejection failed' });
-    }
-  };
-
-  const handleFinalApprove = async (id) => {
-    try {
-      await api.put(`/api/procurement/${id}/final-approve`);
-      setMessage({ type: 'success', text: 'Order final approved!' });
-      fetchOrders();
-    } catch (err) {
-      setMessage({ type: 'error', text: err.response?.data?.error || 'Final approval failed' });
     }
   };
 
@@ -308,13 +294,15 @@ const ProcurementDashboard = () => {
                   </TableCell>
                   <TableCell>{order.createdBy?.name || 'N/A'}</TableCell>
                   <TableCell>
+                    {/* View */}
                     <Tooltip title="View Details">
                       <IconButton size="small" onClick={() => handleView(order._id)}>
                         <VisibilityIcon />
                       </IconButton>
                     </Tooltip>
 
-                    {canEdit && (order.status === 'pending') && (
+                    {/* Edit & Submit for pending orders */}
+                    {canEdit && order.status === 'pending' && (
                       <>
                         <Tooltip title="Edit">
                           <IconButton size="small" onClick={() => handleEditOpen(order)}>
@@ -329,13 +317,19 @@ const ProcurementDashboard = () => {
                       </>
                     )}
 
+                    {/* Approval actions for pending orders */}
                     {order.status === 'pending' && canProcurementApprove && (
                       <>
-                        <Tooltip title="Approve (Procurement)">
-                          <IconButton size="small" color="success" onClick={() => handleProcurementApprove(order._id)}>
-                            <CheckIcon />
-                          </IconButton>
-                        </Tooltip>
+                        {/* ─── APPROVE button (text) ─── */}
+                        <Button
+                          variant="contained"
+                          color="success"
+                          size="small"
+                          onClick={() => handleProcurementApprove(order._id)}
+                          sx={{ ml: 1 }}
+                        >
+                          APPROVE
+                        </Button>
                         <Tooltip title="Reject">
                           <IconButton size="small" color="error" onClick={() => handleProcurementReject(order._id)}>
                             <CloseIcon />
@@ -343,13 +337,11 @@ const ProcurementDashboard = () => {
                         </Tooltip>
                       </>
                     )}
-                    {order.status === 'procurement_approved' && canFinalApprove && (
-                      <Tooltip title="Final Approve">
-                        <IconButton size="small" color="primary" onClick={() => handleFinalApprove(order._id)}>
-                          <CheckCircleIcon />
-                        </IconButton>
-                      </Tooltip>
-                    )}
+
+                    {/* ─── No Final Approve button here ─── */}
+                    {/* (it belongs to Director/Accountant dashboards) */}
+
+                    {/* Fund for approved orders */}
                     {order.status === 'approved' && canFund && (
                       <Tooltip title="Fund">
                         <IconButton size="small" color="success" onClick={() => handleFund(order._id)}>
@@ -368,7 +360,7 @@ const ProcurementDashboard = () => {
         </Paper>
       )}
 
-      {/* ─── Edit Dialog with full item list ──────────────────────── */}
+      {/* ─── Edit Dialog ─────────────────────────────────────────────── */}
       <Dialog open={editOpen} onClose={() => setEditOpen(false)} maxWidth="md" fullWidth>
         <DialogTitle>Edit Procurement Order</DialogTitle>
         <DialogContent dividers>
