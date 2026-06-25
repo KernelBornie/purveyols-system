@@ -1,169 +1,214 @@
-import React, { useState, useEffect } from 'react';
-import {
-  Paper, Typography, Box, Table, TableHead, TableRow, TableCell, TableBody,
-  Chip, IconButton, Tooltip, Alert, CircularProgress, Button, Tabs, Tab
-} from '@mui/material';
-import DeleteIcon from '@mui/icons-material/Delete';
-import RefreshIcon from '@mui/icons-material/Refresh';
-import DeleteSweepIcon from '@mui/icons-material/DeleteSweep';
-import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-import MessageIcon from '@mui/icons-material/Message';
-import api from '../api/axios';
-import BackButton from '../components/BackButton';
-import MessageDialog from '../components/MessageDialog';
+const express = require('express');
+const router = express.Router();
+const mongoose = require('mongoose');
+const Message = require('../models/Message');
+const User = require('../models/User');
+const auth = require('../middleware/auth');
+const { createNotification, getSenderName } = require('../utils/notificationHelper');
 
-const Messages = () => {
-  const [messages, setMessages] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [tab, setTab] = useState(0);
-  const [dialogOpen, setDialogOpen] = useState(false);
+// ─── Inbox ──────────────────────────────────────────────────
+router.get('/', auth, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const messages = await Message.find({
+      to: userId,
+      deletedBy: { $ne: userId }
+    })
+      .populate('from', 'name role')
+      .populate('to', 'name role')
+      .sort({ read: 1, createdAt: -1 });
+    res.json(messages);
+  } catch (err) {
+    console.error('Inbox error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
 
-  const fetchMessages = async () => {
-    setLoading(true);
-    try {
-      const res = await api.get('/api/messages');
-      setMessages(res.data || []);
-      setError(null);
-    } catch (err) {
-      setError('Failed to load messages');
-    } finally {
-      setLoading(false);
+// ─── Sent messages ──────────────────────────────────────────
+router.get('/sent', auth, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const messages = await Message.find({
+      from: userId,
+      deletedBy: { $ne: userId }
+    })
+      .populate('from', 'name role')
+      .populate('to', 'name role')
+      .sort({ createdAt: -1 });
+    res.json(messages);
+  } catch (err) {
+    console.error('Sent messages error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── Send a message ─────────────────────────────────────────
+router.post('/', auth, async (req, res) => {
+  try {
+    const { to, subject, content } = req.body;
+
+    if (!to || !content) {
+      return res.status(400).json({ error: 'Recipient and content are required' });
     }
-  };
 
-  useEffect(() => {
-    fetchMessages();
-  }, []);
-
-  const handleDelete = async (id) => {
-    if (!window.confirm('Delete this message?')) return;
-    try {
-      await api.delete(`/api/messages/${id}`);
-      fetchMessages();
-    } catch (err) {
-      alert('Failed to delete');
+    if (!mongoose.Types.ObjectId.isValid(to)) {
+      return res.status(400).json({ error: 'Invalid recipient ID format' });
     }
-  };
 
-  const handleDeleteAll = async () => {
-    if (!window.confirm('Delete ALL messages? This cannot be undone.')) return;
-    try {
-      await api.delete('/api/messages');
-      fetchMessages();
-    } catch (err) {
-      alert('Failed to delete all messages');
+    const recipient = await User.findById(to);
+    if (!recipient) {
+      return res.status(404).json({ error: 'Recipient not found' });
     }
-  };
 
-  const handleMarkRead = async (id) => {
-    try {
-      await api.put(`/api/messages/${id}/read`);
-      fetchMessages();
-    } catch (err) {
-      alert('Failed to mark as read');
+    const senderName = await getSenderName(req.user.id);
+
+    const message = new Message({
+      from: req.user.id,
+      to,
+      subject: subject || '',
+      content,
+      deletedBy: [],
+    });
+    await message.save();
+
+    console.log(`📩 Message from ${req.user.id} to ${to}`);
+
+    await createNotification(
+      recipient._id,
+      'message_received',
+      'New Message',
+      `You have a new message from ${senderName}`,
+      `/messages/${message._id}`
+    );
+
+    const populated = await Message.findById(message._id)
+      .populate('from', 'name role')
+      .populate('to', 'name role');
+
+    res.status(201).json(populated);
+  } catch (err) {
+    console.error('Send message error:', err);
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// ─── Mark as read ──────────────────────────────────────────
+router.put('/:id/read', auth, async (req, res) => {
+  try {
+    const message = await Message.findOne({ _id: req.params.id, to: req.user.id });
+    if (!message) return res.status(404).json({ error: 'Message not found' });
+    message.read = true;
+    await message.save();
+    res.json(message);
+  } catch (err) {
+    console.error('Mark read error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── Soft Delete (one) ─────────────────────────────────────
+router.delete('/:id', auth, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const message = await Message.findById(req.params.id);
+    if (!message) {
+      return res.status(404).json({ error: 'Message not found' });
     }
-  };
 
-  const handleMessageSent = () => {
-    fetchMessages();
-  };
+    // 🔍 DEBUG – log the actual IDs to see what's in the DB
+    console.log('🔍 DELETE message:', {
+      userId,
+      from: message.from,
+      to: message.to,
+      fromType: typeof message.from,
+      toType: typeof message.to,
+    });
 
-  const filteredMessages = tab === 0 ? messages : tab === 1 ? messages.filter(m => m.read) : messages.filter(m => !m.read);
+    // ─── Robust comparison ──────────────────────────────────
+    const fromStr = message.from?.toString ? message.from.toString() : String(message.from);
+    const toStr = message.to?.toString ? message.to.toString() : String(message.to);
+    const userIdStr = userId.toString();
 
-  return (
-    <Paper sx={{ p: 2 }}>
-      <BackButton />
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-        <Typography variant="h5">Messages</Typography>
-        <Box>
-          <Button
-            variant="contained"
-            startIcon={<MessageIcon />}
-            onClick={() => setDialogOpen(true)}
-            sx={{ mr: 1 }}
-          >
-            Compose
-          </Button>
-          <Button variant="outlined" startIcon={<RefreshIcon />} onClick={fetchMessages} sx={{ mr: 1 }}>
-            Refresh
-          </Button>
-          <Button
-            variant="outlined"
-            color="error"
-            startIcon={<DeleteSweepIcon />}
-            onClick={handleDeleteAll}
-            disabled={messages.length === 0}
-          >
-            Delete All
-          </Button>
-        </Box>
-      </Box>
+    const isSender = fromStr === userIdStr;
+    const isRecipient = toStr === userIdStr;
 
-      <Tabs value={tab} onChange={(e, val) => setTab(val)} sx={{ mb: 2 }}>
-        <Tab label={`All (${messages.length})`} />
-        <Tab label={`Read (${messages.filter(m => m.read).length})`} />
-        <Tab label={`Unread (${messages.filter(m => !m.read).length})`} />
-      </Tabs>
+    console.log('🔍 isSender:', isSender, 'isRecipient:', isRecipient);
 
-      {loading ? (
-        <CircularProgress />
-      ) : error ? (
-        <Alert severity="error">{error}</Alert>
-      ) : filteredMessages.length === 0 ? (
-        <Typography align="center" color="textSecondary" sx={{ py: 3 }}>No messages</Typography>
-      ) : (
-        <Table size="small">
-          <TableHead>
-            <TableRow>
-              <TableCell>From</TableCell>
-              <TableCell>Subject</TableCell>
-              <TableCell>Date</TableCell>
-              <TableCell>Status</TableCell>
-              <TableCell>Actions</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {filteredMessages.map((m) => (
-              <TableRow
-                key={m._id}
-                sx={{ bgcolor: m.read ? 'transparent' : 'action.hover' }}
-              >
-                <TableCell>{m.from?.name || 'Unknown'}</TableCell>
-                <TableCell>{m.subject || '(no subject)'}</TableCell>
-                <TableCell>
-                  {new Date(m.createdAt).toLocaleDateString()} {new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                </TableCell>
-                <TableCell>
-                  {m.read ? <Chip label="Read" size="small" color="success" /> : <Chip label="Unread" size="small" color="warning" />}
-                </TableCell>
-                <TableCell>
-                  {!m.read && (
-                    <Tooltip title="Mark as read">
-                      <IconButton size="small" onClick={() => handleMarkRead(m._id)}>
-                        <CheckCircleIcon fontSize="small" />
-                      </IconButton>
-                    </Tooltip>
-                  )}
-                  <Tooltip title="Delete">
-                    <IconButton size="small" onClick={() => handleDelete(m._id)} color="error">
-                      <DeleteIcon fontSize="small" />
-                    </IconButton>
-                  </Tooltip>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      )}
+    if (!isSender && !isRecipient) {
+      console.warn('⚠️ Unauthorized delete attempt by user', userId, 'for message', req.params.id);
+      return res.status(403).json({ error: 'Not authorized to delete this message' });
+    }
 
-      <MessageDialog
-        open={dialogOpen}
-        onClose={() => setDialogOpen(false)}
-        onSent={handleMessageSent}
-      />
-    </Paper>
-  );
-};
+    if (message.deletedBy.includes(userId)) {
+      return res.status(400).json({ error: 'Message already deleted by you' });
+    }
 
-export default Messages;
+    message.deletedBy.push(userId);
+    await message.save();
+
+    console.log(`🗑️ User ${userId} soft‑deleted message ${req.params.id}`);
+    res.json({ message: 'Message deleted for you' });
+  } catch (err) {
+    console.error('Delete error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── Delete all messages for user (soft delete) ──────────
+router.delete('/', auth, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    await Message.updateMany(
+      {
+        $or: [{ from: userId }, { to: userId }],
+        deletedBy: { $ne: userId }
+      },
+      { $addToSet: { deletedBy: userId } }
+    );
+    res.json({ message: 'All messages deleted for you' });
+  } catch (err) {
+    console.error('Delete all messages error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── Unread count ──────────────────────────────────────────
+router.get('/unread-count', auth, async (req, res) => {
+  try {
+    const count = await Message.countDocuments({
+      to: req.user.id,
+      read: false,
+      deletedBy: { $ne: req.user.id }
+    });
+    res.json({ count });
+  } catch (err) {
+    console.error('Unread count error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── Conversation ──────────────────────────────────────────
+router.get('/conversation/:otherUserId', auth, async (req, res) => {
+  try {
+    const { otherUserId } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(otherUserId)) {
+      return res.status(400).json({ error: 'Invalid user ID' });
+    }
+    const messages = await Message.find({
+      $or: [
+        { from: req.user.id, to: otherUserId },
+        { from: otherUserId, to: req.user.id }
+      ],
+      deletedBy: { $ne: req.user.id }
+    })
+      .populate('from', 'name role')
+      .populate('to', 'name role')
+      .sort({ createdAt: 1 });
+    res.json(messages);
+  } catch (err) {
+    console.error('Conversation error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+module.exports = router;
