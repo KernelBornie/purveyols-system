@@ -178,6 +178,10 @@ const ProcurementForm = () => {
   };
 
   const grandTotal = calculateGrandTotal();
+  const filledItems = getFilledItems();
+
+  // ─── Check if any signature is selected ──────────────────────
+  const hasSelectedSignature = form.preparedSign || form.approvedSign || form.authorisedSign;
 
   return (
     <Paper sx={{ p: 3, maxWidth: 1200, mx: 'auto' }}>
@@ -213,7 +217,7 @@ const ProcurementForm = () => {
 
       {/* ─── Print Content ───────────────────────────────────────── */}
       <div ref={printRef}>
-        {/* Company Header */}
+        {/* Company Header - always shown */}
         <Box sx={{ textAlign: 'center', borderBottom: '2px solid #000', pb: 2, mb: 2 }}>
           <Typography variant="h4" sx={{ fontWeight: 'bold', letterSpacing: 2 }}>PURVEYOLS</Typography>
           <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>Building and Civil Construction</Typography>
@@ -227,12 +231,14 @@ const ProcurementForm = () => {
           <Typography variant="h5" sx={{ fontWeight: 'bold', letterSpacing: 1 }}>
             MATERIAL REQUISITION NOTE
           </Typography>
-          <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
-            No. {form.orderNumber || 'N/A'}
-          </Typography>
+          {form.orderNumber && (
+            <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
+              No. {form.orderNumber}
+            </Typography>
+          )}
         </Box>
 
-        {/* Creator Info */}
+        {/* Creator Info - only if creator exists */}
         {creator && (
           <Box sx={{ mb: 2 }}>
             <Typography variant="body2">
@@ -244,7 +250,7 @@ const ProcurementForm = () => {
           </Box>
         )}
 
-        {/* ─── Project ───────────────────────────────────────────── */}
+        {/* Project - only if selected */}
         {form.project && (
           <Box sx={{ mb: 2 }}>
             <Typography variant="body2">
@@ -253,8 +259,8 @@ const ProcurementForm = () => {
           </Box>
         )}
 
-        {/* ─── Items Table (only filled rows) ───────────────────── */}
-        {getFilledItems().length > 0 && (
+        {/* Items Table - only if there are filled items */}
+        {filledItems.length > 0 && (
           <>
             <Table size="small">
               <TableHead>
@@ -268,7 +274,7 @@ const ProcurementForm = () => {
                 </TableRow>
               </TableHead>
               <TableBody>
-                {getFilledItems().map((item, idx) => (
+                {filledItems.map((item, idx) => (
                   <TableRow key={idx}>
                     <TableCell>{item.description}</TableCell>
                     <TableCell align="right">{item.quantity}</TableCell>
@@ -288,32 +294,35 @@ const ProcurementForm = () => {
           </>
         )}
 
-        {/* ─── Signatures (only selected ones) ──────────────────── */}
-        {(form.preparedSign || form.approvedSign || form.authorisedSign) && (
+        {/* Signatures - only if at least one is selected */}
+        {hasSelectedSignature && (
           <Box sx={{ mt: 4, borderTop: '1px solid #000', pt: 3 }}>
             <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 2 }}>Approval</Typography>
             <Grid container spacing={2}>
-              <Grid item xs={12} md={4}>
-                <Typography variant="body2">Prepared by:</Typography>
-                <Typography variant="body1" sx={{ fontWeight: 'bold' }}>
-                  {form.preparedBy || 'N/A'}
-                  {form.preparedSign && <span style={{ marginLeft: 8 }}>✓</span>}
-                </Typography>
-              </Grid>
-              <Grid item xs={12} md={4}>
-                <Typography variant="body2">Approved by:</Typography>
-                <Typography variant="body1" sx={{ fontWeight: 'bold' }}>
-                  {form.approvedBy || 'N/A'}
-                  {form.approvedSign && <span style={{ marginLeft: 8 }}>✓</span>}
-                </Typography>
-              </Grid>
-              <Grid item xs={12} md={4}>
-                <Typography variant="body2">Authorised by:</Typography>
-                <Typography variant="body1" sx={{ fontWeight: 'bold' }}>
-                  {form.authorisedBy || 'N/A'}
-                  {form.authorisedSign && <span style={{ marginLeft: 8 }}>✓</span>}
-                </Typography>
-              </Grid>
+              {form.preparedSign && (
+                <Grid item xs={12} md={4}>
+                  <Typography variant="body2">Prepared by:</Typography>
+                  <Typography variant="body1" sx={{ fontWeight: 'bold' }}>
+                    {form.preparedBy || 'N/A'} ✓
+                  </Typography>
+                </Grid>
+              )}
+              {form.approvedSign && (
+                <Grid item xs={12} md={4}>
+                  <Typography variant="body2">Approved by:</Typography>
+                  <Typography variant="body1" sx={{ fontWeight: 'bold' }}>
+                    {form.approvedBy || 'N/A'} ✓
+                  </Typography>
+                </Grid>
+              )}
+              {form.authorisedSign && (
+                <Grid item xs={12} md={4}>
+                  <Typography variant="body2">Authorised by:</Typography>
+                  <Typography variant="body1" sx={{ fontWeight: 'bold' }}>
+                    {form.authorisedBy || 'N/A'} ✓
+                  </Typography>
+                </Grid>
+              )}
             </Grid>
           </Box>
         )}
