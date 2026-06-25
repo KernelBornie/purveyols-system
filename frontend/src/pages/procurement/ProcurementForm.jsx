@@ -130,7 +130,7 @@ const ProcurementForm = () => {
     }
   };
 
-  // ─── Print – classic layout with red header ───────────────────
+  // ─── Print – with red header ──────────────────────────────────
   const handlePrint = () => {
     const printWindow = window.open('', '_blank');
     const filledItems = form.items.filter(item => item.description && item.description.trim() !== '');
@@ -144,11 +144,11 @@ const ProcurementForm = () => {
             body { font-family: 'Courier New', monospace; padding: 20px; margin: 0; }
             .print-container { max-width: 800px; margin: 0 auto; }
             .header { text-align: center; border-bottom: 2px solid #000; padding-bottom: 8px; margin-bottom: 15px; }
-            .header h1 { margin: 0; font-size: 28px; letter-spacing: 4px; font-weight: bold; color: #d32f2f; }
-            .header .subtitle { font-weight: bold; font-size: 14px; margin: 2px 0; color: #d32f2f; }
+            .header h1 { margin: 0; font-size: 28px; letter-spacing: 4px; font-weight: bold; color: #b71c1c; }
+            .header .subtitle { font-weight: bold; font-size: 14px; margin: 2px 0; color: #b71c1c; }
             .header .details { font-size: 11px; margin: 1px 0; }
             .title-row { display: flex; justify-content: space-between; border-bottom: 1px solid #000; padding-bottom: 4px; margin-bottom: 10px; }
-            .title-row .left { font-weight: bold; font-size: 18px; letter-spacing: 2px; color: #d32f2f; }
+            .title-row .left { font-weight: bold; font-size: 18px; letter-spacing: 2px; color: #b71c1c; }
             .title-row .right { font-weight: bold; font-size: 14px; }
             .meta { margin-bottom: 10px; font-size: 12px; }
             .meta p { margin: 2px 0; }
@@ -173,29 +173,26 @@ const ProcurementForm = () => {
         </head>
         <body>
           <div class="print-container">
-            <!-- Company Header with red -->
+            <!-- Header with red -->
             <div class="header">
               <h1>PURVEYOLS</h1>
-              <div class="subtitle">Building and Civil Construction</div>
+              <div class="subtitle">Building and Civil contractors</div>
               <div class="details">Plot No. 8, Buchi Road - Northmead, P.O. Box NH 87 Lusaka, Zambia</div>
               <div class="details">Tel: +260 211 235354 | Mobile: +260 977 393879 / +260 965 393879</div>
               <div class="details">Email: purveyols@gmail.com</div>
             </div>
 
-            <!-- Title with red -->
             <div class="title-row">
               <span class="left">MATERIAL REQUISITION NOTE</span>
               <span class="right">No. ${form.orderNumber || 'N/A'}</span>
             </div>
 
-            <!-- Meta Info -->
             <div class="meta">
               ${creator ? `<p><strong>Created by:</strong> ${creator.name} (${creator.role})</p>` : ''}
               ${creator ? `<p><strong>Created on:</strong> ${createdAt ? new Date(createdAt).toLocaleString() : new Date().toLocaleString()}</p>` : ''}
               ${form.project ? `<p><strong>Project:</strong> ${projects.find(p => p._id === form.project)?.name || 'N/A'}</p>` : ''}
             </div>
 
-            <!-- Items Table -->
             <table>
               <thead>
                 <tr>
@@ -223,12 +220,10 @@ const ProcurementForm = () => {
               </tbody>
             </table>
 
-            <!-- Grand Total -->
             <div class="grand-total">
               GRAND TOTAL: ${grandTotal.toFixed(2)}
             </div>
 
-            <!-- Signatures -->
             <div class="signatures">
               <div class="sign-block">
                 <div class="label">PREPARED BY:</div>
@@ -244,7 +239,6 @@ const ProcurementForm = () => {
               </div>
             </div>
 
-            <!-- Footer -->
             <div class="footer">
               PURVEYOLS CMS - Construction Management System
             </div>
@@ -292,6 +286,35 @@ const ProcurementForm = () => {
 
       {message && <Alert severity={message.type} sx={{ mb: 2 }}>{message.text}</Alert>}
 
+      {/* ─── Company Header – matches BOQ style (red) ────────────── */}
+      <Box sx={{ textAlign: 'center', borderBottom: '2px solid #000', pb: 2, mb: 2 }}>
+        <img
+          src="/top-log.PNG?t=3"
+          alt="PURVEYOLS Logo"
+          style={{ height: '60px', maxWidth: '100%' }}
+          onError={(e) => e.target.style.display = 'none'}
+        />
+        <Typography variant="h4" sx={{ fontWeight: 'bold', letterSpacing: 2, color: '#b71c1c' }}>
+          PURVEYOLS
+        </Typography>
+        <Typography variant="subtitle1" sx={{ fontWeight: 'bold', color: '#b71c1c' }}>
+          Building and Civil contractors
+        </Typography>
+        <Typography variant="body2">Plot No. 8, Buchi Road - Northmead, P.O. Box NH 87 Lusaka, Zambia</Typography>
+        <Typography variant="body2">Tel: +260 211 235354 | Mobile: +260 977 393879 / +260 965 393879</Typography>
+        <Typography variant="body2">Email: purveyols@gmail.com</Typography>
+      </Box>
+
+      {/* ─── Document Title ────────────────────────────────────────── */}
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3, borderBottom: '1px solid #000', pb: 1 }}>
+        <Typography variant="h5" sx={{ fontWeight: 'bold', letterSpacing: 1 }}>
+          MATERIAL REQUISITION NOTE
+        </Typography>
+        <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
+          No. {form.orderNumber || 'N/A'}
+        </Typography>
+      </Box>
+
       {/* ─── Edit Form ─────────────────────────────────────────────── */}
       <Box className="no-print">
         <form onSubmit={handleSubmit}>
@@ -323,7 +346,7 @@ const ProcurementForm = () => {
             </Grid>
           </Grid>
 
-          {/* Items Table */}
+          {/* ─── Items Table ────────────────────────────────────────── */}
           <Typography variant="h6" gutterBottom>Items</Typography>
           <Table size="small">
             <TableHead>
@@ -423,7 +446,7 @@ const ProcurementForm = () => {
             </Typography>
           </Box>
 
-          {/* Signatures */}
+          {/* ─── Signatures ────────────────────────────────────────── */}
           <Box sx={{ mt: 4, borderTop: '1px solid #000', pt: 3 }}>
             <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 2 }}>Approval</Typography>
             <Grid container spacing={2}>
