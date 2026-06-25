@@ -69,6 +69,7 @@ import {
   // CCTV
   Videocam as CameraIcon,
   Monitor as MonitorIcon,
+  Print as PrintIcon,
 } from '@mui/icons-material';
 
 const CategoryLabel = ({ children }) => (
@@ -427,7 +428,7 @@ const DrawingForm = () => {
     printWindow.document.close();
   };
 
-  // ─── PROFESSIONAL TOOLS (all are defined here) ──────────────────
+  // ─── PROFESSIONAL TOOLS ──────────────────────────────────────────
 
   // Electrical
   const addOutlet = () => {
@@ -938,7 +939,7 @@ const DrawingForm = () => {
 
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
         <Typography variant="h5" gutterBottom>🏗️ Professional Drawing Suite</Typography>
-        <Button variant="outlined" onClick={handlePrint}>Print Drawing</Button>
+        <Button variant="outlined" startIcon={<PrintIcon />} onClick={handlePrint}>Print Drawing</Button>
       </Box>
 
       {/* Drawing tabs */}
