@@ -89,22 +89,16 @@ const Messages = () => {
     setDialogMode('reply');
     setInitialTo(message.from._id);
     setInitialSubject(`Re: ${message.subject || 'Your message'}`);
-    setInitialContent(''); // ✅ empty body – user writes from scratch
+    setInitialContent(''); // empty body
     setDialogOpen(true);
   };
 
-  // ─── Forward ──────────────────────────────────────────────────────
+  // ─── Forward (content only) ─────────────────────────────────────
   const handleForward = (message) => {
     setDialogMode('forward');
     setInitialTo('');
     setInitialSubject(`Fwd: ${message.subject || 'Your message'}`);
-    setInitialContent(
-      `---------- Forwarded message ----------\n` +
-      `From: ${message.from.name}\n` +
-      `Date: ${new Date(message.createdAt).toLocaleString()}\n` +
-      `Subject: ${message.subject || '(no subject)'}\n\n` +
-      `${message.content}`
-    );
+    setInitialContent(message.content); // ✅ only the original message
     setDialogOpen(true);
   };
 
