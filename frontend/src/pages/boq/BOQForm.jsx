@@ -3,7 +3,8 @@ import { useNavigate, useParams } from 'react-router-dom';
 import {
   Paper, Typography, Box, Grid, TextField, Button, IconButton,
   Table, TableHead, TableRow, TableCell, TableBody,
-  MenuItem, Divider, Alert, Chip, Card, CircularProgress
+  MenuItem, Divider, Alert, Chip, Card, CircularProgress,
+  Dialog, DialogTitle, DialogContent, DialogActions
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -20,9 +21,11 @@ import ConversionTool from '../../components/ConversionTool';
 // ─── Template options ──────────────────────────────────────────────
 const TEMPLATES = [
   { value: 'Zanaco Bank', label: '🏦 Zanaco Bank' },
-  { value: 'Residential', label: '🏠 Residential' },
-  { value: 'Commercial', label: '🏢 Commercial' },
-  { value: 'Industrial', label: '🏭 Industrial' },
+  { value: 'Residential House', label: '🏠 Residential House' },
+  { value: 'Commercial Building', label: '🏢 Commercial Building' },
+  { value: 'Road Construction', label: '🛣️ Road Construction' },
+  { value: 'Bridge Construction', label: '🌉 Bridge Construction' },
+  { value: 'Water Reticulation', label: '💧 Water Reticulation' },
   { value: 'Custom', label: '⚙️ Custom' },
 ];
 
@@ -33,6 +36,7 @@ const BOQForm = () => {
   const [loading, setLoading] = useState(true);
   const [projects, setProjects] = useState([]);
   const [conversionOpen, setConversionOpen] = useState(false);
+  const [customTemplates, setCustomTemplates] = useState([]);
   const [form, setForm] = useState({
     project: '',
     name: '',
@@ -64,6 +68,18 @@ const BOQForm = () => {
   const [itemForm, setItemForm] = useState({ description: '', unit: '', quantity: 1, rate: 0, notes: '' });
 
   const canEdit = ['admin', 'director', 'quantity-surveyor', 'civil-engineer', 'procurement-officer', 'accountant', 'foreman'].includes(user?.role);
+
+  // ─── Load custom templates from localStorage ──────────────────────
+  useEffect(() => {
+    const saved = localStorage.getItem('customBOQTemplates');
+    if (saved) {
+      try {
+        setCustomTemplates(JSON.parse(saved));
+      } catch (e) {
+        setCustomTemplates([]);
+      }
+    }
+  }, []);
 
   // ─── Fetch data ──────────────────────────────────────────────────
   useEffect(() => {
@@ -117,6 +133,20 @@ const BOQForm = () => {
       setForm(prev => ({ ...prev, sections: [], templateName: '' }));
       return;
     }
+    // Check if it's a custom template first
+    const custom = customTemplates.find(t => t.name === templateName);
+    if (custom) {
+      setForm(prev => ({
+        ...prev,
+        sections: custom.sections || [],
+        templateName: templateName,
+        name: custom.name || prev.name,
+        description: custom.description || prev.description,
+      }));
+      setMessage({ type: 'success', text: `Loaded custom template "${templateName}"` });
+      return;
+    }
+    // Otherwise fetch from backend
     try {
       const res = await api.get(`/api/boq/templates/${templateName}`);
       const template = res.data;
@@ -131,6 +161,53 @@ const BOQForm = () => {
     } catch (err) {
       setMessage({ type: 'error', text: 'Failed to load template' });
     }
+  };
+
+  // ─── Save custom templates to localStorage ────────────────────────
+  const saveCustomTemplates = (templates) => {
+    localStorage.setItem('customBOQTemplates', JSON.stringify(templates));
+    setCustomTemplates(templates);
+  };
+
+  // ─── Save current BOQ as a custom template ────────────────────────
+  const saveAsTemplate = () => {
+    const templateName = prompt('Enter a name for this custom template:');
+    if (!templateName) return;
+    if (customTemplates.some(t => t.name === templateName)) {
+      if (!window.confirm(`A template named "${templateName}" already exists. Overwrite?`)) return;
+    }
+    const newTemplate = {
+      name: templateName,
+      description: form.description || `Custom template: ${templateName}`,
+      sections: form.sections.map(s => ({
+        title: s.title,
+        description: s.description || '',
+        items: s.items.map(item => ({
+          description: item.description,
+          unit: item.unit,
+          quantity: item.quantity,
+          rate: 0, // Reset rates when saving as template
+          amount: 0,
+          notes: item.notes || '',
+        })),
+      })),
+    };
+    const updatedTemplates = customTemplates.filter(t => t.name !== templateName);
+    updatedTemplates.push(newTemplate);
+    saveCustomTemplates(updatedTemplates);
+    setMessage({ type: 'success', text: `Template "${templateName}" saved!` });
+  };
+
+  // ─── Delete a custom template ──────────────────────────────────────
+  const deleteCustomTemplate = (templateName) => {
+    if (!window.confirm(`Delete custom template "${templateName}"?`)) return;
+    const updatedTemplates = customTemplates.filter(t => t.name !== templateName);
+    saveCustomTemplates(updatedTemplates);
+    if (selectedTemplate === templateName) {
+      setSelectedTemplate('');
+      setForm(prev => ({ ...prev, sections: [], templateName: '' }));
+    }
+    setMessage({ type: 'success', text: `Template "${templateName}" deleted` });
   };
 
   // ─── Section handlers ────────────────────────────────────────────
@@ -239,7 +316,6 @@ const BOQForm = () => {
     setLoading(true);
     try {
       const payload = { ...form };
-      // Clean sections (remove extra fields)
       payload.sections = form.sections.map(s => ({
         title: s.title,
         description: s.description || '',
@@ -348,11 +424,50 @@ const BOQForm = () => {
         <Paper sx={{ p: 2, mb: 2, bgcolor: '#fafafa' }}>
           <Grid container spacing={2}>
             <Grid item xs={12} md={6}>
-              <TextField select label="BOQ Template" fullWidth size="small" value={selectedTemplate} onChange={e => { setSelectedTemplate(e.target.value); loadTemplate(e.target.value); }} disabled={!canEdit}>
-                {TEMPLATES.map(t => <MenuItem key={t.value} value={t.value}>{t.label}</MenuItem>)}
+              <TextField
+                select
+                label="BOQ Template"
+                fullWidth
+                size="small"
+                value={selectedTemplate}
+                onChange={e => {
+                  const val = e.target.value;
+                  setSelectedTemplate(val);
+                  if (val === 'Custom') {
+                    setForm(prev => ({ ...prev, sections: [], templateName: '' }));
+                  } else {
+                    loadTemplate(val);
+                  }
+                }}
+                disabled={!canEdit}
+              >
+                <MenuItem value="Custom">⚙️ Custom</MenuItem>
+                {TEMPLATES.map(t => (
+                  <MenuItem key={t.value} value={t.value}>{t.label}</MenuItem>
+                ))}
+                {customTemplates.length > 0 && [
+                  <Divider key="divider" />,
+                  ...customTemplates.map(t => (
+                    <MenuItem key={t.name} value={t.name}>📁 {t.name}</MenuItem>
+                  ))
+                ]}
               </TextField>
             </Grid>
-            <Grid item xs={12} md={6}>
+            <Grid item xs={12} md={6} sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+              {canEdit && (
+                <>
+                  <Button variant="outlined" onClick={saveAsTemplate} size="small">
+                    💾 Save as Template
+                  </Button>
+                  {selectedTemplate && customTemplates.some(t => t.name === selectedTemplate) && (
+                    <Button variant="outlined" color="error" onClick={() => deleteCustomTemplate(selectedTemplate)} size="small">
+                      🗑️ Delete Template
+                    </Button>
+                  )}
+                </>
+              )}
+            </Grid>
+            <Grid item xs={12}>
               <TextField label="Client Name" fullWidth size="small" value={form.clientName || ''} onChange={e => setForm({ ...form, clientName: e.target.value })} disabled={!canEdit} />
             </Grid>
             <Grid item xs={12}>
