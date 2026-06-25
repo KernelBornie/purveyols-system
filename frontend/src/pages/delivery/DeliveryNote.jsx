@@ -29,7 +29,6 @@ const DeliveryNote = () => {
   });
   const [message, setMessage] = useState(null);
 
-  // ✅ Foreman added
   const canEdit = ['procurement-officer', 'civil-engineer', 'quantity-surveyor', 'director', 'admin', 'driver', 'accountant', 'foreman'].includes(user?.role);
 
   const generateNoteNumber = () => {
@@ -135,18 +134,16 @@ const DeliveryNote = () => {
       {!canEdit && <Alert severity="info" sx={{ mb: 2 }}>You have view‑only access.</Alert>}
 
       <form onSubmit={handleSubmit}>
+        {/* Company Header with Logo */}
         <Box sx={{ textAlign: 'center', borderBottom: '2px solid #000', pb: 2, mb: 2 }}>
-          <Typography variant="h5" sx={{ fontWeight: 'bold' }}>PURVEYOLS INVESTMENT LIMITED</Typography>
-          <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>Specialized In Building Construction, Civil Engineering,</Typography>
-          <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>Electrical Engineering, Painting Contractors, Road Works</Typography>
-          <Typography variant="body2" sx={{ mt: 1 }}>Plot No 8, Buchi Road, Northmead, P.O Box NM87, Lusaka Zambia</Typography>
-          <Typography variant="body2">Call +260 96539879 / +260 97739879</Typography>
-          <Typography variant="body2">Email: purveyols@gmail.com</Typography>
+          <img src="/top-log.jpeg" alt="PURVEYOLS Logo" style={{ height: '80px', maxWidth: '100%' }} />
         </Box>
+
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2, borderBottom: '1px solid #000', pb: 1 }}>
           <Typography variant="h5" sx={{ fontWeight: 'bold' }}>DELIVERY NOTE</Typography>
           <Typography variant="h6" sx={{ fontWeight: 'bold' }}>No.: {form.noteNumber || 'NEW'}</Typography>
         </Box>
+
         <Grid container spacing={2} sx={{ mb: 3 }}>
           <Grid item xs={12} md={6}>
             <TextField label="M/S" fullWidth size="small" value={form.ms} onChange={e => setForm({ ...form, ms: e.target.value })} placeholder="Customer name..." disabled={!canEdit} />
@@ -155,6 +152,7 @@ const DeliveryNote = () => {
             <TextField label="Date" type="date" fullWidth size="small" value={form.date} onChange={e => setForm({ ...form, date: e.target.value })} InputLabelProps={{ shrink: true }} disabled={!canEdit} />
           </Grid>
         </Grid>
+
         <Table size="small" sx={{ border: '1px solid #000' }}>
           <TableHead>
             <TableRow sx={{ bgcolor: '#f5f5f5' }}>
@@ -179,11 +177,13 @@ const DeliveryNote = () => {
             ))}
           </TableBody>
         </Table>
+
         {canEdit && (
           <Box sx={{ mt: 2 }}>
             <Button variant="outlined" startIcon={<AddIcon />} onClick={addItem} size="small">Add Row</Button>
           </Box>
         )}
+
         <Grid container spacing={2} sx={{ mt: 3 }}>
           <Grid item xs={12} md={6}>
             <TextField label="Delivered By" fullWidth size="small" value={form.deliveredBy} onChange={e => setForm({ ...form, deliveredBy: e.target.value })} placeholder="Name of deliverer..." disabled={!canEdit} />
@@ -192,6 +192,7 @@ const DeliveryNote = () => {
             <TextField label="Received By" fullWidth size="small" value={form.receivedBy} onChange={e => setForm({ ...form, receivedBy: e.target.value })} placeholder="Name of receiver..." disabled={!canEdit} />
           </Grid>
         </Grid>
+
         <Box sx={{ mt: 4, display: 'flex', gap: 2, flexWrap: 'wrap' }}>
           {canEdit && (
             <Button type="submit" variant="contained" startIcon={<SaveIcon />} disabled={loading}>{loading ? 'Saving...' : 'Save Delivery Note'}</Button>

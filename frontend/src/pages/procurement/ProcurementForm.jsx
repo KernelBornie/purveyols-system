@@ -49,7 +49,7 @@ const ProcurementForm = () => {
 
   // ─── Permission checks ──────────────────────────────────────────────
   const canEdit = ['procurement-officer', 'civil-engineer', 'quantity-surveyor', 'director', 'admin', 'driver', 'safety-officer', 'accountant', 'foreman'].includes(user?.role);
-  const canApprove = ['admin', 'director', 'accountant'].includes(user?.role); // 👈 NEW
+  const canApprove = ['admin', 'director', 'accountant'].includes(user?.role);
 
   const generateOrderNumber = () => {
     const date = new Date();
@@ -203,7 +203,7 @@ const ProcurementForm = () => {
   };
 
   const handleApprove = async () => {
-    if (!canApprove) return; // 👈 Only admin/director/accountant can approve
+    if (!canApprove) return;
     if (!window.confirm('Approve this procurement order?')) return;
     setLoading(true);
     try {
@@ -236,7 +236,7 @@ const ProcurementForm = () => {
   };
 
   const handleReject = async () => {
-    if (!canApprove) return; // 👈 Only admin/director/accountant can reject
+    if (!canApprove) return;
     if (!window.confirm('Reject this procurement order?')) return;
     setLoading(true);
     try {
@@ -329,12 +329,9 @@ const ProcurementForm = () => {
       {!canEdit && <Alert severity="info" sx={{ mb: 2 }}>You have view‑only access.</Alert>}
 
       <form onSubmit={handleSubmit}>
+        {/* Company Header with Logo */}
         <Box sx={{ textAlign: 'center', borderBottom: '2px solid #000', pb: 2, mb: 2 }}>
-          <Typography variant="h4" sx={{ fontWeight: 'bold', letterSpacing: 2 }}>PURVEYOLS</Typography>
-          <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>Building and Civil Construction</Typography>
-          <Typography variant="body2">Plot No. 8, Buchi Road - Northmead, P.O. Box NH 87 Lusaka, Zambia</Typography>
-          <Typography variant="body2">Tel: +260 211 235354 | Mobile: +260 977 393879 / +260 965 393879</Typography>
-          <Typography variant="body2">Email: purveyols@gmail.com</Typography>
+          <img src="/top-log.jpeg" alt="PURVEYOLS Logo" style={{ height: '80px', maxWidth: '100%' }} />
         </Box>
 
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3, borderBottom: '1px solid #000', pb: 1 }}>
