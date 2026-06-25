@@ -8,9 +8,9 @@ import RefreshIcon from '@mui/icons-material/Refresh';
 import DeleteSweepIcon from '@mui/icons-material/DeleteSweep';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import MessageIcon from '@mui/icons-material/Message';
-import api from '../api/axios';
-import BackButton from '../components/BackButton';
-import MessageDialog from '../components/MessageDialog';
+import api from '../../api/axios';          // ✅ correct path
+import BackButton from '../../components/BackButton';
+import MessageDialog from '../../components/MessageDialog';
 
 const Messages = () => {
   const [messages, setMessages] = useState([]);
