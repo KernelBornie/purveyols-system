@@ -5,7 +5,7 @@ import DeliveryNote from './pages/delivery/DeliveryNote';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import { AuthProvider, useAuth } from './context/AuthContext';
-import { ThemeProvider } from './context/ThemeContext';  // ✅ added
+import { ThemeProvider } from './context/ThemeContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import Layout from './components/Layout';
 import Profile from './pages/Profile';
@@ -22,7 +22,8 @@ import SubcontractList from './pages/subcontracts/SubcontractList';
 import SubcontractForm from './pages/subcontracts/SubcontractForm';
 import BOQList from './pages/boq/BOQList';
 import BOQForm from './pages/boq/BOQForm';
-import Messages from './pages/messages/Messages';  // ✅ now at correct path
+// ─── IMPORT MESSAGES FROM THE CORRECT PATH ──────────────
+import Messages from './pages/messages/Messages';   // ✅ this is correct
 import ForgotPassword from './pages/ForgotPassword';
 import AdvertisedProjects from './pages/advertised/AdvertisedProjects';
 import BiddedProjects from './pages/advertised/BiddedProjects';
@@ -54,7 +55,7 @@ const AuthRedirect = () => {
 function App() {
   return (
     <AuthProvider>
-      <ThemeProvider>   {/* ✅ now wraps everything */}
+      <ThemeProvider>
         <BrowserRouter>
           <Routes>
             <Route path="/login" element={<Login />} />
