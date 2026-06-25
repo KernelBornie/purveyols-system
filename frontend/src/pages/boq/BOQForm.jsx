@@ -29,6 +29,22 @@ const TEMPLATES = [
   { value: 'Custom', label: '⚙️ Custom' },
 ];
 
+// ─── Default Preliminaries section ──────────────────────────────
+const DEFAULT_PRELIMINARIES = {
+  title: 'PRELIMINARY AND GENERAL ITEMS',
+  description: 'All contract preliminaries and general clauses',
+  items: [
+    { description: 'Site establishment and demobilization', unit: 'lump', quantity: 1, rate: 0, amount: 0, notes: '' },
+    { description: 'Site hoardings and security', unit: 'lump', quantity: 1, rate: 0, amount: 0, notes: '' },
+    { description: 'Insurance and performance security', unit: 'lump', quantity: 1, rate: 0, amount: 0, notes: '' },
+    { description: 'Portable water supply', unit: 'lump', quantity: 1, rate: 0, amount: 0, notes: '' },
+    { description: 'Compliance with environmental clauses', unit: 'lump', quantity: 1, rate: 0, amount: 0, notes: '' },
+    { description: 'Contract name signs', unit: 'no', quantity: 1, rate: 0, amount: 0, notes: '' },
+    { description: 'Material testing (provisional)', unit: 'lump', quantity: 1, rate: 0, amount: 0, notes: '' },
+    { description: 'Personal Protective Equipment (PPE)', unit: 'lump', quantity: 1, rate: 0, amount: 0, notes: '' },
+  ],
+};
+
 const BOQForm = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -68,6 +84,18 @@ const BOQForm = () => {
   const [itemForm, setItemForm] = useState({ description: '', unit: '', quantity: 1, rate: 0, notes: '' });
 
   const canEdit = ['admin', 'director', 'quantity-surveyor', 'civil-engineer', 'procurement-officer', 'accountant', 'foreman'].includes(user?.role);
+
+  // ─── Helper: Add default preliminaries if missing ──────────────
+  const ensurePreliminaries = (sections) => {
+    const hasPrelim = sections.some(s => 
+      s.title?.toLowerCase().includes('preliminary') || 
+      s.title?.toLowerCase().includes('prelim')
+    );
+    if (!hasPrelim) {
+      return [DEFAULT_PRELIMINARIES, ...sections];
+    }
+    return sections;
+  };
 
   // ─── Load custom templates from localStorage ──────────────────────
   useEffect(() => {
@@ -113,9 +141,14 @@ const BOQForm = () => {
           });
           setSelectedTemplate(data.templateName || '');
         } else {
-          // Default template on new BOQ
-          setSelectedTemplate('Zanaco Bank');
-          loadTemplate('Zanaco Bank');
+          // New BOQ – start with default preliminaries
+          setSelectedTemplate('Custom'); // We'll add prelims manually
+          setForm(prev => ({
+            ...prev,
+            sections: ensurePreliminaries([]),
+            templateName: 'Custom',
+          }));
+          setMessage({ type: 'info', text: 'Default preliminaries added. Load a template or edit as needed.' });
         }
         setMessage(null);
       } catch (err) {
@@ -130,19 +163,27 @@ const BOQForm = () => {
   // ─── Load template ──────────────────────────────────────────────
   const loadTemplate = async (templateName) => {
     if (!templateName || templateName === 'Custom') {
-      setForm(prev => ({ ...prev, sections: [], templateName: '' }));
+      // When switching to Custom, keep existing sections or add prelims
+      setForm(prev => ({
+        ...prev,
+        sections: ensurePreliminaries(prev.sections),
+        templateName: '',
+      }));
+      setSelectedTemplate('Custom');
       return;
     }
     // Check if it's a custom template first
     const custom = customTemplates.find(t => t.name === templateName);
     if (custom) {
+      const sections = ensurePreliminaries(custom.sections || []);
       setForm(prev => ({
         ...prev,
-        sections: custom.sections || [],
+        sections: sections,
         templateName: templateName,
         name: custom.name || prev.name,
         description: custom.description || prev.description,
       }));
+      setSelectedTemplate(templateName);
       setMessage({ type: 'success', text: `Loaded custom template "${templateName}"` });
       return;
     }
@@ -150,13 +191,15 @@ const BOQForm = () => {
     try {
       const res = await api.get(`/api/boq/templates/${templateName}`);
       const template = res.data;
+      const sections = ensurePreliminaries(template.sections || []);
       setForm(prev => ({
         ...prev,
-        sections: template.sections || [],
+        sections: sections,
         templateName: templateName,
         name: template.name || prev.name,
         description: template.description || prev.description,
       }));
+      setSelectedTemplate(templateName);
       setMessage({ type: 'success', text: `Loaded ${templateName} template` });
     } catch (err) {
       setMessage({ type: 'error', text: 'Failed to load template' });
@@ -205,7 +248,7 @@ const BOQForm = () => {
     saveCustomTemplates(updatedTemplates);
     if (selectedTemplate === templateName) {
       setSelectedTemplate('');
-      setForm(prev => ({ ...prev, sections: [], templateName: '' }));
+      setForm(prev => ({ ...prev, sections: ensurePreliminaries([]), templateName: '' }));
     }
     setMessage({ type: 'success', text: `Template "${templateName}" deleted` });
   };
@@ -419,7 +462,7 @@ const BOQForm = () => {
           </Box>
         </Box>
 
-        {/* Rest of the form unchanged */}
+        {/* Project Details & Client Info */}
         <Grid container spacing={2} sx={{ mb: 2 }}>
           <Grid item xs={12} md={6}>
             <TextField select label="Project *" fullWidth size="small" value={form.project || ''} onChange={e => setForm({ ...form, project: e.target.value })} required disabled={!canEdit}>
@@ -435,6 +478,7 @@ const BOQForm = () => {
           </Grid>
         </Grid>
 
+        {/* Template & Client */}
         <Paper sx={{ p: 2, mb: 2, bgcolor: '#fafafa' }}>
           <Grid container spacing={2}>
             <Grid item xs={12} md={6}>
@@ -448,7 +492,7 @@ const BOQForm = () => {
                   const val = e.target.value;
                   setSelectedTemplate(val);
                   if (val === 'Custom') {
-                    setForm(prev => ({ ...prev, sections: [], templateName: '' }));
+                    setForm(prev => ({ ...prev, sections: ensurePreliminaries(prev.sections), templateName: '' }));
                   } else {
                     loadTemplate(val);
                   }
@@ -496,9 +540,176 @@ const BOQForm = () => {
           </Grid>
         </Paper>
 
-        {/* Sections and remaining content unchanged */}
-        {/* ... (rest of the file, including sections, financial summary, approval, buttons, dialogs, ConversionTool) ... */}
+        {/* ─── Sections ────────────────────────────────────────────── */}
+        <Paper sx={{ p: 2, mb: 2 }}>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+            <Typography variant="h6">Sections</Typography>
+            {canEdit && (
+              <Button startIcon={<AddIcon />} onClick={handleAddSection} variant="outlined" size="small">
+                Add Section
+              </Button>
+            )}
+          </Box>
+
+          {form.sections.map((section, idx) => (
+            <Paper key={idx} sx={{ p: 2, mb: 2, bgcolor: '#f5f5f5' }}>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                <Box>
+                  <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>{section.title}</Typography>
+                  {section.description && <Typography variant="caption" display="block" color="textSecondary">{section.description}</Typography>}
+                </Box>
+                {canEdit && (
+                  <Box>
+                    <IconButton size="small" onClick={() => handleEditSection(idx)}><EditIcon fontSize="small" /></IconButton>
+                    <IconButton size="small" color="error" onClick={() => handleDeleteSection(idx)}><DeleteIcon fontSize="small" /></IconButton>
+                    <Button size="small" startIcon={<AddIcon />} onClick={() => handleAddItem(idx)}>Add Item</Button>
+                  </Box>
+                )}
+              </Box>
+
+              <Table size="small">
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Description</TableCell>
+                    <TableCell align="right">Qty</TableCell>
+                    <TableCell>Unit</TableCell>
+                    <TableCell align="right">Rate (ZMW)</TableCell>
+                    <TableCell align="right">Amount (ZMW)</TableCell>
+                    <TableCell>Notes</TableCell>
+                    {canEdit && <TableCell>Actions</TableCell>}
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {(section.items || []).map((item, i) => (
+                    <TableRow key={i}>
+                      <TableCell>{item.description}</TableCell>
+                      <TableCell align="right">{item.quantity}</TableCell>
+                      <TableCell>{item.unit}</TableCell>
+                      <TableCell align="right">{formatCurrency(item.rate)}</TableCell>
+                      <TableCell align="right">{formatCurrency(item.amount)}</TableCell>
+                      <TableCell>{item.notes}</TableCell>
+                      {canEdit && (
+                        <TableCell>
+                          <IconButton size="small" onClick={() => handleEditItem(idx, i)}><EditIcon fontSize="small" /></IconButton>
+                          <IconButton size="small" color="error" onClick={() => handleDeleteItem(idx, i)}><DeleteIcon fontSize="small" /></IconButton>
+                        </TableCell>
+                      )}
+                    </TableRow>
+                  ))}
+                  {(section.items || []).length === 0 && (
+                    <TableRow><TableCell colSpan={7} align="center">No items in this section.</TableCell></TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </Paper>
+          ))}
+          {form.sections.length === 0 && (
+            <Typography align="center" color="textSecondary" sx={{ py: 3 }}>No sections yet. Add a section or load a template.</Typography>
+          )}
+        </Paper>
+
+        {/* ─── Financial Summary ────────────────────────────────────── */}
+        <Paper sx={{ p: 2, mb: 2 }}>
+          <Typography variant="h6" gutterBottom>Financial Summary</Typography>
+          <Grid container spacing={2}>
+            <Grid item xs={12} md={4}>
+              <TextField label="Sub Total" type="number" fullWidth size="small" value={form.subTotal} InputProps={{ readOnly: true }} disabled />
+            </Grid>
+            <Grid item xs={12} md={4}>
+              <TextField label="Percentage Adjustment (%)" type="number" fullWidth size="small" value={form.percentageAdjustment} onChange={e => setForm({ ...form, percentageAdjustment: parseFloat(e.target.value) || 0 })} disabled={!canEdit} />
+            </Grid>
+            <Grid item xs={12} md={4}>
+              <TextField label="Contingencies (%)" type="number" fullWidth size="small" value={form.contingencies} onChange={e => setForm({ ...form, contingencies: parseFloat(e.target.value) || 0 })} disabled={!canEdit} />
+            </Grid>
+            <Grid item xs={12} md={4}>
+              <TextField label="VAT (%)" type="number" fullWidth size="small" value={form.vat} onChange={e => setForm({ ...form, vat: parseFloat(e.target.value) || 0 })} disabled={!canEdit} />
+            </Grid>
+            <Grid item xs={12} md={4}>
+              <TextField label="Grand Total" type="number" fullWidth size="small" value={form.grandTotal} InputProps={{ readOnly: true }} disabled />
+            </Grid>
+            <Grid item xs={12} md={4}>
+              <TextField label="Exchange Rate" type="number" fullWidth size="small" value={form.exchangeRate} onChange={e => setForm({ ...form, exchangeRate: parseFloat(e.target.value) || 1 })} disabled={!canEdit} />
+            </Grid>
+          </Grid>
+        </Paper>
+
+        {/* ─── Approval ────────────────────────────────────────────── */}
+        <Box sx={{ mt: 4, borderTop: '1px solid #000', pt: 3 }}>
+          <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 2 }}>Approval</Typography>
+          <Grid container spacing={2}>
+            <Grid item xs={12} md={6}>
+              <Typography variant="body2">Prepared by:</Typography>
+              <Typography variant="body1" sx={{ fontWeight: 'bold' }}>{user?.name || 'N/A'}</Typography>
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <Typography variant="body2">Date:</Typography>
+              <Typography variant="body1" sx={{ fontWeight: 'bold' }}>{formatDate(new Date())}</Typography>
+            </Grid>
+          </Grid>
+          <Box sx={{ mt: 2, display: 'flex', flexDirection: 'column', gap: 1 }}>
+            {form.status === 'approved' ? (
+              <>
+                <Typography variant="body2">Approved by: _________________</Typography>
+                <Typography variant="body2">Date: _________________</Typography>
+              </>
+            ) : (
+              <>
+                <Typography variant="body2">Approved by: _________________</Typography>
+                <Typography variant="body2">Date: _________________</Typography>
+              </>
+            )}
+          </Box>
+        </Box>
+
+        {/* ─── Buttons ────────────────────────────────────────────────── */}
+        <Box sx={{ mt: 2, display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+          {canEdit && (
+            <Button type="submit" variant="contained" startIcon={<SaveIcon />} disabled={loading}>
+              {loading ? 'Saving...' : 'Save BOQ'}
+            </Button>
+          )}
+          <Button variant="outlined" startIcon={<FileDownloadIcon />} onClick={exportCSV}>Export CSV</Button>
+          <Button variant="outlined" onClick={() => navigate('/boq')}>Cancel</Button>
+        </Box>
       </form>
+
+      {/* ─── Section Dialog ─────────────────────────────────────────── */}
+      <Dialog open={sectionDialog} onClose={() => setSectionDialog(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>{editingSection !== null ? 'Edit Section' : 'Add Section'}</DialogTitle>
+        <DialogContent>
+          <TextField label="Section Title *" fullWidth margin="dense" value={sectionForm.title} onChange={e => setSectionForm({ ...sectionForm, title: e.target.value })} required />
+          <TextField label="Description" fullWidth margin="dense" value={sectionForm.description} onChange={e => setSectionForm({ ...sectionForm, description: e.target.value })} />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setSectionDialog(false)}>Cancel</Button>
+          <Button variant="contained" onClick={handleSaveSection}>Save</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* ─── Item Dialog ───────────────────────────────────────────── */}
+      <Dialog open={itemDialog} onClose={() => setItemDialog(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>{editingItem !== null ? 'Edit Item' : 'Add Item'}</DialogTitle>
+        <DialogContent>
+          <TextField label="Description *" fullWidth margin="dense" value={itemForm.description} onChange={e => setItemForm({ ...itemForm, description: e.target.value })} required />
+          <TextField label="Unit" fullWidth margin="dense" value={itemForm.unit} onChange={e => setItemForm({ ...itemForm, unit: e.target.value })} placeholder="e.g., m², no, lump" />
+          <Grid container spacing={2}>
+            <Grid item xs={6}>
+              <TextField label="Quantity" type="number" fullWidth margin="dense" value={itemForm.quantity} onChange={e => setItemForm({ ...itemForm, quantity: parseFloat(e.target.value) || 0 })} />
+            </Grid>
+            <Grid item xs={6}>
+              <TextField label="Rate (ZMW)" type="number" fullWidth margin="dense" value={itemForm.rate} onChange={e => setItemForm({ ...itemForm, rate: parseFloat(e.target.value) || 0 })} />
+            </Grid>
+          </Grid>
+          <TextField label="Notes" fullWidth margin="dense" value={itemForm.notes} onChange={e => setItemForm({ ...itemForm, notes: e.target.value })} />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setItemDialog(false)}>Cancel</Button>
+          <Button variant="contained" onClick={handleSaveItem}>Save</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* ─── Conversion Tool ────────────────────────────────────────── */}
+      <ConversionTool open={conversionOpen} onClose={() => setConversionOpen(false)} />
     </Paper>
   );
 };
