@@ -17,6 +17,7 @@ import api from '../../api/axios';
 import { useAuth } from '../../context/AuthContext';
 import BackButton from '../../components/BackButton';
 import ConversionTool from '../../components/ConversionTool';
+import logo from '../../assets/top-log.PNG'; // <-- IMPORT LOGO
 
 // ─── Template options ──────────────────────────────────────────────
 const TEMPLATES = [
@@ -142,7 +143,7 @@ const BOQForm = () => {
           setSelectedTemplate(data.templateName || '');
         } else {
           // New BOQ – start with default preliminaries
-          setSelectedTemplate('Custom'); // We'll add prelims manually
+          setSelectedTemplate('Custom');
           setForm(prev => ({
             ...prev,
             sections: ensurePreliminaries([]),
@@ -163,7 +164,6 @@ const BOQForm = () => {
   // ─── Load template ──────────────────────────────────────────────
   const loadTemplate = async (templateName) => {
     if (!templateName || templateName === 'Custom') {
-      // When switching to Custom, keep existing sections or add prelims
       setForm(prev => ({
         ...prev,
         sections: ensurePreliminaries(prev.sections),
@@ -172,7 +172,6 @@ const BOQForm = () => {
       setSelectedTemplate('Custom');
       return;
     }
-    // Check if it's a custom template first
     const custom = customTemplates.find(t => t.name === templateName);
     if (custom) {
       const sections = ensurePreliminaries(custom.sections || []);
@@ -187,7 +186,6 @@ const BOQForm = () => {
       setMessage({ type: 'success', text: `Loaded custom template "${templateName}"` });
       return;
     }
-    // Otherwise fetch from backend
     try {
       const res = await api.get(`/api/boq/templates/${templateName}`);
       const template = res.data;
@@ -212,7 +210,6 @@ const BOQForm = () => {
     setCustomTemplates(templates);
   };
 
-  // ─── Save current BOQ as a custom template ────────────────────────
   const saveAsTemplate = () => {
     const templateName = prompt('Enter a name for this custom template:');
     if (!templateName) return;
@@ -229,7 +226,7 @@ const BOQForm = () => {
           description: item.description,
           unit: item.unit,
           quantity: item.quantity,
-          rate: 0, // Reset rates when saving as template
+          rate: 0,
           amount: 0,
           notes: item.notes || '',
         })),
@@ -241,7 +238,6 @@ const BOQForm = () => {
     setMessage({ type: 'success', text: `Template "${templateName}" saved!` });
   };
 
-  // ─── Delete a custom template ──────────────────────────────────────
   const deleteCustomTemplate = (templateName) => {
     if (!window.confirm(`Delete custom template "${templateName}"?`)) return;
     const updatedTemplates = customTemplates.filter(t => t.name !== templateName);
@@ -427,10 +423,10 @@ const BOQForm = () => {
       {!canEdit && <Alert severity="info" sx={{ mb: 2 }}>You have view‑only access.</Alert>}
 
       <form onSubmit={handleSubmit}>
-        {/* Company Header with Logo + Fallback */}
+        {/* ─── Company Header with Logo ───────────────────────────── */}
         <Box sx={{ textAlign: 'center', borderBottom: '2px solid #000', pb: 2, mb: 2 }}>
           <img
-            src="/top-log.jpeg"
+            src={logo}
             alt="PURVEYOLS Logo"
             style={{ height: '80px', maxWidth: '100%' }}
             onError={(e) => {

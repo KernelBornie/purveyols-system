@@ -16,6 +16,7 @@ import api from '../../api/axios';
 import { useAuth } from '../../context/AuthContext';
 import BackButton from '../../components/BackButton';
 import SignaturePad from '../../components/SignaturePad';
+import logo from '../../assets/top-log.PNG';
 
 const ProcurementForm = () => {
   const { id } = useParams();
@@ -329,10 +330,10 @@ const ProcurementForm = () => {
       {!canEdit && <Alert severity="info" sx={{ mb: 2 }}>You have view‑only access.</Alert>}
 
       <form onSubmit={handleSubmit}>
-        {/* ─── Company Header with Logo + Fallback ─────────────────── */}
+        {/* ─── Company Header with Logo ───────────────────────────── */}
         <Box sx={{ textAlign: 'center', borderBottom: '2px solid #000', pb: 2, mb: 2 }}>
           <img
-            src="/top-log.jpeg"
+            src={logo}
             alt="PURVEYOLS Logo"
             style={{ height: '80px', maxWidth: '100%' }}
             onError={(e) => {

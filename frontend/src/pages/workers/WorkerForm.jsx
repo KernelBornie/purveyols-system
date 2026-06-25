@@ -10,6 +10,7 @@ import CheckInIcon from '@mui/icons-material/AssignmentTurnedIn';
 import api from '../../api/axios';
 import { useAuth } from '../../context/AuthContext';
 import BackButton from '../../components/BackButton';
+import logo from '../../assets/top-log.PNG';
 
 const WorkerForm = () => {
   const { id } = useParams();
@@ -138,7 +139,6 @@ const WorkerForm = () => {
       });
       setCheckInOpen(false);
       setMessage({ type: 'success', text: `Checked in for ${checkInForm.days} day(s)` });
-      // Refresh balance
       const updated = await api.get(`/api/workers/${id}`);
       setBalance(updated.data.balance || 0);
       setTimeout(() => setMessage(null), 3000);
@@ -158,9 +158,28 @@ const WorkerForm = () => {
       )}
 
       <form onSubmit={handleSubmit}>
-        {/* Company Header with Logo */}
+        {/* ─── Company Header with Logo ───────────────────────────── */}
         <Box sx={{ textAlign: 'center', borderBottom: '2px solid #000', pb: 2, mb: 2 }}>
-          <img src="/top-log.jpeg" alt="PURVEYOLS Logo" style={{ height: '80px', maxWidth: '100%' }} />
+          <img
+            src={logo}
+            alt="PURVEYOLS Logo"
+            style={{ height: '80px', maxWidth: '100%' }}
+            onError={(e) => {
+              e.target.style.display = 'none';
+              const parent = e.target.parentElement;
+              for (let i = 0; i < parent.children.length; i++) {
+                const el = parent.children[i];
+                if (el.tagName === 'H4' || el.tagName === 'H5' || el.tagName === 'P') {
+                  el.style.display = 'block';
+                }
+              }
+            }}
+          />
+          <Typography variant="h4" sx={{ fontWeight: 'bold', letterSpacing: 2, display: 'none' }}>PURVEYOLS</Typography>
+          <Typography variant="subtitle1" sx={{ fontWeight: 'bold', display: 'none' }}>Building and Civil Construction</Typography>
+          <Typography variant="body2">Plot No. 8, Buchi Road - Northmead, P.O. Box NH 87 Lusaka, Zambia</Typography>
+          <Typography variant="body2">Tel: +260 211 235354 | Mobile: +260 977 393879 / +260 965 393879</Typography>
+          <Typography variant="body2">Email: purveyols@gmail.com</Typography>
         </Box>
 
         <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3 }}>
