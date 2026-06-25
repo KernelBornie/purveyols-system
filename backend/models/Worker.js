@@ -6,7 +6,6 @@ const WorkerSchema = new mongoose.Schema({
   phone: String,
   dailyRate: Number,
   site: String,
-  // ─── NEW: Project reference ───
   project: { type: mongoose.Schema.Types.ObjectId, ref: 'Project' },
   enrolledBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   enrolledAt: { type: Date, default: Date.now },
@@ -15,6 +14,9 @@ const WorkerSchema = new mongoose.Schema({
     enum: ['active', 'inactive', 'suspended'],
     default: 'active',
   },
+  // ─── NEW: verification ──────────────────────────────────────────
+  verifiedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  verifiedAt: { type: Date },
 });
 
 module.exports = mongoose.model('Worker', WorkerSchema);
