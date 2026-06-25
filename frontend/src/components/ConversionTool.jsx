@@ -458,12 +458,342 @@ const ConversionTool = ({ open, onClose }) => {
     </Box>
   );
 
-  // ─── Render functions for existing tabs ──────────────────────────
-  // (concrete, steel, roofing, bricks, excavation, paint, timber, asphalt, aggregate, soil, slope, pipe)
-  // I'll include them here as they are in the previous version but for brevity we can keep the same logic.
-  // In the actual file, they will be present. I'll include one example and note that the rest are the same.
+  // ─── Concrete Tab ──────────────────────────────────────────────────
+  const renderConcreteTab = () => {
+    const mix = conversionFactors.concrete.mixRatios[concreteMix] || { cement: 1, sand: 2, aggregate: 4 };
+    const totalParts = mix.cement + mix.sand + mix.aggregate;
+    const cement = (mix.cement / totalParts) * concreteVolume * conversionFactors.concrete.materialsPerM3.cement;
+    const sand = (mix.sand / totalParts) * concreteVolume * conversionFactors.concrete.materialsPerM3.sand;
+    const aggregate = (mix.aggregate / totalParts) * concreteVolume * conversionFactors.concrete.materialsPerM3.aggregate;
+    const water = concreteVolume * conversionFactors.concrete.materialsPerM3.water;
+    return (
+      <Box>
+        <Typography variant="subtitle1" gutterBottom>Concrete Mix Calculator</Typography>
+        <Grid container spacing={2}>
+          <Grid item xs={12} sm={6}>
+            <TextField select label="Mix Grade" fullWidth value={concreteMix} onChange={e => setConcreteMix(e.target.value)} SelectProps={{ native: true }}>
+              {Object.keys(conversionFactors.concrete.mixRatios).map(g => <option key={g} value={g}>{g}</option>)}
+            </TextField>
+          </Grid>
+          <Grid item xs={12} sm={6}>
+            <TextField label="Volume (m³)" type="number" fullWidth value={concreteVolume} onChange={e => setConcreteVolume(parseFloat(e.target.value) || 0)} />
+          </Grid>
+          <Grid item xs={12}>
+            <Paper sx={{ p: 2, bgcolor: '#f5f5f5' }}>
+              <Typography variant="body2">Cement: {cement.toFixed(2)} kg</Typography>
+              <Typography variant="body2">Sand: {sand.toFixed(2)} kg</Typography>
+              <Typography variant="body2">Aggregate: {aggregate.toFixed(2)} kg</Typography>
+              <Typography variant="body2">Water: {water.toFixed(2)} L</Typography>
+            </Paper>
+          </Grid>
+        </Grid>
+      </Box>
+    );
+  };
 
-  // ─── Render Ceiling Tab ──────────────────────────────────────────
+  // ─── Steel Tab ─────────────────────────────────────────────────────
+  const renderSteelTab = () => {
+    const weightPerM = conversionFactors.steel.barWeights[steelDiameter] || 0;
+    const totalWeight = weightPerM * steelLength;
+    const areaPerM2 = conversionFactors.steel.rebarSpacing[rebarSpacing] || 0;
+    return (
+      <Box>
+        <Typography variant="subtitle1" gutterBottom>Steel Reinforcement Calculator</Typography>
+        <Grid container spacing={2}>
+          <Grid item xs={12} sm={6}>
+            <TextField select label="Diameter (mm)" fullWidth value={steelDiameter} onChange={e => setSteelDiameter(parseInt(e.target.value) || 12)} SelectProps={{ native: true }}>
+              {Object.keys(conversionFactors.steel.barWeights).map(d => <option key={d} value={d}>{d} mm</option>)}
+            </TextField>
+          </Grid>
+          <Grid item xs={12} sm={6}>
+            <TextField label="Length (m)" type="number" fullWidth value={steelLength} onChange={e => setSteelLength(parseFloat(e.target.value) || 0)} />
+          </Grid>
+          <Grid item xs={12} sm={6}>
+            <TextField select label="Spacing (mm)" fullWidth value={rebarSpacing} onChange={e => setRebarSpacing(parseInt(e.target.value) || 200)} SelectProps={{ native: true }}>
+              {Object.keys(conversionFactors.steel.rebarSpacing).map(s => <option key={s} value={s}>{s} mm</option>)}
+            </TextField>
+          </Grid>
+          <Grid item xs={12}>
+            <Paper sx={{ p: 2, bgcolor: '#f5f5f5' }}>
+              <Typography variant="body2">Weight per meter: {weightPerM.toFixed(3)} kg/m</Typography>
+              <Typography variant="body2">Total weight: {totalWeight.toFixed(2)} kg</Typography>
+              <Typography variant="body2">Steel area per m²: {areaPerM2} mm²/m²</Typography>
+            </Paper>
+          </Grid>
+        </Grid>
+      </Box>
+    );
+  };
+
+  // ─── Roofing Tab ──────────────────────────────────────────────────
+  const renderRoofingTab = () => {
+    const slopeFactor = conversionFactors.roofing.pitchToSlope[roofPitch] || 0.5774;
+    const trueArea = roofArea * Math.sqrt(1 + slopeFactor * slopeFactor);
+    const coverage = conversionFactors.roofing.materialCoverage[roofMaterial] || 8.5;
+    const sheets = Math.ceil(trueArea / coverage);
+    return (
+      <Box>
+        <Typography variant="subtitle1" gutterBottom>Roofing Calculator</Typography>
+        <Grid container spacing={2}>
+          <Grid item xs={12} sm={6}>
+            <TextField select label="Pitch (°)" fullWidth value={roofPitch} onChange={e => setRoofPitch(e.target.value)} SelectProps={{ native: true }}>
+              {Object.keys(conversionFactors.roofing.pitchToSlope).map(p => <option key={p} value={p}>{p}°</option>)}
+            </TextField>
+          </Grid>
+          <Grid item xs={12} sm={6}>
+            <TextField label="Floor Area (m²)" type="number" fullWidth value={roofArea} onChange={e => setRoofArea(parseFloat(e.target.value) || 0)} />
+          </Grid>
+          <Grid item xs={12} sm={6}>
+            <TextField select label="Material" fullWidth value={roofMaterial} onChange={e => setRoofMaterial(e.target.value)} SelectProps={{ native: true }}>
+              {Object.keys(conversionFactors.roofing.materialCoverage).map(m => <option key={m} value={m}>{m}</option>)}
+            </TextField>
+          </Grid>
+          <Grid item xs={12}>
+            <Paper sx={{ p: 2, bgcolor: '#f5f5f5' }}>
+              <Typography variant="body2">True roof area: {trueArea.toFixed(2)} m²</Typography>
+              <Typography variant="body2">Sheets needed: {sheets}</Typography>
+            </Paper>
+          </Grid>
+        </Grid>
+      </Box>
+    );
+  };
+
+  // ─── Bricks Tab ────────────────────────────────────────────────────
+  const renderBricksTab = () => {
+    const bricksPerM2 = conversionFactors.bricks.bricksPerM2[wallThickness] || 60;
+    const totalBricks = Math.ceil(wallArea * bricksPerM2);
+    const mortarCement = (totalBricks / 1000) * conversionFactors.bricks.mortarPer1000.cement;
+    const mortarSand = (totalBricks / 1000) * conversionFactors.bricks.mortarPer1000.sand;
+    return (
+      <Box>
+        <Typography variant="subtitle1" gutterBottom>Brickwork Calculator</Typography>
+        <Grid container spacing={2}>
+          <Grid item xs={12} sm={6}>
+            <TextField select label="Wall Thickness" fullWidth value={wallThickness} onChange={e => setWallThickness(e.target.value)} SelectProps={{ native: true }}>
+              {Object.keys(conversionFactors.bricks.bricksPerM2).map(t => <option key={t} value={t}>{t}</option>)}
+            </TextField>
+          </Grid>
+          <Grid item xs={12} sm={6}>
+            <TextField label="Wall Area (m²)" type="number" fullWidth value={wallArea} onChange={e => setWallArea(parseFloat(e.target.value) || 0)} />
+          </Grid>
+          <Grid item xs={12}>
+            <Paper sx={{ p: 2, bgcolor: '#f5f5f5' }}>
+              <Typography variant="body2">Bricks needed: {totalBricks}</Typography>
+              <Typography variant="body2">Cement for mortar: {mortarCement.toFixed(2)} m³</Typography>
+              <Typography variant="body2">Sand for mortar: {mortarSand.toFixed(2)} m³</Typography>
+            </Paper>
+          </Grid>
+        </Grid>
+      </Box>
+    );
+  };
+
+  // ─── Excavation Tab ────────────────────────────────────────────────
+  const renderExcavationTab = () => {
+    const swell = conversionFactors.excavation.swellFactors[soilType] || 1.2;
+    const shrink = conversionFactors.excavation.shrinkageFactors['Fill'] || 0.85;
+    const swellVolume = excavationVolume * swell;
+    const compactedVolume = excavationVolume * shrink;
+    return (
+      <Box>
+        <Typography variant="subtitle1" gutterBottom>Excavation Calculator</Typography>
+        <Grid container spacing={2}>
+          <Grid item xs={12} sm={6}>
+            <TextField select label="Soil Type" fullWidth value={soilType} onChange={e => setSoilType(e.target.value)} SelectProps={{ native: true }}>
+              {Object.keys(conversionFactors.excavation.swellFactors).map(s => <option key={s} value={s}>{s}</option>)}
+            </TextField>
+          </Grid>
+          <Grid item xs={12} sm={6}>
+            <TextField label="Volume (m³)" type="number" fullWidth value={excavationVolume} onChange={e => setExcavationVolume(parseFloat(e.target.value) || 0)} />
+          </Grid>
+          <Grid item xs={12}>
+            <Paper sx={{ p: 2, bgcolor: '#f5f5f5' }}>
+              <Typography variant="body2">Swell volume: {swellVolume.toFixed(2)} m³</Typography>
+              <Typography variant="body2">Compacted fill volume: {compactedVolume.toFixed(2)} m³</Typography>
+            </Paper>
+          </Grid>
+        </Grid>
+      </Box>
+    );
+  };
+
+  // ─── Paint Tab ─────────────────────────────────────────────────────
+  const renderPaintTab = () => {
+    const coverage = conversionFactors.paint.coveragePerLitre[surfaceType] || 10;
+    const totalPaint = (paintArea / coverage) * 2; // assuming 2 coats
+    return (
+      <Box>
+        <Typography variant="subtitle1" gutterBottom>Paint Calculator</Typography>
+        <Grid container spacing={2}>
+          <Grid item xs={12} sm={6}>
+            <TextField select label="Surface Type" fullWidth value={surfaceType} onChange={e => setSurfaceType(e.target.value)} SelectProps={{ native: true }}>
+              {Object.keys(conversionFactors.paint.coveragePerLitre).map(s => <option key={s} value={s}>{s}</option>)}
+            </TextField>
+          </Grid>
+          <Grid item xs={12} sm={6}>
+            <TextField label="Area (m²)" type="number" fullWidth value={paintArea} onChange={e => setPaintArea(parseFloat(e.target.value) || 0)} />
+          </Grid>
+          <Grid item xs={12}>
+            <Paper sx={{ p: 2, bgcolor: '#f5f5f5' }}>
+              <Typography variant="body2">Paint needed (2 coats): {totalPaint.toFixed(2)} L</Typography>
+            </Paper>
+          </Grid>
+        </Grid>
+      </Box>
+    );
+  };
+
+  // ─── Timber Tab ────────────────────────────────────────────────────
+  const renderTimberTab = () => {
+    const volume = timberLength * timberWidth * timberThickness;
+    const weight = volume * conversionFactors.timber.density;
+    const boardfeet = volume * conversionFactors.timber.m3_to_boardfeet;
+    return (
+      <Box>
+        <Typography variant="subtitle1" gutterBottom>Timber Calculator</Typography>
+        <Grid container spacing={2}>
+          <Grid item xs={12} sm={4}>
+            <TextField label="Length (m)" type="number" fullWidth value={timberLength} onChange={e => setTimberLength(parseFloat(e.target.value) || 0)} />
+          </Grid>
+          <Grid item xs={12} sm={4}>
+            <TextField label="Width (m)" type="number" fullWidth value={timberWidth} onChange={e => setTimberWidth(parseFloat(e.target.value) || 0)} />
+          </Grid>
+          <Grid item xs={12} sm={4}>
+            <TextField label="Thickness (m)" type="number" fullWidth value={timberThickness} onChange={e => setTimberThickness(parseFloat(e.target.value) || 0)} />
+          </Grid>
+          <Grid item xs={12}>
+            <Paper sx={{ p: 2, bgcolor: '#f5f5f5' }}>
+              <Typography variant="body2">Volume: {volume.toFixed(4)} m³</Typography>
+              <Typography variant="body2">Weight: {weight.toFixed(2)} kg</Typography>
+              <Typography variant="body2">Board feet: {boardfeet.toFixed(2)} BF</Typography>
+            </Paper>
+          </Grid>
+        </Grid>
+      </Box>
+    );
+  };
+
+  // ─── Asphalt Tab ──────────────────────────────────────────────────
+  const renderAsphaltTab = () => {
+    const weight = asphaltVolume * conversionFactors.asphalt.density;
+    const tonnes = asphaltVolume * conversionFactors.asphalt.m3_to_tonnes;
+    return (
+      <Box>
+        <Typography variant="subtitle1" gutterBottom>Asphalt Calculator</Typography>
+        <Grid container spacing={2}>
+          <Grid item xs={12} sm={6}>
+            <TextField label="Volume (m³)" type="number" fullWidth value={asphaltVolume} onChange={e => setAsphaltVolume(parseFloat(e.target.value) || 0)} />
+          </Grid>
+          <Grid item xs={12} sm={6}>
+            <TextField label="Thickness (m)" type="number" fullWidth value={asphaltThickness} onChange={e => setAsphaltThickness(parseFloat(e.target.value) || 0)} />
+          </Grid>
+          <Grid item xs={12}>
+            <Paper sx={{ p: 2, bgcolor: '#f5f5f5' }}>
+              <Typography variant="body2">Weight: {weight.toFixed(2)} kg</Typography>
+              <Typography variant="body2">Tonnes: {tonnes.toFixed(2)} t</Typography>
+            </Paper>
+          </Grid>
+        </Grid>
+      </Box>
+    );
+  };
+
+  // ─── Aggregate Tab ──────────────────────────────────────────────────
+  const renderAggregateTab = () => {
+    const weight = aggregateVolume * conversionFactors.aggregate.density;
+    const tonnes = aggregateVolume * conversionFactors.aggregate.m3_to_tonnes;
+    return (
+      <Box>
+        <Typography variant="subtitle1" gutterBottom>Aggregate Calculator</Typography>
+        <Grid container spacing={2}>
+          <Grid item xs={12} sm={6}>
+            <TextField label="Volume (m³)" type="number" fullWidth value={aggregateVolume} onChange={e => setAggregateVolume(parseFloat(e.target.value) || 0)} />
+          </Grid>
+          <Grid item xs={12}>
+            <Paper sx={{ p: 2, bgcolor: '#f5f5f5' }}>
+              <Typography variant="body2">Weight: {weight.toFixed(2)} kg</Typography>
+              <Typography variant="body2">Tonnes: {tonnes.toFixed(2)} t</Typography>
+            </Paper>
+          </Grid>
+        </Grid>
+      </Box>
+    );
+  };
+
+  // ─── Soil Tab ──────────────────────────────────────────────────────
+  const renderSoilTab = () => {
+    const lbft3 = soilDensity * conversionFactors.soil.density_kgm3_to_lbft3;
+    return (
+      <Box>
+        <Typography variant="subtitle1" gutterBottom>Soil Density Converter</Typography>
+        <Grid container spacing={2}>
+          <Grid item xs={12} sm={6}>
+            <TextField label="Density (kg/m³)" type="number" fullWidth value={soilDensity} onChange={e => setSoilDensity(parseFloat(e.target.value) || 0)} />
+          </Grid>
+          <Grid item xs={12}>
+            <Paper sx={{ p: 2, bgcolor: '#f5f5f5' }}>
+              <Typography variant="body2">Density in lb/ft³: {lbft3.toFixed(2)} lb/ft³</Typography>
+            </Paper>
+          </Grid>
+        </Grid>
+      </Box>
+    );
+  };
+
+  // ─── Slope Tab ──────────────────────────────────────────────────────
+  const renderSlopeTab = () => {
+    const percent = conversionFactors.slope.degrees_to_percent(slopeDegrees);
+    const ratio = conversionFactors.slope.degrees_to_ratio(slopeDegrees);
+    return (
+      <Box>
+        <Typography variant="subtitle1" gutterBottom>Slope Converter</Typography>
+        <Grid container spacing={2}>
+          <Grid item xs={12} sm={6}>
+            <TextField label="Angle (°)" type="number" fullWidth value={slopeDegrees} onChange={e => setSlopeDegrees(parseFloat(e.target.value) || 0)} />
+          </Grid>
+          <Grid item xs={12}>
+            <Paper sx={{ p: 2, bgcolor: '#f5f5f5' }}>
+              <Typography variant="body2">Slope (%): {percent.toFixed(2)}%</Typography>
+              <Typography variant="body2">Ratio (1 in X): {ratio.toFixed(2)}</Typography>
+            </Paper>
+          </Grid>
+        </Grid>
+      </Box>
+    );
+  };
+
+  // ─── Pipe Tab ──────────────────────────────────────────────────────
+  const renderPipeTab = () => {
+    const wallThickness = conversionFactors.pipe.schedule40Wall[pipeDiameter] || 3.91;
+    const id = pipeDiameter - 2 * wallThickness;
+    const crossSection = Math.PI * (pipeDiameter / 2) ** 2 / 1000000; // m²
+    const volume = crossSection * pipeLength;
+    return (
+      <Box>
+        <Typography variant="subtitle1" gutterBottom>Pipe Calculator</Typography>
+        <Grid container spacing={2}>
+          <Grid item xs={12} sm={6}>
+            <TextField select label="Nominal Diameter (mm)" fullWidth value={pipeDiameter} onChange={e => setPipeDiameter(parseInt(e.target.value) || 50)} SelectProps={{ native: true }}>
+              {Object.keys(conversionFactors.pipe.schedule40Wall).map(d => <option key={d} value={d}>{d} mm</option>)}
+            </TextField>
+          </Grid>
+          <Grid item xs={12} sm={6}>
+            <TextField label="Length (m)" type="number" fullWidth value={pipeLength} onChange={e => setPipeLength(parseFloat(e.target.value) || 0)} />
+          </Grid>
+          <Grid item xs={12}>
+            <Paper sx={{ p: 2, bgcolor: '#f5f5f5' }}>
+              <Typography variant="body2">Wall thickness: {wallThickness.toFixed(2)} mm</Typography>
+              <Typography variant="body2">Internal diameter: {id.toFixed(2)} mm</Typography>
+              <Typography variant="body2">Internal volume: {volume.toFixed(4)} m³</Typography>
+            </Paper>
+          </Grid>
+        </Grid>
+      </Box>
+    );
+  };
+
+  // ─── Ceiling Tab ──────────────────────────────────────────────────
   const renderCeilingTab = () => {
     const tilesPerM2 = conversionFactors.ceiling.tilesPerM2[ceilingTileSize] || 2.78;
     const totalTiles = Math.ceil(ceilingArea * tilesPerM2);
@@ -500,7 +830,7 @@ const ConversionTool = ({ open, onClose }) => {
     );
   };
 
-  // ─── Render Aluminium Tab ─────────────────────────────────────────
+  // ─── Aluminium Tab ─────────────────────────────────────────────────
   const renderAluminiumTab = () => {
     const profileWeight = conversionFactors.aluminium.profiles[aluminiumProfile] || 1.5;
     const totalWeight = profileWeight * aluminiumLength;
@@ -529,7 +859,7 @@ const ConversionTool = ({ open, onClose }) => {
     );
   };
 
-  // ─── Render Drywall Tab ───────────────────────────────────────────
+  // ─── Drywall Tab ──────────────────────────────────────────────────
   const renderDrywallTab = () => {
     const boardWeight = conversionFactors.drywall.boardWeights[drywallBoardThickness] || 9.8;
     const totalWeight = boardWeight * drywallArea;
@@ -562,7 +892,7 @@ const ConversionTool = ({ open, onClose }) => {
     );
   };
 
-  // ─── Render Tiling Tab ────────────────────────────────────────────
+  // ─── Tiling Tab ────────────────────────────────────────────────────
   const renderTilingTab = () => {
     const piecesPerM2 = conversionFactors.tiling.tileSizes[tileSize] || 2.78;
     const basePieces = Math.ceil(tileArea * piecesPerM2);
@@ -598,7 +928,7 @@ const ConversionTool = ({ open, onClose }) => {
     );
   };
 
-  // ─── Render CCTV Tab ──────────────────────────────────────────────
+  // ─── CCTV Tab ──────────────────────────────────────────────────────
   const renderCctvTab = () => {
     const powerPerCamera = conversionFactors.cctv.cameraPower[cctvCameraType] || 6;
     const totalPower = powerPerCamera * cctvCameras;
@@ -644,9 +974,6 @@ const ConversionTool = ({ open, onClose }) => {
     );
   };
 
-  // ─── Existing tabs (shortened for brevity – these are the same as before) ──
-  // I'll include them in the actual file – here I'll just note that they are present.
-
   // ─── Tab panel router ──────────────────────────────────────────────
   const renderTabPanel = () => {
     switch (tab) {
@@ -674,11 +1001,6 @@ const ConversionTool = ({ open, onClose }) => {
       default: return null;
     }
   };
-
-  // ─── Placeholder render functions for existing tabs (must exist for the switch above) ──
-  // Since the user already has these functions in their file, I'll only include the new ones.
-  // In the full file, these functions are defined with the same logic as before.
-  // For completeness, I'll provide the full code in the final answer.
 
   // ─── Render ──────────────────────────────────────────────────────────
   return (
@@ -719,8 +1041,5 @@ const ConversionTool = ({ open, onClose }) => {
     </Dialog>
   );
 };
-
-// ─── Note: In the actual file, the renderConcreteTab, renderSteelTab, etc. must be defined ──
-// I'll include them in the full code file I provide. For the answer, I'll send the complete file.
 
 export default ConversionTool;
