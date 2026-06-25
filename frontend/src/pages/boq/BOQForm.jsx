@@ -18,7 +18,6 @@ import { useAuth } from '../../context/AuthContext';
 import BackButton from '../../components/BackButton';
 import ConversionTool from '../../components/ConversionTool';
 
-// ─── Template options ──────────────────────────────────────────────
 const TEMPLATES = [
   { value: 'Zanaco Bank', label: '🏦 Zanaco Bank' },
   { value: 'Residential House', label: '🏠 Residential House' },
@@ -29,7 +28,6 @@ const TEMPLATES = [
   { value: 'Custom', label: '⚙️ Custom' },
 ];
 
-// ─── Default Preliminaries section ──────────────────────────────
 const DEFAULT_PRELIMINARIES = {
   title: 'PRELIMINARY AND GENERAL ITEMS',
   description: 'All contract preliminaries and general clauses',
@@ -85,7 +83,6 @@ const BOQForm = () => {
 
   const canEdit = ['admin', 'director', 'quantity-surveyor', 'civil-engineer', 'procurement-officer', 'accountant', 'foreman'].includes(user?.role);
 
-  // ─── Helper: Add default preliminaries if missing ──────────────
   const ensurePreliminaries = (sections) => {
     const hasPrelim = sections.some(s => 
       s.title?.toLowerCase().includes('preliminary') || 
@@ -97,7 +94,6 @@ const BOQForm = () => {
     return sections;
   };
 
-  // ─── Load custom templates from localStorage ──────────────────────
   useEffect(() => {
     const saved = localStorage.getItem('customBOQTemplates');
     if (saved) {
@@ -109,7 +105,6 @@ const BOQForm = () => {
     }
   }, []);
 
-  // ─── Fetch data ──────────────────────────────────────────────────
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
@@ -159,7 +154,6 @@ const BOQForm = () => {
     fetchData();
   }, [id]);
 
-  // ─── Load template ──────────────────────────────────────────────
   const loadTemplate = async (templateName) => {
     if (!templateName || templateName === 'Custom') {
       setForm(prev => ({
@@ -202,7 +196,6 @@ const BOQForm = () => {
     }
   };
 
-  // ─── Save custom templates to localStorage ────────────────────────
   const saveCustomTemplates = (templates) => {
     localStorage.setItem('customBOQTemplates', JSON.stringify(templates));
     setCustomTemplates(templates);
@@ -247,7 +240,6 @@ const BOQForm = () => {
     setMessage({ type: 'success', text: `Template "${templateName}" deleted` });
   };
 
-  // ─── Section handlers ────────────────────────────────────────────
   const handleAddSection = () => {
     setEditingSection(null);
     setSectionForm({ title: '', description: '' });
@@ -282,7 +274,6 @@ const BOQForm = () => {
     setForm({ ...form, sections });
   };
 
-  // ─── Item handlers ──────────────────────────────────────────────
   const handleAddItem = (sectionIndex) => {
     setCurrentSectionIndex(sectionIndex);
     setEditingItem(null);
@@ -326,7 +317,6 @@ const BOQForm = () => {
     recalculateTotals();
   };
 
-  // ─── Totals calculation ──────────────────────────────────────────
   const recalculateTotals = () => {
     let subTotal = 0;
     form.sections.forEach(section => {
@@ -347,7 +337,6 @@ const BOQForm = () => {
     recalculateTotals();
   }, [form.sections, form.percentageAdjustment, form.contingencies, form.vat]);
 
-  // ─── Submit ──────────────────────────────────────────────────────
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -380,7 +369,6 @@ const BOQForm = () => {
     }
   };
 
-  // ─── Export CSV ──────────────────────────────────────────────────
   const exportCSV = () => {
     let csv = 'Section,Description,Unit,Quantity,Rate,Amount\n';
     form.sections.forEach(section => {
@@ -421,31 +409,18 @@ const BOQForm = () => {
       {!canEdit && <Alert severity="info" sx={{ mb: 2 }}>You have view‑only access.</Alert>}
 
       <form onSubmit={handleSubmit}>
-        {/* ─── Company Header with Logo (public path) ────────────── */}
+        {/* ─── Company Header – same as footer ───────────────────── */}
         <Box sx={{ textAlign: 'center', borderBottom: '2px solid #000', pb: 2, mb: 2 }}>
           <img
-            src="/top-log.PNG"
+            src="/top-log.PNG?v=2"
             alt="PURVEYOLS Logo"
             style={{ height: '80px', maxWidth: '100%' }}
-            onError={(e) => {
-              e.target.style.display = 'none';
-              const parent = e.target.parentElement;
-              for (let i = 0; i < parent.children.length; i++) {
-                const el = parent.children[i];
-                if (el.tagName === 'H4' || el.tagName === 'H5' || el.tagName === 'P') {
-                  el.style.display = 'block';
-                }
-              }
-            }}
           />
-          <Typography variant="h4" sx={{ fontWeight: 'bold', letterSpacing: 2, display: 'none' }}>PURVEYOLS</Typography>
-          <Typography variant="subtitle1" sx={{ fontWeight: 'bold', display: 'none' }}>Building and Civil Construction</Typography>
           <Typography variant="body2">Plot No. 8, Buchi Road - Northmead, P.O. Box NH 87 Lusaka, Zambia</Typography>
           <Typography variant="body2">Tel: +260 211 235354 | Mobile: +260 977 393879 / +260 965 393879</Typography>
           <Typography variant="body2">Email: purveyols@gmail.com</Typography>
         </Box>
 
-        {/* Document Title & Actions */}
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3, borderBottom: '1px solid #000', pb: 1 }}>
           <Typography variant="h5" sx={{ fontWeight: 'bold', letterSpacing: 1 }}>BILL OF QUANTITIES</Typography>
           <Box>
@@ -665,7 +640,6 @@ const BOQForm = () => {
         </Box>
       </form>
 
-      {/* ─── Section Dialog ─────────────────────────────────────────── */}
       <Dialog open={sectionDialog} onClose={() => setSectionDialog(false)} maxWidth="sm" fullWidth>
         <DialogTitle>{editingSection !== null ? 'Edit Section' : 'Add Section'}</DialogTitle>
         <DialogContent>
@@ -678,7 +652,6 @@ const BOQForm = () => {
         </DialogActions>
       </Dialog>
 
-      {/* ─── Item Dialog ───────────────────────────────────────────── */}
       <Dialog open={itemDialog} onClose={() => setItemDialog(false)} maxWidth="sm" fullWidth>
         <DialogTitle>{editingItem !== null ? 'Edit Item' : 'Add Item'}</DialogTitle>
         <DialogContent>
@@ -700,7 +673,6 @@ const BOQForm = () => {
         </DialogActions>
       </Dialog>
 
-      {/* ─── Conversion Tool ────────────────────────────────────────── */}
       <ConversionTool open={conversionOpen} onClose={() => setConversionOpen(false)} />
     </Paper>
   );
