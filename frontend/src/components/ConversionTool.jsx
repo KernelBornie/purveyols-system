@@ -1,12 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Dialog, DialogTitle, DialogContent, DialogActions,
   Button, Tabs, Tab, Box, Grid, TextField, Typography, Paper, Chip, Divider
 } from '@mui/material';
 import CalculateIcon from '@mui/icons-material/Calculate';
 
+// ─── conversionFactors (unchanged) ──────────────────────────────────
 const conversionFactors = {
-  // ─── AREA ──────────────────────────────────────────────────────────
   area: {
     m2_to_ft2: 10.7639,
     ft2_to_m2: 0.092903,
@@ -19,7 +19,6 @@ const conversionFactors = {
     ft2_to_yd2: 0.111111,
     yd2_to_ft2: 9,
   },
-  // ─── VOLUME ────────────────────────────────────────────────────────
   volume: {
     m3_to_yd3: 1.30795,
     yd3_to_m3: 0.764555,
@@ -32,7 +31,6 @@ const conversionFactors = {
     m3_to_boardfeet: 423.776,
     boardfeet_to_m3: 0.00235974,
   },
-  // ─── LENGTH ────────────────────────────────────────────────────────
   length: {
     m_to_ft: 3.28084,
     ft_to_m: 0.3048,
@@ -47,7 +45,6 @@ const conversionFactors = {
     m_to_in: 39.3701,
     in_to_m: 0.0254,
   },
-  // ─── WEIGHT / MASS ──────────────────────────────────────────────────
   weight: {
     kg_to_ton: 0.001,
     ton_to_kg: 1000,
@@ -60,7 +57,6 @@ const conversionFactors = {
     tonnes_to_kg: 1000,
     kg_to_tonnes: 0.001,
   },
-  // ─── CONCRETE MIX ──────────────────────────────────────────────────
   concrete: {
     mixRatios: {
       'C15': { cement: 1, sand: 3, aggregate: 6 },
@@ -77,7 +73,6 @@ const conversionFactors = {
       water: 150,
     },
   },
-  // ─── STEEL REINFORCEMENT ──────────────────────────────────────────
   steel: {
     barWeights: {
       6: 0.222,
@@ -105,7 +100,6 @@ const conversionFactors = {
       400: 196,
     },
   },
-  // ─── ROOFING ──────────────────────────────────────────────────────
   roofing: {
     pitchToSlope: {
       '5': 0.0875,
@@ -126,7 +120,6 @@ const conversionFactors = {
       'Slate': 15.0,
     },
   },
-  // ─── BRICKWORK ──────────────────────────────────────────────────────
   bricks: {
     bricksPerM2: {
       'half-brick (112mm)': 60,
@@ -134,11 +127,10 @@ const conversionFactors = {
       'one-and-half (337mm)': 180,
     },
     mortarPer1000: {
-      cement: 0.3, // m³
-      sand: 0.6,   // m³
+      cement: 0.3,
+      sand: 0.6,
     },
   },
-  // ─── EXCAVATION ────────────────────────────────────────────────────
   excavation: {
     swellFactors: {
       'Rock': 1.5,
@@ -152,7 +144,6 @@ const conversionFactors = {
       'Compacted Fill': 0.75,
     },
   },
-  // ─── PAINT ──────────────────────────────────────────────────────────
   paint: {
     coveragePerLitre: {
       'Smooth plaster': 12,
@@ -168,7 +159,6 @@ const conversionFactors = {
       'Topcoat': 2,
     },
   },
-  // ─── TIMBER / LUMBER ──────────────────────────────────────────────
   timber: {
     density: 600,
     m3_to_boardfeet: 423.776,
@@ -176,31 +166,26 @@ const conversionFactors = {
     ft_to_m: 0.3048,
     m_to_ft: 3.28084,
   },
-  // ─── ASPHALT ──────────────────────────────────────────────────────
   asphalt: {
     density: 2200,
     m3_to_tonnes: 2.2,
     tonnes_to_m3: 0.454545,
   },
-  // ─── AGGREGATE ────────────────────────────────────────────────────
   aggregate: {
     density: 1600,
     m3_to_tonnes: 1.6,
     tonnes_to_m3: 0.625,
   },
-  // ─── SOIL ──────────────────────────────────────────────────────────
   soil: {
     density_kgm3_to_lbft3: 0.062428,
     density_lbft3_to_kgm3: 16.0185,
   },
-  // ─── SLOPE ────────────────────────────────────────────────────────
   slope: {
     degrees_to_percent: (deg) => Math.tan(deg * Math.PI / 180) * 100,
     percent_to_degrees: (pct) => Math.atan(pct / 100) * 180 / Math.PI,
     degrees_to_ratio: (deg) => 1 / Math.tan(deg * Math.PI / 180),
     ratio_to_degrees: (ratio) => Math.atan(1 / ratio) * 180 / Math.PI,
   },
-  // ─── PIPE ──────────────────────────────────────────────────────────
   pipe: {
     mm_to_in: 0.0393701,
     in_to_mm: 25.4,
@@ -217,7 +202,6 @@ const conversionFactors = {
       '150': 7.11,
     },
   },
-  // ─── CEILING ──────────────────────────────────────────────────────
   ceiling: {
     tilesPerM2: {
       '600x600': 2.78,
@@ -237,7 +221,6 @@ const conversionFactors = {
       wall_angle: 0.3,
     },
   },
-  // ─── ALUMINIUM ────────────────────────────────────────────────────
   aluminium: {
     density: 2700,
     profiles: {
@@ -247,7 +230,6 @@ const conversionFactors = {
       handrail: 3.5,
     },
   },
-  // ─── DRYWALL ──────────────────────────────────────────────────────
   drywall: {
     boardWeights: {
       '9.5mm': 7.5,
@@ -258,7 +240,6 @@ const conversionFactors = {
     jointCompoundPerM2: 0.5,
     tapePerM2: 1.2,
   },
-  // ─── TILING ────────────────────────────────────────────────────────
   tiling: {
     tileSizes: {
       '300x300': 11.11,
@@ -279,7 +260,6 @@ const conversionFactors = {
       '200x200': 0.35,
     },
   },
-  // ─── CCTV ──────────────────────────────────────────────────────────
   cctv: {
     cableTypes: {
       'RG59': 0.08,
@@ -309,6 +289,21 @@ const conversionFactors = {
   },
 };
 
+// ─── Helper to get unique units for a category ──────────────────────
+const getUnitsForCategory = (category) => {
+  const keys = Object.keys(conversionFactors[category] || {});
+  const unitSet = new Set();
+  keys.forEach(k => {
+    const parts = k.split('_to_');
+    if (parts.length === 2) {
+      unitSet.add(parts[0]);
+      unitSet.add(parts[1]);
+    }
+  });
+  return Array.from(unitSet);
+};
+
+// ─── Main Component ──────────────────────────────────────────────────
 const ConversionTool = ({ open, onClose }) => {
   const [tab, setTab] = useState(0);
   const [inputValue, setInputValue] = useState('');
@@ -316,7 +311,14 @@ const ConversionTool = ({ open, onClose }) => {
   const [toUnit, setToUnit] = useState('');
   const [result, setResult] = useState(null);
 
-  // ─── Existing state variables ────────────────────────────────────
+  // ─── Custom conversion state ──────────────────────────────────────
+  const [customFrom, setCustomFrom] = useState('');
+  const [customTo, setCustomTo] = useState('');
+  const [customFactor, setCustomFactor] = useState('');
+  const [customValue, setCustomValue] = useState('');
+  const [customResult, setCustomResult] = useState(null);
+
+  // ─── Existing state variables (unchanged) ──────────────────────
   const [concreteMix, setConcreteMix] = useState('C20');
   const [concreteVolume, setConcreteVolume] = useState(1);
   const [steelDiameter, setSteelDiameter] = useState(12);
@@ -367,26 +369,46 @@ const ConversionTool = ({ open, onClose }) => {
   const [cctvCameras, setCctvCameras] = useState(4);
   const [cctvDays, setCctvDays] = useState(30);
 
-  // ─── Handle conversions ──────────────────────────────────────────
+  // ─── Reset unit selection when tab changes ──────────────────────
+  useEffect(() => {
+    setFromUnit('');
+    setToUnit('');
+    setResult(null);
+    setCustomResult(null);
+  }, [tab]);
+
+  // ─── Handle standard conversions ──────────────────────────────────
   const handleConvert = () => {
     const value = parseFloat(inputValue);
-    if (isNaN(value)) return;
-    let converted = 0;
+    if (isNaN(value) || !fromUnit || !toUnit) return;
     const category = getCategory();
     const key = `${fromUnit}_to_${toUnit}`;
-    const factor = conversionFactors[category]?.[key];
-    if (factor) {
+    let factor = conversionFactors[category]?.[key];
+    let converted = 0;
+    if (factor !== undefined) {
       converted = value * factor;
     } else {
       const reverseKey = `${toUnit}_to_${fromUnit}`;
-      if (conversionFactors[category]?.[reverseKey]) {
-        converted = value / conversionFactors[category][reverseKey];
+      factor = conversionFactors[category]?.[reverseKey];
+      if (factor !== undefined) {
+        converted = value / factor;
       } else {
         setResult('Conversion not supported');
         return;
       }
     }
     setResult(converted);
+  };
+
+  // ─── Handle custom conversion ─────────────────────────────────────
+  const handleCustomConvert = () => {
+    const val = parseFloat(customValue);
+    const factor = parseFloat(customFactor);
+    if (isNaN(val) || isNaN(factor) || !customFrom || !customTo) {
+      setCustomResult('Please fill all fields with valid numbers');
+      return;
+    }
+    setCustomResult(val * factor);
   };
 
   const getCategory = () => {
@@ -416,47 +438,132 @@ const ConversionTool = ({ open, onClose }) => {
     return map[tab] || 'area';
   };
 
-  // ─── Render conversion tab ────────────────────────────────────────
-  const renderConversionTab = () => (
-    <Box>
-      <Typography variant="subtitle1" gutterBottom>Unit Conversion</Typography>
-      <Grid container spacing={2}>
-        <Grid item xs={12} sm={4}>
-          <TextField select label="From" fullWidth value={fromUnit} onChange={e => setFromUnit(e.target.value)} SelectProps={{ native: true }}>
-            <option value="">Select</option>
-            {Object.keys(conversionFactors[getCategory()] || {}).map(k => {
-              const parts = k.split('_to_');
-              if (parts.length === 2) return <option key={parts[0]} value={parts[0]}>{parts[0]}</option>;
-              return null;
-            })}
-          </TextField>
+  // ─── Render conversion tab with custom section ────────────────────
+  const renderConversionTab = () => {
+    const category = getCategory();
+    const units = getUnitsForCategory(category);
+
+    return (
+      <Box>
+        <Typography variant="subtitle1" gutterBottom>Standard Unit Conversion</Typography>
+        <Grid container spacing={2}>
+          <Grid item xs={12} sm={4}>
+            <TextField
+              select
+              label="From"
+              fullWidth
+              value={fromUnit}
+              onChange={e => setFromUnit(e.target.value)}
+              SelectProps={{ native: true }}
+            >
+              <option value="">Select</option>
+              {units.map(unit => (
+                <option key={unit} value={unit}>{unit}</option>
+              ))}
+            </TextField>
+          </Grid>
+          <Grid item xs={12} sm={4}>
+            <TextField
+              select
+              label="To"
+              fullWidth
+              value={toUnit}
+              onChange={e => setToUnit(e.target.value)}
+              SelectProps={{ native: true }}
+            >
+              <option value="">Select</option>
+              {units.map(unit => (
+                <option key={unit} value={unit}>{unit}</option>
+              ))}
+            </TextField>
+          </Grid>
+          <Grid item xs={12} sm={4}>
+            <TextField
+              label="Value"
+              type="number"
+              fullWidth
+              value={inputValue}
+              onChange={e => setInputValue(e.target.value)}
+            />
+          </Grid>
+          <Grid item xs={12}>
+            <Button variant="contained" onClick={handleConvert}>Convert</Button>
+            {result !== null && (
+              <Paper sx={{ p: 2, mt: 2, bgcolor: '#e8f5e9' }}>
+                <Typography variant="body1">
+                  {inputValue} {fromUnit} = {result} {toUnit}
+                </Typography>
+              </Paper>
+            )}
+          </Grid>
         </Grid>
-        <Grid item xs={12} sm={4}>
-          <TextField select label="To" fullWidth value={toUnit} onChange={e => setToUnit(e.target.value)} SelectProps={{ native: true }}>
-            <option value="">Select</option>
-            {Object.keys(conversionFactors[getCategory()] || {}).map(k => {
-              const parts = k.split('_to_');
-              if (parts.length === 2) return <option key={parts[1]} value={parts[1]}>{parts[1]}</option>;
-              return null;
-            })}
-          </TextField>
-        </Grid>
-        <Grid item xs={12} sm={4}>
-          <TextField label="Value" type="number" fullWidth value={inputValue} onChange={e => setInputValue(e.target.value)} />
-        </Grid>
-        <Grid item xs={12}>
-          <Button variant="contained" onClick={handleConvert}>Convert</Button>
-          {result !== null && (
-            <Paper sx={{ p: 2, mt: 2, bgcolor: '#e8f5e9' }}>
-              <Typography variant="body1">
-                {inputValue} {fromUnit} = {result} {toUnit}
-              </Typography>
-            </Paper>
+
+        <Divider sx={{ my: 3 }} />
+
+        <Typography variant="subtitle1" gutterBottom>➕ Custom Conversion</Typography>
+        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 2 }}>
+          Define your own conversion factor – useful for new units like custom brick sizes, densities, or any other relationship.
+        </Typography>
+        <Grid container spacing={2}>
+          <Grid item xs={12} sm={3}>
+            <TextField
+              label="From Unit"
+              placeholder="e.g., new_brick"
+              fullWidth
+              value={customFrom}
+              onChange={e => setCustomFrom(e.target.value)}
+            />
+          </Grid>
+          <Grid item xs={12} sm={3}>
+            <TextField
+              label="To Unit"
+              placeholder="e.g., m2"
+              fullWidth
+              value={customTo}
+              onChange={e => setCustomTo(e.target.value)}
+            />
+          </Grid>
+          <Grid item xs={12} sm={2}>
+            <TextField
+              label="Factor"
+              type="number"
+              placeholder="e.g., 0.5"
+              fullWidth
+              value={customFactor}
+              onChange={e => setCustomFactor(e.target.value)}
+            />
+          </Grid>
+          <Grid item xs={12} sm={2}>
+            <TextField
+              label="Value"
+              type="number"
+              placeholder="e.g., 10"
+              fullWidth
+              value={customValue}
+              onChange={e => setCustomValue(e.target.value)}
+            />
+          </Grid>
+          <Grid item xs={12} sm={2}>
+            <Button variant="contained" color="secondary" onClick={handleCustomConvert} fullWidth sx={{ height: '56px' }}>
+              Convert
+            </Button>
+          </Grid>
+          {customResult !== null && (
+            <Grid item xs={12}>
+              <Paper sx={{ p: 2, bgcolor: '#fff3e0' }}>
+                <Typography variant="body1">
+                  {customValue} {customFrom} = {customResult} {customTo}
+                </Typography>
+                <Typography variant="caption" color="text.secondary">
+                  (Factor: {customFactor})
+                </Typography>
+              </Paper>
+            </Grid>
           )}
         </Grid>
-      </Grid>
-    </Box>
-  );
+      </Box>
+    );
+  };
 
   // ─── Concrete Tab ──────────────────────────────────────────────────
   const renderConcreteTab = () => {
