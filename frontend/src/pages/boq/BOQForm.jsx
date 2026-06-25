@@ -409,30 +409,20 @@ const BOQForm = () => {
       {!canEdit && <Alert severity="info" sx={{ mb: 2 }}>You have view‑only access.</Alert>}
 
       <form onSubmit={handleSubmit}>
-        {/* ─── Company Header with fallback ───────────────────────── */}
+        {/* ─── Company Header with deep red PURVEYOLS ────────────── */}
         <Box sx={{ textAlign: 'center', borderBottom: '2px solid #000', pb: 2, mb: 2 }}>
           <img
-            src="/top-log.PNG?t=2"
+            src="/top-log.PNG?t=3"
             alt="PURVEYOLS Logo"
-            style={{ height: '80px', maxWidth: '100%' }}
-            onError={(e) => {
-              const src = e.target.src;
-              if (src.includes('.PNG')) {
-                e.target.src = src.replace('.PNG', '.png');
-              } else {
-                e.target.style.display = 'none';
-                const parent = e.target.parentElement;
-                for (let i = 0; i < parent.children.length; i++) {
-                  const el = parent.children[i];
-                  if (el.tagName === 'H4' || el.tagName === 'H5' || el.tagName === 'P') {
-                    el.style.display = 'block';
-                  }
-                }
-              }
-            }}
+            style={{ height: '60px', maxWidth: '100%' }}
+            onError={(e) => e.target.style.display = 'none'}
           />
-          <Typography variant="h4" sx={{ fontWeight: 'bold', letterSpacing: 2, display: 'none' }}>PURVEYOLS</Typography>
-          <Typography variant="subtitle1" sx={{ fontWeight: 'bold', display: 'none' }}>Building and Civil Construction</Typography>
+          <Typography variant="h4" sx={{ fontWeight: 'bold', letterSpacing: 2, color: '#b71c1c' }}>
+            PURVEYOLS
+          </Typography>
+          <Typography variant="subtitle1" sx={{ fontWeight: 'bold', color: '#333' }}>
+            Building and Civil Construction
+          </Typography>
           <Typography variant="body2">Plot No. 8, Buchi Road - Northmead, P.O. Box NH 87 Lusaka, Zambia</Typography>
           <Typography variant="body2">Tel: +260 211 235354 | Mobile: +260 977 393879 / +260 965 393879</Typography>
           <Typography variant="body2">Email: purveyols@gmail.com</Typography>
