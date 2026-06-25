@@ -14,7 +14,7 @@ const WorkerSchema = new mongoose.Schema({
     enum: ['active', 'inactive', 'suspended'],
     default: 'active',
   },
-  // ─── NEW: verification ──────────────────────────────────────────
+  // ─── NEW verification fields ──────────────────────────────────
   verifiedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   verifiedAt: { type: Date },
 });
