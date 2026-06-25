@@ -217,17 +217,25 @@ router.get('/conversation/:otherUserId', auth, async (req, res) => {
   }
 });
 
-// ─── Get a single message ─────────────────────────────────
+// ─── Get a single message (FIXED) ─────────────────────────
 router.get('/:id', auth, async (req, res) => {
   try {
     const message = await Message.findById(req.params.id)
       .populate('from', 'name role')
       .populate('to', 'name role');
     if (!message) return res.status(404).json({ error: 'Message not found' });
+
     const userId = req.user.id;
-    if (message.from._id.toString() !== userId && message.to._id.toString() !== userId) {
+
+    // Use .equals() for safe ObjectId comparison
+    const isSender = message.from?._id?.equals(userId) || false;
+    const isRecipient = message.to?._id?.equals(userId) || false;
+
+    if (!isSender && !isRecipient) {
+      console.warn(`⚠️ User ${userId} not authorized to view message ${req.params.id}`);
       return res.status(403).json({ error: 'Not authorized' });
     }
+
     res.json(message);
   } catch (err) {
     console.error('Get message error:', err);
