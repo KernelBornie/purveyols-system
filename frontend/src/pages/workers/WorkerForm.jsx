@@ -10,7 +10,6 @@ import CheckInIcon from '@mui/icons-material/AssignmentTurnedIn';
 import api from '../../api/axios';
 import { useAuth } from '../../context/AuthContext';
 import BackButton from '../../components/BackButton';
-import logo from '../../assets/top-log.PNG';
 
 const WorkerForm = () => {
   const { id } = useParams();
@@ -158,10 +157,10 @@ const WorkerForm = () => {
       )}
 
       <form onSubmit={handleSubmit}>
-        {/* ─── Company Header with Logo ───────────────────────────── */}
+        {/* ─── Company Header with Logo (public path) ────────────── */}
         <Box sx={{ textAlign: 'center', borderBottom: '2px solid #000', pb: 2, mb: 2 }}>
           <img
-            src={logo}
+            src="/top-log.PNG"
             alt="PURVEYOLS Logo"
             style={{ height: '80px', maxWidth: '100%' }}
             onError={(e) => {

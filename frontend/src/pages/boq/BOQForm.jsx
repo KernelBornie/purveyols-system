@@ -17,7 +17,6 @@ import api from '../../api/axios';
 import { useAuth } from '../../context/AuthContext';
 import BackButton from '../../components/BackButton';
 import ConversionTool from '../../components/ConversionTool';
-import logo from '../../assets/top-log.PNG'; // <-- IMPORT LOGO
 
 // ─── Template options ──────────────────────────────────────────────
 const TEMPLATES = [
@@ -142,7 +141,6 @@ const BOQForm = () => {
           });
           setSelectedTemplate(data.templateName || '');
         } else {
-          // New BOQ – start with default preliminaries
           setSelectedTemplate('Custom');
           setForm(prev => ({
             ...prev,
@@ -423,10 +421,10 @@ const BOQForm = () => {
       {!canEdit && <Alert severity="info" sx={{ mb: 2 }}>You have view‑only access.</Alert>}
 
       <form onSubmit={handleSubmit}>
-        {/* ─── Company Header with Logo ───────────────────────────── */}
+        {/* ─── Company Header with Logo (public path) ────────────── */}
         <Box sx={{ textAlign: 'center', borderBottom: '2px solid #000', pb: 2, mb: 2 }}>
           <img
-            src={logo}
+            src="/top-log.PNG"
             alt="PURVEYOLS Logo"
             style={{ height: '80px', maxWidth: '100%' }}
             onError={(e) => {
@@ -458,7 +456,6 @@ const BOQForm = () => {
           </Box>
         </Box>
 
-        {/* Project Details & Client Info */}
         <Grid container spacing={2} sx={{ mb: 2 }}>
           <Grid item xs={12} md={6}>
             <TextField select label="Project *" fullWidth size="small" value={form.project || ''} onChange={e => setForm({ ...form, project: e.target.value })} required disabled={!canEdit}>
@@ -474,7 +471,6 @@ const BOQForm = () => {
           </Grid>
         </Grid>
 
-        {/* Template & Client */}
         <Paper sx={{ p: 2, mb: 2, bgcolor: '#fafafa' }}>
           <Grid container spacing={2}>
             <Grid item xs={12} md={6}>

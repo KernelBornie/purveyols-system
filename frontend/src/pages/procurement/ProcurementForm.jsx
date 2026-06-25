@@ -16,7 +16,6 @@ import api from '../../api/axios';
 import { useAuth } from '../../context/AuthContext';
 import BackButton from '../../components/BackButton';
 import SignaturePad from '../../components/SignaturePad';
-import logo from '../../assets/top-log.PNG';
 
 const ProcurementForm = () => {
   const { id } = useParams();
@@ -48,7 +47,6 @@ const ProcurementForm = () => {
   });
   const [isEditMode, setIsEditMode] = useState(!!id);
 
-  // ─── Permission checks ──────────────────────────────────────────────
   const canEdit = ['procurement-officer', 'civil-engineer', 'quantity-surveyor', 'director', 'admin', 'driver', 'safety-officer', 'accountant', 'foreman'].includes(user?.role);
   const canApprove = ['admin', 'director', 'accountant'].includes(user?.role);
 
@@ -330,10 +328,10 @@ const ProcurementForm = () => {
       {!canEdit && <Alert severity="info" sx={{ mb: 2 }}>You have view‑only access.</Alert>}
 
       <form onSubmit={handleSubmit}>
-        {/* ─── Company Header with Logo ───────────────────────────── */}
+        {/* ─── Company Header with Logo (public path) ────────────── */}
         <Box sx={{ textAlign: 'center', borderBottom: '2px solid #000', pb: 2, mb: 2 }}>
           <img
-            src={logo}
+            src="/top-log.PNG"
             alt="PURVEYOLS Logo"
             style={{ height: '80px', maxWidth: '100%' }}
             onError={(e) => {
