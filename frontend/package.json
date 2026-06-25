@@ -27,7 +27,8 @@
     "react-dropzone": "^14.3.5",
     "react-leaflet": "^4.2.1",
     "react-router-dom": "^6.26.2",
-    "recharts": "^2.12.7"
+    "recharts": "^2.12.7",
+    "simple-peer": "^9.11.1"
   },
   "devDependencies": {
     "@types/react": "^18.3.3",
