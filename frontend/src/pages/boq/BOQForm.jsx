@@ -409,18 +409,36 @@ const BOQForm = () => {
       {!canEdit && <Alert severity="info" sx={{ mb: 2 }}>You have view‑only access.</Alert>}
 
       <form onSubmit={handleSubmit}>
-        {/* ─── Company Header – same as footer ───────────────────── */}
+        {/* ─── Company Header with fallback ───────────────────────── */}
         <Box sx={{ textAlign: 'center', borderBottom: '2px solid #000', pb: 2, mb: 2 }}>
           <img
-            src="/top-log.PNG?v=2"
+            src="/top-log.PNG?t=2"
             alt="PURVEYOLS Logo"
             style={{ height: '80px', maxWidth: '100%' }}
+            onError={(e) => {
+              const src = e.target.src;
+              if (src.includes('.PNG')) {
+                e.target.src = src.replace('.PNG', '.png');
+              } else {
+                e.target.style.display = 'none';
+                const parent = e.target.parentElement;
+                for (let i = 0; i < parent.children.length; i++) {
+                  const el = parent.children[i];
+                  if (el.tagName === 'H4' || el.tagName === 'H5' || el.tagName === 'P') {
+                    el.style.display = 'block';
+                  }
+                }
+              }
+            }}
           />
+          <Typography variant="h4" sx={{ fontWeight: 'bold', letterSpacing: 2, display: 'none' }}>PURVEYOLS</Typography>
+          <Typography variant="subtitle1" sx={{ fontWeight: 'bold', display: 'none' }}>Building and Civil Construction</Typography>
           <Typography variant="body2">Plot No. 8, Buchi Road - Northmead, P.O. Box NH 87 Lusaka, Zambia</Typography>
           <Typography variant="body2">Tel: +260 211 235354 | Mobile: +260 977 393879 / +260 965 393879</Typography>
           <Typography variant="body2">Email: purveyols@gmail.com</Typography>
         </Box>
 
+        {/* Document Title & Actions */}
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3, borderBottom: '1px solid #000', pb: 1 }}>
           <Typography variant="h5" sx={{ fontWeight: 'bold', letterSpacing: 1 }}>BILL OF QUANTITIES</Typography>
           <Box>
