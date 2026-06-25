@@ -7,6 +7,7 @@ import {
 import SaveIcon from '@mui/icons-material/Save';
 import PrintIcon from '@mui/icons-material/Print';
 import CheckInIcon from '@mui/icons-material/AssignmentTurnedIn';
+import VerifiedIcon from '@mui/icons-material/Verified';
 import api from '../../api/axios';
 import { useAuth } from '../../context/AuthContext';
 import BackButton from '../../components/BackButton';
@@ -27,6 +28,8 @@ const WorkerForm = () => {
     project: '',
   });
   const [enroller, setEnroller] = useState(null);
+  const [verifiedBy, setVerifiedBy] = useState(null);
+  const [verifiedAt, setVerifiedAt] = useState(null);
   const [message, setMessage] = useState(null);
   const [balance, setBalance] = useState(0);
   const [checkInOpen, setCheckInOpen] = useState(false);
@@ -40,6 +43,7 @@ const WorkerForm = () => {
 
   const canEdit = ['admin', 'director', 'civil-engineer', 'foreman', 'accountant', 'qs', 'quantity-surveyor'].includes(user?.role);
   const canCheckIn = canEdit;
+  const canVerify = canEdit; // same permission as enrol
 
   useEffect(() => {
     const fetchData = async () => {
@@ -60,6 +64,8 @@ const WorkerForm = () => {
             project: data.project?._id || data.project || '',
           });
           setEnroller(data.enrolledBy);
+          setVerifiedBy(data.verifiedBy);
+          setVerifiedAt(data.verifiedAt);
           setBalance(data.balance || 0);
         } else {
           if (!canEdit) {
@@ -98,9 +104,42 @@ const WorkerForm = () => {
         await api.post('/api/workers', payload);
         setMessage({ type: 'success', text: 'Worker enrolled successfully!' });
       }
+      // Refresh data after save
+      if (id) {
+        const updated = await api.get(`/api/workers/${id}`);
+        const data = updated.data;
+        setVerifiedBy(data.verifiedBy);
+        setVerifiedAt(data.verifiedAt);
+        setBalance(data.balance || 0);
+      }
       setTimeout(() => navigate('/workers'), 1500);
     } catch (err) {
       setMessage({ type: 'error', text: err.response?.data?.error || 'Failed to save worker' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ─── Verify worker ──────────────────────────────────────────────
+  const handleVerify = async () => {
+    if (!id) {
+      setMessage({ type: 'error', text: 'Please save the worker first before verifying.' });
+      return;
+    }
+    if (verifiedBy) {
+      setMessage({ type: 'warning', text: 'Worker already verified.' });
+      return;
+    }
+    setLoading(true);
+    try {
+      await api.put(`/api/workers/${id}/verify`);
+      const updated = await api.get(`/api/workers/${id}`);
+      setVerifiedBy(updated.data.verifiedBy);
+      setVerifiedAt(updated.data.verifiedAt);
+      setMessage({ type: 'success', text: 'Worker verified successfully!' });
+      setTimeout(() => setMessage(null), 3000);
+    } catch (err) {
+      setMessage({ type: 'error', text: err.response?.data?.error || 'Verification failed' });
     } finally {
       setLoading(false);
     }
@@ -194,11 +233,12 @@ const WorkerForm = () => {
               <p><strong>Status:</strong> ${form.status}</p>
               <p><strong>Pending Balance:</strong> K ${balance.toFixed(2)}</p>
               ${enroller ? `<p><strong>Enrolled by:</strong> ${enroller.name} (${enroller.role})</p>` : ''}
+              ${verifiedBy ? `<p><strong>Verified by:</strong> ${verifiedBy.name} (${verifiedBy.role})</p><p><strong>Verified on:</strong> ${new Date(verifiedAt).toLocaleString()}</p>` : ''}
             </div>
             <div class="approval">
               <div class="row">
-                <div><strong>Verified by:</strong> _________________</div>
-                <div><strong>Date:</strong> _________________</div>
+                <div><strong>Verified by:</strong> ${verifiedBy ? verifiedBy.name + ' (' + verifiedBy.role + ')' : '_________________'}</div>
+                <div><strong>Date:</strong> ${verifiedAt ? new Date(verifiedAt).toLocaleString() : '_________________'}</div>
               </div>
             </div>
             <div class="footer">PURVEYOLS CMS - Construction Management System</div>
@@ -242,12 +282,20 @@ const WorkerForm = () => {
         )}
 
         {id && (
-          <Box sx={{ mb: 2 }}>
+          <Box sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
             <Chip label={`Pending: K ${balance}`} color={balance > 0 ? 'warning' : 'success'} size="medium" />
             {canCheckIn && (
-              <Button variant="outlined" startIcon={<CheckInIcon />} onClick={handleCheckInOpen} sx={{ ml: 2 }} size="small">
+              <Button variant="outlined" startIcon={<CheckInIcon />} onClick={handleCheckInOpen} size="small">
                 Check In
               </Button>
+            )}
+            {canVerify && !verifiedBy && (
+              <Button variant="contained" color="success" startIcon={<VerifiedIcon />} onClick={handleVerify} size="small" disabled={loading}>
+                Verify Worker
+              </Button>
+            )}
+            {verifiedBy && (
+              <Chip label="✅ Verified" color="success" size="small" />
             )}
           </Box>
         )}
@@ -283,25 +331,46 @@ const WorkerForm = () => {
           </Grid>
         </Grid>
 
+        {/* ─── Approval / Verification Section ────────────────────── */}
         <Box sx={{ mt: 4, borderTop: '1px solid #000', pt: 3 }}>
-          <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 2 }}>Approval</Typography>
+          <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 2 }}>Approval &amp; Verification</Typography>
           <Grid container spacing={2}>
             <Grid item xs={12} md={6}>
               <Typography variant="body2">Enrolled by:</Typography>
               <Typography variant="body1" sx={{ fontWeight: 'bold' }}>{enroller?.name || 'N/A'}</Typography>
+              <Typography variant="caption" color="textSecondary">{enroller?.role || ''}</Typography>
             </Grid>
             <Grid item xs={12} md={6}>
               <Typography variant="body2">Date:</Typography>
               <Typography variant="body1" sx={{ fontWeight: 'bold' }}>{new Date().toLocaleDateString()}</Typography>
             </Grid>
           </Grid>
-          <Box sx={{ mt: 2, display: 'flex', gap: 2 }}>
-            <Typography variant="body2">Verified by: _________________</Typography>
-            <Typography variant="body2">Date: _________________</Typography>
+
+          <Box sx={{ mt: 2, display: 'flex', flexDirection: 'column', gap: 1 }}>
+            {verifiedBy ? (
+              <>
+                <Typography variant="body2">
+                  Verified by: <strong>{verifiedBy.name}</strong> ({verifiedBy.role})
+                </Typography>
+                <Typography variant="body2">
+                  Verified on: <strong>{verifiedAt ? new Date(verifiedAt).toLocaleString() : '—'}</strong>
+                </Typography>
+              </>
+            ) : (
+              <>
+                <Typography variant="body2">Verified by: _________________</Typography>
+                <Typography variant="body2">Date: _________________</Typography>
+                {canVerify && id && (
+                  <Button variant="outlined" color="success" startIcon={<VerifiedIcon />} onClick={handleVerify} disabled={loading} sx={{ mt: 1, alignSelf: 'flex-start' }}>
+                    Verify Now
+                  </Button>
+                )}
+              </>
+            )}
           </Box>
         </Box>
 
-        <Box sx={{ mt: 4, display: 'flex', gap: 2 }}>
+        <Box sx={{ mt: 4, display: 'flex', gap: 2, flexWrap: 'wrap' }}>
           {canEdit && (
             <Button type="submit" variant="contained" startIcon={<SaveIcon />} disabled={loading}>
               {loading ? 'Saving...' : 'Save Worker'}
