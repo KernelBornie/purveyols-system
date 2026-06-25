@@ -4,8 +4,9 @@ const Project = require('../models/Project');
 const User = require('../models/User');
 const auth = require('../middleware/auth');
 const authorize = require('../middleware/rbac');
-const { createNotification, getSenderName, getSenderRole } = require('../utils/notificationHelper');
+const { createNotification, getSenderName } = require('../utils/notificationHelper');
 
+// ─── GET all ──────────────────────────────────────────────────
 router.get('/', auth, async (req, res) => {
   try {
     const projects = await Project.find()
@@ -17,6 +18,7 @@ router.get('/', auth, async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// ─── GET single ──────────────────────────────────────────────
 router.get('/:id', auth, async (req, res) => {
   try {
     const project = await Project.findById(req.params.id)
@@ -29,7 +31,8 @@ router.get('/:id', auth, async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-router.post('/', auth, authorize('admin', 'director', 'civil-engineer'), async (req, res) => {
+// ─── CREATE ──────────────────────────────────────────────────
+router.post('/', auth, authorize('admin', 'director'), async (req, res) => {
   try {
     const project = new Project({ ...req.body, createdBy: req.user.id });
     await project.save();
@@ -40,26 +43,13 @@ router.post('/', auth, authorize('admin', 'director', 'civil-engineer'), async (
       .populate('assignedStaff', 'name role');
 
     const senderName = await getSenderName(req.user.id);
-    const senderRole = await getSenderRole(req.user.id);
-
-    // ─── Notify creator ──────────────────────────────────────
-    await createNotification(
-      req.user.id,
-      'project_created',
-      'Project Created',
-      `✅ You created a new project: "${project.name}"`,
-      `/projects/${project._id}`
-    );
-
-    // ─── Notify directors (exclude creator) ──────────────
-    const directors = await User.find({ role: 'director' });
-    const recipients = directors.filter(d => d._id.toString() !== req.user.id);
-    for (let recipient of recipients) {
+    const recipients = await User.find({ role: { $in: ['director', 'admin'] } });
+    for (let rec of recipients) {
       await createNotification(
-        recipient._id,
+        rec._id,
         'project_created',
         'New Project Created',
-        `${senderName} (${senderRole}) created a new project: "${project.name}"`,
+        `${senderName} created a new project: ${project.name}`,
         `/projects/${project._id}`
       );
     }
@@ -67,7 +57,8 @@ router.post('/', auth, authorize('admin', 'director', 'civil-engineer'), async (
   } catch (err) { res.status(400).json({ error: err.message }); }
 });
 
-router.put('/:id', auth, authorize('admin', 'director', 'civil-engineer', 'accountant'), async (req, res) => {
+// ─── UPDATE ──────────────────────────────────────────────────
+router.put('/:id', auth, authorize('admin', 'director'), async (req, res) => {
   try {
     const updated = await Project.findByIdAndUpdate(req.params.id, req.body, { new: true })
       .populate('manager', 'name role')
@@ -79,6 +70,7 @@ router.put('/:id', auth, authorize('admin', 'director', 'civil-engineer', 'accou
   } catch (err) { res.status(400).json({ error: err.message }); }
 });
 
+// ─── DELETE ──────────────────────────────────────────────────
 router.delete('/:id', auth, authorize('admin', 'director'), async (req, res) => {
   try {
     const deleted = await Project.findByIdAndDelete(req.params.id);
@@ -87,6 +79,7 @@ router.delete('/:id', auth, authorize('admin', 'director'), async (req, res) => 
   } catch (err) { res.status(400).json({ error: err.message }); }
 });
 
+// ─── APPROVE ──────────────────────────────────────────────────
 router.put('/:id/approve', auth, authorize('admin', 'director'), async (req, res) => {
   try {
     const project = await Project.findById(req.params.id);
@@ -100,19 +93,18 @@ router.put('/:id/approve', auth, authorize('admin', 'director'), async (req, res
       .populate('assignedStaff', 'name role');
 
     const senderName = await getSenderName(req.user.id);
-    const projectName = project.name;
-
     await createNotification(
       project.createdBy,
       'project_approved',
       'Project Approved',
-      `✅ Your project "${projectName}" was approved by ${senderName}`,
+      `Your project "${project.name}" has been approved by ${senderName}`,
       `/projects/${project._id}`
     );
     res.json(populated);
   } catch (err) { res.status(400).json({ error: err.message }); }
 });
 
+// ─── REJECT ──────────────────────────────────────────────────
 router.put('/:id/reject', auth, authorize('admin', 'director'), async (req, res) => {
   try {
     const project = await Project.findById(req.params.id);
@@ -126,13 +118,11 @@ router.put('/:id/reject', auth, authorize('admin', 'director'), async (req, res)
       .populate('assignedStaff', 'name role');
 
     const senderName = await getSenderName(req.user.id);
-    const projectName = project.name;
-
     await createNotification(
       project.createdBy,
       'project_rejected',
       'Project Rejected',
-      `❌ Your project "${projectName}" was rejected by ${senderName}`,
+      `Your project "${project.name}" has been rejected by ${senderName}`,
       `/projects/${project._id}`
     );
     res.json(populated);
