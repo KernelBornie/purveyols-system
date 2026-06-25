@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   Paper, Typography, Box, Grid, TextField, Button, IconButton,
@@ -389,7 +389,180 @@ const BOQForm = () => {
     URL.revokeObjectURL(url);
   };
 
-  const handlePrint = () => window.print();
+  // ─── Custom print function ──────────────────────────────────────
+  const handlePrint = () => {
+    // Filter sections: keep only sections that have at least one item with a description
+    const filledSections = form.sections
+      .map(section => ({
+        ...section,
+        items: section.items.filter(item => item.description && item.description.trim() !== '')
+      }))
+      .filter(section => section.items.length > 0);
+
+    if (filledSections.length === 0) {
+      alert('No items to print. Please add at least one item with a description.');
+      return;
+    }
+
+    // Recalculate totals based on filtered items
+    let subTotal = 0;
+    filledSections.forEach(section => {
+      section.items.forEach(item => {
+        item.amount = (item.quantity || 0) * (item.rate || 0);
+        subTotal += item.amount;
+      });
+    });
+    const adj = (form.percentageAdjustment || 0) / 100;
+    const subTotalAdj = subTotal * (1 + adj);
+    const contingencies = subTotalAdj * ((form.contingencies || 0) / 100);
+    const vat = (subTotalAdj + contingencies) * ((form.vat || 0) / 100);
+    const grandTotal = subTotalAdj + contingencies + vat;
+
+    const formatCurrency = (amount) => new Intl.NumberFormat('en-ZM', { style: 'currency', currency: 'ZMW' }).format(amount || 0);
+
+    // Build HTML for print
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>Bill of Quantities - ${form.name || 'BOQ'}</title>
+          <style>
+            body { font-family: Arial, sans-serif; padding: 20px; margin: 0; }
+            .print-container { max-width: 1000px; margin: 0 auto; }
+            .header { text-align: center; border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 15px; }
+            .header h1 { margin: 0; font-size: 28px; letter-spacing: 4px; font-weight: bold; color: #b71c1c; }
+            .header .subtitle { font-weight: bold; font-size: 14px; margin: 2px 0; color: #b71c1c; }
+            .header .details { font-size: 11px; margin: 1px 0; }
+            .title-row { border-bottom: 1px solid #000; padding-bottom: 4px; margin-bottom: 15px; }
+            .title-row .left { font-weight: bold; font-size: 20px; letter-spacing: 2px; }
+            .client-info { margin-bottom: 15px; display: flex; flex-wrap: wrap; gap: 20px; }
+            .client-info .block { flex: 1; min-width: 200px; }
+            .client-info .block .label { font-size: 11px; font-weight: bold; }
+            .section-title { font-weight: bold; font-size: 14px; margin-top: 15px; margin-bottom: 5px; border-bottom: 1px solid #ccc; padding-bottom: 3px; }
+            .section-desc { font-size: 11px; color: #555; margin-bottom: 8px; }
+            table { width: 100%; border-collapse: collapse; margin: 5px 0 15px; }
+            th, td { border: 1px solid #000; padding: 5px 8px; text-align: left; font-size: 11px; }
+            th { background-color: #f0f0f0; font-weight: bold; text-align: center; }
+            .text-right { text-align: right; }
+            .text-center { text-align: center; }
+            .summary { margin-top: 15px; border-top: 1px solid #000; padding-top: 10px; }
+            .summary .row { display: flex; justify-content: flex-end; padding: 3px 0; }
+            .summary .label { font-weight: bold; width: 200px; text-align: right; padding-right: 20px; }
+            .summary .value { width: 150px; text-align: right; }
+            .grand-total { font-size: 16px; font-weight: bold; border-top: 2px solid #000; padding-top: 8px; margin-top: 5px; }
+            .approval { margin-top: 30px; border-top: 1px solid #000; padding-top: 15px; }
+            .approval .row { display: flex; justify-content: space-between; }
+            .approval .block { text-align: center; flex: 1; }
+            .approval .block .line { border-top: 1px solid #000; width: 150px; margin: 20px auto 0; padding-top: 4px; font-size: 10px; }
+            .footer { text-align: center; font-size: 10px; margin-top: 20px; border-top: 1px solid #000; padding-top: 8px; }
+            .no-print { display: none; }
+            @media print {
+              body { padding: 10px; }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="print-container">
+            <!-- Header -->
+            <div class="header">
+              <h1>PURVEYOLS</h1>
+              <div class="subtitle">Building and Civil contractors</div>
+              <div class="details">Plot No. 8, Buchi Road - Northmead, P.O. Box NH 87 Lusaka, Zambia</div>
+              <div class="details">Tel: +260 211 235354 | Mobile: +260 977 393879 / +260 965 393879</div>
+              <div class="details">Email: purveyols@gmail.com</div>
+            </div>
+
+            <!-- Title -->
+            <div class="title-row">
+              <span class="left">BILL OF QUANTITIES</span>
+            </div>
+
+            <!-- Client & Project Info -->
+            <div class="client-info">
+              ${form.project ? `<div class="block"><div class="label">Project:</div> <div>${projects.find(p => p._id === form.project)?.name || 'N/A'}</div></div>` : ''}
+              ${form.clientName ? `<div class="block"><div class="label">Client Name:</div> <div>${form.clientName}</div></div>` : ''}
+              ${form.clientAddress ? `<div class="block"><div class="label">Client Address:</div> <div>${form.clientAddress}</div></div>` : ''}
+              ${form.projectLocation ? `<div class="block"><div class="label">Project Location:</div> <div>${form.projectLocation}</div></div>` : ''}
+              ${form.tenderDate ? `<div class="block"><div class="label">Tender Date:</div> <div>${new Date(form.tenderDate).toLocaleDateString()}</div></div>` : ''}
+            </div>
+
+            <!-- Sections & Items -->
+            ${filledSections.map(section => `
+              <div class="section-title">${section.title}</div>
+              ${section.description ? `<div class="section-desc">${section.description}</div>` : ''}
+              <table>
+                <thead>
+                  <tr>
+                    <th style="width:40%">Description</th>
+                    <th style="width:10%">Qty</th>
+                    <th style="width:10%">Unit</th>
+                    <th style="width:15%">Rate (ZMW)</th>
+                    <th style="width:15%">Amount (ZMW)</th>
+                    <th style="width:10%">Notes</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${section.items.map(item => `
+                    <tr>
+                      <td>${item.description}</td>
+                      <td class="text-center">${item.quantity}</td>
+                      <td class="text-center">${item.unit || '—'}</td>
+                      <td class="text-right">${item.rate.toFixed(2)}</td>
+                      <td class="text-right">${item.amount.toFixed(2)}</td>
+                      <td>${item.notes || '—'}</td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+            `).join('')}
+
+            <!-- Financial Summary -->
+            <div class="summary">
+              <div class="row"><span class="label">Sub Total</span><span class="value">${formatCurrency(subTotal)}</span></div>
+              ${form.percentageAdjustment ? `<div class="row"><span class="label">Percentage Adjustment (${form.percentageAdjustment}%)</span><span class="value">${formatCurrency(subTotal * adj)}</span></div>` : ''}
+              ${form.contingencies ? `<div class="row"><span class="label">Contingencies (${form.contingencies}%)</span><span class="value">${formatCurrency(contingencies)}</span></div>` : ''}
+              ${form.vat ? `<div class="row"><span class="label">VAT (${form.vat}%)</span><span class="value">${formatCurrency(vat)}</span></div>` : ''}
+              <div class="row grand-total"><span class="label">GRAND TOTAL</span><span class="value">${formatCurrency(grandTotal)}</span></div>
+            </div>
+
+            <!-- Approval -->
+            <div class="approval">
+              <div class="row">
+                <div class="block">
+                  <strong>Prepared by:</strong>
+                  <div class="line">${user?.name || '_________________'}</div>
+                </div>
+                <div class="block">
+                  <strong>Date:</strong>
+                  <div class="line">${new Date().toLocaleString()}</div>
+                </div>
+              </div>
+              <div style="margin-top: 20px; display: flex; justify-content: space-between;">
+                <div class="block">
+                  <strong>Approved by:</strong>
+                  <div class="line">_________________</div>
+                </div>
+                <div class="block">
+                  <strong>Date:</strong>
+                  <div class="line">_________________</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Footer -->
+            <div class="footer">
+              PURVEYOLS CMS - Construction Management System
+            </div>
+          </div>
+          <script>
+            window.onload = function() { window.print(); }
+          <\/script>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+  };
+
   const formatCurrency = (amount) => new Intl.NumberFormat('en-ZM', { style: 'currency', currency: 'ZMW' }).format(amount || 0);
   const formatDate = (date) => date ? new Date(date).toLocaleString() : '—';
 
@@ -622,17 +795,8 @@ const BOQForm = () => {
             </Grid>
           </Grid>
           <Box sx={{ mt: 2, display: 'flex', flexDirection: 'column', gap: 1 }}>
-            {form.status === 'approved' ? (
-              <>
-                <Typography variant="body2">Approved by: _________________</Typography>
-                <Typography variant="body2">Date: _________________</Typography>
-              </>
-            ) : (
-              <>
-                <Typography variant="body2">Approved by: _________________</Typography>
-                <Typography variant="body2">Date: _________________</Typography>
-              </>
-            )}
+            <Typography variant="body2">Approved by: _________________</Typography>
+            <Typography variant="body2">Date: _________________</Typography>
           </Box>
         </Box>
 
