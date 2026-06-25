@@ -106,7 +106,7 @@ router.put('/:id/read', auth, async (req, res) => {
   }
 });
 
-// ─── Soft Delete (per user) ──────────────────────────────
+// ─── Soft Delete (one) ─────────────────────────────────────
 router.delete('/:id', auth, async (req, res) => {
   try {
     const userId = req.user.id;
@@ -136,6 +136,24 @@ router.delete('/:id', auth, async (req, res) => {
   }
 });
 
+// ─── Delete all messages for user (soft delete) ──────────
+router.delete('/', auth, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    await Message.updateMany(
+      {
+        $or: [{ from: userId }, { to: userId }],
+        deletedBy: { $ne: userId }
+      },
+      { $addToSet: { deletedBy: userId } }
+    );
+    res.json({ message: 'All messages deleted for you' });
+  } catch (err) {
+    console.error('Delete all messages error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ─── Unread count ──────────────────────────────────────────
 router.get('/unread-count', auth, async (req, res) => {
   try {
@@ -151,7 +169,7 @@ router.get('/unread-count', auth, async (req, res) => {
   }
 });
 
-// ─── Conversation between two users ──────────────────────────
+// ─── Conversation ──────────────────────────────────────────
 router.get('/conversation/:otherUserId', auth, async (req, res) => {
   try {
     const { otherUserId } = req.params;
