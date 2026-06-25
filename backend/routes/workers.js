@@ -8,21 +8,21 @@ const auth = require('../middleware/auth');
 const authorize = require('../middleware/rbac');
 const { createNotification, getSenderName, getSenderRole, formatRole } = require('../utils/notificationHelper');
 
-// GET all workers (populate project)
+// ─── GET all workers ──────────────────────────────────────────────
 router.get('/', auth, async (req, res) => {
   try {
     const workers = await Worker.find()
       .populate('enrolledBy', 'name role')
-      .populate('project', 'name');
+      .populate('project', 'name')
+      .populate('verifiedBy', 'name role');
     const enriched = await Promise.all(workers.map(async (worker) => {
       const attendance = await Attendance.find({ worker: worker._id });
       const totalEarned = attendance.reduce((sum, a) => sum + (a.days * a.rate || a.rate), 0);
-      // ─── Only completed payments reduce balance ──────────────
       const payments = await Payment.find({ worker: worker._id, status: 'completed' });
       const totalPaid = payments.reduce((sum, p) => sum + p.amount, 0);
       return { ...worker._doc, totalEarned, totalPaid, balance: totalEarned - totalPaid };
     }));
-    res.json(enriched);
+    res.json(enriched);  // <── ✅ FIXED
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
@@ -32,7 +32,7 @@ router.post('/', auth, authorize('admin', 'director', 'civil-engineer', 'foreman
     const worker = new Worker({ ...req.body, enrolledBy: req.user.id });
     await worker.save();
 
-    // ─── Auto-create attendance for enrollment ──────────────────
+    // Auto-attendance on enrolment
     const dailyRate = worker.dailyRate || 0;
     if (dailyRate > 0) {
       const attendance = new Attendance({
@@ -51,7 +51,8 @@ router.post('/', auth, authorize('admin', 'director', 'civil-engineer', 'foreman
 
     const populated = await Worker.findById(worker._id)
       .populate('enrolledBy', 'name role')
-      .populate('project', 'name');
+      .populate('project', 'name')
+      .populate('verifiedBy', 'name role');
 
     const senderRole = await getSenderRole(req.user.id);
     const formattedRole = formatRole(senderRole);
@@ -84,7 +85,8 @@ router.put('/:id', auth, authorize('admin', 'director', 'civil-engineer', 'forem
   try {
     const worker = await Worker.findByIdAndUpdate(req.params.id, req.body, { new: true })
       .populate('enrolledBy', 'name role')
-      .populate('project', 'name');
+      .populate('project', 'name')
+      .populate('verifiedBy', 'name role');
     res.json(worker);
   } catch (err) { res.status(400).json({ error: err.message }); }
 });
@@ -108,7 +110,8 @@ router.put('/:id/activate', auth, authorize('admin', 'director', 'accountant', '
     await worker.save();
     const populated = await Worker.findById(worker._id)
       .populate('enrolledBy', 'name role')
-      .populate('project', 'name');
+      .populate('project', 'name')
+      .populate('verifiedBy', 'name role');
     res.json(populated);
   } catch (err) { res.status(400).json({ error: err.message }); }
 });
@@ -122,7 +125,8 @@ router.put('/:id/deactivate', auth, authorize('admin', 'director', 'accountant',
     await worker.save();
     const populated = await Worker.findById(worker._id)
       .populate('enrolledBy', 'name role')
-      .populate('project', 'name');
+      .populate('project', 'name')
+      .populate('verifiedBy', 'name role');
     res.json(populated);
   } catch (err) { res.status(400).json({ error: err.message }); }
 });
@@ -136,9 +140,33 @@ router.put('/:id/suspend', auth, authorize('admin', 'director', 'accountant', 'q
     await worker.save();
     const populated = await Worker.findById(worker._id)
       .populate('enrolledBy', 'name role')
-      .populate('project', 'name');
+      .populate('project', 'name')
+      .populate('verifiedBy', 'name role');
     res.json(populated);
   } catch (err) { res.status(400).json({ error: err.message }); }
+});
+
+// ─── VERIFY WORKER ────────────────────────────────────────────────
+router.put('/:id/verify', auth, authorize('admin', 'director', 'civil-engineer', 'foreman', 'accountant', 'qs', 'quantity-surveyor'), async (req, res) => {
+  try {
+    const worker = await Worker.findById(req.params.id);
+    if (!worker) return res.status(404).json({ error: 'Worker not found' });
+    if (worker.verifiedBy) {
+      return res.status(400).json({ error: 'Worker already verified' });
+    }
+    worker.verifiedBy = req.user.id;
+    worker.verifiedAt = new Date();
+    await worker.save();
+
+    const populated = await Worker.findById(worker._id)
+      .populate('enrolledBy', 'name role')
+      .populate('project', 'name')
+      .populate('verifiedBy', 'name role');
+
+    res.json(populated);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
 });
 
 // ─── GET SINGLE WORKER ────────────────────────────────────────────
@@ -146,7 +174,8 @@ router.get('/:id', auth, async (req, res) => {
   try {
     const worker = await Worker.findById(req.params.id)
       .populate('enrolledBy', 'name role')
-      .populate('project', 'name');
+      .populate('project', 'name')
+      .populate('verifiedBy', 'name role');
     if (!worker) return res.status(404).json({ error: 'Worker not found' });
     const attendance = await Attendance.find({ worker: worker._id });
     const totalEarned = attendance.reduce((sum, a) => sum + (a.days * a.rate || a.rate), 0);
