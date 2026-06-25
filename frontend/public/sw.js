@@ -10,6 +10,7 @@ const STATIC_ASSETS = [
   '/project-placeholder.jpg',
   '/notification.mp3',
   '/offline.html',
+  '/app-icon.jpeg', // 👈 ADDED
 ];
 
 // ─── Install – cache static assets ──────────────────────────
@@ -54,7 +55,6 @@ self.addEventListener('fetch', (event) => {
     event.respondWith(
       fetch(request)
         .then((response) => {
-          // Cache successful API responses
           if (response.ok) {
             const clonedResponse = response.clone();
             caches.open(RUNTIME_CACHE).then((cache) => {
@@ -64,13 +64,11 @@ self.addEventListener('fetch', (event) => {
           return response;
         })
         .catch(() => {
-          // Offline – serve from cache
           return caches.match(request).then((cachedResponse) => {
             if (cachedResponse) {
               console.log('📡 Serving API from cache:', url.pathname);
               return cachedResponse;
             }
-            // No cache – return offline JSON
             return new Response(
               JSON.stringify({
                 offline: true,
@@ -104,7 +102,6 @@ self.addEventListener('fetch', (event) => {
             return response;
           })
           .catch(() => {
-            // For HTML pages, serve offline.html
             if (request.headers.get('Accept').includes('text/html')) {
               return caches.match('/offline.html');
             }
