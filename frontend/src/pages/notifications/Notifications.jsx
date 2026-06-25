@@ -6,6 +6,7 @@ import {
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import DeleteIcon from '@mui/icons-material/Delete';
 import RefreshIcon from '@mui/icons-material/Refresh';
+import DeleteSweepIcon from '@mui/icons-material/DeleteSweep';
 import api from '../../api/axios';
 import BackButton from '../../components/BackButton';
 import { useNavigate } from 'react-router-dom';
@@ -62,6 +63,17 @@ const Notifications = () => {
     }
   };
 
+  // ─── DELETE ALL ────────────────────────────────────────────
+  const handleDeleteAll = async () => {
+    if (!window.confirm('Delete ALL notifications? This cannot be undone.')) return;
+    try {
+      await api.delete('/api/notifications');
+      fetchNotifications();
+    } catch (err) {
+      alert('Failed to delete all notifications');
+    }
+  };
+
   const handleNotificationClick = (notification) => {
     if (notification.link) {
       navigate(notification.link);
@@ -79,6 +91,7 @@ const Notifications = () => {
       funding_approved: 'Funding Approved',
       funding_rejected: 'Funding Rejected',
       funding_funded: 'Funding Released',
+      funding_forwarded: 'Funding Forwarded',
       procurement_ordered: 'Procurement Ordered',
       procurement_funded: 'Procurement Funded',
       procurement_approved: 'Procurement Approved',
@@ -112,6 +125,7 @@ const Notifications = () => {
       funding_approved: '#4caf50',
       funding_rejected: '#f44336',
       funding_funded: '#00bcd4',
+      funding_forwarded: '#9c27b0',
       procurement_ordered: '#2196f3',
       procurement_funded: '#4caf50',
       procurement_approved: '#4caf50',
@@ -145,7 +159,18 @@ const Notifications = () => {
           <Button variant="outlined" startIcon={<RefreshIcon />} onClick={fetchNotifications} sx={{ mr: 1 }}>
             Refresh
           </Button>
-          <Button variant="outlined" onClick={handleMarkAllRead}>Mark All Read</Button>
+          <Button variant="outlined" onClick={handleMarkAllRead} sx={{ mr: 1 }}>
+            Mark All Read
+          </Button>
+          <Button
+            variant="outlined"
+            color="error"
+            startIcon={<DeleteSweepIcon />}
+            onClick={handleDeleteAll}
+            disabled={notifications.length === 0}
+          >
+            Delete All
+          </Button>
         </Box>
       </Box>
 
