@@ -427,9 +427,488 @@ const DrawingForm = () => {
     printWindow.document.close();
   };
 
-  // ─── PROFESSIONAL TOOLS (shortened for brevity – keep all existing tools) ──
-  // All tool functions remain unchanged; only print function is added.
-  // ... (all existing add* functions remain the same) ...
+  // ─── PROFESSIONAL TOOLS (all are defined here) ──────────────────
+
+  // Electrical
+  const addOutlet = () => {
+    const fc = getCanvas();
+    if (!fc) return;
+    const group = new fabric.Group(
+      [
+        new fabric.Rect({ left: -15, top: -20, width: 30, height: 40, fill: '#fff', stroke: '#333', strokeWidth: 1 }),
+        new fabric.Circle({ left: -8, top: -10, radius: 4, fill: '#333' }),
+        new fabric.Circle({ left: 8, top: -10, radius: 4, fill: '#333' }),
+      ],
+      { left: 200, top: 200 }
+    );
+    fc.add(group);
+    fc.renderAll();
+  };
+
+  const addSwitch = () => {
+    const fc = getCanvas();
+    if (!fc) return;
+    const group = new fabric.Group(
+      [
+        new fabric.Rect({ left: -20, top: -10, width: 40, height: 20, fill: '#fff', stroke: '#333', strokeWidth: 1 }),
+        new fabric.Line([-10, -2, 10, -2], { stroke: '#333', strokeWidth: 2 }),
+        new fabric.Triangle({ left: 12, top: -5, width: 10, height: 10, fill: '#333' }),
+      ],
+      { left: 250, top: 200 }
+    );
+    fc.add(group);
+    fc.renderAll();
+  };
+
+  const addLight = () => {
+    const fc = getCanvas();
+    if (!fc) return;
+    const group = new fabric.Group(
+      [
+        new fabric.Circle({ left: 0, top: 0, radius: 15, fill: '#ffd700', stroke: '#333', strokeWidth: 1 }),
+        new fabric.Line([0, -15, 0, -25], { stroke: '#333', strokeWidth: 1 }),
+        new fabric.Line([-5, -20, 5, -20], { stroke: '#333', strokeWidth: 1 }),
+      ],
+      { left: 300, top: 200 }
+    );
+    fc.add(group);
+    fc.renderAll();
+  };
+
+  const addPanel = () => {
+    const fc = getCanvas();
+    if (!fc) return;
+    fc.add(new fabric.Rect({ left: 200, top: 300, width: 60, height: 80, fill: '#f0f0f0', stroke: '#333', strokeWidth: 2 }));
+    for (let i = 0; i < 3; i++) {
+      fc.add(new fabric.Line([210, 320 + i * 20, 250, 320 + i * 20], { stroke: '#333', strokeWidth: 1 }));
+    }
+    fc.renderAll();
+  };
+
+  const addCable = () => {
+    const fc = getCanvas();
+    if (!fc) return;
+    fc.add(new fabric.Line([100, 100, 400, 100], { stroke: '#ff8c00', strokeWidth: 3, strokeDashArray: [6, 4] }));
+    fc.renderAll();
+  };
+
+  // Structural
+  const addColumn = () => {
+    const fc = getCanvas();
+    if (!fc) return;
+    fc.add(new fabric.Rect({ left: 150, top: 400, width: 30, height: 30, fill: '#cccccc', stroke: '#000', strokeWidth: 2 }));
+    fc.renderAll();
+  };
+
+  const addBeam = () => {
+    const fc = getCanvas();
+    if (!fc) return;
+    fc.add(new fabric.Rect({ left: 200, top: 450, width: 120, height: 20, fill: '#cccccc', stroke: '#000', strokeWidth: 2 }));
+    fc.renderAll();
+  };
+
+  const addWall = () => {
+    const fc = getCanvas();
+    if (!fc) return;
+    fc.add(new fabric.Rect({ left: 300, top: 500, width: 200, height: 10, fill: '#d3d3d3', stroke: '#000', strokeWidth: 1 }));
+    fc.renderAll();
+  };
+
+  // Floor & Foundation
+  const addFloorSlab = () => {
+    const fc = getCanvas();
+    if (!fc) return;
+    const slab = new fabric.Rect({ left: 400, top: 400, width: 150, height: 100, fill: '#f5f5f5', stroke: '#000', strokeWidth: 2 });
+    fc.add(slab);
+    for (let i = 0; i < 10; i++) {
+      fc.add(new fabric.Line([400 + i * 15, 400, 400 + i * 15, 500], { stroke: '#ccc', strokeWidth: 1, selectable: false }));
+    }
+    fc.renderAll();
+  };
+
+  const addStripFooting = () => {
+    const fc = getCanvas();
+    if (!fc) return;
+    fc.add(new fabric.Rect({ left: 100, top: 550, width: 80, height: 30, fill: '#b0b0b0', stroke: '#000', strokeWidth: 2 }));
+    fc.renderAll();
+  };
+
+  const addRaftFoundation = () => {
+    const fc = getCanvas();
+    if (!fc) return;
+    const raft = new fabric.Rect({ left: 300, top: 600, width: 160, height: 80, fill: '#a0a0a0', stroke: '#000', strokeWidth: 2 });
+    fc.add(raft);
+    for (let i = 0; i < 4; i++) fc.add(new fabric.Line([300 + i * 40, 600, 300 + i * 40, 680], { stroke: '#666', strokeWidth: 1 }));
+    for (let i = 0; i < 2; i++) fc.add(new fabric.Line([300, 600 + i * 40, 460, 600 + i * 40], { stroke: '#666', strokeWidth: 1 }));
+    fc.renderAll();
+  };
+
+  const addPileFoundation = () => {
+    const fc = getCanvas();
+    if (!fc) return;
+    const group = new fabric.Group(
+      [
+        new fabric.Rect({ left: -10, top: -40, width: 20, height: 80, fill: '#888', stroke: '#000', strokeWidth: 2 }),
+        new fabric.Rect({ left: -15, top: -45, width: 30, height: 10, fill: '#aaa', stroke: '#000', strokeWidth: 1 }),
+      ],
+      { left: 500, top: 600 }
+    );
+    fc.add(group);
+    fc.renderAll();
+  };
+
+  // Plumbing
+  const addPipe = () => {
+    const fc = getCanvas();
+    if (!fc) return;
+    fc.add(new fabric.Line([100, 100, 300, 100], { stroke: '#1e90ff', strokeWidth: 6, strokeDashArray: [10, 5] }));
+    fc.renderAll();
+  };
+
+  const addDrain = () => {
+    const fc = getCanvas();
+    if (!fc) return;
+    const group = new fabric.Group(
+      [
+        new fabric.Circle({ left: 0, top: 0, radius: 15, fill: '#fff', stroke: '#1e90ff', strokeWidth: 2 }),
+        new fabric.Line([-10, -10, 10, 10], { stroke: '#1e90ff', strokeWidth: 2 }),
+        new fabric.Line([-10, 10, 10, -10], { stroke: '#1e90ff', strokeWidth: 2 }),
+      ],
+      { left: 400, top: 100 }
+    );
+    fc.add(group);
+    fc.renderAll();
+  };
+
+  const addWaterLine = () => {
+    const fc = getCanvas();
+    if (!fc) return;
+    fc.add(new fabric.Line([150, 200, 350, 200], { stroke: '#00bfff', strokeWidth: 4, strokeDashArray: [8, 4] }));
+    fc.renderAll();
+  };
+
+  // Water Reticulation
+  const addValve = () => {
+    const fc = getCanvas();
+    if (!fc) return;
+    const group = new fabric.Group(
+      [
+        new fabric.Rect({ left: -10, top: -10, width: 20, height: 20, fill: '#ff4500', stroke: '#000', strokeWidth: 1 }),
+        new fabric.Line([-15, 0, -25, 0], { stroke: '#000', strokeWidth: 2 }),
+        new fabric.Line([15, 0, 25, 0], { stroke: '#000', strokeWidth: 2 }),
+      ],
+      { left: 300, top: 250 }
+    );
+    fc.add(group);
+    fc.renderAll();
+  };
+
+  const addSprinkler = () => {
+    const fc = getCanvas();
+    if (!fc) return;
+    const group = new fabric.Group(
+      [
+        new fabric.Circle({ left: 0, top: 0, radius: 10, fill: '#32cd32', stroke: '#000', strokeWidth: 1 }),
+        new fabric.Line([0, -10, -5, -20], { stroke: '#000', strokeWidth: 1 }),
+        new fabric.Line([0, -10, 5, -20], { stroke: '#000', strokeWidth: 1 }),
+        new fabric.Line([0, -10, 0, -25], { stroke: '#000', strokeWidth: 1 }),
+      ],
+      { left: 350, top: 250 }
+    );
+    fc.add(group);
+    fc.renderAll();
+  };
+
+  const addHydrant = () => {
+    const fc = getCanvas();
+    if (!fc) return;
+    const group = new fabric.Group(
+      [
+        new fabric.Rect({ left: -8, top: -20, width: 16, height: 40, fill: '#ff0000', stroke: '#000', strokeWidth: 1 }),
+        new fabric.Rect({ left: -15, top: -10, width: 30, height: 10, fill: '#ff3333', stroke: '#000', strokeWidth: 1 }),
+      ],
+      { left: 400, top: 250 }
+    );
+    fc.add(group);
+    fc.renderAll();
+  };
+
+  // Fencing
+  const addFencePost = () => {
+    const fc = getCanvas();
+    if (!fc) return;
+    fc.add(new fabric.Rect({ left: 500, top: 300, width: 8, height: 40, fill: '#8b4513', stroke: '#000', strokeWidth: 1 }));
+    fc.renderAll();
+  };
+
+  const addFenceLine = () => {
+    const fc = getCanvas();
+    if (!fc) return;
+    fc.add(new fabric.Line([400, 320, 600, 320], { stroke: '#8b4513', strokeWidth: 3 }));
+    for (let i = 0; i < 5; i++) {
+      fc.add(new fabric.Rect({ left: 400 + i * 50 - 3, top: 300, width: 6, height: 40, fill: '#8b4513', stroke: '#000', strokeWidth: 1 }));
+    }
+    fc.renderAll();
+  };
+
+  const addGate = () => {
+    const fc = getCanvas();
+    if (!fc) return;
+    const group = new fabric.Group(
+      [
+        new fabric.Rect({ left: -20, top: -30, width: 40, height: 60, fill: '#cd853f', stroke: '#000', strokeWidth: 2 }),
+        new fabric.Line([-10, -20, -10, 20], { stroke: '#000', strokeWidth: 1 }),
+        new fabric.Line([10, -20, 10, 20], { stroke: '#000', strokeWidth: 1 }),
+      ],
+      { left: 550, top: 300 }
+    );
+    fc.add(group);
+    fc.renderAll();
+  };
+
+  // Bridges
+  const addBridge = () => {
+    const fc = getCanvas();
+    if (!fc) return;
+    const group = new fabric.Group(
+      [
+        new fabric.Rect({ left: -50, top: -10, width: 100, height: 15, fill: '#a0a0a0', stroke: '#000', strokeWidth: 2 }),
+        new fabric.Line([-40, -10, -30, -30], { stroke: '#000', strokeWidth: 2 }),
+        new fabric.Line([40, -10, 30, -30], { stroke: '#000', strokeWidth: 2 }),
+        new fabric.Rect({ left: -35, top: -30, width: 10, height: 40, fill: '#808080', stroke: '#000', strokeWidth: 1 }),
+        new fabric.Rect({ left: 25, top: -30, width: 10, height: 40, fill: '#808080', stroke: '#000', strokeWidth: 1 }),
+      ],
+      { left: 600, top: 100 }
+    );
+    fc.add(group);
+    fc.renderAll();
+  };
+
+  const addCulvert = () => {
+    const fc = getCanvas();
+    if (!fc) return;
+    const group = new fabric.Group(
+      [
+        new fabric.Rect({ left: -25, top: -15, width: 50, height: 30, fill: '#666', stroke: '#000', strokeWidth: 2 }),
+        new fabric.Circle({ left: 0, top: 0, radius: 12, fill: '#333', stroke: '#000', strokeWidth: 1 }),
+      ],
+      { left: 700, top: 100 }
+    );
+    fc.add(group);
+    fc.renderAll();
+  };
+
+  // Evaluation
+  const addBorehole = () => {
+    const fc = getCanvas();
+    if (!fc) return;
+    const group = new fabric.Group(
+      [
+        new fabric.Circle({ left: 0, top: 0, radius: 12, fill: '#8b0000', stroke: '#000', strokeWidth: 1 }),
+        new fabric.Text('BH', { left: -8, top: -6, fontSize: 12, fill: '#fff' }),
+        new fabric.Line([0, 12, 0, 40], { stroke: '#000', strokeWidth: 2, strokeDashArray: [2, 2] }),
+      ],
+      { left: 150, top: 500 }
+    );
+    fc.add(group);
+    fc.renderAll();
+  };
+
+  const addTestPit = () => {
+    const fc = getCanvas();
+    if (!fc) return;
+    const group = new fabric.Group(
+      [
+        new fabric.Rect({ left: -15, top: -15, width: 30, height: 30, fill: '#d2b48c', stroke: '#000', strokeWidth: 2 }),
+        new fabric.Text('TP', { left: -8, top: -6, fontSize: 12, fill: '#000' }),
+      ],
+      { left: 200, top: 500 }
+    );
+    fc.add(group);
+    fc.renderAll();
+  };
+
+  // Water Table
+  const addPiezometer = () => {
+    const fc = getCanvas();
+    if (!fc) return;
+    const group = new fabric.Group(
+      [
+        new fabric.Circle({ left: 0, top: 0, radius: 8, fill: '#00bfff', stroke: '#000', strokeWidth: 1 }),
+        new fabric.Line([0, 8, 0, 35], { stroke: '#000', strokeWidth: 1, strokeDashArray: [2, 2] }),
+        new fabric.Text('PZ', { left: -10, top: -10, fontSize: 10, fill: '#000' }),
+      ],
+      { left: 250, top: 500 }
+    );
+    fc.add(group);
+    fc.renderAll();
+  };
+
+  const addGroundwaterLevel = () => {
+    const fc = getCanvas();
+    if (!fc) return;
+    const grp = new fabric.Group(
+      [
+        new fabric.Text('▼ GWT', { left: -20, top: -20, fontSize: 14, fill: '#0066cc', fontWeight: 'bold' }),
+        new fabric.Line([-30, 0, 30, 0], { stroke: '#0066cc', strokeWidth: 2, strokeDashArray: [5, 5] }),
+      ],
+      { left: 300, top: 450 }
+    );
+    fc.add(grp);
+    fc.renderAll();
+  };
+
+  // Survey
+  const addContour = () => {
+    const fc = getCanvas();
+    if (!fc) return;
+    const pts = [
+      { x: 50, y: 50 },
+      { x: 100, y: 80 },
+      { x: 150, y: 60 },
+      { x: 200, y: 120 },
+      { x: 250, y: 100 },
+    ];
+    fc.add(
+      new fabric.Polyline(
+        pts.map(p => [p.x, p.y]),
+        { stroke: '#8b0000', strokeWidth: 2, fill: null }
+      )
+    );
+    fc.renderAll();
+  };
+
+  const addSurveyPoint = () => {
+    const fc = getCanvas();
+    if (!fc) return;
+    const group = new fabric.Group(
+      [
+        new fabric.Circle({ left: 0, top: 0, radius: 5, fill: '#ff0000', stroke: '#000', strokeWidth: 1 }),
+        new fabric.Text('BM', { left: 8, top: -8, fontSize: 12, fill: '#000' }),
+      ],
+      { left: 300, top: 150 }
+    );
+    fc.add(group);
+    fc.renderAll();
+  };
+
+  const addNorthArrow = () => {
+    const fc = getCanvas();
+    if (!fc) return;
+    const group = new fabric.Group(
+      [
+        new fabric.Line([0, -20, 0, 20], { stroke: '#000', strokeWidth: 2 }),
+        new fabric.Triangle({ left: 0, top: -20, width: 10, height: 10, fill: '#000' }),
+        new fabric.Text('N', { left: -5, top: -32, fontSize: 14, fill: '#000' }),
+      ],
+      { left: 50, top: 50 }
+    );
+    fc.add(group);
+    fc.renderAll();
+  };
+
+  const addScaleBar = () => {
+    const fc = getCanvas();
+    if (!fc) return;
+    const group = new fabric.Group(
+      [
+        new fabric.Line([0, 0, 100, 0], { stroke: '#000', strokeWidth: 2 }),
+        new fabric.Line([0, -5, 0, 5], { stroke: '#000', strokeWidth: 2 }),
+        new fabric.Line([50, -5, 50, 5], { stroke: '#000', strokeWidth: 2 }),
+        new fabric.Line([100, -5, 100, 5], { stroke: '#000', strokeWidth: 2 }),
+        new fabric.Text('0', { left: -5, top: 6, fontSize: 10 }),
+        new fabric.Text('50m', { left: 40, top: 6, fontSize: 10 }),
+        new fabric.Text('100m', { left: 85, top: 6, fontSize: 10 }),
+      ],
+      { left: 800, top: 50 }
+    );
+    fc.add(group);
+    fc.renderAll();
+  };
+
+  const addSpotElevation = () => {
+    const fc = getCanvas();
+    if (!fc) return;
+    const group = new fabric.Group(
+      [
+        new fabric.Circle({ left: 0, top: 0, radius: 4, fill: '#000' }),
+        new fabric.Text('+145.2m', { left: 6, top: -8, fontSize: 12, fill: '#000', fontWeight: 'bold' }),
+      ],
+      { left: 600, top: 400 }
+    );
+    fc.add(group);
+    fc.renderAll();
+  };
+
+  // Annotations
+  const addGridLine = () => {
+    const fc = getCanvas();
+    if (!fc) return;
+    const group = new fabric.Group(
+      [
+        new fabric.Circle({ left: 0, top: 0, radius: 10, fill: '#fff', stroke: '#000', strokeWidth: 1 }),
+        new fabric.Text('A', { left: -4, top: -7, fontSize: 12, fill: '#000' }),
+        new fabric.Line([0, -10, 0, -200], { stroke: '#000', strokeWidth: 1, strokeDashArray: [5, 5] }),
+      ],
+      { left: 100, top: 100 }
+    );
+    fc.add(group);
+    fc.renderAll();
+  };
+
+  const addDimension = () => {
+    const fc = getCanvas();
+    if (!fc) return;
+    fc.add(new fabric.Line([100, 500, 400, 500], { stroke: '#000', strokeWidth: 1, strokeDashArray: [2, 2] }));
+    fc.add(new fabric.Line([100, 495, 100, 505], { stroke: '#000', strokeWidth: 1 }));
+    fc.add(new fabric.Line([400, 495, 400, 505], { stroke: '#000', strokeWidth: 1 }));
+    fc.add(new fabric.Text('3000mm', { left: 230, top: 505, fontSize: 12, fill: '#000' }));
+    fc.renderAll();
+  };
+
+  const addHatch = () => {
+    const fc = getCanvas();
+    if (!fc) return;
+    const rect = new fabric.Rect({ left: 700, top: 400, width: 80, height: 60, fill: '#e0e0e0', stroke: '#000', strokeWidth: 1 });
+    fc.add(rect);
+    for (let i = 0; i < 6; i++) {
+      fc.add(new fabric.Line([700 + i * 15, 400, 700 + i * 15, 460], { stroke: '#ccc', strokeWidth: 1, selectable: false }));
+    }
+    for (let i = 0; i < 4; i++) {
+      fc.add(new fabric.Line([700, 400 + i * 20, 780, 400 + i * 20], { stroke: '#ccc', strokeWidth: 1, selectable: false }));
+    }
+    fc.renderAll();
+  };
+
+  // CCTV
+  const addCamera = () => {
+    const fc = getCanvas();
+    if (!fc) return;
+    const group = new fabric.Group(
+      [
+        new fabric.Circle({ left: 0, top: 0, radius: 15, fill: '#333', stroke: '#000', strokeWidth: 1 }),
+        new fabric.Rect({ left: -10, top: -20, width: 20, height: 8, fill: '#666', stroke: '#000' }),
+        new fabric.Circle({ left: 0, top: 0, radius: 6, fill: '#1e90ff' }),
+      ],
+      { left: 700, top: 200 }
+    );
+    fc.add(group);
+    fc.renderAll();
+  };
+
+  const addCCTVMonitor = () => {
+    const fc = getCanvas();
+    if (!fc) return;
+    const group = new fabric.Group(
+      [
+        new fabric.Rect({ left: -20, top: -15, width: 40, height: 30, fill: '#000', stroke: '#666', strokeWidth: 2 }),
+        new fabric.Rect({ left: -15, top: -10, width: 30, height: 20, fill: '#00ff00' }),
+      ],
+      { left: 750, top: 200 }
+    );
+    fc.add(group);
+    fc.renderAll();
+  };
 
   // ─── RENDER ──────────────────────────────────────────────────────────
   if (canvasError) {
