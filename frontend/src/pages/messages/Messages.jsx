@@ -8,7 +8,9 @@ import RefreshIcon from '@mui/icons-material/Refresh';
 import DeleteSweepIcon from '@mui/icons-material/DeleteSweep';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import MessageIcon from '@mui/icons-material/Message';
-import api from '../../api/axios';          // ✅ correct path
+import ReplyIcon from '@mui/icons-material/Reply';
+import ForwardIcon from '@mui/icons-material/Forward';
+import api from '../../api/axios';
 import BackButton from '../../components/BackButton';
 import MessageDialog from '../../components/MessageDialog';
 
@@ -18,6 +20,10 @@ const Messages = () => {
   const [error, setError] = useState(null);
   const [tab, setTab] = useState(0);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [dialogMode, setDialogMode] = useState('compose');
+  const [initialTo, setInitialTo] = useState('');
+  const [initialSubject, setInitialSubject] = useState('');
+  const [initialContent, setInitialContent] = useState('');
 
   const fetchMessages = async () => {
     setLoading(true);
@@ -46,7 +52,6 @@ const Messages = () => {
     }
   };
 
-  // ─── DELETE ALL ────────────────────────────────────────────
   const handleDeleteAll = async () => {
     if (!window.confirm('Delete ALL messages? This cannot be undone.')) return;
     try {
@@ -70,6 +75,39 @@ const Messages = () => {
     fetchMessages();
   };
 
+  // ─── Compose ──────────────────────────────────────────────────────
+  const handleCompose = () => {
+    setDialogMode('compose');
+    setInitialTo('');
+    setInitialSubject('');
+    setInitialContent('');
+    setDialogOpen(true);
+  };
+
+  // ─── Reply ────────────────────────────────────────────────────────
+  const handleReply = (message) => {
+    setDialogMode('reply');
+    setInitialTo(message.from._id);
+    setInitialSubject(`Re: ${message.subject || 'Your message'}`);
+    setInitialContent(`\n\nOn ${new Date(message.createdAt).toLocaleString()}, ${message.from.name} wrote:\n> ${message.content}`);
+    setDialogOpen(true);
+  };
+
+  // ─── Forward ──────────────────────────────────────────────────────
+  const handleForward = (message) => {
+    setDialogMode('forward');
+    setInitialTo('');
+    setInitialSubject(`Fwd: ${message.subject || 'Your message'}`);
+    setInitialContent(
+      `---------- Forwarded message ----------\n` +
+      `From: ${message.from.name}\n` +
+      `Date: ${new Date(message.createdAt).toLocaleString()}\n` +
+      `Subject: ${message.subject || '(no subject)'}\n\n` +
+      `${message.content}`
+    );
+    setDialogOpen(true);
+  };
+
   const filteredMessages = tab === 0 ? messages : tab === 1 ? messages.filter(m => m.read) : messages.filter(m => !m.read);
 
   return (
@@ -81,7 +119,7 @@ const Messages = () => {
           <Button
             variant="contained"
             startIcon={<MessageIcon />}
-            onClick={() => setDialogOpen(true)}
+            onClick={handleCompose}
             sx={{ mr: 1 }}
           >
             Compose
@@ -146,6 +184,16 @@ const Messages = () => {
                       </IconButton>
                     </Tooltip>
                   )}
+                  <Tooltip title="Reply">
+                    <IconButton size="small" onClick={() => handleReply(m)} color="primary">
+                      <ReplyIcon fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
+                  <Tooltip title="Forward">
+                    <IconButton size="small" onClick={() => handleForward(m)} color="secondary">
+                      <ForwardIcon fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
                   <Tooltip title="Delete">
                     <IconButton size="small" onClick={() => handleDelete(m._id)} color="error">
                       <DeleteIcon fontSize="small" />
@@ -162,6 +210,10 @@ const Messages = () => {
         open={dialogOpen}
         onClose={() => setDialogOpen(false)}
         onSent={handleMessageSent}
+        mode={dialogMode}
+        initialTo={initialTo}
+        initialSubject={initialSubject}
+        initialContent={initialContent}
       />
     </Paper>
   );

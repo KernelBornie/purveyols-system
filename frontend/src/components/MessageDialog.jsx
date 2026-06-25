@@ -9,18 +9,36 @@ import SendIcon from '@mui/icons-material/Send';
 import api from '../api/axios';
 import { useAuth } from '../context/AuthContext';
 
-const MessageDialog = ({ open, onClose, onSent }) => {
+const MessageDialog = ({
+  open,
+  onClose,
+  onSent,
+  mode = 'compose',
+  initialTo = '',
+  initialSubject = '',
+  initialContent = '',
+}) => {
   const { user } = useAuth();
   const [users, setUsers] = useState([]);
-  const [to, setTo] = useState('');
-  const [subject, setSubject] = useState('');
-  const [content, setContent] = useState('');
+  const [to, setTo] = useState(initialTo);
+  const [subject, setSubject] = useState(initialSubject);
+  const [content, setContent] = useState(initialContent);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [selectedRecipient, setSelectedRecipient] = useState(null);
 
+  // ─── Reset fields when dialog opens with new data ──────────────
+  useEffect(() => {
+    if (open) {
+      setTo(initialTo);
+      setSubject(initialSubject);
+      setContent(initialContent);
+    }
+  }, [open, initialTo, initialSubject, initialContent]);
+
+  // ─── Load users ──────────────────────────────────────────────────
   useEffect(() => {
     if (open) {
       api.get('/api/users')
@@ -37,7 +55,6 @@ const MessageDialog = ({ open, onClose, onSent }) => {
       setError('Please select a recipient and enter a message');
       return;
     }
-    // Find recipient name for confirmation
     const recipient = users.find(u => u._id === to);
     setSelectedRecipient(recipient);
     setConfirmOpen(true);
@@ -69,39 +86,61 @@ const MessageDialog = ({ open, onClose, onSent }) => {
     setConfirmOpen(false);
   };
 
+  const getDialogTitle = () => {
+    switch (mode) {
+      case 'reply':
+        return 'Reply to Message';
+      case 'forward':
+        return 'Forward Message';
+      default:
+        return 'Compose New Message';
+    }
+  };
+
   return (
     <>
       <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
-        <DialogTitle>Send Message</DialogTitle>
+        <DialogTitle>{getDialogTitle()}</DialogTitle>
         <DialogContent>
           {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
           {success && <Alert severity="success" sx={{ mb: 2 }}>Message sent!</Alert>}
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
-            <FormControl fullWidth>
-              <InputLabel>Recipient</InputLabel>
-              <Select
-                value={to}
-                onChange={(e) => setTo(e.target.value)}
+            {mode === 'compose' || mode === 'forward' ? (
+              <FormControl fullWidth>
+                <InputLabel>Recipient</InputLabel>
+                <Select
+                  value={to}
+                  onChange={(e) => setTo(e.target.value)}
+                  label="Recipient"
+                >
+                  {users.length === 0 ? (
+                    <MenuItem disabled>No other users found</MenuItem>
+                  ) : (
+                    users.map((u) => (
+                      <MenuItem key={u._id} value={u._id}>
+                        <ListItemIcon>
+                          <Avatar sx={{ width: 24, height: 24 }}>
+                            <PersonIcon fontSize="small" />
+                          </Avatar>
+                        </ListItemIcon>
+                        <Typography variant="body2">{u.name} ({u.role})</Typography>
+                      </MenuItem>
+                    ))
+                  )}
+                </Select>
+              </FormControl>
+            ) : (
+              // Reply mode – show recipient (read‑only)
+              <TextField
                 label="Recipient"
-              >
-                {users.length === 0 ? (
-                  <MenuItem disabled>No other users found</MenuItem>
-                ) : (
-                  users.map((u) => (
-                    <MenuItem key={u._id} value={u._id}>
-                      <ListItemIcon>
-                        <Avatar sx={{ width: 24, height: 24 }}>
-                          <PersonIcon fontSize="small" />
-                        </Avatar>
-                      </ListItemIcon>
-                      <Typography variant="body2">{u.name} ({u.role})</Typography>
-                    </MenuItem>
-                  ))
-                )}
-              </Select>
-            </FormControl>
+                value={users.find(u => u._id === to)?.name || 'Unknown'}
+                fullWidth
+                disabled
+                sx={{ mb: 1 }}
+              />
+            )}
             <TextField
-              label="Subject (optional)"
+              label="Subject"
               value={subject}
               onChange={(e) => setSubject(e.target.value)}
               fullWidth
@@ -112,15 +151,16 @@ const MessageDialog = ({ open, onClose, onSent }) => {
               onChange={(e) => setContent(e.target.value)}
               fullWidth
               multiline
-              rows={4}
+              rows={6}
               required
+              placeholder={mode === 'reply' ? 'Type your reply here...' : 'Type your message...'}
             />
           </Box>
         </DialogContent>
         <DialogActions>
           <Button onClick={onClose} disabled={loading}>Cancel</Button>
           <Button onClick={handleSend} variant="contained" startIcon={<SendIcon />} disabled={loading}>
-            {loading ? 'Sending...' : 'Send'}
+            {loading ? 'Sending...' : mode === 'reply' ? 'Send Reply' : mode === 'forward' ? 'Forward' : 'Send'}
           </Button>
         </DialogActions>
       </Dialog>
