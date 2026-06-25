@@ -409,7 +409,7 @@ const BOQForm = () => {
       {!canEdit && <Alert severity="info" sx={{ mb: 2 }}>You have view‑only access.</Alert>}
 
       <form onSubmit={handleSubmit}>
-        {/* ─── Company Header with deep red PURVEYOLS ────────────── */}
+        {/* ─── Company Header – both lines red ───────────────────── */}
         <Box sx={{ textAlign: 'center', borderBottom: '2px solid #000', pb: 2, mb: 2 }}>
           <img
             src="/top-log.PNG?t=3"
@@ -420,7 +420,7 @@ const BOQForm = () => {
           <Typography variant="h4" sx={{ fontWeight: 'bold', letterSpacing: 2, color: '#b71c1c' }}>
             PURVEYOLS
           </Typography>
-          <Typography variant="subtitle1" sx={{ fontWeight: 'bold', color: '#333' }}>
+          <Typography variant="subtitle1" sx={{ fontWeight: 'bold', color: '#b71c1c' }}>
             Building and Civil Construction
           </Typography>
           <Typography variant="body2">Plot No. 8, Buchi Road - Northmead, P.O. Box NH 87 Lusaka, Zambia</Typography>
