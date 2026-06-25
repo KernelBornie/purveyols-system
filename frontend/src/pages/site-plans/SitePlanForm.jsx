@@ -134,7 +134,6 @@ const SitePlanForm = () => {
   // ─── Submit form ────────────────────────────────────────────────────
   const handleSubmit = async (e) => {
     e.preventDefault();
-    // Validate required fields
     if (!form.name) {
       setMessage({ type: 'error', text: 'Plan Name is required.' });
       return;
@@ -231,6 +230,25 @@ const SitePlanForm = () => {
       </Typography>
 
       {message && <Alert severity={message.type} sx={{ mb: 2 }}>{message.text}</Alert>}
+
+      {/* ─── Company Header – deep red ──────────────────────────── */}
+      <Box sx={{ textAlign: 'center', borderBottom: '2px solid #000', pb: 2, mb: 2 }}>
+        <img
+          src="/top-log.PNG?t=3"
+          alt="PURVEYOLS Logo"
+          style={{ height: '60px', maxWidth: '100%' }}
+          onError={(e) => e.target.style.display = 'none'}
+        />
+        <Typography variant="h4" sx={{ fontWeight: 'bold', letterSpacing: 2, color: '#b71c1c' }}>
+          PURVEYOLS
+        </Typography>
+        <Typography variant="subtitle1" sx={{ fontWeight: 'bold', color: '#b71c1c' }}>
+          Building and Civil contractors
+        </Typography>
+        <Typography variant="body2">Plot No. 8, Buchi Road - Northmead, P.O. Box NH 87 Lusaka, Zambia</Typography>
+        <Typography variant="body2">Tel: +260 211 235354 | Mobile: +260 977 393879 / +260 965 393879</Typography>
+        <Typography variant="body2">Email: purveyols@gmail.com</Typography>
+      </Box>
 
       <form onSubmit={handleSubmit}>
         <Tabs value={activeTab} onChange={(e, v) => setActiveTab(v)} sx={{ mb: 2 }}>
