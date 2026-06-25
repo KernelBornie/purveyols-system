@@ -1,5 +1,6 @@
 // backend/data/boqTemplates.js
 module.exports = {
+  // ─── ZANACO BANK ──────────────────────────────────────────────
   'Zanaco Bank': {
     name: 'Zanaco Bank Refurbishment',
     description: 'Standard BOQ for Zanaco Bank refurbishments',
@@ -90,5 +91,188 @@ module.exports = {
       },
     ],
   },
-  // Add more templates here (Residential, Commercial, Industrial, etc.)
+
+  // ─── RESIDENTIAL HOUSE ──────────────────────────────────────────
+  'Residential House': {
+    name: 'Residential House Construction',
+    description: 'Standard BOQ for a residential house',
+    sections: [
+      {
+        title: 'SITE WORKS',
+        description: 'Site preparation and earthworks',
+        items: [
+          { description: 'Site clearing and grubbing', unit: 'm²', quantity: 500, rate: 0 },
+          { description: 'Excavation for foundations', unit: 'm³', quantity: 80, rate: 0 },
+          { description: 'Backfilling and compaction', unit: 'm³', quantity: 40, rate: 0 },
+          { description: 'Foundation concrete (C20)', unit: 'm³', quantity: 30, rate: 0 },
+          { description: 'Reinforcement steel', unit: 'kg', quantity: 2000, rate: 0 },
+        ],
+      },
+      {
+        title: 'STRUCTURAL WORKS',
+        description: 'Concrete, reinforcement and formwork',
+        items: [
+          { description: 'Ground floor slab (C25)', unit: 'm³', quantity: 25, rate: 0 },
+          { description: 'Columns and beams (C25)', unit: 'm³', quantity: 15, rate: 0 },
+          { description: 'Reinforcement steel for slab', unit: 'kg', quantity: 1500, rate: 0 },
+          { description: 'Formwork to slab and beams', unit: 'm²', quantity: 120, rate: 0 },
+        ],
+      },
+      {
+        title: 'WALLS AND MASONRY',
+        description: 'Blockwork and plastering',
+        items: [
+          { description: '200mm thick blockwork', unit: 'm²', quantity: 180, rate: 0 },
+          { description: 'Internal plastering', unit: 'm²', quantity: 280, rate: 0 },
+          { description: 'External plastering', unit: 'm²', quantity: 220, rate: 0 },
+        ],
+      },
+      {
+        title: 'ROOFING AND CEILINGS',
+        description: 'Roof structure and ceiling',
+        items: [
+          { description: 'Timber roof trusses', unit: 'no', quantity: 12, rate: 0 },
+          { description: 'Roof covering (corrugated iron)', unit: 'm²', quantity: 180, rate: 0 },
+          { description: 'Ceiling boards (10mm)', unit: 'm²', quantity: 150, rate: 0 },
+          { description: 'Fascia and gutters', unit: 'm', quantity: 60, rate: 0 },
+        ],
+      },
+    ],
+  },
+
+  // ─── COMMERCIAL BUILDING ──────────────────────────────────────────
+  'Commercial Building': {
+    name: 'Commercial Building Construction',
+    description: 'Standard BOQ for a commercial building',
+    sections: [
+      {
+        title: 'DEMOLITION AND SITE CLEARANCE',
+        description: 'Site preparation',
+        items: [
+          { description: 'Demolish existing structures', unit: 'm²', quantity: 0, rate: 0 },
+          { description: 'Site clearance and levelling', unit: 'm²', quantity: 0, rate: 0 },
+        ],
+      },
+      {
+        title: 'FOUNDATIONS AND SUBSTRUCTURE',
+        description: 'Below ground works',
+        items: [
+          { description: 'Excavation (bulk)', unit: 'm³', quantity: 0, rate: 0 },
+          { description: 'Blinding concrete (C15)', unit: 'm³', quantity: 0, rate: 0 },
+          { description: 'Reinforced concrete raft (C30)', unit: 'm³', quantity: 0, rate: 0 },
+          { description: 'Reinforcement steel', unit: 'kg', quantity: 0, rate: 0 },
+        ],
+      },
+    ],
+  },
+
+  // ─── ROAD CONSTRUCTION ────────────────────────────────────────────
+  'Road Construction': {
+    name: 'Road Construction BOQ',
+    description: 'Standard BOQ for road construction projects',
+    sections: [
+      {
+        title: 'EARTHWORKS',
+        description: 'Cut and fill operations',
+        items: [
+          { description: 'Clearing and grubbing', unit: 'ha', quantity: 0, rate: 0 },
+          { description: 'Bulk excavation (cut)', unit: 'm³', quantity: 0, rate: 0 },
+          { description: 'Embankment construction (fill)', unit: 'm³', quantity: 0, rate: 0 },
+          { description: 'Compaction', unit: 'm³', quantity: 0, rate: 0 },
+        ],
+      },
+      {
+        title: 'ROAD LAYERS',
+        description: 'Subgrade, subbase, base course',
+        items: [
+          { description: 'Subgrade preparation', unit: 'm²', quantity: 0, rate: 0 },
+          { description: 'Gravel subbase (150mm)', unit: 'm²', quantity: 0, rate: 0 },
+          { description: 'Base course (200mm)', unit: 'm²', quantity: 0, rate: 0 },
+          { description: 'Asphalt wearing course (50mm)', unit: 'm²', quantity: 0, rate: 0 },
+        ],
+      },
+      {
+        title: 'DRAINAGE',
+        description: 'Stormwater and drainage works',
+        items: [
+          { description: 'Stormwater pipes (600mm)', unit: 'm', quantity: 0, rate: 0 },
+          { description: 'Culverts', unit: 'no', quantity: 0, rate: 0 },
+          { description: 'Drainage channels', unit: 'm', quantity: 0, rate: 0 },
+        ],
+      },
+    ],
+  },
+
+  // ─── BRIDGE CONSTRUCTION ──────────────────────────────────────────
+  'Bridge Construction': {
+    name: 'Bridge Construction BOQ',
+    description: 'Standard BOQ for bridge construction',
+    sections: [
+      {
+        title: 'FOUNDATIONS',
+        description: 'Pile and abutment foundations',
+        items: [
+          { description: 'Bored piles (1200mm)', unit: 'm', quantity: 0, rate: 0 },
+          { description: 'Reinforcement for piles', unit: 'kg', quantity: 0, rate: 0 },
+          { description: 'Concrete pile caps (C35)', unit: 'm³', quantity: 0, rate: 0 },
+        ],
+      },
+      {
+        title: 'SUPERSTRUCTURE',
+        description: 'Deck and girders',
+        items: [
+          { description: 'Precast concrete girders', unit: 'no', quantity: 0, rate: 0 },
+          { description: 'Deck slab concrete (C35)', unit: 'm³', quantity: 0, rate: 0 },
+          { description: 'Reinforcement for deck', unit: 'kg', quantity: 0, rate: 0 },
+          { description: 'Asphalt wearing course', unit: 'm²', quantity: 0, rate: 0 },
+        ],
+      },
+      {
+        title: 'BALUSTRADES AND FENCING',
+        description: 'Safety barriers',
+        items: [
+          { description: 'Steel balustrades', unit: 'm', quantity: 0, rate: 0 },
+          { description: 'Fencing', unit: 'm', quantity: 0, rate: 0 },
+        ],
+      },
+    ],
+  },
+
+  // ─── WATER RETICULATION ────────────────────────────────────────────
+  'Water Reticulation': {
+    name: 'Water Reticulation BOQ',
+    description: 'Standard BOQ for water supply and reticulation',
+    sections: [
+      {
+        title: 'PIPELINES',
+        description: 'Water mains and distribution pipes',
+        items: [
+          { description: 'PVC pipe (110mm)', unit: 'm', quantity: 0, rate: 0 },
+          { description: 'PVC pipe (160mm)', unit: 'm', quantity: 0, rate: 0 },
+          { description: 'HDPE pipe (90mm)', unit: 'm', quantity: 0, rate: 0 },
+          { description: 'Trench excavation for pipes', unit: 'm³', quantity: 0, rate: 0 },
+          { description: 'Bedding and backfill', unit: 'm³', quantity: 0, rate: 0 },
+        ],
+      },
+      {
+        title: 'FITTINGS AND VALVES',
+        description: 'Control and distribution fittings',
+        items: [
+          { description: 'Gate valves (100mm)', unit: 'no', quantity: 0, rate: 0 },
+          { description: 'Air release valves', unit: 'no', quantity: 0, rate: 0 },
+          { description: 'Fire hydrants', unit: 'no', quantity: 0, rate: 0 },
+          { description: 'Water meters', unit: 'no', quantity: 0, rate: 0 },
+        ],
+      },
+      {
+        title: 'RESERVOIRS AND TANKS',
+        description: 'Water storage facilities',
+        items: [
+          { description: 'Reinforced concrete tank (C30)', unit: 'm³', quantity: 0, rate: 0 },
+          { description: 'Steel water tank (100kL)', unit: 'no', quantity: 0, rate: 0 },
+          { description: 'Pump house', unit: 'm²', quantity: 0, rate: 0 },
+        ],
+      },
+    ],
+  },
 };
