@@ -8,70 +8,85 @@ const Payment = require('../models/Payment');
 const FundingRequest = require('../models/FundingRequest');
 const ProcurementOrder = require('../models/ProcurementOrder');
 const Subcontract = require('../models/Subcontract');
+const BOQ = require('../models/BOQ');
+const SafetyReport = require('../models/SafetyReport');
 
-// ─── GET accountant stats report ──────────────────────────────
+// ─── Helper: get common stats for any role ─────────────────────
+const getCommonStats = async (start, end) => {
+  const [workersEnrolled, projectsCreated, payments, fundingRequests, procurementOrders, subcontracts] = await Promise.all([
+    Worker.countDocuments({ enrolledAt: { $gte: start, $lte: end } }),
+    Project.countDocuments({ createdAt: { $gte: start, $lte: end } }),
+    Payment.find({ paidAt: { $gte: start, $lte: end }, status: 'completed' }),
+    FundingRequest.countDocuments({ requestedAt: { $gte: start, $lte: end } }),
+    ProcurementOrder.countDocuments({ createdAt: { $gte: start, $lte: end } }),
+    Subcontract.countDocuments({ createdAt: { $gte: start, $lte: end } }),
+  ]);
+  const paymentsMade = payments.length;
+  const totalReleased = payments.reduce((sum, p) => sum + p.amount, 0);
+
+  return {
+    workersEnrolled,
+    projectsCreated,
+    paymentsMade,
+    totalReleased,
+    fundingRequests,
+    procurementOrders,
+    subcontracts,
+    totalWorkers: await Worker.countDocuments({ status: 'active' }),
+    totalProjects: await Project.countDocuments(),
+  };
+};
+
+// ─── Accountant stats ────────────────────────────────────────────
 router.get('/accountant/stats', auth, authorize('admin', 'director', 'accountant'), async (req, res) => {
   try {
     const { startDate, endDate } = req.query;
-    if (!startDate || !endDate) {
-      return res.status(400).json({ error: 'Start date and end date are required.' });
-    }
-
+    if (!startDate || !endDate) return res.status(400).json({ error: 'Start and end date required.' });
     const start = new Date(startDate);
     const end = new Date(endDate);
-    end.setHours(23, 59, 59, 999); // include end of day
-
-    // ─── Workers enrolled in period ──────────────────────────────
-    const workersEnrolled = await Worker.countDocuments({
-      enrolledAt: { $gte: start, $lte: end }
-    });
-
-    // ─── Projects created in period ──────────────────────────────
-    const projectsCreated = await Project.countDocuments({
-      createdAt: { $gte: start, $lte: end }
-    });
-
-    // ─── Payments completed in period ──────────────────────────────
-    const payments = await Payment.find({
-      paidAt: { $gte: start, $lte: end },
-      status: 'completed'
-    });
-    const paymentsMade = payments.length;
-    const totalReleased = payments.reduce((sum, p) => sum + p.amount, 0);
-
-    // ─── Funding requests created in period ──────────────────────
-    const fundingRequests = await FundingRequest.countDocuments({
-      requestedAt: { $gte: start, $lte: end }
-    });
-
-    // ─── Procurement orders created in period ────────────────────
-    const procurementOrders = await ProcurementOrder.countDocuments({
-      createdAt: { $gte: start, $lte: end }
-    });
-
-    // ─── Subcontracts created in period ──────────────────────────
-    const subcontracts = await Subcontract.countDocuments({
-      createdAt: { $gte: start, $lte: end }
-    });
-
-    // ─── Total workers overall (active) ──────────────────────────
-    const totalWorkers = await Worker.countDocuments({ status: 'active' });
-    const totalProjects = await Project.countDocuments();
-
-    res.json({
-      period: { startDate, endDate },
-      workersEnrolled,
-      projectsCreated,
-      paymentsMade,
-      totalReleased,
-      fundingRequests,
-      procurementOrders,
-      subcontracts,
-      totalWorkers,
-      totalProjects,
-    });
+    end.setHours(23, 59, 59, 999);
+    const stats = await getCommonStats(start, end);
+    // Accountant also sees funding approval ratio
+    const fundingApproved = await FundingRequest.countDocuments({ status: 'approved', requestedAt: { $gte: start, $lte: end } });
+    const fundingRejected = await FundingRequest.countDocuments({ status: 'rejected', requestedAt: { $gte: start, $lte: end } });
+    res.json({ ...stats, fundingApproved, fundingRejected });
   } catch (err) {
-    console.error('Report error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── Director stats ──────────────────────────────────────────────
+router.get('/director/stats', auth, authorize('admin', 'director'), async (req, res) => {
+  try {
+    const { startDate, endDate } = req.query;
+    if (!startDate || !endDate) return res.status(400).json({ error: 'Start and end date required.' });
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    end.setHours(23, 59, 59, 999);
+    const stats = await getCommonStats(start, end);
+    // Director also sees BOQs and safety reports
+    const boqsCreated = await BOQ.countDocuments({ createdAt: { $gte: start, $lte: end } });
+    const safetyReports = await SafetyReport.countDocuments({ createdAt: { $gte: start, $lte: end } });
+    res.json({ ...stats, boqsCreated, safetyReports });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── Civil Engineer stats ────────────────────────────────────────
+router.get('/engineer/stats', auth, authorize('admin', 'director', 'civil-engineer'), async (req, res) => {
+  try {
+    const { startDate, endDate } = req.query;
+    if (!startDate || !endDate) return res.status(400).json({ error: 'Start and end date required.' });
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    end.setHours(23, 59, 59, 999);
+    const stats = await getCommonStats(start, end);
+    // Engineer also sees site plans and drawings
+    const sitePlans = await SitePlan.countDocuments({ createdAt: { $gte: start, $lte: end } });
+    const drawings = await Drawing.countDocuments({ createdAt: { $gte: start, $lte: end } });
+    res.json({ ...stats, sitePlans, drawings });
+  } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });

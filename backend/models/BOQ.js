@@ -1,17 +1,47 @@
 const mongoose = require('mongoose');
+
+const BOQItemSchema = new mongoose.Schema({
+  description: { type: String, required: true },
+  unit: { type: String, required: true },
+  quantity: { type: Number, default: 1 },
+  rate: { type: Number, default: 0 },
+  amount: { type: Number, default: 0 },
+  notes: { type: String, default: '' },
+});
+
+const BOQSectionSchema = new mongoose.Schema({
+  title: { type: String, required: true },
+  description: { type: String, default: '' },
+  items: [BOQItemSchema],
+  order: { type: Number, default: 0 },
+});
+
 const BOQSchema = new mongoose.Schema({
-  project: { type: mongoose.Schema.Types.ObjectId, ref: 'Project' },
-  items: [{
-    description: String,
-    quantity: Number,
-    unit: String,
-    rate: Number,
-    amount: Number,
-    notes: String,
-  }],
-  status: { type: String, enum: ['draft','submitted','approved'], default: 'draft' },
+  project: { type: mongoose.Schema.Types.ObjectId, ref: 'Project', required: true },
+  name: { type: String, required: true },
+  description: { type: String, default: '' },
+  sections: [BOQSectionSchema],
+  status: {
+    type: String,
+    enum: ['draft', 'submitted', 'approved', 'rejected', 'issued'],
+    default: 'draft',
+  },
+  subTotal: { type: Number, default: 0 },
+  percentageAdjustment: { type: Number, default: 0 },
+  contingencies: { type: Number, default: 0 },
+  vat: { type: Number, default: 16 },
+  grandTotal: { type: Number, default: 0 },
+  clientName: { type: String, default: '' },
+  clientAddress: { type: String, default: '' },
+  projectLocation: { type: String, default: '' },
+  tendererName: { type: String, default: '' },
+  tendererAddress: { type: String, default: '' },
+  tenderDate: { type: Date, default: Date.now },
+  exchangeRate: { type: Number, default: 1 },
+  templateName: { type: String, default: '' },
   createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   createdAt: { type: Date, default: Date.now },
-  updatedAt: Date,
+  updatedAt: { type: Date, default: Date.now },
 });
+
 module.exports = mongoose.model('BOQ', BOQSchema);

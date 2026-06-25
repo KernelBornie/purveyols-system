@@ -7,12 +7,24 @@ import {
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
+import EditIcon from '@mui/icons-material/Edit';
 import SaveIcon from '@mui/icons-material/Save';
 import PrintIcon from '@mui/icons-material/Print';
 import FileDownloadIcon from '@mui/icons-material/FileDownload';
+import CalculateIcon from '@mui/icons-material/Calculate';
 import api from '../../api/axios';
 import { useAuth } from '../../context/AuthContext';
 import BackButton from '../../components/BackButton';
+import ConversionTool from '../../components/ConversionTool';
+
+// ─── Template options ──────────────────────────────────────────────
+const TEMPLATES = [
+  { value: 'Zanaco Bank', label: '🏦 Zanaco Bank' },
+  { value: 'Residential', label: '🏠 Residential' },
+  { value: 'Commercial', label: '🏢 Commercial' },
+  { value: 'Industrial', label: '🏭 Industrial' },
+  { value: 'Custom', label: '⚙️ Custom' },
+];
 
 const BOQForm = () => {
   const { id } = useParams();
@@ -20,267 +32,283 @@ const BOQForm = () => {
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [projects, setProjects] = useState([]);
+  const [conversionOpen, setConversionOpen] = useState(false);
   const [form, setForm] = useState({
     project: '',
-    items: [],
-    status: 'draft',
-    contingency: 2.0,
-    vat: 16,
-    preliminaries: 0,
+    name: '',
     description: '',
+    clientName: '',
+    clientAddress: '',
+    projectLocation: '',
+    tendererName: '',
+    tendererAddress: '',
+    tenderDate: new Date().toISOString().split('T')[0],
+    exchangeRate: 1,
+    sections: [],
+    subTotal: 0,
+    percentageAdjustment: 0,
+    contingencies: 10,
+    vat: 16,
+    grandTotal: 0,
+    status: 'draft',
+    templateName: '',
   });
-  const [creator, setCreator] = useState(null);
-  const [createdAt, setCreatedAt] = useState(null);
-  const [approver, setApprover] = useState(null);
-  const [approvedAt, setApprovedAt] = useState(null);
   const [message, setMessage] = useState(null);
+  const [selectedTemplate, setSelectedTemplate] = useState('');
+  const [sectionDialog, setSectionDialog] = useState(false);
+  const [editingSection, setEditingSection] = useState(null);
+  const [sectionForm, setSectionForm] = useState({ title: '', description: '' });
+  const [itemDialog, setItemDialog] = useState(false);
+  const [editingItem, setEditingItem] = useState(null);
+  const [currentSectionIndex, setCurrentSectionIndex] = useState(null);
+  const [itemForm, setItemForm] = useState({ description: '', unit: '', quantity: 1, rate: 0, notes: '' });
 
-  const canEdit = ['civil-engineer', 'quantity-surveyor', 'procurement-officer', 'director', 'admin', 'accountant', 'foreman'].includes(user?.role);
+  const canEdit = ['admin', 'director', 'quantity-surveyor', 'civil-engineer', 'procurement-officer', 'accountant', 'foreman'].includes(user?.role);
 
-  const sectionTemplates = [
-    {
-      name: 'Preliminaries and General Items',
-      items: [
-        { description: 'Site Establishment', quantity: 1, unit: 'Lump Sum', rate: 0 },
-        { description: 'Site Clearance', quantity: 1, unit: 'Lump Sum', rate: 0 },
-        { description: 'Temporary Works', quantity: 1, unit: 'Lump Sum', rate: 0 },
-        { description: 'Security & Fencing', quantity: 1, unit: 'Lump Sum', rate: 0 },
-        { description: 'Welfare Facilities', quantity: 1, unit: 'Lump Sum', rate: 0 },
-      ]
-    },
-    {
-      name: 'Boundary Fence Works',
-      items: [
-        { description: 'Excavation for posts', quantity: 400, unit: 'm³', rate: 0 },
-        { description: 'Concrete for posts (C25)', quantity: 80, unit: 'm³', rate: 0 },
-        { description: 'Reinforcement steel', quantity: 4000, unit: 'kg', rate: 0 },
-        { description: 'Chain link fencing', quantity: 2000, unit: 'm', rate: 0 },
-        { description: 'Gates and fittings', quantity: 4, unit: 'No.', rate: 0 },
-        { description: 'Painting and finishing', quantity: 2000, unit: 'm', rate: 0 },
-      ]
-    },
-    {
-      name: 'Earthworks & Site Preparation',
-      items: [
-        { description: 'Bulk earthworks', quantity: 500, unit: 'm³', rate: 0 },
-        { description: 'Site levelling', quantity: 500, unit: 'm³', rate: 0 },
-        { description: 'Drainage works', quantity: 200, unit: 'm', rate: 0 },
-      ]
-    }
-  ];
-
+  // ─── Fetch data ──────────────────────────────────────────────────
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
       try {
-        const projectsRes = await api.get('/api/projects');
-        setProjects(Array.isArray(projectsRes.data) ? projectsRes.data : []);
-
+        const projRes = await api.get('/api/projects');
+        setProjects(Array.isArray(projRes.data) ? projRes.data : []);
         if (id) {
           const boqRes = await api.get(`/api/boq/${id}`);
           const data = boqRes.data;
           setForm({
             project: data.project?._id || data.project || '',
-            items: Array.isArray(data.items) ? data.items : [],
-            status: data.status || 'draft',
-            contingency: data.contingency || 2.0,
-            vat: data.vat || 16,
-            preliminaries: data.preliminaries || 0,
+            name: data.name || '',
             description: data.description || '',
+            clientName: data.clientName || '',
+            clientAddress: data.clientAddress || '',
+            projectLocation: data.projectLocation || '',
+            tendererName: data.tendererName || '',
+            tendererAddress: data.tendererAddress || '',
+            tenderDate: data.tenderDate ? data.tenderDate.split('T')[0] : new Date().toISOString().split('T')[0],
+            exchangeRate: data.exchangeRate || 1,
+            sections: data.sections || [],
+            subTotal: data.subTotal || 0,
+            percentageAdjustment: data.percentageAdjustment || 0,
+            contingencies: data.contingencies || 10,
+            vat: data.vat || 16,
+            grandTotal: data.grandTotal || 0,
+            status: data.status || 'draft',
+            templateName: data.templateName || '',
           });
-          setCreator(data.createdBy);
-          setCreatedAt(data.createdAt);
-          setApprover(data.approvedBy);
-          setApprovedAt(data.approvedAt);
+          setSelectedTemplate(data.templateName || '');
         } else {
-          setCreator(user);
-          setCreatedAt(new Date().toISOString());
-          const initialItems = [
-            { isSection: true, sectionName: 'PRELIMINARIES AND GENERAL ITEMS' },
-            ...sectionTemplates[0].items,
-            { isSection: true, sectionName: 'BOUNDARY FENCE WORKS' },
-            ...sectionTemplates[1].items,
-            { isSection: true, sectionName: 'EARTHWORKS & SITE PREPARATION' },
-            ...sectionTemplates[2].items,
-          ];
-          setForm(prev => ({ ...prev, items: initialItems }));
+          // Default template on new BOQ
+          setSelectedTemplate('Zanaco Bank');
+          loadTemplate('Zanaco Bank');
         }
         setMessage(null);
       } catch (err) {
-        console.error('Error fetching data:', err);
         setMessage({ type: 'error', text: err.response?.data?.error || 'Failed to load data' });
       } finally {
         setLoading(false);
       }
     };
     fetchData();
-  }, [id, user]);
+  }, [id]);
 
-  const calculateTotals = () => {
-    let itemsWithAmount = [];
-    let subtotal = 0;
-    const items = Array.isArray(form.items) ? form.items : [];
-    items.forEach(item => {
-      if (item.isSection) {
-        itemsWithAmount.push(item);
-        return;
-      }
-      const quantity = parseFloat(item.quantity) || 0;
-      const rate = parseFloat(item.rate) || 0;
-      const amount = quantity * rate;
-      itemsWithAmount.push({ ...item, amount });
-      subtotal += amount;
-    });
-    const preliminaries = parseFloat(form.preliminaries) || 0;
-    const preliminariesAmount = (subtotal * preliminaries) / 100;
-    const contingency = (subtotal + preliminariesAmount) * (parseFloat(form.contingency) / 100);
-    const vat = (subtotal + preliminariesAmount + contingency) * (parseFloat(form.vat) / 100);
-    const grandTotal = subtotal + preliminariesAmount + contingency + vat;
-    return {
-      itemsWithAmount,
-      subtotal,
-      preliminariesAmount,
-      preliminaries,
-      contingency: form.contingency,
-      vat: form.vat,
-      contingencyAmount: contingency,
-      vatAmount: vat,
-      grandTotal
-    };
-  };
-
-  const totals = calculateTotals();
-
-  const handleItemChange = (index, field, value) => {
-    const items = [...form.items];
-    if (field === 'isSection') {
-      items[index][field] = value;
-    } else {
-      items[index][field] = value;
-      const quantity = parseFloat(items[index].quantity) || 0;
-      const rate = parseFloat(items[index].rate) || 0;
-      items[index].amount = quantity * rate;
-    }
-    setForm({ ...form, items });
-  };
-
-  const addItem = () => {
-    if (!canEdit) return;
-    setForm({ ...form, items: [...form.items, { description: '', quantity: 1, unit: '', rate: 0, amount: 0 }] });
-  };
-
-  const addSection = (sectionName, templateItems) => {
-    if (!canEdit) return;
-    const newItems = templateItems.map(item => ({ ...item, amount: 0 }));
-    setForm({
-      ...form,
-      items: [
-        ...form.items,
-        { isSection: true, sectionName: sectionName.toUpperCase() },
-        ...newItems
-      ]
-    });
-  };
-
-  const removeItem = (index) => {
-    if (!canEdit) return;
-    const items = form.items.filter((_, i) => i !== index);
-    if (items.length === 0) {
-      setMessage({ type: 'warning', text: 'Must have at least one item.' });
+  // ─── Load template ──────────────────────────────────────────────
+  const loadTemplate = async (templateName) => {
+    if (!templateName || templateName === 'Custom') {
+      setForm(prev => ({ ...prev, sections: [], templateName: '' }));
       return;
     }
-    setForm({ ...form, items });
+    try {
+      const res = await api.get(`/api/boq/templates/${templateName}`);
+      const template = res.data;
+      setForm(prev => ({
+        ...prev,
+        sections: template.sections || [],
+        templateName: templateName,
+        name: template.name || prev.name,
+        description: template.description || prev.description,
+      }));
+      setMessage({ type: 'success', text: `Loaded ${templateName} template` });
+    } catch (err) {
+      setMessage({ type: 'error', text: 'Failed to load template' });
+    }
   };
 
+  // ─── Section handlers ────────────────────────────────────────────
+  const handleAddSection = () => {
+    setEditingSection(null);
+    setSectionForm({ title: '', description: '' });
+    setSectionDialog(true);
+  };
+
+  const handleEditSection = (index) => {
+    setEditingSection(index);
+    setSectionForm(form.sections[index]);
+    setSectionDialog(true);
+  };
+
+  const handleSaveSection = () => {
+    const newSection = {
+      title: sectionForm.title,
+      description: sectionForm.description || '',
+      items: [],
+      order: form.sections.length,
+    };
+    if (editingSection !== null) {
+      const sections = [...form.sections];
+      sections[editingSection] = { ...sections[editingSection], ...sectionForm };
+      setForm({ ...form, sections });
+    } else {
+      setForm({ ...form, sections: [...form.sections, newSection] });
+    }
+    setSectionDialog(false);
+  };
+
+  const handleDeleteSection = (index) => {
+    const sections = form.sections.filter((_, i) => i !== index);
+    setForm({ ...form, sections });
+  };
+
+  // ─── Item handlers ──────────────────────────────────────────────
+  const handleAddItem = (sectionIndex) => {
+    setCurrentSectionIndex(sectionIndex);
+    setEditingItem(null);
+    setItemForm({ description: '', unit: '', quantity: 1, rate: 0, notes: '' });
+    setItemDialog(true);
+  };
+
+  const handleEditItem = (sectionIndex, itemIndex) => {
+    setCurrentSectionIndex(sectionIndex);
+    setEditingItem(itemIndex);
+    setItemForm(form.sections[sectionIndex].items[itemIndex]);
+    setItemDialog(true);
+  };
+
+  const handleSaveItem = () => {
+    const sections = [...form.sections];
+    const items = sections[currentSectionIndex].items || [];
+    const newItem = {
+      description: itemForm.description,
+      unit: itemForm.unit || 'lump',
+      quantity: parseFloat(itemForm.quantity) || 1,
+      rate: parseFloat(itemForm.rate) || 0,
+      amount: (parseFloat(itemForm.quantity) || 1) * (parseFloat(itemForm.rate) || 0),
+      notes: itemForm.notes || '',
+    };
+    if (editingItem !== null) {
+      items[editingItem] = newItem;
+    } else {
+      items.push(newItem);
+    }
+    sections[currentSectionIndex].items = items;
+    setForm({ ...form, sections });
+    setItemDialog(false);
+    recalculateTotals();
+  };
+
+  const handleDeleteItem = (sectionIndex, itemIndex) => {
+    const sections = [...form.sections];
+    sections[sectionIndex].items = sections[sectionIndex].items.filter((_, i) => i !== itemIndex);
+    setForm({ ...form, sections });
+    recalculateTotals();
+  };
+
+  // ─── Totals calculation ──────────────────────────────────────────
+  const recalculateTotals = () => {
+    let subTotal = 0;
+    form.sections.forEach(section => {
+      section.items.forEach(item => {
+        item.amount = (item.quantity || 0) * (item.rate || 0);
+        subTotal += item.amount;
+      });
+    });
+    const adj = (form.percentageAdjustment || 0) / 100;
+    const subTotalAdj = subTotal * (1 + adj);
+    const contingencies = subTotalAdj * ((form.contingencies || 0) / 100);
+    const vat = (subTotalAdj + contingencies) * ((form.vat || 0) / 100);
+    const grandTotal = subTotalAdj + contingencies + vat;
+    setForm(prev => ({ ...prev, subTotal, grandTotal }));
+  };
+
+  useEffect(() => {
+    recalculateTotals();
+  }, [form.sections, form.percentageAdjustment, form.contingencies, form.vat]);
+
+  // ─── Submit ──────────────────────────────────────────────────────
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!canEdit) return;
     setLoading(true);
-    setMessage(null);
     try {
-      const itemsToSubmit = totals.itemsWithAmount.map(item => {
-        if (item.isSection) return item;
-        return {
-          ...item,
-          amount: parseFloat(item.amount) || 0,
+      const payload = { ...form };
+      // Clean sections (remove extra fields)
+      payload.sections = form.sections.map(s => ({
+        title: s.title,
+        description: s.description || '',
+        items: s.items.map(item => ({
+          description: item.description,
+          unit: item.unit,
           quantity: parseFloat(item.quantity) || 0,
           rate: parseFloat(item.rate) || 0,
-        };
-      });
-      const payload = {
-        project: form.project,
-        description: form.description,
-        items: itemsToSubmit,
-        preliminaries: parseFloat(form.preliminaries) || 0,
-        contingency: parseFloat(form.contingency) || 0,
-        vat: parseFloat(form.vat) || 0,
-        status: form.status,
-        grandTotal: totals.grandTotal,
-      };
+          amount: parseFloat(item.amount) || 0,
+          notes: item.notes || '',
+        })),
+      }));
       if (id) {
         await api.put(`/api/boq/${id}`, payload);
-        setMessage({ type: 'success', text: 'BOQ updated successfully!' });
+        setMessage({ type: 'success', text: 'BOQ updated!' });
       } else {
         await api.post('/api/boq', payload);
-        setMessage({ type: 'success', text: 'BOQ created successfully!' });
+        setMessage({ type: 'success', text: 'BOQ created!' });
       }
       setTimeout(() => navigate('/boq'), 1500);
     } catch (err) {
-      setMessage({ type: 'error', text: err.response?.data?.error || 'Failed to save BOQ' });
+      setMessage({ type: 'error', text: err.response?.data?.error || 'Failed to save' });
     } finally {
       setLoading(false);
     }
   };
 
-  const handleDelete = async () => {
-    if (!canEdit) return;
-    if (!window.confirm('Delete this BOQ?')) return;
-    setLoading(true);
-    try {
-      await api.delete(`/api/boq/${id}`);
-      navigate('/boq');
-    } catch (err) {
-      alert('Delete failed');
-      setLoading(false);
-    }
-  };
-
-  const handlePrint = () => window.print();
+  // ─── Export CSV ──────────────────────────────────────────────────
   const exportCSV = () => {
-    let csv = 'Description,Qty,Unit,Rate,Amount\n';
-    form.items.forEach(item => {
-      if (!item.isSection) {
-        csv += `${item.description},${item.quantity},${item.unit},${item.rate},${item.amount}\n`;
-      }
+    let csv = 'Section,Description,Unit,Quantity,Rate,Amount\n';
+    form.sections.forEach(section => {
+      section.items.forEach(item => {
+        csv += `${section.title},${item.description},${item.unit},${item.quantity},${item.rate},${item.amount}\n`;
+      });
     });
-    csv += `\nSub-Total,,,${totals.subtotal}`;
-    csv += `\nPreliminaries (${totals.preliminaries}%),,,"${totals.preliminariesAmount}"`;
-    csv += `\nContingency (${totals.contingency}%),,,"${totals.contingencyAmount}"`;
-    csv += `\nVAT (${totals.vat}%),,,"${totals.vatAmount}"`;
-    csv += `\nGRAND TOTAL,,,${totals.grandTotal}`;
+    csv += `\nSub-Total,,,${form.subTotal}\n`;
+    csv += `Contingencies (${form.contingencies}%),,,${form.contingencies * form.subTotal / 100}\n`;
+    csv += `VAT (${form.vat}%),,,${form.vat * form.subTotal / 100}\n`;
+    csv += `GRAND TOTAL,,,${form.grandTotal}`;
     const blob = new Blob([csv], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'BOQ.csv';
+    a.download = `BOQ_${form.name || 'untitled'}.csv`;
     a.click();
     URL.revokeObjectURL(url);
   };
 
+  const handlePrint = () => window.print();
   const formatCurrency = (amount) => new Intl.NumberFormat('en-ZM', { style: 'currency', currency: 'ZMW' }).format(amount || 0);
   const formatDate = (date) => date ? new Date(date).toLocaleString() : '—';
 
   if (loading) {
-    return <Paper sx={{ p: 3, textAlign: 'center' }}><CircularProgress /></Paper>;
+    return (
+      <Paper sx={{ p: 3, textAlign: 'center' }}>
+        <CircularProgress />
+        <Typography sx={{ mt: 2 }}>Loading BOQ...</Typography>
+      </Paper>
+    );
   }
 
   return (
-    <Paper sx={{ p: 3, maxWidth: '1100px', mx: 'auto' }}>
+    <Paper sx={{ p: 3, maxWidth: 1400, mx: 'auto' }}>
       <BackButton />
       {message && <Alert severity={message.type} sx={{ mb: 2 }}>{message.text}</Alert>}
       {!canEdit && <Alert severity="info" sx={{ mb: 2 }}>You have view‑only access.</Alert>}
 
       <form onSubmit={handleSubmit}>
+        {/* Company Header */}
         <Box sx={{ textAlign: 'center', borderBottom: '2px solid #000', pb: 2, mb: 2 }}>
           <Typography variant="h4" sx={{ fontWeight: 'bold', letterSpacing: 2 }}>PURVEYOLS</Typography>
           <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>Building and Civil Construction</Typography>
@@ -289,161 +317,167 @@ const BOQForm = () => {
           <Typography variant="body2">Email: purveyols@gmail.com</Typography>
         </Box>
 
+        {/* Document Title & Actions */}
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3, borderBottom: '1px solid #000', pb: 1 }}>
-          <Typography variant="h5" sx={{ fontWeight: 'bold', letterSpacing: 1 }}>BILL OF QUANTITIES (BOQ)</Typography>
-          <Typography variant="body2" sx={{ fontWeight: 'bold' }}>{id ? `BOQ #${id.slice(-6)}` : 'New BOQ'}</Typography>
+          <Typography variant="h5" sx={{ fontWeight: 'bold', letterSpacing: 1 }}>BILL OF QUANTITIES</Typography>
+          <Box>
+            <Button variant="outlined" startIcon={<CalculateIcon />} onClick={() => setConversionOpen(true)} sx={{ mr: 1 }}>
+              Conversions
+            </Button>
+            <Button variant="outlined" startIcon={<PrintIcon />} onClick={handlePrint}>Print</Button>
+          </Box>
         </Box>
 
-        {creator && (
-          <Box sx={{ mb: 2 }}>
-            <Typography variant="body2">
-              Created by: <strong>{creator.name}</strong> ({creator.role})
-            </Typography>
-            <Typography variant="body2" color="textSecondary">
-              Created on: {formatDate(createdAt)}
-            </Typography>
-          </Box>
-        )}
-
-        <Grid container spacing={2} sx={{ mb: 3 }}>
+        {/* Project Details & Client Info */}
+        <Grid container spacing={2} sx={{ mb: 2 }}>
           <Grid item xs={12} md={6}>
             <TextField select label="Project *" fullWidth size="small" value={form.project || ''} onChange={e => setForm({ ...form, project: e.target.value })} required disabled={!canEdit}>
-              {Array.isArray(projects) && projects.map(p => <MenuItem key={p._id} value={p._id}>{p.name}</MenuItem>)}
+              <MenuItem value="">Select Project</MenuItem>
+              {projects.map(p => <MenuItem key={p._id} value={p._id}>{p.name}</MenuItem>)}
             </TextField>
           </Grid>
           <Grid item xs={12} md={6}>
-            <TextField label="Description / Title" fullWidth size="small" value={form.description || ''} onChange={e => setForm({ ...form, description: e.target.value })} placeholder="e.g., Proposed Construction of 2000m Long Boundary Fence" disabled={!canEdit} />
+            <TextField label="BOQ Name *" fullWidth size="small" value={form.name || ''} onChange={e => setForm({ ...form, name: e.target.value })} required disabled={!canEdit} />
+          </Grid>
+          <Grid item xs={12}>
+            <TextField label="Description" fullWidth multiline rows={2} size="small" value={form.description || ''} onChange={e => setForm({ ...form, description: e.target.value })} disabled={!canEdit} />
           </Grid>
         </Grid>
 
-        {canEdit && (
-          <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 2 }}>
-            <Button variant="outlined" size="small" startIcon={<AddIcon />} onClick={() => addSection('Preliminaries', sectionTemplates[0].items)}>Add Preliminaries</Button>
-            <Button variant="outlined" size="small" startIcon={<AddIcon />} onClick={() => addSection('Boundary Fence', sectionTemplates[1].items)}>Add Boundary Fence</Button>
-            <Button variant="outlined" size="small" startIcon={<AddIcon />} onClick={() => addSection('Earthworks', sectionTemplates[2].items)}>Add Earthworks</Button>
-            <Button variant="contained" size="small" startIcon={<AddIcon />} onClick={addItem}>Add Custom Item</Button>
-          </Box>
-        )}
-
-        <Box sx={{ mt: 3, overflowX: 'auto' }}>
-          <Typography variant="h6" gutterBottom>BOQ Items</Typography>
-          <Table size="small" sx={{ border: '1px solid #000' }}>
-            <TableHead>
-              <TableRow sx={{ bgcolor: '#f5f5f5' }}>
-                <TableCell sx={{ fontWeight: 'bold', border: '1px solid #000', textAlign: 'center' }}>#</TableCell>
-                <TableCell sx={{ fontWeight: 'bold', border: '1px solid #000', textAlign: 'center' }}>Description</TableCell>
-                <TableCell sx={{ fontWeight: 'bold', border: '1px solid #000', textAlign: 'center', width: '80px' }}>Qty</TableCell>
-                <TableCell sx={{ fontWeight: 'bold', border: '1px solid #000', textAlign: 'center', width: '100px' }}>Unit</TableCell>
-                <TableCell sx={{ fontWeight: 'bold', border: '1px solid #000', textAlign: 'center', width: '120px' }}>Rate (ZMW)</TableCell>
-                <TableCell sx={{ fontWeight: 'bold', border: '1px solid #000', textAlign: 'center', width: '120px' }}>Amount (ZMW)</TableCell>
-                <TableCell sx={{ fontWeight: 'bold', border: '1px solid #000', textAlign: 'center', width: '60px' }}>Action</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {totals.itemsWithAmount.length === 0 ? (
-                <TableRow><TableCell colSpan={7} sx={{ textAlign: 'center', py: 3, border: '1px solid #000' }}>No items added yet.</TableCell></TableRow>
-              ) : (
-                totals.itemsWithAmount.map((item, idx) => {
-                  if (item.isSection) {
-                    return (
-                      <TableRow key={idx}>
-                        <TableCell colSpan={7} sx={{ border: '1px solid #000' }}>
-                          <Typography variant="subtitle1" fontWeight="bold" sx={{ bgcolor: '#e3f2fd', p: 1 }}>{item.sectionName}</Typography>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  }
-                  return (
-                    <TableRow key={idx}>
-                      <TableCell sx={{ border: '1px solid #000', textAlign: 'center' }}>{idx + 1}</TableCell>
-                      <TableCell sx={{ border: '1px solid #000', p: 1 }}>
-                        <TextField size="small" fullWidth value={item.description || ''} onChange={e => handleItemChange(idx, 'description', e.target.value)} placeholder="Item description..." disabled={!canEdit} sx={{ '& .MuiInputBase-root': { border: 'none' } }} />
-                      </TableCell>
-                      <TableCell sx={{ border: '1px solid #000', p: 1 }}>
-                        <TextField size="small" type="number" value={item.quantity || 0} onChange={e => handleItemChange(idx, 'quantity', e.target.value)} disabled={!canEdit} sx={{ width: 80, '& .MuiInputBase-root': { border: 'none' } }} />
-                      </TableCell>
-                      <TableCell sx={{ border: '1px solid #000', p: 1 }}>
-                        <TextField size="small" value={item.unit || ''} onChange={e => handleItemChange(idx, 'unit', e.target.value)} disabled={!canEdit} sx={{ width: 100, '& .MuiInputBase-root': { border: 'none' } }} placeholder="m², m³, No." />
-                      </TableCell>
-                      <TableCell sx={{ border: '1px solid #000', p: 1 }}>
-                        <TextField size="small" type="number" value={item.rate || 0} onChange={e => handleItemChange(idx, 'rate', e.target.value)} disabled={!canEdit} sx={{ width: 120, '& .MuiInputBase-root': { border: 'none' } }} />
-                      </TableCell>
-                      <TableCell sx={{ border: '1px solid #000', p: 1, bgcolor: '#fafafa' }}>
-                        <TextField size="small" type="number" value={item.amount || 0} InputProps={{ readOnly: true }} sx={{ width: 120, bgcolor: '#fafafa', '& .MuiInputBase-root': { border: 'none' } }} />
-                      </TableCell>
-                      <TableCell sx={{ border: '1px solid #000', textAlign: 'center' }}>
-                        {canEdit && <IconButton size="small" onClick={() => removeItem(idx)} color="error"><DeleteIcon fontSize="small" /></IconButton>}
-                      </TableCell>
-                    </TableRow>
-                  );
-                })
-              )}
-            </TableBody>
-          </Table>
-        </Box>
-
-        <Divider sx={{ my: 3 }} />
-
-        <Box sx={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
-          <Box sx={{ flex: 1, minWidth: 300 }}>
-            <Typography variant="h6" gutterBottom>Summary</Typography>
-            <Card sx={{ p: 2, bgcolor: '#f9f9f9' }}>
-              <Grid container spacing={1}>
-                <Grid item xs={6}><Typography variant="body2">Sub-Total:</Typography></Grid>
-                <Grid item xs={6} sx={{ textAlign: 'right' }}><Typography variant="body2" fontWeight="bold">{formatCurrency(totals.subtotal)}</Typography></Grid>
-                <Grid item xs={6}><Typography variant="body2">Preliminaries ({totals.preliminaries}%):</Typography></Grid>
-                <Grid item xs={6} sx={{ textAlign: 'right' }}><Typography variant="body2">{formatCurrency(totals.preliminariesAmount)}</Typography></Grid>
-                <Grid item xs={6}><Typography variant="body2">Contingency ({totals.contingency}%):</Typography></Grid>
-                <Grid item xs={6} sx={{ textAlign: 'right' }}><Typography variant="body2">{formatCurrency(totals.contingencyAmount)}</Typography></Grid>
-                <Grid item xs={6}><Typography variant="body2">VAT ({totals.vat}%):</Typography></Grid>
-                <Grid item xs={6} sx={{ textAlign: 'right' }}><Typography variant="body2">{formatCurrency(totals.vatAmount)}</Typography></Grid>
-                <Grid item xs={12}><Divider sx={{ my: 1 }} /></Grid>
-                <Grid item xs={6}><Typography variant="h6">GRAND TOTAL:</Typography></Grid>
-                <Grid item xs={6} sx={{ textAlign: 'right' }}><Typography variant="h6" fontWeight="bold" color="primary">{formatCurrency(totals.grandTotal)}</Typography></Grid>
-              </Grid>
-            </Card>
-          </Box>
-
-          <Box sx={{ flex: 1, minWidth: 250 }}>
-            <Typography variant="h6" gutterBottom>Settings</Typography>
-            <Box sx={{ p: 2, bgcolor: '#f5f5f5', borderRadius: 1 }}>
-              <TextField label="Preliminaries (%)" type="number" size="small" fullWidth sx={{ mb: 2 }} value={form.preliminaries || 0} onChange={e => setForm({ ...form, preliminaries: e.target.value })} disabled={!canEdit} />
-              <TextField label="Contingency (%)" type="number" size="small" fullWidth sx={{ mb: 2 }} value={form.contingency || 0} onChange={e => setForm({ ...form, contingency: e.target.value })} disabled={!canEdit} />
-              <TextField label="VAT (%)" type="number" size="small" fullWidth sx={{ mb: 2 }} value={form.vat || 0} onChange={e => setForm({ ...form, vat: e.target.value })} disabled={!canEdit} />
-              <TextField select label="Status" size="small" fullWidth value={form.status || 'draft'} onChange={e => setForm({ ...form, status: e.target.value })} disabled={!canEdit}>
-                <MenuItem value="draft">Draft</MenuItem>
-                <MenuItem value="submitted">Submitted</MenuItem>
-                <MenuItem value="approved">Approved</MenuItem>
+        {/* Template & Client */}
+        <Paper sx={{ p: 2, mb: 2, bgcolor: '#fafafa' }}>
+          <Grid container spacing={2}>
+            <Grid item xs={12} md={6}>
+              <TextField select label="BOQ Template" fullWidth size="small" value={selectedTemplate} onChange={e => { setSelectedTemplate(e.target.value); loadTemplate(e.target.value); }} disabled={!canEdit}>
+                {TEMPLATES.map(t => <MenuItem key={t.value} value={t.value}>{t.label}</MenuItem>)}
               </TextField>
-              {form.status === 'submitted' && <Chip label="Pending Approval" color="warning" size="small" sx={{ mt: 2 }} />}
-              {form.status === 'approved' && <Chip label="Approved" color="success" size="small" sx={{ mt: 2 }} />}
-            </Box>
-          </Box>
-        </Box>
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <TextField label="Client Name" fullWidth size="small" value={form.clientName || ''} onChange={e => setForm({ ...form, clientName: e.target.value })} disabled={!canEdit} />
+            </Grid>
+            <Grid item xs={12}>
+              <TextField label="Client Address" fullWidth size="small" value={form.clientAddress || ''} onChange={e => setForm({ ...form, clientAddress: e.target.value })} disabled={!canEdit} />
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <TextField label="Project Location" fullWidth size="small" value={form.projectLocation || ''} onChange={e => setForm({ ...form, projectLocation: e.target.value })} disabled={!canEdit} />
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <TextField label="Tender Date" type="date" fullWidth size="small" value={form.tenderDate} onChange={e => setForm({ ...form, tenderDate: e.target.value })} InputLabelProps={{ shrink: true }} disabled={!canEdit} />
+            </Grid>
+          </Grid>
+        </Paper>
 
-        {/* Approval Section */}
+        {/* ─── Sections ────────────────────────────────────────────── */}
+        <Paper sx={{ p: 2, mb: 2 }}>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+            <Typography variant="h6">Sections</Typography>
+            {canEdit && (
+              <Button startIcon={<AddIcon />} onClick={handleAddSection} variant="outlined" size="small">
+                Add Section
+              </Button>
+            )}
+          </Box>
+
+          {form.sections.map((section, idx) => (
+            <Paper key={idx} sx={{ p: 2, mb: 2, bgcolor: '#f5f5f5' }}>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                <Box>
+                  <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>{section.title}</Typography>
+                  {section.description && <Typography variant="caption" display="block" color="textSecondary">{section.description}</Typography>}
+                </Box>
+                {canEdit && (
+                  <Box>
+                    <IconButton size="small" onClick={() => handleEditSection(idx)}><EditIcon fontSize="small" /></IconButton>
+                    <IconButton size="small" color="error" onClick={() => handleDeleteSection(idx)}><DeleteIcon fontSize="small" /></IconButton>
+                    <Button size="small" startIcon={<AddIcon />} onClick={() => handleAddItem(idx)}>Add Item</Button>
+                  </Box>
+                )}
+              </Box>
+
+              <Table size="small">
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Description</TableCell>
+                    <TableCell align="right">Qty</TableCell>
+                    <TableCell>Unit</TableCell>
+                    <TableCell align="right">Rate (ZMW)</TableCell>
+                    <TableCell align="right">Amount (ZMW)</TableCell>
+                    <TableCell>Notes</TableCell>
+                    {canEdit && <TableCell>Actions</TableCell>}
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {(section.items || []).map((item, i) => (
+                    <TableRow key={i}>
+                      <TableCell>{item.description}</TableCell>
+                      <TableCell align="right">{item.quantity}</TableCell>
+                      <TableCell>{item.unit}</TableCell>
+                      <TableCell align="right">{formatCurrency(item.rate)}</TableCell>
+                      <TableCell align="right">{formatCurrency(item.amount)}</TableCell>
+                      <TableCell>{item.notes}</TableCell>
+                      {canEdit && (
+                        <TableCell>
+                          <IconButton size="small" onClick={() => handleEditItem(idx, i)}><EditIcon fontSize="small" /></IconButton>
+                          <IconButton size="small" color="error" onClick={() => handleDeleteItem(idx, i)}><DeleteIcon fontSize="small" /></IconButton>
+                        </TableCell>
+                      )}
+                    </TableRow>
+                  ))}
+                  {(section.items || []).length === 0 && (
+                    <TableRow><TableCell colSpan={7} align="center">No items in this section.</TableCell></TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </Paper>
+          ))}
+          {form.sections.length === 0 && (
+            <Typography align="center" color="textSecondary" sx={{ py: 3 }}>No sections yet. Add a section or load a template.</Typography>
+          )}
+        </Paper>
+
+        {/* ─── Financial Summary ────────────────────────────────────── */}
+        <Paper sx={{ p: 2, mb: 2 }}>
+          <Typography variant="h6" gutterBottom>Financial Summary</Typography>
+          <Grid container spacing={2}>
+            <Grid item xs={12} md={4}>
+              <TextField label="Sub Total" type="number" fullWidth size="small" value={form.subTotal} InputProps={{ readOnly: true }} disabled />
+            </Grid>
+            <Grid item xs={12} md={4}>
+              <TextField label="Percentage Adjustment (%)" type="number" fullWidth size="small" value={form.percentageAdjustment} onChange={e => setForm({ ...form, percentageAdjustment: parseFloat(e.target.value) || 0 })} disabled={!canEdit} />
+            </Grid>
+            <Grid item xs={12} md={4}>
+              <TextField label="Contingencies (%)" type="number" fullWidth size="small" value={form.contingencies} onChange={e => setForm({ ...form, contingencies: parseFloat(e.target.value) || 0 })} disabled={!canEdit} />
+            </Grid>
+            <Grid item xs={12} md={4}>
+              <TextField label="VAT (%)" type="number" fullWidth size="small" value={form.vat} onChange={e => setForm({ ...form, vat: parseFloat(e.target.value) || 0 })} disabled={!canEdit} />
+            </Grid>
+            <Grid item xs={12} md={4}>
+              <TextField label="Grand Total" type="number" fullWidth size="small" value={form.grandTotal} InputProps={{ readOnly: true }} disabled />
+            </Grid>
+            <Grid item xs={12} md={4}>
+              <TextField label="Exchange Rate" type="number" fullWidth size="small" value={form.exchangeRate} onChange={e => setForm({ ...form, exchangeRate: parseFloat(e.target.value) || 1 })} disabled={!canEdit} />
+            </Grid>
+          </Grid>
+        </Paper>
+
+        {/* ─── Approval ────────────────────────────────────────────── */}
         <Box sx={{ mt: 4, borderTop: '1px solid #000', pt: 3 }}>
           <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 2 }}>Approval</Typography>
           <Grid container spacing={2}>
             <Grid item xs={12} md={6}>
               <Typography variant="body2">Prepared by:</Typography>
-              <Typography variant="body1" sx={{ fontWeight: 'bold' }}>{creator?.name || 'N/A'}</Typography>
-              <Typography variant="caption" color="textSecondary">{creator?.role || ''} • {formatDate(createdAt)}</Typography>
+              <Typography variant="body1" sx={{ fontWeight: 'bold' }}>{user?.name || 'N/A'}</Typography>
             </Grid>
             <Grid item xs={12} md={6}>
               <Typography variant="body2">Date:</Typography>
-              <Typography variant="body1" sx={{ fontWeight: 'bold' }}>{formatDate(createdAt)}</Typography>
+              <Typography variant="body1" sx={{ fontWeight: 'bold' }}>{formatDate(new Date())}</Typography>
             </Grid>
           </Grid>
           <Box sx={{ mt: 2, display: 'flex', flexDirection: 'column', gap: 1 }}>
-            {approver && form.status === 'approved' ? (
+            {form.status === 'approved' ? (
               <>
-                <Typography variant="body2">
-                  Approved by: <strong>{approver.name}</strong> ({approver.role})
-                </Typography>
-                <Typography variant="body2">
-                  Approved on: <strong>{formatDate(approvedAt)}</strong>
-                </Typography>
+                <Typography variant="body2">Approved by: _________________</Typography>
+                <Typography variant="body2">Date: _________________</Typography>
               </>
             ) : (
               <>
@@ -454,14 +488,55 @@ const BOQForm = () => {
           </Box>
         </Box>
 
-        <Box sx={{ mt: 4, display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-          {canEdit && <Button type="submit" variant="contained" startIcon={<SaveIcon />} disabled={loading}>{loading ? 'Saving...' : 'Save BOQ'}</Button>}
-          <Button variant="outlined" startIcon={<PrintIcon />} onClick={handlePrint}>Print</Button>
+        {/* ─── Buttons ────────────────────────────────────────────────── */}
+        <Box sx={{ mt: 2, display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+          {canEdit && (
+            <Button type="submit" variant="contained" startIcon={<SaveIcon />} disabled={loading}>
+              {loading ? 'Saving...' : 'Save BOQ'}
+            </Button>
+          )}
           <Button variant="outlined" startIcon={<FileDownloadIcon />} onClick={exportCSV}>Export CSV</Button>
           <Button variant="outlined" onClick={() => navigate('/boq')}>Cancel</Button>
-          {canEdit && id && <Button variant="contained" color="error" startIcon={<DeleteIcon />} onClick={handleDelete} disabled={loading}>Delete</Button>}
         </Box>
       </form>
+
+      {/* ─── Section Dialog ─────────────────────────────────────────── */}
+      <Dialog open={sectionDialog} onClose={() => setSectionDialog(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>{editingSection !== null ? 'Edit Section' : 'Add Section'}</DialogTitle>
+        <DialogContent>
+          <TextField label="Section Title *" fullWidth margin="dense" value={sectionForm.title} onChange={e => setSectionForm({ ...sectionForm, title: e.target.value })} required />
+          <TextField label="Description" fullWidth margin="dense" value={sectionForm.description} onChange={e => setSectionForm({ ...sectionForm, description: e.target.value })} />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setSectionDialog(false)}>Cancel</Button>
+          <Button variant="contained" onClick={handleSaveSection}>Save</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* ─── Item Dialog ───────────────────────────────────────────── */}
+      <Dialog open={itemDialog} onClose={() => setItemDialog(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>{editingItem !== null ? 'Edit Item' : 'Add Item'}</DialogTitle>
+        <DialogContent>
+          <TextField label="Description *" fullWidth margin="dense" value={itemForm.description} onChange={e => setItemForm({ ...itemForm, description: e.target.value })} required />
+          <TextField label="Unit" fullWidth margin="dense" value={itemForm.unit} onChange={e => setItemForm({ ...itemForm, unit: e.target.value })} placeholder="e.g., m², no, lump" />
+          <Grid container spacing={2}>
+            <Grid item xs={6}>
+              <TextField label="Quantity" type="number" fullWidth margin="dense" value={itemForm.quantity} onChange={e => setItemForm({ ...itemForm, quantity: parseFloat(e.target.value) || 0 })} />
+            </Grid>
+            <Grid item xs={6}>
+              <TextField label="Rate (ZMW)" type="number" fullWidth margin="dense" value={itemForm.rate} onChange={e => setItemForm({ ...itemForm, rate: parseFloat(e.target.value) || 0 })} />
+            </Grid>
+          </Grid>
+          <TextField label="Notes" fullWidth margin="dense" value={itemForm.notes} onChange={e => setItemForm({ ...itemForm, notes: e.target.value })} />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setItemDialog(false)}>Cancel</Button>
+          <Button variant="contained" onClick={handleSaveItem}>Save</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* ─── Conversion Tool ────────────────────────────────────────── */}
+      <ConversionTool open={conversionOpen} onClose={() => setConversionOpen(false)} />
     </Paper>
   );
 };
