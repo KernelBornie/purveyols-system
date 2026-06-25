@@ -26,7 +26,6 @@ const Footer = () => {
           © {new Date().getFullYear()} PURVEYOLS CMS – Construction Management System
         </Typography>
         <Typography variant="caption" display="block" sx={{ opacity: 0.6, mt: 0.5 }}>
-          Built with ❤️ for construction professionals
         </Typography>
         <Typography variant="caption" display="block" sx={{ opacity: 0.5, mt: 0.5 }}>
           Plot No. 8, Buchi Road - Northmead, P.O. Box NH 87 Lusaka, Zambia
