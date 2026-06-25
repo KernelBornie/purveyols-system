@@ -29,7 +29,6 @@ const MessageDialog = ({
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [selectedRecipient, setSelectedRecipient] = useState(null);
 
-  // ─── Reset fields when dialog opens with new data ──────────────
   useEffect(() => {
     if (open) {
       setTo(initialTo);
@@ -38,7 +37,6 @@ const MessageDialog = ({
     }
   }, [open, initialTo, initialSubject, initialContent]);
 
-  // ─── Load users ──────────────────────────────────────────────────
   useEffect(() => {
     if (open) {
       api.get('/api/users')
@@ -130,7 +128,6 @@ const MessageDialog = ({
                 </Select>
               </FormControl>
             ) : (
-              // Reply mode – show recipient (read‑only)
               <TextField
                 label="Recipient"
                 value={users.find(u => u._id === to)?.name || 'Unknown'}
@@ -165,7 +162,6 @@ const MessageDialog = ({
         </DialogActions>
       </Dialog>
 
-      {/* Confirmation Dialog */}
       <Dialog open={confirmOpen} onClose={handleCancelSend} maxWidth="xs" fullWidth>
         <DialogTitle>Confirm Recipient</DialogTitle>
         <DialogContent>

@@ -89,7 +89,7 @@ const Messages = () => {
     setDialogMode('reply');
     setInitialTo(message.from._id);
     setInitialSubject(`Re: ${message.subject || 'Your message'}`);
-    setInitialContent(`\n\nOn ${new Date(message.createdAt).toLocaleString()}, ${message.from.name} wrote:\n> ${message.content}`);
+    setInitialContent(''); // ✅ empty body – user writes from scratch
     setDialogOpen(true);
   };
 
