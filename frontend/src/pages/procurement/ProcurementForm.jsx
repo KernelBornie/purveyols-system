@@ -130,7 +130,7 @@ const ProcurementForm = () => {
     }
   };
 
-  // ─── Print – classic layout matching the image ────────────────
+  // ─── Print – classic layout with red header ───────────────────
   const handlePrint = () => {
     const printWindow = window.open('', '_blank');
     const filledItems = form.items.filter(item => item.description && item.description.trim() !== '');
@@ -144,11 +144,11 @@ const ProcurementForm = () => {
             body { font-family: 'Courier New', monospace; padding: 20px; margin: 0; }
             .print-container { max-width: 800px; margin: 0 auto; }
             .header { text-align: center; border-bottom: 2px solid #000; padding-bottom: 8px; margin-bottom: 15px; }
-            .header h1 { margin: 0; font-size: 28px; letter-spacing: 4px; font-weight: bold; }
-            .header .subtitle { font-weight: bold; font-size: 14px; margin: 2px 0; }
+            .header h1 { margin: 0; font-size: 28px; letter-spacing: 4px; font-weight: bold; color: #d32f2f; }
+            .header .subtitle { font-weight: bold; font-size: 14px; margin: 2px 0; color: #d32f2f; }
             .header .details { font-size: 11px; margin: 1px 0; }
             .title-row { display: flex; justify-content: space-between; border-bottom: 1px solid #000; padding-bottom: 4px; margin-bottom: 10px; }
-            .title-row .left { font-weight: bold; font-size: 18px; letter-spacing: 2px; }
+            .title-row .left { font-weight: bold; font-size: 18px; letter-spacing: 2px; color: #d32f2f; }
             .title-row .right { font-weight: bold; font-size: 14px; }
             .meta { margin-bottom: 10px; font-size: 12px; }
             .meta p { margin: 2px 0; }
@@ -173,7 +173,7 @@ const ProcurementForm = () => {
         </head>
         <body>
           <div class="print-container">
-            <!-- Company Header -->
+            <!-- Company Header with red -->
             <div class="header">
               <h1>PURVEYOLS</h1>
               <div class="subtitle">Building and Civil Construction</div>
@@ -182,7 +182,7 @@ const ProcurementForm = () => {
               <div class="details">Email: purveyols@gmail.com</div>
             </div>
 
-            <!-- Title -->
+            <!-- Title with red -->
             <div class="title-row">
               <span class="left">MATERIAL REQUISITION NOTE</span>
               <span class="right">No. ${form.orderNumber || 'N/A'}</span>
