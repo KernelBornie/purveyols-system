@@ -3,9 +3,18 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const morgan = require('morgan');
 const dotenv = require('dotenv');
+const http = require('http');
+const { Server } = require('socket.io');
 dotenv.config();
 
 const app = express();
+const server = http.createServer(app);
+const io = new Server(server, {
+  cors: {
+    origin: process.env.CORS_ORIGIN || '*',
+    methods: ['GET', 'POST'],
+  },
+});
 
 // ─── CORS ──────────────────────────────────────────────────────
 const corsOptions = {
@@ -18,7 +27,7 @@ app.use((req, res, next) => {
   console.log(`${req.method} ${req.url} - Origin: ${req.headers.origin}`);
   next();
 });
-app.use(express.json({ limit: '50mb' })); // ✅ Increased limit for images
+app.use(express.json({ limit: '50mb' }));
 app.use(morgan('dev'));
 
 // ─── Auto‑seed if database is empty ──────────────────────────
@@ -48,7 +57,6 @@ const seedIfEmpty = async () => {
 };
 
 // ─── Routes ──────────────────────────────────────────────────────
-// ❌ REMOVE: const Project = require('./models/Project'); // ← DO NOT ADD THIS
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/chat-history', require('./routes/chatHistory'));
 app.use('/api/ai', require('./routes/ai'));
@@ -88,13 +96,74 @@ app.use('/api/site-diary', siteDiaryRoutes);
 // ─── Health check ────────────────────────────────────────────────
 app.get('/api/health', (req, res) => res.json({ status: 'OK', timestamp: new Date().toISOString() }));
 
+// ─── Socket.io Signaling for Video Calls ────────────────────────
+const activeUsers = new Map(); // userId -> socketId
+
+io.on('connection', (socket) => {
+  console.log(`🔌 New client connected: ${socket.id}`);
+
+  // Register user
+  socket.on('register', (userId) => {
+    activeUsers.set(userId, socket.id);
+    socket.userId = userId;
+    console.log(`✅ User ${userId} registered with socket ${socket.id}`);
+  });
+
+  // Start a call
+  socket.on('call-user', ({ to, offer }) => {
+    const targetSocketId = activeUsers.get(to);
+    if (targetSocketId) {
+      io.to(targetSocketId).emit('incoming-call', {
+        from: socket.userId,
+        offer,
+      });
+      console.log(`📞 Call from ${socket.userId} to ${to}`);
+    } else {
+      socket.emit('call-error', { message: 'User is offline' });
+    }
+  });
+
+  // Answer a call
+  socket.on('answer-call', ({ to, answer }) => {
+    const targetSocketId = activeUsers.get(to);
+    if (targetSocketId) {
+      io.to(targetSocketId).emit('call-answered', { answer });
+    }
+  });
+
+  // ICE candidate exchange
+  socket.on('ice-candidate', ({ to, candidate }) => {
+    const targetSocketId = activeUsers.get(to);
+    if (targetSocketId) {
+      io.to(targetSocketId).emit('ice-candidate', { candidate });
+    }
+  });
+
+  // End call
+  socket.on('end-call', ({ to }) => {
+    const targetSocketId = activeUsers.get(to);
+    if (targetSocketId) {
+      io.to(targetSocketId).emit('call-ended');
+    }
+  });
+
+  // Handle disconnection
+  socket.on('disconnect', () => {
+    if (socket.userId) {
+      activeUsers.delete(socket.userId);
+      console.log(`❌ User ${socket.userId} disconnected`);
+    }
+    console.log(`🔌 Client disconnected: ${socket.id}`);
+  });
+});
+
+// ─── Database Connection ─────────────────────────────────────────
 const PORT = process.env.PORT || 5000;
 
-// ─── Connect and start ──────────────────────────────────────────
 mongoose.connect(process.env.MONGO_URI)
   .then(() => {
-    console.log('MongoDB connected');
+    console.log('✅ MongoDB connected');
     seedIfEmpty();
-    app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+    server.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
   })
-  .catch(err => console.log(err));
+  .catch(err => console.error('❌ MongoDB connection error:', err));

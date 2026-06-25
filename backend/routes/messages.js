@@ -16,6 +16,7 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
+// ─── Configure multer with error handling ──────────────────
 const storage = new CloudinaryStorage({
   cloudinary: cloudinary,
   params: {
@@ -25,7 +26,10 @@ const storage = new CloudinaryStorage({
   },
 });
 
-const upload = multer({ storage });
+const upload = multer({
+  storage,
+  limits: { fileSize: 50 * 1024 * 1024 }, // 50MB max
+}).array('attachments', 10);
 
 // ─── Inbox ──────────────────────────────────────────────────
 router.get('/', auth, async (req, res) => {
@@ -64,56 +68,80 @@ router.get('/sent', auth, async (req, res) => {
 });
 
 // ─── Send a message with attachments ────────────────────────
-router.post('/', auth, upload.array('attachments', 10), async (req, res) => {
-  try {
-    const { to, subject, content } = req.body;
-    if (!to || (!content && !req.files?.length)) {
-      return res.status(400).json({ error: 'Recipient and content or attachment are required' });
+router.post('/', auth, (req, res) => {
+  upload(req, res, async (err) => {
+    // ─── Handle multer errors ──────────────────────────────────
+    if (err instanceof multer.MulterError) {
+      console.error('Multer error:', err);
+      if (err.code === 'LIMIT_FILE_SIZE') {
+        return res.status(413).json({ error: 'File too large. Max size is 50MB.' });
+      }
+      return res.status(400).json({ error: `Upload error: ${err.message}` });
+    } else if (err) {
+      console.error('Unknown upload error:', err);
+      return res.status(500).json({ error: 'File upload failed' });
     }
-    if (!mongoose.Types.ObjectId.isValid(to)) {
-      return res.status(400).json({ error: 'Invalid recipient ID format' });
+
+    try {
+      const { to, subject, content } = req.body;
+      console.log('📝 Message request:', { to, subject, content, files: req.files?.length });
+
+      if (!to || (!content && !req.files?.length)) {
+        return res.status(400).json({ error: 'Recipient and content or attachment are required' });
+      }
+
+      if (!mongoose.Types.ObjectId.isValid(to)) {
+        return res.status(400).json({ error: 'Invalid recipient ID format' });
+      }
+
+      const recipient = await User.findById(to);
+      if (!recipient) return res.status(404).json({ error: 'Recipient not found' });
+
+      // ─── Process attachments ──────────────────────────────────
+      const attachments = (req.files || []).map(file => {
+        const fileType = file.mimetype?.startsWith('image/') ? 'image'
+          : file.mimetype?.startsWith('audio/') ? 'audio'
+          : file.mimetype?.startsWith('video/') ? 'video'
+          : 'document';
+
+        return {
+          type: fileType,
+          url: file.path,
+          filename: file.originalname || 'file',
+          size: file.size || 0,
+        };
+      });
+
+      const senderName = await getSenderName(req.user.id);
+      const message = new Message({
+        from: req.user.id,
+        to,
+        subject: subject || '',
+        content: content || '',
+        attachments,
+        deletedBy: [],
+      });
+      await message.save();
+
+      await createNotification(
+        recipient._id,
+        'message_received',
+        'New Message',
+        `You have a new message from ${senderName} ${attachments.length > 0 ? 'with attachments' : ''}`,
+        `/messages/${message._id}`
+      );
+
+      const populated = await Message.findById(message._id)
+        .populate('from', 'name role')
+        .populate('to', 'name role');
+
+      console.log('✅ Message sent:', message._id);
+      res.status(201).json(populated);
+    } catch (err) {
+      console.error('Send message error:', err);
+      res.status(400).json({ error: err.message || 'Failed to send message' });
     }
-    const recipient = await User.findById(to);
-    if (!recipient) return res.status(404).json({ error: 'Recipient not found' });
-
-    const attachments = (req.files || []).map(file => ({
-      type: file.mimetype.startsWith('image/') ? 'image'
-            : file.mimetype.startsWith('audio/') ? 'audio'
-            : file.mimetype.startsWith('video/') ? 'video'
-            : 'document',
-      url: file.path,
-      filename: file.originalname,
-      size: file.size,
-    }));
-
-    const senderName = await getSenderName(req.user.id);
-    const message = new Message({
-      from: req.user.id,
-      to,
-      subject: subject || '',
-      content: content || '',
-      attachments,
-      deletedBy: [],
-    });
-    await message.save();
-
-    await createNotification(
-      recipient._id,
-      'message_received',
-      'New Message',
-      `You have a new message from ${senderName} ${attachments.length > 0 ? 'with attachments' : ''}`,
-      `/messages/${message._id}`
-    );
-
-    const populated = await Message.findById(message._id)
-      .populate('from', 'name role')
-      .populate('to', 'name role');
-
-    res.status(201).json(populated);
-  } catch (err) {
-    console.error('Send message error:', err);
-    res.status(400).json({ error: err.message });
-  }
+  });
 });
 
 // ─── Mark as read ──────────────────────────────────────────
@@ -217,7 +245,7 @@ router.get('/conversation/:otherUserId', auth, async (req, res) => {
   }
 });
 
-// ─── Get a single message (FIXED) ─────────────────────────
+// ─── Get a single message ─────────────────────────────────
 router.get('/:id', auth, async (req, res) => {
   try {
     const message = await Message.findById(req.params.id)
@@ -226,8 +254,6 @@ router.get('/:id', auth, async (req, res) => {
     if (!message) return res.status(404).json({ error: 'Message not found' });
 
     const userId = req.user.id;
-
-    // Use .equals() for safe ObjectId comparison
     const isSender = message.from?._id?.equals(userId) || false;
     const isRecipient = message.to?._id?.equals(userId) || false;
 
