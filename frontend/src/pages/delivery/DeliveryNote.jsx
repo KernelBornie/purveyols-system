@@ -123,7 +123,77 @@ const DeliveryNote = () => {
     }
   };
 
-  const handlePrint = () => { window.print(); };
+  // ─── Custom print ────────────────────────────────────────────────
+  const handlePrint = () => {
+    const filledItems = form.items.filter(item => item.description || item.quantity);
+    if (filledItems.length === 0) {
+      alert('No items to print.');
+      return;
+    }
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>Delivery Note</title>
+          <style>
+            body { font-family: 'Courier New', monospace; padding: 20px; margin: 0; }
+            .print-container { max-width: 800px; margin: 0 auto; }
+            .header { text-align: center; border-bottom: 2px solid #000; padding-bottom: 8px; margin-bottom: 15px; }
+            .header h1 { margin: 0; font-size: 28px; letter-spacing: 4px; font-weight: bold; color: #b71c1c; }
+            .header .subtitle { font-weight: bold; font-size: 14px; margin: 2px 0; color: #b71c1c; }
+            .header .details { font-size: 11px; margin: 1px 0; }
+            .title-row { display: flex; justify-content: space-between; border-bottom: 1px solid #000; padding-bottom: 4px; margin-bottom: 10px; }
+            .title-row .left { font-weight: bold; font-size: 18px; letter-spacing: 2px; color: #b71c1c; }
+            .title-row .right { font-weight: bold; font-size: 14px; }
+            .info { margin-bottom: 10px; }
+            .info p { margin: 2px 0; font-size: 12px; }
+            table { width: 100%; border-collapse: collapse; margin: 10px 0; }
+            th, td { border: 1px solid #000; padding: 5px 8px; text-align: left; font-size: 11px; }
+            th { background-color: #f0f0f0; font-weight: bold; text-align: center; }
+            .signatures { display: flex; justify-content: space-between; margin-top: 30px; border-top: 1px solid #000; padding-top: 15px; }
+            .signatures .sign-block { text-align: center; flex: 1; }
+            .signatures .sign-block .line { border-top: 1px solid #000; width: 150px; margin: 20px auto 0; padding-top: 4px; font-size: 10px; }
+            .footer { text-align: center; font-size: 10px; margin-top: 20px; border-top: 1px solid #000; padding-top: 8px; }
+            @media print { body { padding: 10px; } }
+          </style>
+        </head>
+        <body>
+          <div class="print-container">
+            <div class="header">
+              <h1>PURVEYOLS</h1>
+              <div class="subtitle">Building and Civil contractors</div>
+              <div class="details">Plot No. 8, Buchi Road - Northmead, P.O. Box NH 87 Lusaka, Zambia</div>
+              <div class="details">Tel: +260 211 235354 | Mobile: +260 977 393879 / +260 965 393879</div>
+              <div class="details">Email: purveyols@gmail.com</div>
+            </div>
+            <div class="title-row">
+              <span class="left">DELIVERY NOTE</span>
+              <span class="right">No. ${form.noteNumber || 'N/A'}</span>
+            </div>
+            <div class="info">
+              <p><strong>M/S:</strong> ${form.ms || '—'}</p>
+              <p><strong>Date:</strong> ${form.date || '—'}</p>
+            </div>
+            <table>
+              <thead><tr><th>Qty</th><th>Description</th></tr></thead>
+              <tbody>
+                ${filledItems.map(item => `
+                  <tr><td>${item.quantity || '—'}</td><td>${item.description || '—'}</td></tr>
+                `).join('')}
+              </tbody>
+            </table>
+            <div class="signatures">
+              <div class="sign-block"><strong>Delivered By</strong><div class="line">${form.deliveredBy || '_________________'}</div></div>
+              <div class="sign-block"><strong>Received By</strong><div class="line">${form.receivedBy || '_________________'}</div></div>
+            </div>
+            <div class="footer">PURVEYOLS CMS - Construction Management System</div>
+          </div>
+          <script>window.onload = function() { window.print(); }</script>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+  };
 
   if (fetching) return <CircularProgress sx={{ display: 'block', margin: '40px auto' }} />;
 
@@ -134,20 +204,10 @@ const DeliveryNote = () => {
       {!canEdit && <Alert severity="info" sx={{ mb: 2 }}>You have view‑only access.</Alert>}
 
       <form onSubmit={handleSubmit}>
-        {/* ─── Company Header – deep red ──────────────────────────── */}
         <Box sx={{ textAlign: 'center', borderBottom: '2px solid #000', pb: 2, mb: 2 }}>
-          <img
-            src="/top-log.PNG?t=3"
-            alt="PURVEYOLS Logo"
-            style={{ height: '60px', maxWidth: '100%' }}
-            onError={(e) => e.target.style.display = 'none'}
-          />
-          <Typography variant="h4" sx={{ fontWeight: 'bold', letterSpacing: 2, color: '#b71c1c' }}>
-            PURVEYOLS
-          </Typography>
-          <Typography variant="subtitle1" sx={{ fontWeight: 'bold', color: '#b71c1c' }}>
-            Building and Civil contractors
-          </Typography>
+          <img src="/top-log.PNG?t=3" alt="PURVEYOLS Logo" style={{ height: '60px', maxWidth: '100%' }} onError={(e) => e.target.style.display = 'none'} />
+          <Typography variant="h4" sx={{ fontWeight: 'bold', letterSpacing: 2, color: '#b71c1c' }}>PURVEYOLS</Typography>
+          <Typography variant="subtitle1" sx={{ fontWeight: 'bold', color: '#b71c1c' }}>Building and Civil contractors</Typography>
           <Typography variant="body2">Plot No. 8, Buchi Road - Northmead, P.O. Box NH 87 Lusaka, Zambia</Typography>
           <Typography variant="body2">Tel: +260 211 235354 | Mobile: +260 977 393879 / +260 965 393879</Typography>
           <Typography variant="body2">Email: purveyols@gmail.com</Typography>

@@ -5,8 +5,10 @@ import {
   InputLabel, Select, Alert, CircularProgress, Grid
 } from '@mui/material';
 import SaveIcon from '@mui/icons-material/Save';
+import PrintIcon from '@mui/icons-material/Print';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import api from '../../api/axios';
+import BackButton from '../../components/BackButton';
 
 const SafetyReportForm = () => {
   const { id } = useParams();
@@ -65,29 +67,69 @@ const SafetyReportForm = () => {
     }
   };
 
+  // ─── Custom print ────────────────────────────────────────────────
+  const handlePrint = () => {
+    if (!formData.title) {
+      alert('No data to print.');
+      return;
+    }
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>Safety Report</title>
+          <style>
+            body { font-family: 'Courier New', monospace; padding: 20px; margin: 0; }
+            .print-container { max-width: 800px; margin: 0 auto; }
+            .header { text-align: center; border-bottom: 2px solid #000; padding-bottom: 8px; margin-bottom: 15px; }
+            .header h1 { margin: 0; font-size: 28px; letter-spacing: 4px; font-weight: bold; color: #b71c1c; }
+            .header .subtitle { font-weight: bold; font-size: 14px; margin: 2px 0; color: #b71c1c; }
+            .header .details { font-size: 11px; margin: 1px 0; }
+            .title-row { border-bottom: 1px solid #000; padding-bottom: 4px; margin-bottom: 10px; }
+            .title-row .left { font-weight: bold; font-size: 18px; letter-spacing: 2px; color: #b71c1c; }
+            .info { margin-bottom: 10px; }
+            .info p { margin: 2px 0; font-size: 12px; }
+            .footer { text-align: center; font-size: 10px; margin-top: 20px; border-top: 1px solid #000; padding-top: 8px; }
+          </style>
+        </head>
+        <body>
+          <div class="print-container">
+            <div class="header">
+              <h1>PURVEYOLS</h1>
+              <div class="subtitle">Building and Civil contractors</div>
+              <div class="details">Plot No. 8, Buchi Road - Northmead, P.O. Box NH 87 Lusaka, Zambia</div>
+              <div class="details">Tel: +260 211 235354 | Mobile: +260 977 393879 / +260 965 393879</div>
+              <div class="details">Email: purveyols@gmail.com</div>
+            </div>
+            <div class="title-row">
+              <span class="left">SAFETY REPORT</span>
+            </div>
+            <div class="info">
+              <p><strong>Title:</strong> ${formData.title}</p>
+              <p><strong>Location:</strong> ${formData.location || '—'}</p>
+              <p><strong>Date:</strong> ${formData.date || '—'}</p>
+              <p><strong>Status:</strong> ${formData.status}</p>
+              <p><strong>Description:</strong> ${formData.description || '—'}</p>
+            </div>
+            <div class="footer">PURVEYOLS CMS - Construction Management System</div>
+          </div>
+          <script>window.onload = function() { window.print(); }</script>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+  };
+
   if (loading) return <CircularProgress />;
 
   return (
     <Box>
-      <Button startIcon={<ArrowBackIcon />} onClick={() => navigate('/safety-reports')} sx={{ mb: 2 }}>
-        Back
-      </Button>
-
+      <BackButton />
       <Paper sx={{ p: 3 }}>
-        {/* ─── Company Header – deep red ──────────────────────────── */}
         <Box sx={{ textAlign: 'center', borderBottom: '2px solid #000', pb: 2, mb: 2 }}>
-          <img
-            src="/top-log.PNG?t=3"
-            alt="PURVEYOLS Logo"
-            style={{ height: '60px', maxWidth: '100%' }}
-            onError={(e) => e.target.style.display = 'none'}
-          />
-          <Typography variant="h4" sx={{ fontWeight: 'bold', letterSpacing: 2, color: '#b71c1c' }}>
-            PURVEYOLS
-          </Typography>
-          <Typography variant="subtitle1" sx={{ fontWeight: 'bold', color: '#b71c1c' }}>
-            Building and Civil contractors
-          </Typography>
+          <img src="/top-log.PNG?t=3" alt="PURVEYOLS Logo" style={{ height: '60px', maxWidth: '100%' }} onError={(e) => e.target.style.display = 'none'} />
+          <Typography variant="h4" sx={{ fontWeight: 'bold', letterSpacing: 2, color: '#b71c1c' }}>PURVEYOLS</Typography>
+          <Typography variant="subtitle1" sx={{ fontWeight: 'bold', color: '#b71c1c' }}>Building and Civil contractors</Typography>
           <Typography variant="body2">Plot No. 8, Buchi Road - Northmead, P.O. Box NH 87 Lusaka, Zambia</Typography>
           <Typography variant="body2">Tel: +260 211 235354 | Mobile: +260 977 393879 / +260 965 393879</Typography>
           <Typography variant="body2">Email: purveyols@gmail.com</Typography>
@@ -174,6 +216,9 @@ const SafetyReportForm = () => {
               disabled={saving}
             >
               {saving ? 'Saving...' : isEdit ? 'Update' : 'Create'}
+            </Button>
+            <Button variant="outlined" startIcon={<PrintIcon />} onClick={handlePrint}>
+              Print
             </Button>
             <Button onClick={() => navigate('/safety-reports')} disabled={saving}>
               Cancel

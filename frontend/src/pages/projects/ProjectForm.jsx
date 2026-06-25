@@ -127,7 +127,70 @@ const ProjectForm = () => {
     }
   };
 
-  const handlePrint = () => window.print();
+  // ─── Custom print ────────────────────────────────────────────────
+  const handlePrint = () => {
+    if (!form.name) {
+      alert('No data to print.');
+      return;
+    }
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>Project</title>
+          <style>
+            body { font-family: 'Courier New', monospace; padding: 20px; margin: 0; }
+            .print-container { max-width: 800px; margin: 0 auto; }
+            .header { text-align: center; border-bottom: 2px solid #000; padding-bottom: 8px; margin-bottom: 15px; }
+            .header h1 { margin: 0; font-size: 28px; letter-spacing: 4px; font-weight: bold; color: #b71c1c; }
+            .header .subtitle { font-weight: bold; font-size: 14px; margin: 2px 0; color: #b71c1c; }
+            .header .details { font-size: 11px; margin: 1px 0; }
+            .title-row { border-bottom: 1px solid #000; padding-bottom: 4px; margin-bottom: 10px; }
+            .title-row .left { font-weight: bold; font-size: 18px; letter-spacing: 2px; color: #b71c1c; }
+            .info { margin-bottom: 10px; }
+            .info p { margin: 2px 0; font-size: 12px; }
+            .approval { margin-top: 20px; border-top: 1px solid #000; padding-top: 10px; }
+            .approval .row { display: flex; justify-content: space-between; }
+            .footer { text-align: center; font-size: 10px; margin-top: 20px; border-top: 1px solid #000; padding-top: 8px; }
+          </style>
+        </head>
+        <body>
+          <div class="print-container">
+            <div class="header">
+              <h1>PURVEYOLS</h1>
+              <div class="subtitle">Building and Civil contractors</div>
+              <div class="details">Plot No. 8, Buchi Road - Northmead, P.O. Box NH 87 Lusaka, Zambia</div>
+              <div class="details">Tel: +260 211 235354 | Mobile: +260 977 393879 / +260 965 393879</div>
+              <div class="details">Email: purveyols@gmail.com</div>
+            </div>
+            <div class="title-row">
+              <span class="left">PROJECT</span>
+            </div>
+            <div class="info">
+              <p><strong>Name:</strong> ${form.name}</p>
+              <p><strong>Location:</strong> ${form.location || '—'}</p>
+              <p><strong>Budget:</strong> K ${parseFloat(form.budget).toFixed(2)}</p>
+              <p><strong>Status:</strong> ${form.status}</p>
+              <p><strong>Progress:</strong> ${form.progress}%</p>
+              <p><strong>Description:</strong> ${form.description || '—'}</p>
+              ${creator ? `<p><strong>Created by:</strong> ${creator.name} (${creator.role})</p>` : ''}
+              ${createdAt ? `<p><strong>Created on:</strong> ${new Date(createdAt).toLocaleString()}</p>` : ''}
+            </div>
+            <div class="approval">
+              <div class="row">
+                <div><strong>Approved by:</strong> ${approver ? `${approver.name} (${approver.role})` : '_________________'}</div>
+                <div><strong>Date:</strong> ${approvedAt ? new Date(approvedAt).toLocaleString() : '_________________'}</div>
+              </div>
+            </div>
+            <div class="footer">PURVEYOLS CMS - Construction Management System</div>
+          </div>
+          <script>window.onload = function() { window.print(); }</script>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+  };
+
   const formatDate = (date) => date ? new Date(date).toLocaleString() : '—';
 
   return (
@@ -136,49 +199,24 @@ const ProjectForm = () => {
       {message && <Alert severity={message.type} sx={{ mb: 2 }}>{message.text}</Alert>}
 
       <form onSubmit={handleSubmit}>
-        {/* ─── Company Header – deep red ──────────────────────────── */}
         <Box sx={{ textAlign: 'center', borderBottom: '2px solid #000', pb: 2, mb: 2 }}>
-          <img
-            src="/top-log.PNG?t=3"
-            alt="PURVEYOLS Logo"
-            style={{ height: '60px', maxWidth: '100%' }}
-            onError={(e) => e.target.style.display = 'none'}
-          />
-          <Typography variant="h4" sx={{ fontWeight: 'bold', letterSpacing: 2, color: '#b71c1c' }}>
-            PURVEYOLS
-          </Typography>
-          <Typography variant="subtitle1" sx={{ fontWeight: 'bold', color: '#b71c1c' }}>
-            Building and Civil contractors
-          </Typography>
+          <img src="/top-log.PNG?t=3" alt="PURVEYOLS Logo" style={{ height: '60px', maxWidth: '100%' }} onError={(e) => e.target.style.display = 'none'} />
+          <Typography variant="h4" sx={{ fontWeight: 'bold', letterSpacing: 2, color: '#b71c1c' }}>PURVEYOLS</Typography>
+          <Typography variant="subtitle1" sx={{ fontWeight: 'bold', color: '#b71c1c' }}>Building and Civil contractors</Typography>
           <Typography variant="body2">Plot No. 8, Buchi Road - Northmead, P.O. Box NH 87 Lusaka, Zambia</Typography>
           <Typography variant="body2">Tel: +260 211 235354 | Mobile: +260 977 393879 / +260 965 393879</Typography>
           <Typography variant="body2">Email: purveyols@gmail.com</Typography>
         </Box>
 
-        <Box sx={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          mb: 3,
-          borderBottom: '1px solid #000',
-          pb: 1
-        }}>
-          <Typography variant="h5" sx={{ fontWeight: 'bold', letterSpacing: 1 }}>
-            {id ? 'EDIT PROJECT' : 'CREATE PROJECT'}
-          </Typography>
-          <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
-            {id ? `Project ID: ${id.slice(-6)}` : 'New Project'}
-          </Typography>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3, borderBottom: '1px solid #000', pb: 1 }}>
+          <Typography variant="h5" sx={{ fontWeight: 'bold', letterSpacing: 1 }}>{id ? 'EDIT PROJECT' : 'CREATE PROJECT'}</Typography>
+          <Typography variant="body2" sx={{ fontWeight: 'bold' }}>{id ? `Project ID: ${id.slice(-6)}` : 'New Project'}</Typography>
         </Box>
 
         {creator && (
           <Box sx={{ mb: 2 }}>
-            <Typography variant="body2">
-              Created by: <strong>{creator.name}</strong> ({creator.role})
-            </Typography>
-            <Typography variant="body2" color="textSecondary">
-              Created on: {formatDate(createdAt)}
-            </Typography>
+            <Typography variant="body2">Created by: <strong>{creator.name}</strong> ({creator.role})</Typography>
+            <Typography variant="body2" color="textSecondary">Created on: {formatDate(createdAt)}</Typography>
           </Box>
         )}
 
@@ -248,12 +286,8 @@ const ProjectForm = () => {
           <Box sx={{ mt: 2, display: 'flex', flexDirection: 'column', gap: 1 }}>
             {approver && form.status === 'active' ? (
               <>
-                <Typography variant="body2">
-                  Approved by: <strong>{approver.name}</strong> ({approver.role})
-                </Typography>
-                <Typography variant="body2">
-                  Approved on: <strong>{formatDate(approvedAt)}</strong>
-                </Typography>
+                <Typography variant="body2">Approved by: <strong>{approver.name}</strong> ({approver.role})</Typography>
+                <Typography variant="body2">Approved on: <strong>{formatDate(approvedAt)}</strong></Typography>
               </>
             ) : (
               <>

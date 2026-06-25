@@ -146,31 +146,81 @@ const WorkerForm = () => {
     }
   };
 
-  const handlePrint = () => window.print();
+  // ─── Custom print ────────────────────────────────────────────────
+  const handlePrint = () => {
+    if (!form.name) {
+      alert('No data to print.');
+      return;
+    }
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>Worker</title>
+          <style>
+            body { font-family: 'Courier New', monospace; padding: 20px; margin: 0; }
+            .print-container { max-width: 800px; margin: 0 auto; }
+            .header { text-align: center; border-bottom: 2px solid #000; padding-bottom: 8px; margin-bottom: 15px; }
+            .header h1 { margin: 0; font-size: 28px; letter-spacing: 4px; font-weight: bold; color: #b71c1c; }
+            .header .subtitle { font-weight: bold; font-size: 14px; margin: 2px 0; color: #b71c1c; }
+            .header .details { font-size: 11px; margin: 1px 0; }
+            .title-row { border-bottom: 1px solid #000; padding-bottom: 4px; margin-bottom: 10px; }
+            .title-row .left { font-weight: bold; font-size: 18px; letter-spacing: 2px; color: #b71c1c; }
+            .info { margin-bottom: 10px; }
+            .info p { margin: 2px 0; font-size: 12px; }
+            .approval { margin-top: 20px; border-top: 1px solid #000; padding-top: 10px; }
+            .footer { text-align: center; font-size: 10px; margin-top: 20px; border-top: 1px solid #000; padding-top: 8px; }
+          </style>
+        </head>
+        <body>
+          <div class="print-container">
+            <div class="header">
+              <h1>PURVEYOLS</h1>
+              <div class="subtitle">Building and Civil contractors</div>
+              <div class="details">Plot No. 8, Buchi Road - Northmead, P.O. Box NH 87 Lusaka, Zambia</div>
+              <div class="details">Tel: +260 211 235354 | Mobile: +260 977 393879 / +260 965 393879</div>
+              <div class="details">Email: purveyols@gmail.com</div>
+            </div>
+            <div class="title-row">
+              <span class="left">WORKER ENROLMENT</span>
+            </div>
+            <div class="info">
+              <p><strong>Name:</strong> ${form.name}</p>
+              <p><strong>NRC:</strong> ${form.nrc}</p>
+              <p><strong>Phone:</strong> ${form.phone || '—'}</p>
+              <p><strong>Daily Rate:</strong> K ${parseFloat(form.dailyRate).toFixed(2)}</p>
+              <p><strong>Site:</strong> ${form.site || '—'}</p>
+              <p><strong>Project:</strong> ${projects.find(p => p._id === form.project)?.name || 'N/A'}</p>
+              <p><strong>Status:</strong> ${form.status}</p>
+              <p><strong>Pending Balance:</strong> K ${balance.toFixed(2)}</p>
+              ${enroller ? `<p><strong>Enrolled by:</strong> ${enroller.name} (${enroller.role})</p>` : ''}
+            </div>
+            <div class="approval">
+              <div class="row">
+                <div><strong>Verified by:</strong> _________________</div>
+                <div><strong>Date:</strong> _________________</div>
+              </div>
+            </div>
+            <div class="footer">PURVEYOLS CMS - Construction Management System</div>
+          </div>
+          <script>window.onload = function() { window.print(); }</script>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+  };
 
   return (
     <Paper sx={{ p: 3, maxWidth: '700px', mx: 'auto' }}>
       <BackButton />
       {message && <Alert severity={message.type} sx={{ mb: 2 }}>{message.text}</Alert>}
-      {!canEdit && (
-        <Alert severity="info" sx={{ mb: 2 }}>You have view‑only access. Edits are disabled.</Alert>
-      )}
+      {!canEdit && <Alert severity="info" sx={{ mb: 2 }}>You have view‑only access. Edits are disabled.</Alert>}
 
       <form onSubmit={handleSubmit}>
-        {/* ─── Company Header – deep red ──────────────────────────── */}
         <Box sx={{ textAlign: 'center', borderBottom: '2px solid #000', pb: 2, mb: 2 }}>
-          <img
-            src="/top-log.PNG?t=3"
-            alt="PURVEYOLS Logo"
-            style={{ height: '60px', maxWidth: '100%' }}
-            onError={(e) => e.target.style.display = 'none'}
-          />
-          <Typography variant="h4" sx={{ fontWeight: 'bold', letterSpacing: 2, color: '#b71c1c' }}>
-            PURVEYOLS
-          </Typography>
-          <Typography variant="subtitle1" sx={{ fontWeight: 'bold', color: '#b71c1c' }}>
-            Building and Civil contractors
-          </Typography>
+          <img src="/top-log.PNG?t=3" alt="PURVEYOLS Logo" style={{ height: '60px', maxWidth: '100%' }} onError={(e) => e.target.style.display = 'none'} />
+          <Typography variant="h4" sx={{ fontWeight: 'bold', letterSpacing: 2, color: '#b71c1c' }}>PURVEYOLS</Typography>
+          <Typography variant="subtitle1" sx={{ fontWeight: 'bold', color: '#b71c1c' }}>Building and Civil contractors</Typography>
           <Typography variant="body2">Plot No. 8, Buchi Road - Northmead, P.O. Box NH 87 Lusaka, Zambia</Typography>
           <Typography variant="body2">Tel: +260 211 235354 | Mobile: +260 977 393879 / +260 965 393879</Typography>
           <Typography variant="body2">Email: purveyols@gmail.com</Typography>
@@ -195,13 +245,7 @@ const WorkerForm = () => {
           <Box sx={{ mb: 2 }}>
             <Chip label={`Pending: K ${balance}`} color={balance > 0 ? 'warning' : 'success'} size="medium" />
             {canCheckIn && (
-              <Button
-                variant="outlined"
-                startIcon={<CheckInIcon />}
-                onClick={handleCheckInOpen}
-                sx={{ ml: 2 }}
-                size="small"
-              >
+              <Button variant="outlined" startIcon={<CheckInIcon />} onClick={handleCheckInOpen} sx={{ ml: 2 }} size="small">
                 Check In
               </Button>
             )}
@@ -210,79 +254,28 @@ const WorkerForm = () => {
 
         <Grid container spacing={2}>
           <Grid item xs={12}>
-            <TextField
-              label="Full Name *"
-              fullWidth
-              value={form.name}
-              onChange={e => setForm({ ...form, name: e.target.value })}
-              required
-              disabled={!canEdit}
-            />
+            <TextField label="Full Name *" fullWidth value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} required disabled={!canEdit} />
           </Grid>
           <Grid item xs={12} md={6}>
-            <TextField
-              label="NRC Number *"
-              fullWidth
-              value={form.nrc}
-              onChange={e => setForm({ ...form, nrc: e.target.value })}
-              required
-              disabled={!canEdit}
-            />
+            <TextField label="NRC Number *" fullWidth value={form.nrc} onChange={e => setForm({ ...form, nrc: e.target.value })} required disabled={!canEdit} />
           </Grid>
           <Grid item xs={12} md={6}>
-            <TextField
-              label="Phone Number"
-              fullWidth
-              value={form.phone}
-              onChange={e => setForm({ ...form, phone: e.target.value })}
-              disabled={!canEdit}
-            />
+            <TextField label="Phone Number" fullWidth value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} disabled={!canEdit} />
           </Grid>
           <Grid item xs={12} md={6}>
-            <TextField
-              label="Daily Rate (ZMW)"
-              type="number"
-              fullWidth
-              value={form.dailyRate}
-              onChange={e => setForm({ ...form, dailyRate: e.target.value })}
-              inputProps={{ min: 0, step: 0.01 }}
-              disabled={!canEdit}
-            />
+            <TextField label="Daily Rate (ZMW)" type="number" fullWidth value={form.dailyRate} onChange={e => setForm({ ...form, dailyRate: e.target.value })} inputProps={{ min: 0, step: 0.01 }} disabled={!canEdit} />
           </Grid>
           <Grid item xs={12} md={6}>
-            <TextField
-              label="Site / Location"
-              fullWidth
-              value={form.site}
-              onChange={e => setForm({ ...form, site: e.target.value })}
-              disabled={!canEdit}
-            />
+            <TextField label="Site / Location" fullWidth value={form.site} onChange={e => setForm({ ...form, site: e.target.value })} disabled={!canEdit} />
           </Grid>
           <Grid item xs={12}>
-            <TextField
-              select
-              label="Project *"
-              fullWidth
-              value={form.project}
-              onChange={e => setForm({ ...form, project: e.target.value })}
-              disabled={!canEdit}
-              required
-            >
+            <TextField select label="Project *" fullWidth value={form.project} onChange={e => setForm({ ...form, project: e.target.value })} disabled={!canEdit} required>
               <MenuItem value="">Select a project</MenuItem>
-              {projects.map(p => (
-                <MenuItem key={p._id} value={p._id}>{p.name}</MenuItem>
-              ))}
+              {projects.map(p => <MenuItem key={p._id} value={p._id}>{p.name}</MenuItem>)}
             </TextField>
           </Grid>
           <Grid item xs={12}>
-            <TextField
-              select
-              label="Status"
-              fullWidth
-              value={form.status}
-              onChange={e => setForm({ ...form, status: e.target.value })}
-              disabled={!canEdit}
-            >
+            <TextField select label="Status" fullWidth value={form.status} onChange={e => setForm({ ...form, status: e.target.value })} disabled={!canEdit}>
               <MenuItem value="active">Active</MenuItem>
               <MenuItem value="suspended">Suspended</MenuItem>
               <MenuItem value="inactive">Inactive</MenuItem>
@@ -327,53 +320,15 @@ const WorkerForm = () => {
       <Dialog open={checkInOpen} onClose={() => setCheckInOpen(false)} maxWidth="sm" fullWidth>
         <DialogTitle>Check In Worker</DialogTitle>
         <DialogContent>
-          <TextField
-            label="Date"
-            type="date"
-            fullWidth
-            margin="dense"
-            value={checkInForm.date}
-            onChange={e => setCheckInForm({ ...checkInForm, date: e.target.value })}
-            InputLabelProps={{ shrink: true }}
-          />
-          <TextField
-            label="Days Worked"
-            type="number"
-            fullWidth
-            margin="dense"
-            value={checkInForm.days}
-            onChange={e => setCheckInForm({ ...checkInForm, days: Math.max(1, Number(e.target.value)) })}
-            inputProps={{ min: 1 }}
-          />
-          <TextField
-            label="Rate (ZMW per day)"
-            type="number"
-            fullWidth
-            margin="dense"
-            value={checkInForm.rate}
-            onChange={e => setCheckInForm({ ...checkInForm, rate: Math.max(0, Number(e.target.value)) })}
-            inputProps={{ min: 0, step: 0.01 }}
-          />
-          <TextField
-            label="Site"
-            fullWidth
-            margin="dense"
-            value={checkInForm.site}
-            onChange={e => setCheckInForm({ ...checkInForm, site: e.target.value })}
-          />
-          <TextField
-            label="Notes"
-            fullWidth
-            margin="dense"
-            value={checkInForm.notes}
-            onChange={e => setCheckInForm({ ...checkInForm, notes: e.target.value })}
-          />
+          <TextField label="Date" type="date" fullWidth margin="dense" value={checkInForm.date} onChange={e => setCheckInForm({ ...checkInForm, date: e.target.value })} InputLabelProps={{ shrink: true }} />
+          <TextField label="Days Worked" type="number" fullWidth margin="dense" value={checkInForm.days} onChange={e => setCheckInForm({ ...checkInForm, days: Math.max(1, Number(e.target.value)) })} inputProps={{ min: 1 }} />
+          <TextField label="Rate (ZMW per day)" type="number" fullWidth margin="dense" value={checkInForm.rate} onChange={e => setCheckInForm({ ...checkInForm, rate: Math.max(0, Number(e.target.value)) })} inputProps={{ min: 0, step: 0.01 }} />
+          <TextField label="Site" fullWidth margin="dense" value={checkInForm.site} onChange={e => setCheckInForm({ ...checkInForm, site: e.target.value })} />
+          <TextField label="Notes" fullWidth margin="dense" value={checkInForm.notes} onChange={e => setCheckInForm({ ...checkInForm, notes: e.target.value })} />
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setCheckInOpen(false)}>Cancel</Button>
-          <Button variant="contained" color="primary" onClick={handleCheckInSubmit}>
-            Confirm Check‑in
-          </Button>
+          <Button variant="contained" color="primary" onClick={handleCheckInSubmit}>Confirm Check‑in</Button>
         </DialogActions>
       </Dialog>
     </Paper>
