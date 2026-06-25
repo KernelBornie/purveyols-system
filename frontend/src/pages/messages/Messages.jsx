@@ -10,6 +10,7 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import MessageIcon from '@mui/icons-material/Message';
 import ReplyIcon from '@mui/icons-material/Reply';
 import ForwardIcon from '@mui/icons-material/Forward';
+import AttachFileIcon from '@mui/icons-material/AttachFile';
 import api from '../../api/axios';
 import BackButton from '../../components/BackButton';
 import MessageDialog from '../../components/MessageDialog';
@@ -89,16 +90,16 @@ const Messages = () => {
     setDialogMode('reply');
     setInitialTo(message.from._id);
     setInitialSubject(`Re: ${message.subject || 'Your message'}`);
-    setInitialContent(''); // empty body
+    setInitialContent('');
     setDialogOpen(true);
   };
 
-  // ─── Forward (content only) ─────────────────────────────────────
+  // ─── Forward ──────────────────────────────────────────────────────
   const handleForward = (message) => {
     setDialogMode('forward');
     setInitialTo('');
     setInitialSubject(`Fwd: ${message.subject || 'Your message'}`);
-    setInitialContent(message.content); // ✅ only the original message
+    setInitialContent(message.content);
     setDialogOpen(true);
   };
 
@@ -163,7 +164,14 @@ const Messages = () => {
                 sx={{ bgcolor: m.read ? 'transparent' : 'action.hover' }}
               >
                 <TableCell>{m.from?.name || 'Unknown'}</TableCell>
-                <TableCell>{m.subject || '(no subject)'}</TableCell>
+                <TableCell>
+                  {m.subject || '(no subject)'}
+                  {m.attachments && m.attachments.length > 0 && (
+                    <Tooltip title={`${m.attachments.length} attachment(s)`}>
+                      <AttachFileIcon fontSize="small" color="action" sx={{ ml: 1, verticalAlign: 'middle' }} />
+                    </Tooltip>
+                  )}
+                </TableCell>
                 <TableCell>
                   {new Date(m.createdAt).toLocaleDateString()} {new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                 </TableCell>

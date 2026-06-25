@@ -1,10 +1,31 @@
 const express = require('express');
 const router = express.Router();
 const mongoose = require('mongoose');
+const multer = require('multer');
+const cloudinary = require('cloudinary').v2;
+const { CloudinaryStorage } = require('multer-storage-cloudinary');
 const Message = require('../models/Message');
 const User = require('../models/User');
 const auth = require('../middleware/auth');
 const { createNotification, getSenderName } = require('../utils/notificationHelper');
+
+// ─── Cloudinary configuration ──────────────────────────────
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
+
+const storage = new CloudinaryStorage({
+  cloudinary: cloudinary,
+  params: {
+    folder: 'messages',
+    allowed_formats: ['jpg', 'jpeg', 'png', 'gif', 'mp4', 'webm', 'mp3', 'wav', 'pdf', 'doc', 'docx', 'xls', 'xlsx', 'txt'],
+    resource_type: 'auto',
+  },
+});
+
+const upload = multer({ storage });
 
 // ─── Inbox ──────────────────────────────────────────────────
 router.get('/', auth, async (req, res) => {
@@ -42,42 +63,45 @@ router.get('/sent', auth, async (req, res) => {
   }
 });
 
-// ─── Send a message ─────────────────────────────────────────
-router.post('/', auth, async (req, res) => {
+// ─── Send a message with attachments ────────────────────────
+router.post('/', auth, upload.array('attachments', 10), async (req, res) => {
   try {
     const { to, subject, content } = req.body;
-
-    if (!to || !content) {
-      return res.status(400).json({ error: 'Recipient and content are required' });
+    if (!to || (!content && !req.files?.length)) {
+      return res.status(400).json({ error: 'Recipient and content or attachment are required' });
     }
-
     if (!mongoose.Types.ObjectId.isValid(to)) {
       return res.status(400).json({ error: 'Invalid recipient ID format' });
     }
-
     const recipient = await User.findById(to);
-    if (!recipient) {
-      return res.status(404).json({ error: 'Recipient not found' });
-    }
+    if (!recipient) return res.status(404).json({ error: 'Recipient not found' });
+
+    const attachments = (req.files || []).map(file => ({
+      type: file.mimetype.startsWith('image/') ? 'image'
+            : file.mimetype.startsWith('audio/') ? 'audio'
+            : file.mimetype.startsWith('video/') ? 'video'
+            : 'document',
+      url: file.path,
+      filename: file.originalname,
+      size: file.size,
+    }));
 
     const senderName = await getSenderName(req.user.id);
-
     const message = new Message({
       from: req.user.id,
       to,
       subject: subject || '',
-      content,
+      content: content || '',
+      attachments,
       deletedBy: [],
     });
     await message.save();
-
-    console.log(`📩 Message from ${req.user.id} to ${to}`);
 
     await createNotification(
       recipient._id,
       'message_received',
       'New Message',
-      `You have a new message from ${senderName}`,
+      `You have a new message from ${senderName} ${attachments.length > 0 ? 'with attachments' : ''}`,
       `/messages/${message._id}`
     );
 
@@ -111,31 +135,15 @@ router.delete('/:id', auth, async (req, res) => {
   try {
     const userId = req.user.id;
     const message = await Message.findById(req.params.id);
-    if (!message) {
-      return res.status(404).json({ error: 'Message not found' });
-    }
+    if (!message) return res.status(404).json({ error: 'Message not found' });
 
-    // Debug log to see what's in the DB
-    console.log('🔍 DELETE message:', {
-      userId,
-      from: message.from,
-      to: message.to,
-      fromType: typeof message.from,
-      toType: typeof message.to,
-    });
-
-    // Robust string comparison (handles both ObjectId and string)
     const fromStr = message.from?.toString ? message.from.toString() : String(message.from);
     const toStr = message.to?.toString ? message.to.toString() : String(message.to);
     const userIdStr = userId.toString();
-
     const isSender = fromStr === userIdStr;
     const isRecipient = toStr === userIdStr;
 
-    console.log('🔍 isSender:', isSender, 'isRecipient:', isRecipient);
-
     if (!isSender && !isRecipient) {
-      console.warn('⚠️ Unauthorized delete attempt by user', userId, 'for message', req.params.id);
       return res.status(403).json({ error: 'Not authorized to delete this message' });
     }
 
@@ -145,8 +153,6 @@ router.delete('/:id', auth, async (req, res) => {
 
     message.deletedBy.push(userId);
     await message.save();
-
-    console.log(`🗑️ User ${userId} soft‑deleted message ${req.params.id}`);
     res.json({ message: 'Message deleted for you' });
   } catch (err) {
     console.error('Delete error:', err);
@@ -154,7 +160,7 @@ router.delete('/:id', auth, async (req, res) => {
   }
 });
 
-// ─── Delete all messages for user (soft delete) ──────────
+// ─── Delete all messages (soft delete) ──────────────────
 router.delete('/', auth, async (req, res) => {
   try {
     const userId = req.user.id;
@@ -207,6 +213,24 @@ router.get('/conversation/:otherUserId', auth, async (req, res) => {
     res.json(messages);
   } catch (err) {
     console.error('Conversation error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── Get a single message ─────────────────────────────────
+router.get('/:id', auth, async (req, res) => {
+  try {
+    const message = await Message.findById(req.params.id)
+      .populate('from', 'name role')
+      .populate('to', 'name role');
+    if (!message) return res.status(404).json({ error: 'Message not found' });
+    const userId = req.user.id;
+    if (message.from._id.toString() !== userId && message.to._id.toString() !== userId) {
+      return res.status(403).json({ error: 'Not authorized' });
+    }
+    res.json(message);
+  } catch (err) {
+    console.error('Get message error:', err);
     res.status(500).json({ error: err.message });
   }
 });
