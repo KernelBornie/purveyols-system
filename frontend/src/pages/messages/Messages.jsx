@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import {
   Paper, Typography, Box, Table, TableHead, TableRow, TableCell, TableBody,
-  Chip, IconButton, Tooltip, Alert, CircularProgress, Button, Tabs, Tab
+  Chip, IconButton, Tooltip, Alert, CircularProgress, Button, Tabs, Tab,
+  Dialog, DialogTitle, DialogContent, DialogActions, List, ListItem,
+  ListItemText, ListItemIcon, Divider
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import RefreshIcon from '@mui/icons-material/Refresh';
@@ -11,6 +13,14 @@ import MessageIcon from '@mui/icons-material/Message';
 import ReplyIcon from '@mui/icons-material/Reply';
 import ForwardIcon from '@mui/icons-material/Forward';
 import AttachFileIcon from '@mui/icons-material/AttachFile';
+import VisibilityIcon from '@mui/icons-material/Visibility';
+import DownloadIcon from '@mui/icons-material/Download';
+import ImageIcon from '@mui/icons-material/Image';
+import AudioFileIcon from '@mui/icons-material/AudioFile';
+import VideoFileIcon from '@mui/icons-material/VideoFile';
+import InsertDriveFileIcon from '@mui/icons-material/InsertDriveFile';
+import PlayArrowIcon from '@mui/icons-material/PlayArrow';
+import CloseIcon from '@mui/icons-material/Close';
 import api from '../../api/axios';
 import BackButton from '../../components/BackButton';
 import MessageDialog from '../../components/MessageDialog';
@@ -25,6 +35,11 @@ const Messages = () => {
   const [initialTo, setInitialTo] = useState('');
   const [initialSubject, setInitialSubject] = useState('');
   const [initialContent, setInitialContent] = useState('');
+
+  // ─── Detail view state ──────────────────────────────────────────
+  const [detailOpen, setDetailOpen] = useState(false);
+  const [selectedMessage, setSelectedMessage] = useState(null);
+  const [loadingDetail, setLoadingDetail] = useState(false);
 
   const fetchMessages = async () => {
     setLoading(true);
@@ -103,6 +118,98 @@ const Messages = () => {
     setDialogOpen(true);
   };
 
+  // ─── View Detail ──────────────────────────────────────────────────
+  const handleViewDetail = async (message) => {
+    setLoadingDetail(true);
+    setSelectedMessage(null);
+    setDetailOpen(true);
+    try {
+      // Fetch the full message with attachments
+      const res = await api.get(`/api/messages/${message._id}`);
+      setSelectedMessage(res.data);
+    } catch (err) {
+      alert('Failed to load message details');
+      setDetailOpen(false);
+    } finally {
+      setLoadingDetail(false);
+    }
+  };
+
+  const getFileIcon = (attachment) => {
+    const type = attachment.type;
+    if (type === 'image') return <ImageIcon />;
+    if (type === 'audio') return <AudioFileIcon />;
+    if (type === 'video') return <VideoFileIcon />;
+    return <InsertDriveFileIcon />;
+  };
+
+  const getFileTypeLabel = (attachment) => {
+    const type = attachment.type;
+    if (type === 'image') return 'Image';
+    if (type === 'audio') return 'Audio';
+    if (type === 'video') return 'Video';
+    return 'Document';
+  };
+
+  const renderAttachment = (attachment) => {
+    const url = attachment.url;
+    const filename = attachment.filename;
+    const type = attachment.type;
+
+    if (type === 'audio') {
+      return (
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: '100%' }}>
+          <AudioFileIcon />
+          <audio controls style={{ flex: 1, minWidth: '150px' }}>
+            <source src={url} />
+            Your browser does not support the audio element.
+          </audio>
+          <Button size="small" startIcon={<DownloadIcon />} href={url} download={filename}>
+            Download
+          </Button>
+        </Box>
+      );
+    }
+
+    if (type === 'video') {
+      return (
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, width: '100%' }}>
+          <video controls style={{ maxWidth: '100%', maxHeight: '300px' }}>
+            <source src={url} />
+            Your browser does not support the video element.
+          </video>
+          <Button size="small" startIcon={<DownloadIcon />} href={url} download={filename}>
+            Download
+          </Button>
+        </Box>
+      );
+    }
+
+    if (type === 'image') {
+      return (
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, width: '100%' }}>
+          <img src={url} alt={filename} style={{ maxWidth: '100%', maxHeight: '300px', objectFit: 'contain' }} />
+          <Button size="small" startIcon={<DownloadIcon />} href={url} download={filename}>
+            Download
+          </Button>
+        </Box>
+      );
+    }
+
+    // Document
+    return (
+      <Button
+        variant="outlined"
+        startIcon={<InsertDriveFileIcon />}
+        href={url}
+        download={filename}
+        fullWidth
+      >
+        Download {filename}
+      </Button>
+    );
+  };
+
   const filteredMessages = tab === 0 ? messages : tab === 1 ? messages.filter(m => m.read) : messages.filter(m => !m.read);
 
   return (
@@ -179,6 +286,11 @@ const Messages = () => {
                   {m.read ? <Chip label="Read" size="small" color="success" /> : <Chip label="Unread" size="small" color="warning" />}
                 </TableCell>
                 <TableCell>
+                  <Tooltip title="View">
+                    <IconButton size="small" onClick={() => handleViewDetail(m)} color="info">
+                      <VisibilityIcon fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
                   {!m.read && (
                     <Tooltip title="Mark as read">
                       <IconButton size="small" onClick={() => handleMarkRead(m._id)}>
@@ -208,6 +320,7 @@ const Messages = () => {
         </Table>
       )}
 
+      {/* ─── Compose Dialog ─────────────────────────────────────────── */}
       <MessageDialog
         open={dialogOpen}
         onClose={() => setDialogOpen(false)}
@@ -217,6 +330,79 @@ const Messages = () => {
         initialSubject={initialSubject}
         initialContent={initialContent}
       />
+
+      {/* ─── Message Detail Dialog ──────────────────────────────────── */}
+      <Dialog open={detailOpen} onClose={() => setDetailOpen(false)} maxWidth="md" fullWidth>
+        <DialogTitle>
+          Message Details
+          <IconButton
+            aria-label="close"
+            onClick={() => setDetailOpen(false)}
+            sx={{ position: 'absolute', right: 8, top: 8 }}
+          >
+            <CloseIcon />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent dividers>
+          {loadingDetail ? (
+            <CircularProgress />
+          ) : selectedMessage ? (
+            <Box>
+              <Box sx={{ mb: 2 }}>
+                <Typography variant="subtitle2" color="textSecondary">From</Typography>
+                <Typography variant="body1">{selectedMessage.from?.name} ({selectedMessage.from?.role})</Typography>
+              </Box>
+              <Box sx={{ mb: 2 }}>
+                <Typography variant="subtitle2" color="textSecondary">Subject</Typography>
+                <Typography variant="body1">{selectedMessage.subject || '(no subject)'}</Typography>
+              </Box>
+              <Box sx={{ mb: 2 }}>
+                <Typography variant="subtitle2" color="textSecondary">Date</Typography>
+                <Typography variant="body1">{new Date(selectedMessage.createdAt).toLocaleString()}</Typography>
+              </Box>
+              <Divider sx={{ my: 2 }} />
+              <Box sx={{ mb: 2 }}>
+                <Typography variant="subtitle2" color="textSecondary">Message</Typography>
+                <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                  {selectedMessage.content || '(empty)'}
+                </Typography>
+              </Box>
+
+              {/* ─── Attachments ────────────────────────────────────── */}
+              {selectedMessage.attachments && selectedMessage.attachments.length > 0 && (
+                <>
+                  <Divider sx={{ my: 2 }} />
+                  <Typography variant="subtitle2" color="textSecondary" gutterBottom>
+                    Attachments ({selectedMessage.attachments.length})
+                  </Typography>
+                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                    {selectedMessage.attachments.map((att, idx) => (
+                      <Paper key={idx} sx={{ p: 2, bgcolor: '#f9f9f9' }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                          {getFileIcon(att)}
+                          <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
+                            {att.filename}
+                          </Typography>
+                          <Chip label={getFileTypeLabel(att)} size="small" />
+                          <Typography variant="caption" color="textSecondary">
+                            {(att.size / 1024).toFixed(1)} KB
+                          </Typography>
+                        </Box>
+                        {renderAttachment(att)}
+                      </Paper>
+                    ))}
+                  </Box>
+                </>
+              )}
+            </Box>
+          ) : (
+            <Typography>Message not found.</Typography>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDetailOpen(false)}>Close</Button>
+        </DialogActions>
+      </Dialog>
     </Paper>
   );
 };
