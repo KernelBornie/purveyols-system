@@ -115,7 +115,7 @@ router.delete('/:id', auth, async (req, res) => {
       return res.status(404).json({ error: 'Message not found' });
     }
 
-    // 🔍 DEBUG – log the actual IDs to see what's in the DB
+    // Debug log to see what's in the DB
     console.log('🔍 DELETE message:', {
       userId,
       from: message.from,
@@ -124,7 +124,7 @@ router.delete('/:id', auth, async (req, res) => {
       toType: typeof message.to,
     });
 
-    // ─── Robust comparison ──────────────────────────────────
+    // Robust string comparison (handles both ObjectId and string)
     const fromStr = message.from?.toString ? message.from.toString() : String(message.from);
     const toStr = message.to?.toString ? message.to.toString() : String(message.to);
     const userIdStr = userId.toString();

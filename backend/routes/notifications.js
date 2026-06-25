@@ -3,7 +3,7 @@ const router = express.Router();
 const Notification = require('../models/Notification');
 const auth = require('../middleware/auth');
 
-// ─── GET all notifications ────────────────────────────────
+// ─── GET all notifications for current user ──────────────
 router.get('/', auth, async (req, res) => {
   try {
     const notifications = await Notification.find({ user: req.user.id })
@@ -14,7 +14,7 @@ router.get('/', auth, async (req, res) => {
   }
 });
 
-// ─── Mark as read ──────────────────────────────────────────
+// ─── Mark a notification as read ──────────────────────────
 router.put('/:id/read', auth, async (req, res) => {
   try {
     const notification = await Notification.findOne({ _id: req.params.id, user: req.user.id });
@@ -27,7 +27,7 @@ router.put('/:id/read', auth, async (req, res) => {
   }
 });
 
-// ─── Mark all as read ──────────────────────────────────────
+// ─── Mark all notifications as read ──────────────────────
 router.put('/read-all', auth, async (req, res) => {
   try {
     await Notification.updateMany({ user: req.user.id, read: false }, { read: true });
@@ -37,7 +37,7 @@ router.put('/read-all', auth, async (req, res) => {
   }
 });
 
-// ─── Delete one ────────────────────────────────────────────
+// ─── Delete a single notification ──────────────────────
 router.delete('/:id', auth, async (req, res) => {
   try {
     const deleted = await Notification.findOneAndDelete({ _id: req.params.id, user: req.user.id });
@@ -48,7 +48,7 @@ router.delete('/:id', auth, async (req, res) => {
   }
 });
 
-// ─── Delete all ────────────────────────────────────────────
+// ─── Delete all notifications for the current user ──────
 router.delete('/', auth, async (req, res) => {
   try {
     await Notification.deleteMany({ user: req.user.id });
@@ -58,7 +58,7 @@ router.delete('/', auth, async (req, res) => {
   }
 });
 
-// ─── Unread count ──────────────────────────────────────────
+// ─── Get unread count ─────────────────────────────────────
 router.get('/unread-count', auth, async (req, res) => {
   try {
     const count = await Notification.countDocuments({ user: req.user.id, read: false });
