@@ -12,6 +12,7 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
 import RemoveIcon from '@mui/icons-material/Remove';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
+import PrintIcon from '@mui/icons-material/Print';
 import api from '../../api/axios';
 import BackButton from '../../components/BackButton';
 import { useDropzone } from 'react-dropzone';
@@ -134,7 +135,7 @@ const SurveyForm = () => {
     reader.readAsText(file);
   };
 
-  // ─── Calculate area/perimeter (from canvas or coordinates) ──────
+  // ─── Calculate area/perimeter ──────────────────────────────────────
   const calculateAreaPerimeter = () => {
     const polyData = drawingCanvasRef.current?.getPolygonData();
     if (polyData && polyData.points.length >= 3) {
@@ -233,6 +234,86 @@ const SurveyForm = () => {
     }
   };
 
+  // ─── Custom print ─────────────────────────────────────────────────
+  const handlePrint = () => {
+    const fc = drawingCanvasRef.current?.getCanvas();
+    let imageDataURL = null;
+    if (fc) {
+      imageDataURL = fc.toDataURL({ format: 'png', quality: 1 });
+    }
+    const printWindow = window.open('', '_blank');
+    const projectName = projects.find(p => p._id === form.project)?.name || 'N/A';
+    const surveyorName = users.find(u => u._id === form.surveyor)?.name || 'N/A';
+
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>Survey - ${form.surveyNumber}</title>
+          <style>
+            body { font-family: 'Courier New', monospace; padding: 20px; margin: 0; }
+            .print-container { max-width: 1000px; margin: 0 auto; }
+            .header { text-align: center; border-bottom: 2px solid #000; padding-bottom: 8px; margin-bottom: 15px; }
+            .header h1 { margin: 0; font-size: 28px; letter-spacing: 4px; font-weight: bold; color: #b71c1c; }
+            .header .subtitle { font-weight: bold; font-size: 14px; margin: 2px 0; color: #b71c1c; }
+            .header .details { font-size: 11px; margin: 1px 0; }
+            .title-row { border-bottom: 1px solid #000; padding-bottom: 4px; margin-bottom: 10px; }
+            .title-row .left { font-weight: bold; font-size: 18px; letter-spacing: 2px; color: #b71c1c; }
+            .info { margin-bottom: 10px; }
+            .info p { margin: 2px 0; font-size: 12px; }
+            table { width: 100%; border-collapse: collapse; margin: 10px 0; }
+            th, td { border: 1px solid #000; padding: 5px 8px; text-align: left; font-size: 11px; }
+            th { background-color: #f0f0f0; font-weight: bold; text-align: center; }
+            .canvas-image { max-width: 100%; border: 1px solid #ccc; margin: 10px 0; }
+            .footer { text-align: center; font-size: 10px; margin-top: 20px; border-top: 1px solid #000; padding-top: 8px; }
+          </style>
+        </head>
+        <body>
+          <div class="print-container">
+            <div class="header">
+              <h1>PURVEYOLS</h1>
+              <div class="subtitle">Building and Civil contractors</div>
+              <div class="details">Plot No. 8, Buchi Road - Northmead, P.O. Box NH 87 Lusaka, Zambia</div>
+              <div class="details">Tel: +260 211 235354 | Mobile: +260 977 393879 / +260 965 393879</div>
+              <div class="details">Email: purveyols@gmail.com</div>
+            </div>
+            <div class="title-row">
+              <span class="left">SURVEY REPORT</span>
+              <span>${form.surveyNumber}</span>
+            </div>
+            <div class="info">
+              <p><strong>Project:</strong> ${projectName}</p>
+              <p><strong>Survey Date:</strong> ${form.surveyDate || '—'}</p>
+              <p><strong>Surveyor:</strong> ${surveyorName}</p>
+              <p><strong>Equipment Used:</strong> ${form.equipmentUsed?.join(', ') || '—'}</p>
+              <p><strong>Status:</strong> ${form.status}</p>
+              <p><strong>Area:</strong> ${form.area.toFixed(2)} m²</p>
+              <p><strong>Perimeter:</strong> ${form.perimeter.toFixed(2)} m</p>
+              ${form.cutVolume > 0 ? `<p><strong>Cut Volume:</strong> ${form.cutVolume.toFixed(2)} m³</p>` : ''}
+              ${form.fillVolume > 0 ? `<p><strong>Fill Volume:</strong> ${form.fillVolume.toFixed(2)} m³</p>` : ''}
+              ${form.netVolume > 0 ? `<p><strong>Net Volume:</strong> ${form.netVolume.toFixed(2)} m³</p>` : ''}
+            </div>
+
+            ${coords.length > 0 ? `
+              <h4>Boundary Coordinates</h4>
+              <table>
+                <thead><tr><th>Point</th><th>Northing</th><th>Easting</th><th>Elevation</th></tr></thead>
+                <tbody>
+                  ${coords.map((c, i) => `<tr><td>${i+1}</td><td>${c.northing}</td><td>${c.easting}</td><td>${c.elevation || 0}</td></tr>`).join('')}
+                </tbody>
+              </table>
+            ` : ''}
+
+            ${imageDataURL ? `<img src="${imageDataURL}" class="canvas-image" alt="Survey Drawing" />` : ''}
+
+            <div class="footer">PURVEYOLS CMS - Construction Management System</div>
+          </div>
+          <script>window.onload = function() { window.print(); }</script>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+  };
+
   return (
     <Paper sx={{ p: 3, maxWidth: 1200, mx: 'auto' }}>
       <BackButton />
@@ -259,6 +340,11 @@ const SurveyForm = () => {
         <Typography variant="body2">Plot No. 8, Buchi Road - Northmead, P.O. Box NH 87 Lusaka, Zambia</Typography>
         <Typography variant="body2">Tel: +260 211 235354 | Mobile: +260 977 393879 / +260 965 393879</Typography>
         <Typography variant="body2">Email: purveyols@gmail.com</Typography>
+      </Box>
+
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+        <Typography variant="h6">Survey Details</Typography>
+        <Button variant="outlined" startIcon={<PrintIcon />} onClick={handlePrint}>Print</Button>
       </Box>
 
       <form onSubmit={handleSubmit}>
