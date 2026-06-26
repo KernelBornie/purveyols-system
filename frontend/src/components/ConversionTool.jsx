@@ -5,7 +5,7 @@ import {
 } from '@mui/material';
 import CalculateIcon from '@mui/icons-material/Calculate';
 
-// ─── conversionFactors (unchanged) ──────────────────────────────────
+// ─── conversionFactors (verified) ──────────────────────────────────
 const conversionFactors = {
   area: {
     m2_to_ft2: 10.7639,
@@ -28,6 +28,8 @@ const conversionFactors = {
     m3_to_litres: 1000,
     gallons_to_m3: 0.00378541,
     m3_to_gallons: 264.172,
+    litres_to_gallons: 0.264172,   // ✅ added
+    gallons_to_litres: 3.78541,    // ✅ added
     m3_to_boardfeet: 423.776,
     boardfeet_to_m3: 0.00235974,
   },
@@ -294,6 +296,8 @@ const getUnitsForCategory = (category) => {
   const keys = Object.keys(conversionFactors[category] || {});
   const unitSet = new Set();
   keys.forEach(k => {
+    // skip functions like degrees_to_percent
+    if (typeof conversionFactors[category][k] === 'function') return;
     const parts = k.split('_to_');
     if (parts.length === 2) {
       unitSet.add(parts[0]);
@@ -380,20 +384,26 @@ const ConversionTool = ({ open, onClose }) => {
   // ─── Handle standard conversions ──────────────────────────────────
   const handleConvert = () => {
     const value = parseFloat(inputValue);
-    if (isNaN(value) || !fromUnit || !toUnit) return;
+    if (isNaN(value) || !fromUnit || !toUnit) {
+      setResult('Please enter a value and select both units.');
+      return;
+    }
     const category = getCategory();
     const key = `${fromUnit}_to_${toUnit}`;
     let factor = conversionFactors[category]?.[key];
     let converted = 0;
-    if (factor !== undefined) {
+    if (factor !== undefined && typeof factor === 'number') {
       converted = value * factor;
     } else {
       const reverseKey = `${toUnit}_to_${fromUnit}`;
       factor = conversionFactors[category]?.[reverseKey];
-      if (factor !== undefined) {
+      if (factor !== undefined && typeof factor === 'number') {
         converted = value / factor;
       } else {
-        setResult('Conversion not supported');
+        setResult(
+          `Conversion not supported for "${fromUnit}" → "${toUnit}". ` +
+          `Try using the Custom Conversion below.`
+        );
         return;
       }
     }
@@ -405,7 +415,7 @@ const ConversionTool = ({ open, onClose }) => {
     const val = parseFloat(customValue);
     const factor = parseFloat(customFactor);
     if (isNaN(val) || isNaN(factor) || !customFrom || !customTo) {
-      setCustomResult('Please fill all fields with valid numbers');
+      setCustomResult('Please fill all fields with valid numbers.');
       return;
     }
     setCustomResult(val * factor);
@@ -491,7 +501,7 @@ const ConversionTool = ({ open, onClose }) => {
             {result !== null && (
               <Paper sx={{ p: 2, mt: 2, bgcolor: '#e8f5e9' }}>
                 <Typography variant="body1">
-                  {inputValue} {fromUnit} = {result} {toUnit}
+                  {inputValue} {fromUnit} = {typeof result === 'number' ? result : result}
                 </Typography>
               </Paper>
             )}
