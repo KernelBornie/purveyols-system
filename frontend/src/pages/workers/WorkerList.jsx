@@ -6,7 +6,6 @@ import {
   Dialog, DialogTitle, DialogContent, DialogActions, TextField
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
-import VisibilityIcon from '@mui/icons-material/Visibility';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import CheckInIcon from '@mui/icons-material/AssignmentTurnedIn';
@@ -145,31 +144,53 @@ const WorkerList = () => {
               <TableCell>K {worker.dailyRate || 0}</TableCell>
               <TableCell>K {worker.balance || 0}</TableCell>
               <TableCell>
-                <Tooltip title="View">
-                  <IconButton component={Link} to={`/workers/${worker._id}`} size="small" color="info">
-                    <VisibilityIcon fontSize="small" />
-                  </IconButton>
-                </Tooltip>
+                {/* ─── View button (text) ──────────────────────────── */}
+                <Button
+                  component={Link}
+                  to={`/workers/${worker._id}`}
+                  size="small"
+                  variant="outlined"
+                  sx={{ mr: 0.5, minWidth: '40px', textTransform: 'none' }}
+                >
+                  View
+                </Button>
 
+                {/* ─── Edit ────────────────────────────────────────── */}
                 {canEdit && (
                   <Tooltip title="Edit">
-                    <IconButton component={Link} to={`/workers/${worker._id}/edit`} size="small" color="primary">
+                    <IconButton
+                      component={Link}
+                      to={`/workers/${worker._id}/edit`}
+                      size="small"
+                      color="primary"
+                    >
                       <EditIcon fontSize="small" />
                     </IconButton>
                   </Tooltip>
                 )}
 
+                {/* ─── Check In (text button) ──────────────────────── */}
                 {canCheckIn && (
-                  <Tooltip title="Check In">
-                    <IconButton size="small" color="success" onClick={() => handleCheckInOpen(worker)}>
-                      <CheckInIcon fontSize="small" />
-                    </IconButton>
-                  </Tooltip>
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    color="success"
+                    startIcon={<CheckInIcon />}
+                    onClick={() => handleCheckInOpen(worker)}
+                    sx={{ mr: 0.5, textTransform: 'none' }}
+                  >
+                    Check In
+                  </Button>
                 )}
 
+                {/* ─── Delete ───────────────────────────────────────── */}
                 {canEdit && (
                   <Tooltip title="Delete">
-                    <IconButton size="small" color="error" onClick={() => handleDelete(worker._id)}>
+                    <IconButton
+                      size="small"
+                      color="error"
+                      onClick={() => handleDelete(worker._id)}
+                    >
                       <DeleteIcon fontSize="small" />
                     </IconButton>
                   </Tooltip>
