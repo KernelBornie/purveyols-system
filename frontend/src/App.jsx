@@ -42,6 +42,9 @@ import SafetyReportForm from './pages/safety/SafetyReportForm';
 import PaymentNotifications from './pages/PaymentNotifications';
 import PaymentDetails from './pages/PaymentDetails';
 import PaymentList from './pages/payments/PaymentList';
+// 👇 NEW – Visitor imports
+import VisitorList from './pages/visitors/VisitorList';
+import VisitorForm from './pages/visitors/VisitorForm';
 
 const AuthRedirect = () => {
   const { user, loading } = useAuth();
@@ -155,6 +158,12 @@ function App() {
 
                 {/* Payment Notifications */}
                 <Route path="/payment-notifications" element={<PaymentNotifications />} />
+
+                {/* 👇 NEW – Visitors */}
+                <Route path="/visitors" element={<VisitorList />} />
+                <Route path="/visitors/new" element={<VisitorForm />} />
+                <Route path="/visitors/:id" element={<VisitorForm />} />
+                <Route path="/visitors/:id/edit" element={<VisitorForm />} />
               </Route>
             </Routes>
           </BrowserRouter>
