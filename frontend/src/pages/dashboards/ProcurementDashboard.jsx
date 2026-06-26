@@ -9,12 +9,9 @@ import {
   IconButton, Tooltip, TableContainer, MenuItem
 } from '@mui/material';
 import RefreshIcon from '@mui/icons-material/Refresh';
-import EditIcon from '@mui/icons-material/Edit';
-import VisibilityIcon from '@mui/icons-material/Visibility';
-import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
 import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
-import SendIcon from '@mui/icons-material/Send';   // 👈 ADDED
+import SendIcon from '@mui/icons-material/Send';
 import api from '../../api/axios';
 import { useAuth } from '../../context/AuthContext';
 
@@ -291,34 +288,41 @@ const ProcurementDashboard = () => {
                   </TableCell>
                   <TableCell>{order.createdBy?.name || 'N/A'}</TableCell>
                   <TableCell>
-                    {/* View */}
-                    <Tooltip title="View Details">
-                      <IconButton size="small" onClick={() => handleView(order._id)}>
-                        <VisibilityIcon />
-                      </IconButton>
-                    </Tooltip>
+                    {/* ─── View (text button) ─────────────────────────── */}
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      onClick={() => handleView(order._id)}
+                      sx={{ mr: 0.5, textTransform: 'none' }}
+                    >
+                      View
+                    </Button>
 
-                    {/* Edit & Submit for pending orders */}
+                    {/* ─── Edit (text button) ─────────────────────────── */}
                     {canEdit && order.status === 'pending' && (
                       <>
-                        <Tooltip title="Edit">
-                          <IconButton size="small" onClick={() => handleEditOpen(order)}>
-                            <EditIcon />
-                          </IconButton>
-                        </Tooltip>
+                        <Button
+                          variant="outlined"
+                          color="primary"
+                          size="small"
+                          onClick={() => handleEditOpen(order)}
+                          sx={{ mr: 0.5, textTransform: 'none' }}
+                        >
+                          Edit
+                        </Button>
                         <Button
                           variant="contained"
                           color="primary"
                           size="small"
                           onClick={() => handleEditOpen(order)}
-                          sx={{ ml: 1 }}
+                          sx={{ mr: 0.5, textTransform: 'none' }}
                         >
-                          SUBMIT
+                          Submit
                         </Button>
                       </>
                     )}
 
-                    {/* Approval actions for pending orders */}
+                    {/* ─── Approve (text button) ───────────────────────── */}
                     {order.status === 'pending' && canProcurementApprove && (
                       <>
                         <Button
@@ -326,32 +330,33 @@ const ProcurementDashboard = () => {
                           color="success"
                           size="small"
                           onClick={() => handleProcurementApprove(order._id)}
-                          sx={{ ml: 1 }}
+                          sx={{ mr: 0.5, textTransform: 'none' }}
                         >
-                          APPROVE
+                          Approve
                         </Button>
                         <Button
                           variant="contained"
                           color="error"
                           size="small"
                           onClick={() => handleProcurementReject(order._id)}
-                          sx={{ ml: 1 }}
+                          sx={{ mr: 0.5, textTransform: 'none' }}
                         >
-                          REJECT
+                          Reject
                         </Button>
                       </>
                     )}
 
-                    {/* ─── No Final Approve button here ─── */}
-                    {/* (it belongs to Director/Accountant dashboards) */}
-
-                    {/* Fund for approved orders */}
+                    {/* ─── Fund (text button) ──────────────────────────── */}
                     {order.status === 'approved' && canFund && (
-                      <Tooltip title="Fund">
-                        <IconButton size="small" color="success" onClick={() => handleFund(order._id)}>
-                          <AttachMoneyIcon />
-                        </IconButton>
-                      </Tooltip>
+                      <Button
+                        variant="contained"
+                        color="success"
+                        size="small"
+                        onClick={() => handleFund(order._id)}
+                        sx={{ mr: 0.5, textTransform: 'none' }}
+                      >
+                        Fund
+                      </Button>
                     )}
                   </TableCell>
                 </TableRow>
