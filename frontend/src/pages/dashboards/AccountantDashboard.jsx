@@ -11,7 +11,7 @@ import {
 } from '@mui/material';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
-import VisibilityIcon from '@mui/icons-material/Visibility'; // ✅ added
+import VisibilityIcon from '@mui/icons-material/Visibility';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip,
   Legend, LineChart, Line, PieChart, Pie, Cell
@@ -42,7 +42,14 @@ const AccountantDashboard = () => {
   const { user, updateUser } = useAuth();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [stats, setStats] = useState({ workers: 0, projects: 0, totalReleased: 0, fundingRequests: 0, pendingFunding: 0 });
+  const [stats, setStats] = useState({ 
+    workers: 0, 
+    projects: 0, 
+    totalReleased: 0, 
+    fundingRequests: 0, 
+    pendingFunding: 0,
+    approvedFunding: 0 
+  });
   const [workers, setWorkers] = useState([]);
   const [projects, setProjects] = useState([]);
   const [fundingRequests, setFundingRequests] = useState([]);
@@ -159,7 +166,9 @@ const AccountantDashboard = () => {
       const totalProjects = projectsData.length;
       const totalReleased = completedPayments.reduce((sum, p) => sum + (p.amount || 0), 0);
       const totalFunding = fundingData.length;
-      const pendingFunding = fundingData.filter(f => f.status === 'pending').length;
+      // ─── FIX: Count pending funding as: pending + approved (awaiting funding) ──
+      const pendingFunding = fundingData.filter(f => f.status === 'pending' || f.status === 'approved').length;
+      const approvedFunding = fundingData.filter(f => f.status === 'approved').length;
 
       const workerEarnings = {};
       completedPayments.forEach(p => {
@@ -228,7 +237,8 @@ const AccountantDashboard = () => {
         projects: totalProjects, 
         totalReleased, 
         fundingRequests: totalFunding,
-        pendingFunding: pendingFunding
+        pendingFunding: pendingFunding,
+        approvedFunding: approvedFunding
       };
       setStats(newStats);
       setWorkers(workersWithBalance);
@@ -433,7 +443,8 @@ const AccountantDashboard = () => {
 
   const pendingWorkers = useMemo(() => workers.filter(w => (w.balance || 0) > 0), [workers]);
   const totalPending = useMemo(() => pendingWorkers.reduce((sum, w) => sum + (w.balance || 0), 0), [pendingWorkers]);
-  const pendingFunding = useMemo(() => fundingRequests.filter(f => f.status === 'pending').length, [fundingRequests]);
+  const pendingFundingCount = useMemo(() => fundingRequests.filter(f => f.status === 'pending' || f.status === 'approved').length, [fundingRequests]);
+  const approvedFundingCount = useMemo(() => fundingRequests.filter(f => f.status === 'approved').length, [fundingRequests]);
 
   const workersByProject = useMemo(() => {
     const groups = {};
@@ -546,7 +557,7 @@ const AccountantDashboard = () => {
       </Box>
 
       <Typography variant="caption" display="block" sx={{ mb: 2 }}>
-        Total pending: {formatCurrency(totalPending)} ({pendingWorkers.length} workers) | {stats.pendingFunding} pending funding requests
+        Total pending: {formatCurrency(totalPending)} ({pendingWorkers.length} workers) | {pendingFundingCount} pending funding requests ({approvedFundingCount} approved awaiting funding)
       </Typography>
 
       <Grid container spacing={3} sx={{ mb: 3 }}>
@@ -572,7 +583,7 @@ const AccountantDashboard = () => {
           <Card><CardContent>
             <Typography variant="body2" color="textSecondary">Funding Requests</Typography>
             <Typography variant="h4">{stats.fundingRequests}</Typography>
-            <Typography variant="caption" color="textSecondary">{stats.pendingFunding} pending</Typography>
+            <Typography variant="caption" color="textSecondary">{pendingFundingCount} pending ({approvedFundingCount} approved)</Typography>
           </CardContent></Card>
         </Grid>
       </Grid>
