@@ -99,6 +99,18 @@ app.get('/api/health', (req, res) => res.json({ status: 'OK', timestamp: new Dat
 // ─── Socket.io Signaling for Video Calls ────────────────────────
 const activeUsers = new Map(); // userId -> socketId
 
+// ─── Get online users (active socket connections) ──────────────
+app.get('/api/users/online', async (req, res) => {
+  try {
+    const onlineIds = Array.from(activeUsers.keys());
+    const users = await User.find({ _id: { $in: onlineIds } })
+      .select('_id name role');
+    res.json(users);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 io.on('connection', (socket) => {
   console.log(`🔌 New client connected: ${socket.id}`);
 
@@ -144,6 +156,21 @@ io.on('connection', (socket) => {
     const targetSocketId = activeUsers.get(to);
     if (targetSocketId) {
       io.to(targetSocketId).emit('call-ended');
+    }
+  });
+
+  // ─── Invite to meeting ──────────────────────────────────────────
+  socket.on('invite-to-meeting', ({ to, meetingLink, from, meetingName }) => {
+    const targetSocketId = activeUsers.get(to);
+    if (targetSocketId) {
+      io.to(targetSocketId).emit('meeting-invite', {
+        from,
+        meetingLink,
+        meetingName: meetingName || 'Video Meeting',
+      });
+      console.log(`📨 Meeting invite from ${from} to ${to}`);
+    } else {
+      socket.emit('invite-error', { message: 'User is offline' });
     }
   });
 

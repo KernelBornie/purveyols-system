@@ -2,28 +2,38 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
   Dialog, DialogTitle, DialogContent, DialogActions,
   Button, Box, Typography, IconButton, Alert,
-  TextField, Chip, Avatar, CircularProgress
+  TextField, Chip, Avatar, CircularProgress, Divider,
+  List, ListItem, ListItemAvatar, ListItemText, ListItemSecondaryAction,
+  Badge, Snackbar
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import ShareIcon from '@mui/icons-material/Share';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
+import PersonAddIcon from '@mui/icons-material/PersonAdd';
+import CheckIcon from '@mui/icons-material/Check';
+import PeopleIcon from '@mui/icons-material/People';
 import { useAuth } from '../context/AuthContext';
+import { useSocket } from '../context/SocketContext';
+import api from '../api/axios';
 
-// ─── Jitsi Meet configuration ──────────────────────────────────────
-const JITSI_DOMAIN = 'meet.jit.si'; // Free public Jitsi server
-const JITSI_APP_NAME = 'PURVEYOLS'; // Your app name
+const JITSI_DOMAIN = 'meet.jit.si';
+const JITSI_APP_NAME = 'PURVEYOLS';
 
 const VideoCall = ({ open, onClose, recipientId, recipientName }) => {
   const { user } = useAuth();
+  const { socket, onlineUsers, inviteToMeeting } = useSocket(); // ✅ global
   const [roomName, setRoomName] = useState('');
   const [meetingUrl, setMeetingUrl] = useState('');
   const [copied, setCopied] = useState(false);
   const [iframeLoaded, setIframeLoaded] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [invitedUsers, setInvitedUsers] = useState([]);
+  const [onlineUserDetails, setOnlineUserDetails] = useState([]);
+  const [snackbar, setSnackbar] = useState({ open: false, message: '' });
   const jitsiContainerRef = useRef(null);
   const apiRef = useRef(null);
 
-  // ─── Generate a unique room name ──────────────────────────────────
+  // ─── Generate room name ──────────────────────────────────────────
   useEffect(() => {
     if (open && user) {
       const timestamp = Date.now().toString(36);
@@ -33,14 +43,53 @@ const VideoCall = ({ open, onClose, recipientId, recipientName }) => {
       setMeetingUrl(`https://${JITSI_DOMAIN}/${room}`);
       setIframeLoaded(false);
       setLoading(true);
+      setInvitedUsers([]);
     }
   }, [open, user]);
 
-  // ─── Load Jitsi script dynamically ──────────────────────────────
+  // ─── Fetch online user details ──────────────────────────────────
+  const fetchOnlineUsers = async () => {
+    try {
+      const res = await api.get('/api/users/online');
+      const filtered = res.data.filter(u => u._id !== user?.id);
+      setOnlineUserDetails(filtered);
+    } catch (err) {
+      console.error('Failed to fetch online users:', err);
+    }
+  };
+
+  useEffect(() => {
+    if (open) {
+      fetchOnlineUsers();
+      const interval = setInterval(fetchOnlineUsers, 10000);
+      return () => clearInterval(interval);
+    }
+  }, [open, user]);
+
+  // ─── Listen for incoming invites via global socket ──────────────
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleInvite = ({ from, meetingLink, meetingName }) => {
+      setSnackbar({
+        open: true,
+        message: `${from.name} invited you to join "${meetingName}"`,
+      });
+      // Store invite so we can join later
+      window._pendingInvite = { from, meetingLink, meetingName };
+    };
+
+    socket.on('meeting-invite', handleInvite);
+
+    return () => {
+      socket.off('meeting-invite', handleInvite);
+    };
+  }, [socket]);
+
+  // ─── Load Jitsi script ──────────────────────────────────────────
   useEffect(() => {
     if (!open || !roomName) return;
 
-    // Clean up previous instance
     if (apiRef.current) {
       apiRef.current.dispose();
       apiRef.current = null;
@@ -49,7 +98,6 @@ const VideoCall = ({ open, onClose, recipientId, recipientName }) => {
       jitsiContainerRef.current.innerHTML = '';
     }
 
-    // Check if Jitsi script is already loaded
     if (document.getElementById('jitsi-script')) {
       initJitsi();
       return;
@@ -59,9 +107,7 @@ const VideoCall = ({ open, onClose, recipientId, recipientName }) => {
     script.id = 'jitsi-script';
     script.src = `https://${JITSI_DOMAIN}/external_api.js`;
     script.async = true;
-    script.onload = () => {
-      initJitsi();
-    };
+    script.onload = () => initJitsi();
     script.onerror = () => {
       setLoading(false);
       alert('Failed to load video call. Please check your internet connection.');
@@ -79,7 +125,6 @@ const VideoCall = ({ open, onClose, recipientId, recipientName }) => {
     };
   }, [open, roomName]);
 
-  // ─── Initialize Jitsi Meet ────────────────────────────────────────
   const initJitsi = () => {
     if (!roomName || !window.JitsiMeetExternalAPI) {
       setLoading(false);
@@ -100,7 +145,7 @@ const VideoCall = ({ open, onClose, recipientId, recipientName }) => {
           startWithAudioMuted: false,
           startWithVideoMuted: false,
           disableDeepLinking: true,
-          disableInviteFunctions: true, // We'll handle invites ourselves
+          disableInviteFunctions: true,
         },
         interfaceConfigOverwrite: {
           TOOLBAR_BUTTONS: [
@@ -120,9 +165,7 @@ const VideoCall = ({ open, onClose, recipientId, recipientName }) => {
       const api = new window.JitsiMeetExternalAPI(JITSI_DOMAIN, options);
       apiRef.current = api;
 
-      api.addEventListener('readyToClose', () => {
-        handleClose();
-      });
+      api.addEventListener('readyToClose', () => handleClose());
 
       api.addEventListener('videoConferenceJoined', () => {
         setLoading(false);
@@ -134,18 +177,22 @@ const VideoCall = ({ open, onClose, recipientId, recipientName }) => {
     } catch (err) {
       console.error('Jitsi initialization error:', err);
       setLoading(false);
-      alert('Failed to start video call. Please try again.');
     }
   };
 
-  // ─── Copy meeting link to clipboard ──────────────────────────────
+  // ─── Invite staff ──────────────────────────────────────────────────
+  const handleInviteStaff = (staffId, staffName) => {
+    inviteToMeeting(staffId, meetingUrl, `Meeting with ${user?.name}`);
+    setInvitedUsers(prev => [...prev, staffId]);
+    setSnackbar({ open: true, message: `Invitation sent to ${staffName}` });
+  };
+
   const copyMeetingLink = async () => {
     try {
       await navigator.clipboard.writeText(meetingUrl);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch (err) {
-      // Fallback
       const textarea = document.createElement('textarea');
       textarea.value = meetingUrl;
       document.body.appendChild(textarea);
@@ -157,7 +204,6 @@ const VideoCall = ({ open, onClose, recipientId, recipientName }) => {
     }
   };
 
-  // ─── Share meeting link via Web Share API ────────────────────────
   const shareMeetingLink = async () => {
     if (navigator.share) {
       try {
@@ -186,78 +232,131 @@ const VideoCall = ({ open, onClose, recipientId, recipientName }) => {
     onClose();
   };
 
+  // ─── Accept invite from snackbar ──────────────────────────────────
+  const acceptInvite = () => {
+    const invite = window._pendingInvite;
+    if (invite) {
+      window.open(invite.meetingLink, '_blank');
+      window._pendingInvite = null;
+      setSnackbar({ open: false, message: '' });
+      handleClose();
+    }
+  };
+
   return (
-    <Dialog open={open} onClose={handleClose} maxWidth="lg" fullWidth>
-      <DialogTitle sx={{ pb: 0 }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Typography variant="h6">
-            Video Meeting {recipientName ? `with ${recipientName}` : ''}
-          </Typography>
-          <Box>
-            <IconButton onClick={shareMeetingLink} color="primary" title="Share meeting link">
-              <ShareIcon />
-            </IconButton>
-            <IconButton onClick={handleClose}>
-              <CloseIcon />
-            </IconButton>
-          </Box>
-        </Box>
-      </DialogTitle>
-      <DialogContent sx={{ p: 0, position: 'relative', minHeight: '400px' }}>
-        {/* ─── Meeting info bar ──────────────────────────────────────── */}
-        <Box sx={{ p: 2, bgcolor: '#f5f5f5', borderBottom: '1px solid #ddd', display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
-          <Chip
-            label="🔗 Meeting link"
-            size="small"
-            color="primary"
-            variant="outlined"
-          />
-          <Typography variant="body2" sx={{ flex: 1, wordBreak: 'break-all', fontFamily: 'monospace', fontSize: '12px' }}>
-            {meetingUrl}
-          </Typography>
-          <Button
-            size="small"
-            variant="outlined"
-            startIcon={<ContentCopyIcon />}
-            onClick={copyMeetingLink}
-          >
-            {copied ? 'Copied!' : 'Copy'}
-          </Button>
-          <Button
-            size="small"
-            variant="contained"
-            startIcon={<ShareIcon />}
-            onClick={shareMeetingLink}
-          >
-            Share Invite
-          </Button>
-        </Box>
-
-        {/* ─── Jitsi iframe container ─────────────────────────────────── */}
-        <Box
-          ref={jitsiContainerRef}
-          sx={{
-            width: '100%',
-            height: { xs: '300px', sm: '450px', md: '550px' },
-            bgcolor: '#1a1a2e',
-          }}
-        />
-
-        {loading && (
-          <Box sx={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-            <CircularProgress />
-            <Typography variant="body2" color="textSecondary" sx={{ mt: 2 }}>
-              Loading meeting...
+    <>
+      <Dialog open={open} onClose={handleClose} maxWidth="lg" fullWidth>
+        <DialogTitle sx={{ pb: 0 }}>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap' }}>
+            <Typography variant="h6">
+              Video Meeting {recipientName ? `with ${recipientName}` : ''}
             </Typography>
+            <Box>
+              <IconButton onClick={shareMeetingLink} color="primary" title="Share meeting link">
+                <ShareIcon />
+              </IconButton>
+              <IconButton onClick={copyMeetingLink} color="info" title="Copy link">
+                <ContentCopyIcon />
+              </IconButton>
+              {copied && <Chip label="Copied!" size="small" color="success" />}
+              <IconButton onClick={handleClose}>
+                <CloseIcon />
+              </IconButton>
+            </Box>
           </Box>
-        )}
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={handleClose} variant="contained" color="error">
-          Leave Meeting
-        </Button>
-      </DialogActions>
-    </Dialog>
+        </DialogTitle>
+
+        <DialogContent sx={{ p: 0, position: 'relative', minHeight: '400px' }}>
+          {/* ─── Staff invitations panel ───────────────────────────── */}
+          <Box sx={{ p: 2, bgcolor: '#f5f5f5', borderBottom: '1px solid #ddd' }}>
+            <Typography variant="subtitle2" gutterBottom>
+              <PeopleIcon sx={{ verticalAlign: 'middle', mr: 1 }} />
+              Online Staff — Invite to join
+            </Typography>
+            {onlineUserDetails.length === 0 ? (
+              <Typography variant="body2" color="textSecondary">No other staff online</Typography>
+            ) : (
+              <List dense sx={{ maxHeight: 120, overflowY: 'auto' }}>
+                {onlineUserDetails.map((staff) => (
+                  <ListItem key={staff._id} sx={{ py: 0.5 }}>
+                    <ListItemAvatar>
+                      <Avatar sx={{ width: 28, height: 28 }}>
+                        {staff.name.charAt(0)}
+                      </Avatar>
+                    </ListItemAvatar>
+                    <ListItemText
+                      primary={staff.name}
+                      secondary={staff.role || 'Staff'}
+                      primaryTypographyProps={{ variant: 'body2' }}
+                    />
+                    <ListItemSecondaryAction>
+                      {invitedUsers.includes(staff._id) ? (
+                        <Chip label="Invited" size="small" color="success" icon={<CheckIcon />} />
+                      ) : (
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          startIcon={<PersonAddIcon />}
+                          onClick={() => handleInviteStaff(staff._id, staff.name)}
+                        >
+                          Invite
+                        </Button>
+                      )}
+                    </ListItemSecondaryAction>
+                  </ListItem>
+                ))}
+              </List>
+            )}
+          </Box>
+
+          {/* ─── Jitsi container ──────────────────────────────────── */}
+          <Box
+            ref={jitsiContainerRef}
+            sx={{
+              width: '100%',
+              height: { xs: '300px', sm: '450px', md: '500px' },
+              bgcolor: '#1a1a2e',
+            }}
+          />
+
+          {loading && (
+            <Box sx={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+              <CircularProgress />
+              <Typography variant="body2" color="textSecondary" sx={{ mt: 2 }}>
+                Loading meeting...
+              </Typography>
+            </Box>
+          )}
+        </DialogContent>
+
+        <DialogActions>
+          <Button onClick={handleClose} variant="contained" color="error">
+            Leave Meeting
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* ─── Incoming invite snackbar ──────────────────────────────── */}
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={30000}
+        onClose={() => setSnackbar({ ...snackbar, open: false })}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+        message={snackbar.message}
+        action={
+          window._pendingInvite && (
+            <>
+              <Button color="primary" size="small" onClick={acceptInvite}>
+                Join
+              </Button>
+              <Button color="secondary" size="small" onClick={() => { window._pendingInvite = null; setSnackbar({ open: false, message: '' }); }}>
+                Dismiss
+              </Button>
+            </>
+          )
+        }
+      />
+    </>
   );
 };
 
