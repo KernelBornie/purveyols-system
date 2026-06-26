@@ -1,69 +1,49 @@
 const express = require('express');
 const router = express.Router();
+const AdvertisedProject = require('../models/AdvertisedProject');
+const Bid = require('../models/Bid'); // 👈 import Bid model
 const auth = require('../middleware/auth');
-const { fetchAdvertisedProjects, markProjectAsBidded, getBiddedProjects } = require('../services/advertisedProjectsService');
-const Bid = require('../models/Bid');
 
-// Get advertised projects
+// ─── GET all advertised projects ──────────────────────────────
 router.get('/', auth, async (req, res) => {
   try {
-    const { status, category, search } = req.query;
-    const projects = await fetchAdvertisedProjects({ status, category, search });
-    res.json({
-      count: projects.length,
-      projects,
-      timestamp: new Date().toISOString(),
-      source: 'Mixed (real + fallback)',
-      note: 'Data is automatically refreshed every 15 minutes. Only open projects shown.',
-    });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: err.message });
-  }
-});
+    const { search, status } = req.query;
+    let filter = {};
 
-// Get bidded projects from database
-router.get('/bidded', auth, async (req, res) => {
-  try {
-    const bids = await Bid.find({ user: req.user.id }).sort({ createdAt: -1 });
-    res.json({
-      count: bids.length,
-      projects: bids,
-      timestamp: new Date().toISOString(),
-    });
+    if (status) filter.status = status;
+    if (search) {
+      filter.$or = [
+        { title: { $regex: search, $options: 'i' } },
+        { client: { $regex: search, $options: 'i' } },
+        { location: { $regex: search, $options: 'i' } },
+      ];
+    }
+
+    const projects = await AdvertisedProject.find(filter).sort({ createdAt: -1 });
+    res.json({ projects });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// Mark a project as bidded and save to database
+// ─── Bid on an advertised project ──────────────────────────────
 router.post('/:id/bid', auth, async (req, res) => {
   try {
     const projectId = req.params.id;
-    
-    // Get project data from the service (with fresh fetch)
-    let projects = await fetchAdvertisedProjects({});
-    
-    // Also check fallback projects if not found
-    const { fetchAdvertisedProjects: fetchFresh } = require('../services/advertisedProjectsService');
-    const freshProjects = await fetchFresh({});
-    if (freshProjects && freshProjects.length > 0) {
-      projects = freshProjects;
-    }
-    
-    const project = projects.find(p => p.id === projectId);
-    
+
+    // Find the advertised project
+    const project = await AdvertisedProject.findOne({ id: projectId });
     if (!project) {
-      return res.status(404).json({ error: 'Project not found. Please refresh and try again.' });
+      return res.status(404).json({ error: 'Project not found' });
     }
-    
-    // Check if already bidded
-    const existingBid = await Bid.findOne({ projectId: projectId, user: req.user.id });
+
+    // Check if user already bid on this project
+    const existingBid = await Bid.findOne({ projectId, user: req.user.id });
     if (existingBid) {
-      return res.status(400).json({ error: 'Already bidded on this project' });
+      return res.status(400).json({ error: 'You have already bid on this project' });
     }
-    
-    // Create bid in database
+
+    // Create a new bid
     const bid = new Bid({
       projectId: project.id,
       projectTitle: project.title,
@@ -77,37 +57,29 @@ router.post('/:id/bid', auth, async (req, res) => {
       skills: project.skills || [],
       contactEmail: project.contactEmail,
       biddingFee: project.biddingFee,
-      user: req.user.id,
       status: 'bidded',
+      user: req.user.id,
       bidDate: new Date(),
     });
+
     await bid.save();
-    
-    // Also mark in service cache
-    markProjectAsBidded(projectId);
-    
-    res.json({ 
-      message: '✅ Project marked as bidded!', 
-      id: projectId,
-      bid: bid 
-    });
+
+    // Optionally, you could remove the project from the feed or mark it as bidded
+    // For now, we just return success and the frontend filters it out.
+
+    res.status(201).json({ message: '✅ Project marked as bidded!', bid });
   } catch (err) {
     console.error('Bid error:', err);
-    res.status(500).json({ error: err.message || 'Failed to mark as bidded' });
+    res.status(500).json({ error: err.message });
   }
 });
 
-// Force refresh
-router.get('/refresh', auth, async (req, res) => {
+// ─── (Optional) GET single project ─────────────────────────────
+router.get('/:id', auth, async (req, res) => {
   try {
-    const { fetchAdvertisedProjects: fetchFresh } = require('../services/advertisedProjectsService');
-    const projects = await fetchFresh({});
-    res.json({
-      count: projects.length,
-      projects,
-      timestamp: new Date().toISOString(),
-      refreshed: true,
-    });
+    const project = await AdvertisedProject.findOne({ id: req.params.id });
+    if (!project) return res.status(404).json({ error: 'Project not found' });
+    res.json(project);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
