@@ -14,6 +14,7 @@ import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
+import ForwardIcon from '@mui/icons-material/Forward'; // 👈 NEW
 import { useNavigate } from 'react-router-dom';
 import api from '../../api/axios';
 import BackButton from '../../components/BackButton';
@@ -108,6 +109,26 @@ const BiddedProjects = () => {
     }
   };
 
+  // ─── NEW: Forward to Tenders ──────────────────────────────────
+  const handleForwardToTenders = async (bidId) => {
+    if (!window.confirm('Forward this bid to Tenders & RFQs? A tender document will be created.')) return;
+    try {
+      const res = await api.post(`/api/bids/${bidId}/convert-to-tender`);
+      setSnackbar({
+        open: true,
+        message: `✅ Tender "${res.data.tender.title}" created successfully!`,
+        severity: 'success'
+      });
+      fetchBids();
+    } catch (err) {
+      setSnackbar({
+        open: true,
+        message: '❌ ' + (err.response?.data?.error || 'Failed to forward to tenders'),
+        severity: 'error'
+      });
+    }
+  };
+
   const getStatusColor = (status) => ({
     bidded: 'warning', shortlisted: 'info', interviewing: 'primary',
     awarded: 'success', lost: 'error', withdrawn: 'default'
@@ -193,6 +214,21 @@ const BiddedProjects = () => {
                     >
                       Create Project
                     </Button>
+                  )}
+                  {/* ─── NEW: Forward to Tenders ─────────────────────── */}
+                  {!bid.isConvertedToTender && (
+                    <Button
+                      size="small"
+                      variant="contained"
+                      color="secondary"
+                      startIcon={<ForwardIcon />}
+                      onClick={() => handleForwardToTenders(bid._id)}
+                    >
+                      Forward to Tenders
+                    </Button>
+                  )}
+                  {bid.isConvertedToTender && (
+                    <Chip label="📄 Tender Created" size="small" color="primary" />
                   )}
                   <Button size="small" href={bid.sourceUrl} target="_blank" rel="noopener noreferrer">Source</Button>
                 </CardActions>
