@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Paper, Typography, Box, Table, TableHead, TableRow, TableCell, TableBody,
-  Button, IconButton, Tooltip, Alert, CircularProgress, Chip
+  Button, IconButton, Tooltip, Alert, CircularProgress, Chip,
+  Dialog, DialogTitle, DialogContent, DialogActions
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import VisibilityIcon from '@mui/icons-material/Visibility';
@@ -20,10 +21,12 @@ const ProcurementList = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const { user } = useAuth();
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [selectedOrder, setSelectedOrder] = useState(null);
 
   // ─── Permission checks ──────────────────────────────────────────────
   const canEdit = ['admin', 'director', 'procurement-officer', 'civil-engineer', 'quantity-surveyor', 'driver', 'safety-officer', 'accountant', 'foreman'].includes(user?.role);
-  const canApprove = ['admin', 'director', 'accountant'].includes(user?.role); // 👈 NEW – also includes Fund
+  const canApprove = ['admin', 'director', 'accountant'].includes(user?.role);
 
   useEffect(() => {
     fetchOrders();
@@ -43,7 +46,7 @@ const ProcurementList = () => {
   };
 
   const handleFund = async (id) => {
-    if (!canApprove) return; // 👈 Only admin/director/accountant can fund
+    if (!canApprove) return;
     try {
       await api.put(`/api/procurement/${id}/fund`);
       fetchOrders();
@@ -53,7 +56,7 @@ const ProcurementList = () => {
   };
 
   const handleReject = async (id) => {
-    if (!canApprove) return; // 👈 Only admin/director/accountant can reject
+    if (!canApprove) return;
     if (!window.confirm('Reject this procurement order?')) return;
     try {
       await api.put(`/api/procurement/${id}/reject`);
@@ -63,22 +66,37 @@ const ProcurementList = () => {
     }
   };
 
-  const handleDelete = async (id) => {
-    if (!canEdit) return;
-    if (!window.confirm('Delete this order?')) return;
+  // ─── Delete with confirmation ──────────────────────────────────────
+  const handleDeleteClick = (order) => {
+    setSelectedOrder(order);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!selectedOrder) return;
     try {
-      await api.delete(`/api/procurement/${id}`);
+      await api.delete(`/api/procurement/${selectedOrder._id}`);
+      setDeleteDialogOpen(false);
+      setSelectedOrder(null);
       fetchOrders();
     } catch (err) {
       alert('Delete failed');
     }
   };
 
+  const handleDeleteCancel = () => {
+    setDeleteDialogOpen(false);
+    setSelectedOrder(null);
+  };
+
   const getStatusColor = (status) => ({
     pending: 'warning',
     funded: 'info',
     purchased: 'success',
-    delivered: 'primary'
+    delivered: 'primary',
+    rejected: 'error',
+    procurement_approved: 'info',
+    approved: 'success'
   }[status] || 'default');
 
   if (loading) return <CircularProgress sx={{ display: 'block', margin: '40px auto' }} />;
@@ -140,7 +158,7 @@ const ProcurementList = () => {
                         </IconButton>
                       </Tooltip>
                       <Tooltip title="Delete">
-                        <IconButton size="small" color="error" onClick={() => handleDelete(o._id)}>
+                        <IconButton size="small" color="error" onClick={() => handleDeleteClick(o)}>
                           <DeleteIcon fontSize="small" />
                         </IconButton>
                       </Tooltip>
@@ -171,6 +189,23 @@ const ProcurementList = () => {
           )}
         </TableBody>
       </Table>
+
+      {/* ─── Delete Confirmation Dialog ──────────────────────────── */}
+      <Dialog open={deleteDialogOpen} onClose={handleDeleteCancel}>
+        <DialogTitle>Delete Requisition</DialogTitle>
+        <DialogContent>
+          <Typography>
+            Are you sure you want to delete requisition <strong>{selectedOrder?.orderNumber || selectedOrder?._id?.slice(-8)}</strong>?
+            This action cannot be undone.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleDeleteCancel}>Cancel</Button>
+          <Button onClick={handleDeleteConfirm} variant="contained" color="error">
+            Delete
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Paper>
   );
 };
