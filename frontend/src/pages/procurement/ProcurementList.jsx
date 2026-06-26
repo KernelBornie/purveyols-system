@@ -6,7 +6,6 @@ import {
   Dialog, DialogTitle, DialogContent, DialogActions
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
-import VisibilityIcon from '@mui/icons-material/Visibility';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import CheckIcon from '@mui/icons-material/Check';
@@ -29,7 +28,7 @@ const ProcurementList = () => {
   const canEdit = ['admin', 'director', 'procurement-officer', 'civil-engineer', 'quantity-surveyor', 'driver', 'safety-officer', 'accountant', 'foreman'].includes(user?.role);
   const canApprove = ['admin', 'director', 'procurement-officer', 'accountant'].includes(user?.role);
   const canFinalApprove = ['admin', 'director', 'accountant'].includes(user?.role);
-  const canFund = ['admin', 'accountant'].includes(user?.role); // ✅ Director removed – only admin & accountant
+  const canFund = ['admin', 'accountant'].includes(user?.role);
   const canDeleteAny = ['admin', 'director'].includes(user?.role);
 
   useEffect(() => {
@@ -177,11 +176,16 @@ const ProcurementList = () => {
                   </TableCell>
                   <TableCell>{o.createdBy?.name}</TableCell>
                   <TableCell>
-                    <Tooltip title="View">
-                      <IconButton component={Link} to={`/procurement/${o._id}`} size="small">
-                        <VisibilityIcon fontSize="small" />
-                      </IconButton>
-                    </Tooltip>
+                    {/* ─── View button (text) ────────────────────────── */}
+                    <Button
+                      component={Link}
+                      to={`/procurement/${o._id}`}
+                      size="small"
+                      variant="outlined"
+                      sx={{ mr: 0.5, minWidth: '40px', textTransform: 'none' }}
+                    >
+                      View
+                    </Button>
 
                     {/* ─── Procurement Officer Approve ────────────────── */}
                     {canApprove && o.status === 'pending' && (
