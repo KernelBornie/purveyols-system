@@ -726,8 +726,9 @@ const AccountantDashboard = () => {
         )}
       </Box>
 
+      {/* ─── Summary line ──────────────────────────────────────────── */}
       <Typography variant="caption" display="block" sx={{ mb: 2 }}>
-        Total pending: {formatCurrency(stats.totalPendingAmount)} ({pendingWorkersCount} workers, {pendingFunding} funding requests, {pendingProcurement} procurement orders, {pendingSubcontracts} subcontracts)
+        Total pending: {formatCurrency(stats.totalPendingAmount)} ({pendingWorkersCount} workers, {pendingFunding} funding requests awaiting funding, {pendingProcurement} procurement orders, {pendingSubcontracts} subcontracts)
       </Typography>
 
       <Grid container spacing={3} sx={{ mb: 3 }}>
@@ -754,7 +755,9 @@ const AccountantDashboard = () => {
           <Card><CardContent>
             <Typography variant="body2" color="textSecondary">Funding Requests</Typography>
             <Typography variant="h4">{stats.fundingRequests}</Typography>
-            <Typography variant="caption" color="textSecondary">{pendingFundingCount} pending ({approvedFundingCount} approved)</Typography>
+            <Typography variant="caption" color="textSecondary">
+              {pendingFundingCount} awaiting funding ({approvedFundingCount} approved)
+            </Typography>
           </CardContent></Card>
         </Grid>
       </Grid>
