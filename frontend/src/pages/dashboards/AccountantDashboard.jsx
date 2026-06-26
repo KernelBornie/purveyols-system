@@ -51,7 +51,11 @@ const AccountantDashboard = () => {
     totalReleased: 0, 
     fundingRequests: 0, 
     pendingFunding: 0,
-    approvedFunding: 0 
+    approvedFunding: 0,
+    pendingWorkers: 0,
+    totalPendingAmount: 0,
+    pendingProcurement: 0,
+    pendingSubcontracts: 0,
   });
   const [workers, setWorkers] = useState([]);
   const [projects, setProjects] = useState([]);
@@ -182,6 +186,14 @@ const AccountantDashboard = () => {
       const totalFunding = fundingData.length;
       const pendingFunding = fundingData.filter(f => f.status === 'pending' || f.status === 'approved').length;
       const approvedFunding = fundingData.filter(f => f.status === 'approved').length;
+      const pendingWorkers = workersWithBalance.filter(w => w.balance > 0).length;
+      const totalPendingAmount = workersWithBalance.reduce((sum, w) => sum + (w.balance || 0), 0) +
+        fundingData.filter(f => f.status === 'approved').reduce((sum, f) => sum + f.amount, 0) +
+        procurementData.filter(o => o.status === 'approved').reduce((sum, o) => sum + (o.grandTotal || o.total || 0), 0) +
+        subcontractsData.filter(s => s.status === 'approved').reduce((sum, s) => sum + (s.amount || 0), 0);
+
+      const pendingProcurement = procurementData.filter(o => o.status === 'approved').length;
+      const pendingSubcontracts = subcontractsData.filter(s => s.status === 'approved').length;
 
       const workerEarnings = {};
       completedPayments.forEach(p => {
@@ -253,7 +265,11 @@ const AccountantDashboard = () => {
         totalReleased, 
         fundingRequests: totalFunding,
         pendingFunding: pendingFunding,
-        approvedFunding: approvedFunding
+        approvedFunding: approvedFunding,
+        pendingWorkers: pendingWorkers,
+        totalPendingAmount: totalPendingAmount,
+        pendingProcurement: pendingProcurement,
+        pendingSubcontracts: pendingSubcontracts,
       };
       setStats(newStats);
       setWorkers(workersWithBalance);
@@ -432,7 +448,7 @@ const AccountantDashboard = () => {
           phone: phone,
           id: w._id,
           category: 'worker',
-          phoneEditable: true, // allow entering phone number
+          phoneEditable: true,
         });
         total += w.balance;
       });
@@ -521,13 +537,11 @@ const AccountantDashboard = () => {
   const skipItem = (index) => {
     const updated = payAllItems.filter((_, i) => i !== index);
     setPayAllItems(updated);
-    // Recalculate total
     const newTotal = updated.reduce((sum, item) => sum + item.amount, 0);
     setPayAllTotal(newTotal);
   };
 
   const handlePayAllConfirm = async () => {
-    // Filter items with phone numbers
     const validItems = payAllItems.filter(item => item.phone && item.phone.trim() !== '');
     const skippedItems = payAllItems.filter(item => !item.phone || item.phone.trim() === '');
 
@@ -548,7 +562,6 @@ const AccountantDashboard = () => {
     try {
       let successCount = 0;
       let failCount = 0;
-      const results = [];
 
       for (const item of validItems) {
         try {
@@ -566,10 +579,9 @@ const AccountantDashboard = () => {
             await api.put(`/api/subcontracts/${item.id}/fund`, { recipientPhone: item.phone });
           }
           successCount++;
-          results.push({ ...item, status: 'success' });
         } catch (err) {
           failCount++;
-          results.push({ ...item, status: 'failed', error: err.response?.data?.error || err.message });
+          console.error(`Payment failed for ${item.name}:`, err);
         }
       }
 
@@ -715,7 +727,7 @@ const AccountantDashboard = () => {
       </Box>
 
       <Typography variant="caption" display="block" sx={{ mb: 2 }}>
-        Total pending: {formatCurrency(totalPending)} ({pendingWorkersCount} workers) | {pendingFundingCount} funding requests ({approvedFundingCount} approved)
+        Total pending: {formatCurrency(stats.totalPendingAmount)} ({pendingWorkersCount} workers, {pendingFunding} funding requests, {pendingProcurement} procurement orders, {pendingSubcontracts} subcontracts)
       </Typography>
 
       <Grid container spacing={3} sx={{ mb: 3 }}>
@@ -1127,17 +1139,31 @@ const AccountantDashboard = () => {
         </Table>
       </Paper>
 
-      {/* Weekly Report */}
+      {/* ─── Weekly Report ──────────────────────────────────────────── */}
       <Paper sx={{ p: 2, mb: 3 }}>
-        <Typography variant="h6">Weekly Report</Typography>
+        <Typography variant="h6" gutterBottom>Weekly Report</Typography>
         {reportData ? (
-          <Grid container spacing={2}>
-            <Grid item xs={6} sm={3}><Typography variant="body2">Workers Enrolled</Typography><Typography variant="h6">{reportData.workersEnrolled}</Typography></Grid>
-            <Grid item xs={6} sm={3}><Typography variant="body2">Projects Created</Typography><Typography variant="h6">{reportData.projectsCreated}</Typography></Grid>
-            <Grid item xs={6} sm={3}><Typography variant="body2">Payments Made</Typography><Typography variant="h6">{reportData.payments}</Typography></Grid>
-            <Grid item xs={6} sm={3}><Typography variant="body2">Total Released</Typography><Typography variant="h6">{formatCurrency(reportData.totalAmountReleased)}</Typography></Grid>
+          <Grid container spacing={2} sx={{ mt: 1 }}>
+            <Grid item xs={6} sm={3}>
+              <Typography variant="body2" color="textSecondary">Workers Enrolled</Typography>
+              <Typography variant="h5">{reportData.workersEnrolled}</Typography>
+            </Grid>
+            <Grid item xs={6} sm={3}>
+              <Typography variant="body2" color="textSecondary">Projects Created</Typography>
+              <Typography variant="h5">{reportData.projectsCreated}</Typography>
+            </Grid>
+            <Grid item xs={6} sm={3}>
+              <Typography variant="body2" color="textSecondary">Payments Made</Typography>
+              <Typography variant="h5">{reportData.payments}</Typography>
+            </Grid>
+            <Grid item xs={6} sm={3}>
+              <Typography variant="body2" color="textSecondary">Total Released</Typography>
+              <Typography variant="h5">{formatCurrency(reportData.totalAmountReleased)}</Typography>
+            </Grid>
           </Grid>
-        ) : <Typography>No report data.</Typography>}
+        ) : (
+          <Typography variant="body2" color="textSecondary">No report data available.</Typography>
+        )}
       </Paper>
 
       <WorkerSearch open={searchOpen} onClose={() => setSearchOpen(false)} onSelect={handleWorkerSelect} />
