@@ -7,11 +7,13 @@ import {
   Chip, Paper, CircularProgress, Alert,
   FormControlLabel, Switch, Dialog, DialogTitle,
   DialogContent, DialogActions, Skeleton, IconButton, Tooltip,
-  TextField
+  TextField, FormGroup, FormControlLabel as MuiFormControlLabel, Checkbox,
+  Divider, List, ListItem, ListItemText, ListItemSecondaryAction
 } from '@mui/material';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
 import VisibilityIcon from '@mui/icons-material/Visibility';
+import FilterListIcon from '@mui/icons-material/FilterList';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip,
   Legend, LineChart, Line, PieChart, Pie, Cell
@@ -68,7 +70,18 @@ const AccountantDashboard = () => {
   const [searchOpen, setSearchOpen] = useState(false);
   const [paymentOpen, setPaymentOpen] = useState(false);
   const [selectedWorker, setSelectedWorker] = useState(null);
+
+  // ─── Pay All Modal ──────────────────────────────────────────────
   const [payAllOpen, setPayAllOpen] = useState(false);
+  const [payAllFilters, setPayAllFilters] = useState({
+    workers: true,
+    funding: true,
+    procurement: true,
+    subcontracts: true,
+  });
+  const [payAllSummary, setPayAllSummary] = useState([]);
+  const [payAllTotal, setPayAllTotal] = useState(0);
+  const [payAllProcessing, setPayAllProcessing] = useState(false);
   const [payAllStatus, setPayAllStatus] = useState(null);
 
   // ─── Funding Request Modal ──────────────────────────────────────
@@ -166,7 +179,6 @@ const AccountantDashboard = () => {
       const totalProjects = projectsData.length;
       const totalReleased = completedPayments.reduce((sum, p) => sum + (p.amount || 0), 0);
       const totalFunding = fundingData.length;
-      // ─── FIX: Count pending funding as: pending + approved (awaiting funding) ──
       const pendingFunding = fundingData.filter(f => f.status === 'pending' || f.status === 'approved').length;
       const approvedFunding = fundingData.filter(f => f.status === 'approved').length;
 
@@ -400,42 +412,175 @@ const AccountantDashboard = () => {
     refreshAll();
   }, [refreshAll]);
 
-  const handlePayAll = useCallback(() => {
-    if (!user?.mobileMoneyNumber) {
-      alert('Please set your mobile money number in your profile first.');
-      return;
-    }
-    const pending = workers.filter(w => (w.balance || 0) > 0);
-    if (pending.length === 0) {
-      alert('No pending balances to pay.');
-      return;
-    }
-    setPayAllOpen(true);
-  }, [workers, user]);
+  // ─── Pay All ──────────────────────────────────────────────────────
+  const buildPayAllSummary = useCallback(() => {
+    const items = [];
+    let total = 0;
 
-  const handlePayAllConfirm = useCallback(async () => {
+    // Workers with pending balance
+    if (payAllFilters.workers) {
+      const pendingWorkers = workers.filter(w => (w.balance || 0) > 0);
+      pendingWorkers.forEach(w => {
+        const phone = w.phone || '';
+        items.push({
+          type: 'Worker',
+          name: w.name,
+          amount: w.balance,
+          phone: phone,
+          id: w._id,
+          category: 'worker'
+        });
+        total += w.balance;
+      });
+    }
+
+    // Funding Requests (approved)
+    if (payAllFilters.funding) {
+      const approvedFunding = fundingRequests.filter(f => f.status === 'approved');
+      approvedFunding.forEach(f => {
+        const phone = f.requestedBy?.mobileMoneyNumber || f.requestedBy?.phone || '';
+        items.push({
+          type: 'Funding Request',
+          name: f.requestedBy?.name || 'Unknown',
+          amount: f.amount,
+          phone: phone,
+          id: f._id,
+          category: 'funding'
+        });
+        total += f.amount;
+      });
+    }
+
+    // Procurement Orders (approved)
+    if (payAllFilters.procurement) {
+      const approvedProc = procurementOrders.filter(o => o.status === 'approved');
+      approvedProc.forEach(o => {
+        const phone = o.recipientPhone || o.createdBy?.phone || '';
+        items.push({
+          type: 'Procurement Order',
+          name: o.orderNumber || o._id.slice(-6),
+          amount: o.grandTotal || o.total || 0,
+          phone: phone,
+          id: o._id,
+          category: 'procurement'
+        });
+        total += (o.grandTotal || o.total || 0);
+      });
+    }
+
+    // Subcontracts (approved)
+    if (payAllFilters.subcontracts) {
+      const approvedSub = subcontracts.filter(s => s.status === 'approved');
+      approvedSub.forEach(s => {
+        const phone = s.vendorPhone || '';
+        items.push({
+          type: 'Subcontract',
+          name: s.vendor || s.name || 'Unknown',
+          amount: s.amount || 0,
+          phone: phone,
+          id: s._id,
+          category: 'subcontract'
+        });
+        total += (s.amount || 0);
+      });
+    }
+
+    setPayAllSummary(items);
+    setPayAllTotal(total);
+  }, [workers, fundingRequests, procurementOrders, subcontracts, payAllFilters]);
+
+  const handlePayAllOpen = () => {
+    setPayAllFilters({ workers: true, funding: true, procurement: true, subcontracts: true });
+    setPayAllSummary([]);
+    setPayAllTotal(0);
     setPayAllStatus(null);
-    if (!user?.mobileMoneyNumber) {
-      alert('Please set your mobile money number in your profile first.');
+    setPayAllOpen(true);
+    // Build initial summary after state update
+    setTimeout(() => buildPayAllSummary(), 100);
+  };
+
+  useEffect(() => {
+    if (payAllOpen) {
+      buildPayAllSummary();
+    }
+  }, [payAllOpen, payAllFilters, buildPayAllSummary]);
+
+  const handlePayAllConfirm = async () => {
+    if (payAllSummary.length === 0) {
+      alert('No pending items to pay.');
       return;
     }
-    const pending = workers.filter(w => (w.balance || 0) > 0);
+
+    // Check for missing phone numbers
+    const missingPhone = payAllSummary.filter(item => !item.phone || item.phone.trim() === '');
+    if (missingPhone.length > 0) {
+      const names = missingPhone.map(item => `${item.name} (${item.type})`).join(', ');
+      if (!window.confirm(`The following recipients have no phone number: ${names}. Continue without them?`)) {
+        return;
+      }
+      // Remove items without phone
+      const validItems = payAllSummary.filter(item => item.phone && item.phone.trim() !== '');
+      if (validItems.length === 0) {
+        alert('No valid recipients with phone numbers.');
+        return;
+      }
+      setPayAllSummary(validItems);
+      // Recalculate total
+      const newTotal = validItems.reduce((sum, i) => sum + i.amount, 0);
+      setPayAllTotal(newTotal);
+      // Proceed with valid items
+    }
+
+    setPayAllProcessing(true);
+    setPayAllStatus(null);
+
     try {
-      const paymentsData = pending.map(w => ({
-        workerId: w._id,
-        amount: w.balance || 0,
-      }));
-      await api.post('/api/payments/bulk', { payments: paymentsData });
-      setPayAllStatus({ type: 'success', message: 'All pending payments processed!' });
+      const results = [];
+      let successCount = 0;
+      let failCount = 0;
+
+      // Process each item – individual payment calls
+      for (const item of payAllSummary) {
+        try {
+          let endpoint = '';
+          let payload = {};
+          if (item.category === 'worker') {
+            // For workers, we use the payment endpoint
+            await api.post('/api/payments', {
+              workerId: item.id,
+              amount: item.amount,
+              recipientPhone: item.phone,
+            });
+          } else if (item.category === 'funding') {
+            await api.put(`/api/funding-requests/${item.id}/fund`, { recipientPhone: item.phone });
+          } else if (item.category === 'procurement') {
+            await api.put(`/api/procurement/${item.id}/fund`, { recipientPhone: item.phone });
+          } else if (item.category === 'subcontract') {
+            await api.put(`/api/subcontracts/${item.id}/fund`, { recipientPhone: item.phone });
+          }
+          successCount++;
+          results.push({ ...item, status: 'success' });
+        } catch (err) {
+          failCount++;
+          results.push({ ...item, status: 'failed', error: err.response?.data?.error || err.message });
+        }
+      }
+
+      setPayAllStatus({
+        type: successCount > 0 && failCount === 0 ? 'success' : failCount > 0 ? 'warning' : 'error',
+        message: `Processed ${successCount} successful, ${failCount} failed.`
+      });
+      refreshAll();
+    } catch (err) {
+      setPayAllStatus({ type: 'error', message: 'Failed to process payments: ' + err.message });
+    } finally {
+      setPayAllProcessing(false);
       setTimeout(() => {
         setPayAllOpen(false);
         setPayAllStatus(null);
-        refreshAll();
-      }, 1500);
-    } catch (err) {
-      setPayAllStatus({ type: 'error', message: err.response?.data?.error || 'Bulk payment failed' });
+      }, 3000);
     }
-  }, [workers, refreshAll, user]);
+  };
 
   const formatCurrency = useCallback((amount) => {
     return new Intl.NumberFormat('en-ZM', { style: 'currency', currency: 'ZMW' }).format(amount || 0);
@@ -466,6 +611,12 @@ const AccountantDashboard = () => {
     });
     return groups;
   }, [workers, projects]);
+
+  // ─── Stats for pending items across all categories ──────────────
+  const pendingWorkersCount = pendingWorkers.length;
+  const pendingFunding = fundingRequests.filter(f => f.status === 'approved').length;
+  const pendingProcurement = procurementOrders.filter(o => o.status === 'approved').length;
+  const pendingSubcontracts = subcontracts.filter(s => s.status === 'approved').length;
 
   if (loading) {
     return (
@@ -543,7 +694,7 @@ const AccountantDashboard = () => {
         <Button variant="contained" color="primary" onClick={() => setSearchOpen(true)}>
           Pay Worker (Airtel Money)
         </Button>
-        <Button variant="contained" color="secondary" onClick={handlePayAll}>
+        <Button variant="contained" color="secondary" startIcon={<FilterListIcon />} onClick={handlePayAllOpen}>
           Pay All Pending
         </Button>
         {!user?.mobileMoneyNumber && (
@@ -557,7 +708,7 @@ const AccountantDashboard = () => {
       </Box>
 
       <Typography variant="caption" display="block" sx={{ mb: 2 }}>
-        Total pending: {formatCurrency(totalPending)} ({pendingWorkers.length} workers) | {pendingFundingCount} pending funding requests ({approvedFundingCount} approved awaiting funding)
+        Total pending: {formatCurrency(totalPending)} ({pendingWorkersCount} workers) | {pendingFundingCount} funding requests ({approvedFundingCount} approved)
       </Typography>
 
       <Grid container spacing={3} sx={{ mb: 3 }}>
@@ -565,6 +716,7 @@ const AccountantDashboard = () => {
           <Card><CardContent>
             <Typography variant="body2" color="textSecondary">Workers</Typography>
             <Typography variant="h4">{stats.workers}</Typography>
+            <Typography variant="caption" color="textSecondary">{pendingWorkersCount} pending</Typography>
           </CardContent></Card>
         </Grid>
         <Grid item xs={12} sm={6} md={3}>
@@ -962,20 +1114,72 @@ const AccountantDashboard = () => {
         <PaymentModal open={paymentOpen} onClose={handlePaymentClose} worker={selectedWorker} onSuccess={refreshAll} />
       )}
 
-      <Dialog open={payAllOpen} onClose={() => setPayAllOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Pay All Pending Workers</DialogTitle>
-        <DialogContent>
-          <Typography>
-            You are about to pay <strong>{pendingWorkers.length}</strong> workers a total of <strong>{formatCurrency(totalPending)}</strong>.
-          </Typography>
-          {pendingWorkers.map(w => (
-            <Typography key={w._id} variant="body2">{w.name}: {formatCurrency(w.balance)}</Typography>
-          ))}
-          {payAllStatus && <Alert severity={payAllStatus.type} sx={{ mt: 2 }}>{payAllStatus.message}</Alert>}
+      {/* ─── Pay All Modal ─────────────────────────────────────────── */}
+      <Dialog open={payAllOpen} onClose={() => !payAllProcessing && setPayAllOpen(false)} maxWidth="md" fullWidth>
+        <DialogTitle>Pay All Pending</DialogTitle>
+        <DialogContent dividers>
+          <Typography variant="subtitle1" gutterBottom>Select categories to include:</Typography>
+          <FormGroup row sx={{ mb: 2 }}>
+            <MuiFormControlLabel
+              control={<Checkbox checked={payAllFilters.workers} onChange={(e) => setPayAllFilters({ ...payAllFilters, workers: e.target.checked })} />}
+              label={`Workers (${pendingWorkersCount})`}
+            />
+            <MuiFormControlLabel
+              control={<Checkbox checked={payAllFilters.funding} onChange={(e) => setPayAllFilters({ ...payAllFilters, funding: e.target.checked })} />}
+              label={`Funding Requests (${pendingFunding})`}
+            />
+            <MuiFormControlLabel
+              control={<Checkbox checked={payAllFilters.procurement} onChange={(e) => setPayAllFilters({ ...payAllFilters, procurement: e.target.checked })} />}
+              label={`Procurement Orders (${pendingProcurement})`}
+            />
+            <MuiFormControlLabel
+              control={<Checkbox checked={payAllFilters.subcontracts} onChange={(e) => setPayAllFilters({ ...payAllFilters, subcontracts: e.target.checked })} />}
+              label={`Subcontracts (${pendingSubcontracts})`}
+            />
+          </FormGroup>
+
+          <Divider sx={{ my: 2 }} />
+
+          {payAllSummary.length === 0 ? (
+            <Typography variant="body2" color="textSecondary">No pending items match the selected filters.</Typography>
+          ) : (
+            <>
+              <Typography variant="subtitle2" gutterBottom>
+                Summary – Total: {formatCurrency(payAllTotal)} ({payAllSummary.length} items)
+              </Typography>
+              <List dense sx={{ maxHeight: 300, overflow: 'auto' }}>
+                {payAllSummary.map((item, idx) => (
+                  <ListItem key={idx} divider>
+                    <ListItemText
+                      primary={`${item.name} (${item.type})`}
+                      secondary={`Amount: ${formatCurrency(item.amount)} | Phone: ${item.phone || 'Missing'}`}
+                    />
+                    <ListItemSecondaryAction>
+                      <Typography variant="caption" color="textSecondary">
+                        {formatCurrency(item.amount)}
+                      </Typography>
+                    </ListItemSecondaryAction>
+                  </ListItem>
+                ))}
+              </List>
+            </>
+          )}
+
+          {payAllStatus && (
+            <Alert severity={payAllStatus.type} sx={{ mt: 2 }}>{payAllStatus.message}</Alert>
+          )}
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setPayAllOpen(false)}>Cancel</Button>
-          <Button variant="contained" onClick={handlePayAllConfirm}>Confirm Payment</Button>
+          <Button onClick={() => setPayAllOpen(false)} disabled={payAllProcessing}>Cancel</Button>
+          <Button
+            variant="contained"
+            color="success"
+            onClick={handlePayAllConfirm}
+            disabled={payAllProcessing || payAllSummary.length === 0}
+            startIcon={<AttachMoneyIcon />}
+          >
+            {payAllProcessing ? 'Processing...' : `Pay All (${formatCurrency(payAllTotal)})`}
+          </Button>
         </DialogActions>
       </Dialog>
 
