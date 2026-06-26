@@ -5,7 +5,6 @@ import {
   Button, IconButton, Tooltip, Alert, CircularProgress, Chip
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
-import VisibilityIcon from '@mui/icons-material/Visibility';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import api from '../../api/axios';
@@ -94,20 +93,35 @@ const SparePartList = () => {
               <TableCell>{req.driver?.name}</TableCell>
               <TableCell>{new Date(req.requestedAt).toLocaleDateString()}</TableCell>
               <TableCell>
-                <Tooltip title="View">
-                  <IconButton component={Link} to={`/spare-parts/${req._id}`} size="small">
-                    <VisibilityIcon fontSize="small" />
-                  </IconButton>
-                </Tooltip>
+                {/* ─── View button (text) ──────────────────────────── */}
+                <Button
+                  component={Link}
+                  to={`/spare-parts/${req._id}`}
+                  size="small"
+                  variant="outlined"
+                  sx={{ mr: 0.5, minWidth: '40px', textTransform: 'none' }}
+                >
+                  View
+                </Button>
+
                 {canEdit && (
                   <>
                     <Tooltip title="Edit">
-                      <IconButton component={Link} to={`/spare-parts/${req._id}/edit`} size="small" color="primary">
+                      <IconButton
+                        component={Link}
+                        to={`/spare-parts/${req._id}/edit`}
+                        size="small"
+                        color="primary"
+                      >
                         <EditIcon fontSize="small" />
                       </IconButton>
                     </Tooltip>
                     <Tooltip title="Delete">
-                      <IconButton size="small" color="error" onClick={() => handleDelete(req._id)}>
+                      <IconButton
+                        size="small"
+                        color="error"
+                        onClick={() => handleDelete(req._id)}
+                      >
                         <DeleteIcon fontSize="small" />
                       </IconButton>
                     </Tooltip>
