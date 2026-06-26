@@ -12,8 +12,14 @@ import RefreshIcon from '@mui/icons-material/Refresh';
 import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
 import SendIcon from '@mui/icons-material/Send';
+import {
+  PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis,
+  CartesianGrid, Tooltip as ChartTooltip, Legend, ResponsiveContainer
+} from 'recharts';
 import api from '../../api/axios';
 import { useAuth } from '../../context/AuthContext';
+
+const COLORS = ['#ff9800', '#2196f3', '#4caf50', '#f44336', '#9c27b0', '#607d8b'];
 
 const ProcurementDashboard = () => {
   const navigate = useNavigate();
@@ -86,6 +92,40 @@ const ProcurementDashboard = () => {
   useEffect(() => {
     fetchOrders();
   }, [fetchOrders]);
+
+  // ─── Chart data ─────────────────────────────────────────────────────
+  const statusData = [
+    { name: 'Pending', value: stats.pending },
+    { name: 'Funded', value: stats.funded },
+    { name: 'Purchased', value: stats.purchased },
+    { name: 'Other', value: stats.total - stats.pending - stats.funded - stats.purchased },
+  ].filter(d => d.value > 0);
+
+  // Monthly spending data (last 6 months)
+  const getMonthlyData = () => {
+    const months = {};
+    const now = new Date();
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const key = d.toLocaleString('default', { month: 'short', year: 'numeric' });
+      months[key] = 0;
+    }
+    orders.forEach(order => {
+      if (order.status === 'funded' || order.status === 'purchased') {
+        const date = new Date(order.createdAt || order.fundedAt || order.updatedAt);
+        const key = date.toLocaleString('default', { month: 'short', year: 'numeric' });
+        if (months[key] !== undefined) {
+          months[key] += order.grandTotal || order.total || 0;
+        }
+      }
+    });
+    return Object.keys(months).map(key => ({
+      month: key,
+      amount: months[key],
+    }));
+  };
+
+  const monthlyData = getMonthlyData();
 
   // ─── Edit handlers ──────────────────────────────────────────────
   const handleEditOpen = (order) => {
@@ -227,40 +267,96 @@ const ProcurementDashboard = () => {
 
       <Typography variant="h6" gutterBottom>Acquire Materials & Services</Typography>
 
+      {/* ─── Stats Cards ───────────────────────────────────────────── */}
       <Grid container spacing={3} sx={{ mb: 3 }}>
         <Grid item xs={12} sm={6} md={2.4}>
-          <Card><CardContent>
-            <Typography variant="body2" color="textSecondary">Total Orders</Typography>
-            <Typography variant="h4">{stats.total}</Typography>
-          </CardContent></Card>
+          <Card sx={{ height: '100%', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', color: 'white' }}>
+            <CardContent>
+              <Typography variant="body2" sx={{ opacity: 0.8 }}>Total Orders</Typography>
+              <Typography variant="h3">{stats.total}</Typography>
+            </CardContent>
+          </Card>
         </Grid>
         <Grid item xs={12} sm={6} md={2.4}>
-          <Card sx={{ borderLeft: '4px solid #ff9800' }}><CardContent>
-            <Typography variant="body2" color="textSecondary">Pending</Typography>
-            <Typography variant="h4">{stats.pending}</Typography>
-          </CardContent></Card>
+          <Card sx={{ height: '100%', borderLeft: '4px solid #ff9800' }}>
+            <CardContent>
+              <Typography variant="body2" color="textSecondary">Pending</Typography>
+              <Typography variant="h4" color="#ff9800">{stats.pending}</Typography>
+            </CardContent>
+          </Card>
         </Grid>
         <Grid item xs={12} sm={6} md={2.4}>
-          <Card sx={{ borderLeft: '4px solid #2196f3' }}><CardContent>
-            <Typography variant="body2" color="textSecondary">Funded</Typography>
-            <Typography variant="h4">{stats.funded}</Typography>
-          </CardContent></Card>
+          <Card sx={{ height: '100%', borderLeft: '4px solid #2196f3' }}>
+            <CardContent>
+              <Typography variant="body2" color="textSecondary">Funded</Typography>
+              <Typography variant="h4" color="#2196f3">{stats.funded}</Typography>
+            </CardContent>
+          </Card>
         </Grid>
         <Grid item xs={12} sm={6} md={2.4}>
-          <Card sx={{ borderLeft: '4px solid #4caf50' }}><CardContent>
-            <Typography variant="body2" color="textSecondary">Purchased</Typography>
-            <Typography variant="h4">{stats.purchased}</Typography>
-          </CardContent></Card>
+          <Card sx={{ height: '100%', borderLeft: '4px solid #4caf50' }}>
+            <CardContent>
+              <Typography variant="body2" color="textSecondary">Purchased</Typography>
+              <Typography variant="h4" color="#4caf50">{stats.purchased}</Typography>
+            </CardContent>
+          </Card>
         </Grid>
         <Grid item xs={12} sm={6} md={2.4}>
-          <Card sx={{ borderLeft: '4px solid #9c27b0' }}><CardContent>
-            <Typography variant="body2" color="textSecondary">Total Spent</Typography>
-            <Typography variant="h4">{formatCurrency(stats.totalSpent)}</Typography>
-            <Typography variant="caption" display="block">Avg. Order: {formatCurrency(stats.averageOrder)}</Typography>
-          </CardContent></Card>
+          <Card sx={{ height: '100%', borderLeft: '4px solid #9c27b0' }}>
+            <CardContent>
+              <Typography variant="body2" color="textSecondary">Total Spent</Typography>
+              <Typography variant="h4" color="#9c27b0">{formatCurrency(stats.totalSpent)}</Typography>
+              <Typography variant="caption" display="block">Avg: {formatCurrency(stats.averageOrder)}</Typography>
+            </CardContent>
+          </Card>
         </Grid>
       </Grid>
 
+      {/* ─── Charts ─────────────────────────────────────────────────── */}
+      <Grid container spacing={3} sx={{ mb: 3 }}>
+        <Grid item xs={12} md={6}>
+          <Paper sx={{ p: 2, height: '100%' }}>
+            <Typography variant="h6" gutterBottom>Order Status Distribution</Typography>
+            <ResponsiveContainer width="100%" height={250}>
+              <PieChart>
+                <Pie
+                  data={statusData}
+                  cx="50%"
+                  cy="50%"
+                  labelLine={false}
+                  label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                  outerRadius={80}
+                  fill="#8884d8"
+                  dataKey="value"
+                >
+                  {statusData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                  ))}
+                </Pie>
+                <ChartTooltip formatter={(value) => `${value} orders`} />
+                <Legend />
+              </PieChart>
+            </ResponsiveContainer>
+          </Paper>
+        </Grid>
+        <Grid item xs={12} md={6}>
+          <Paper sx={{ p: 2, height: '100%' }}>
+            <Typography variant="h6" gutterBottom>Monthly Spending (ZMW)</Typography>
+            <ResponsiveContainer width="100%" height={250}>
+              <BarChart data={monthlyData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="month" />
+                <YAxis tickFormatter={(value) => `K${value.toLocaleString()}`} />
+                <ChartTooltip formatter={(value) => formatCurrency(value)} />
+                <Legend />
+                <Bar dataKey="amount" fill="#8884d8" name="Spent" />
+              </BarChart>
+            </ResponsiveContainer>
+          </Paper>
+        </Grid>
+      </Grid>
+
+      {/* ─── Orders Table ───────────────────────────────────────────── */}
       {loading ? <CircularProgress /> : (
         <Paper sx={{ p: 2 }}>
           <Typography variant="h6" gutterBottom>Procurement Orders</Typography>
@@ -288,7 +384,6 @@ const ProcurementDashboard = () => {
                   </TableCell>
                   <TableCell>{order.createdBy?.name || 'N/A'}</TableCell>
                   <TableCell>
-                    {/* ─── View (text button) ─────────────────────────── */}
                     <Button
                       variant="outlined"
                       size="small"
@@ -298,7 +393,6 @@ const ProcurementDashboard = () => {
                       View
                     </Button>
 
-                    {/* ─── Edit (text button) ─────────────────────────── */}
                     {canEdit && order.status === 'pending' && (
                       <>
                         <Button
@@ -322,7 +416,6 @@ const ProcurementDashboard = () => {
                       </>
                     )}
 
-                    {/* ─── Approve (text button) ───────────────────────── */}
                     {order.status === 'pending' && canProcurementApprove && (
                       <>
                         <Button
@@ -346,7 +439,6 @@ const ProcurementDashboard = () => {
                       </>
                     )}
 
-                    {/* ─── Fund (text button) ──────────────────────────── */}
                     {order.status === 'approved' && canFund && (
                       <Button
                         variant="contained"
