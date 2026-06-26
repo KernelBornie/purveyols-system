@@ -12,6 +12,7 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import CheckIcon from '@mui/icons-material/Check';
 import CloseIcon from '@mui/icons-material/Close';
 import PrintIcon from '@mui/icons-material/Print';
+import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
 import api from '../../api/axios';
 import { useAuth } from '../../context/AuthContext';
 import BackButton from '../../components/BackButton';
@@ -26,7 +27,10 @@ const ProcurementList = () => {
 
   // ─── Permission checks ──────────────────────────────────────────────
   const canEdit = ['admin', 'director', 'procurement-officer', 'civil-engineer', 'quantity-surveyor', 'driver', 'safety-officer', 'accountant', 'foreman'].includes(user?.role);
-  const canApprove = ['admin', 'director', 'accountant'].includes(user?.role);
+  const canApprove = ['admin', 'director', 'procurement-officer', 'accountant'].includes(user?.role);
+  const canFinalApprove = ['admin', 'director', 'accountant'].includes(user?.role);
+  const canFund = ['admin', 'director', 'accountant'].includes(user?.role);
+  const canDeleteAny = ['admin', 'director'].includes(user?.role); // admin/director can delete any
 
   useEffect(() => {
     fetchOrders();
@@ -45,13 +49,34 @@ const ProcurementList = () => {
     }
   };
 
-  const handleFund = async (id) => {
+  // ─── Actions ─────────────────────────────────────────────────────────
+  const handleProcurementApprove = async (id) => {
     if (!canApprove) return;
+    try {
+      await api.put(`/api/procurement/${id}/procurement-approve`);
+      fetchOrders();
+    } catch (err) {
+      alert('Approval failed');
+    }
+  };
+
+  const handleFinalApprove = async (id) => {
+    if (!canFinalApprove) return;
+    try {
+      await api.put(`/api/procurement/${id}/final-approve`);
+      fetchOrders();
+    } catch (err) {
+      alert('Final approval failed');
+    }
+  };
+
+  const handleFund = async (id) => {
+    if (!canFund) return;
     try {
       await api.put(`/api/procurement/${id}/fund`);
       fetchOrders();
     } catch (err) {
-      alert('Fund action failed');
+      alert('Funding failed');
     }
   };
 
@@ -66,7 +91,7 @@ const ProcurementList = () => {
     }
   };
 
-  // ─── Delete with confirmation ──────────────────────────────────────
+  // ─── Delete ──────────────────────────────────────────────────────────
   const handleDeleteClick = (order) => {
     setSelectedOrder(order);
     setDeleteDialogOpen(true);
@@ -91,12 +116,11 @@ const ProcurementList = () => {
 
   const getStatusColor = (status) => ({
     pending: 'warning',
-    funded: 'info',
-    purchased: 'success',
-    delivered: 'primary',
-    rejected: 'error',
     procurement_approved: 'info',
-    approved: 'success'
+    approved: 'success',
+    funded: 'success',
+    rejected: 'error',
+    delivered: 'primary'
   }[status] || 'default');
 
   if (loading) return <CircularProgress sx={{ display: 'block', margin: '40px auto' }} />;
@@ -134,63 +158,100 @@ const ProcurementList = () => {
               </TableCell>
             </TableRow>
           ) : (
-            orders.map(o => (
-              <TableRow key={o._id}>
-                <TableCell>{o.orderNumber || o._id.slice(-6)}</TableCell>
-                <TableCell>{o.project?.name}</TableCell>
-                <TableCell>{o.items?.length || 0}</TableCell>
-                <TableCell>K {o.grandTotal?.toLocaleString() || '0.00'}</TableCell>
-                <TableCell>
-                  <Chip label={o.status} size="small" color={getStatusColor(o.status)} />
-                </TableCell>
-                <TableCell>{o.preparedBy || o.createdBy?.name}</TableCell>
-                <TableCell>
-                  <Tooltip title="View">
-                    <IconButton component={Link} to={`/procurement/${o._id}`} size="small">
-                      <VisibilityIcon fontSize="small" />
-                    </IconButton>
-                  </Tooltip>
-                  {canEdit && o.status === 'pending' && (
-                    <>
-                      <Tooltip title="Edit">
-                        <IconButton component={Link} to={`/procurement/${o._id}/edit`} size="small" color="primary">
-                          <EditIcon fontSize="small" />
-                        </IconButton>
-                      </Tooltip>
-                      <Tooltip title="Delete">
-                        <IconButton size="small" color="error" onClick={() => handleDeleteClick(o)}>
-                          <DeleteIcon fontSize="small" />
-                        </IconButton>
-                      </Tooltip>
-                    </>
-                  )}
-                  {canApprove && o.status === 'pending' && (
-                    <>
-                      <Tooltip title="Fund">
-                        <IconButton size="small" color="success" onClick={() => handleFund(o._id)}>
+            orders.map(o => {
+              // Determine if delete is allowed
+              let canDelete = false;
+              if (canDeleteAny) {
+                canDelete = true; // admin/director can delete any
+              } else if (canEdit && (o.status === 'pending' || o.status === 'rejected')) {
+                canDelete = true; // other roles only pending/rejected
+              }
+
+              return (
+                <TableRow key={o._id}>
+                  <TableCell>{o.orderNumber || o._id.slice(-6)}</TableCell>
+                  <TableCell>{o.project?.name}</TableCell>
+                  <TableCell>{o.items?.length || 0}</TableCell>
+                  <TableCell>K {o.grandTotal?.toLocaleString() || '0.00'}</TableCell>
+                  <TableCell>
+                    <Chip label={o.status} size="small" color={getStatusColor(o.status)} />
+                  </TableCell>
+                  <TableCell>{o.createdBy?.name}</TableCell>
+                  <TableCell>
+                    <Tooltip title="View">
+                      <IconButton component={Link} to={`/procurement/${o._id}`} size="small">
+                        <VisibilityIcon fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
+
+                    {/* ─── Procurement Officer Approve ────────────────── */}
+                    {canApprove && o.status === 'pending' && (
+                      <Tooltip title="Approve (Procurement)">
+                        <IconButton size="small" color="primary" onClick={() => handleProcurementApprove(o._id)}>
                           <CheckIcon fontSize="small" />
                         </IconButton>
                       </Tooltip>
+                    )}
+
+                    {/* ─── Final Approve (Director/Accountant) ────────── */}
+                    {canFinalApprove && o.status === 'procurement_approved' && (
+                      <Tooltip title="Final Approve">
+                        <IconButton size="small" color="success" onClick={() => handleFinalApprove(o._id)}>
+                          <CheckIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                    )}
+
+                    {/* ─── Fund (Director/Accountant) ────────────────── */}
+                    {canFund && o.status === 'approved' && (
+                      <Tooltip title="Fund">
+                        <IconButton size="small" color="info" onClick={() => handleFund(o._id)}>
+                          <AttachMoneyIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                    )}
+
+                    {/* ─── Reject ────────────────────────────────────── */}
+                    {canApprove && (o.status === 'pending' || o.status === 'procurement_approved') && (
                       <Tooltip title="Reject">
                         <IconButton size="small" color="error" onClick={() => handleReject(o._id)}>
                           <CloseIcon fontSize="small" />
                         </IconButton>
                       </Tooltip>
-                    </>
-                  )}
-                  <Tooltip title="Print">
-                    <IconButton size="small" onClick={() => window.print()}>
-                      <PrintIcon fontSize="small" />
-                    </IconButton>
-                  </Tooltip>
-                </TableCell>
-              </TableRow>
-            ))
+                    )}
+
+                    {/* ─── Edit (only if pending) ────────────────────── */}
+                    {canEdit && o.status === 'pending' && (
+                      <Tooltip title="Edit">
+                        <IconButton component={Link} to={`/procurement/${o._id}/edit`} size="small" color="primary">
+                          <EditIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                    )}
+
+                    {/* ─── Delete (always for admin/director; otherwise only pending/rejected) ── */}
+                    {canDelete && (
+                      <Tooltip title="Delete">
+                        <IconButton size="small" color="error" onClick={() => handleDeleteClick(o)}>
+                          <DeleteIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                    )}
+
+                    <Tooltip title="Print">
+                      <IconButton size="small" onClick={() => window.print()}>
+                        <PrintIcon fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
+                  </TableCell>
+                </TableRow>
+              );
+            })
           )}
         </TableBody>
       </Table>
 
-      {/* ─── Delete Confirmation Dialog ──────────────────────────── */}
+      {/* ─── Delete Dialog ──────────────────────────────────────────── */}
       <Dialog open={deleteDialogOpen} onClose={handleDeleteCancel}>
         <DialogTitle>Delete Requisition</DialogTitle>
         <DialogContent>
