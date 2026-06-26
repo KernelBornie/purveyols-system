@@ -6,13 +6,16 @@ const authorize = require('../middleware/rbac');
 
 // ─── GET all ──────────────────────────────────────────────────────────
 router.get('/', auth, async (req, res) => {
+  console.log('👤 Visitor GET - user:', req.user?.role, req.user?.id);
   try {
     const visitors = await Visitor.find()
       .populate('project', 'name')
       .populate('createdBy', 'name role')
       .sort({ checkIn: -1 });
+    console.log(`✅ Found ${visitors.length} visitors`);
     res.json(visitors);
   } catch (err) {
+    console.error('❌ Error fetching visitors:', err);
     res.status(500).json({ error: err.message });
   }
 });

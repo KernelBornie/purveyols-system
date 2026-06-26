@@ -6,6 +6,7 @@ const API_URL = import.meta.env.VITE_API_URL || 'https://purveyols-backend.onren
 const api = axios.create({
   baseURL: API_URL,
   timeout: 30000,
+  withCredentials: true, // ✅ Helps with CORS when credentials are sent
   headers: {
     'Content-Type': 'application/json',
   },

@@ -16,17 +16,39 @@ const io = new Server(server, {
   },
 });
 
-// ─── CORS ──────────────────────────────────────────────────────
+// ─── CORS (improved) ──────────────────────────────────────────────
 const corsOptions = {
-  origin: true,
+  origin: (origin, callback) => {
+    // Allow all origins in development, or restrict to specific domains
+    const allowedOrigins = [
+      'https://purveyols-system.vercel.app',
+      'http://localhost:5173',
+      'http://localhost:3000',
+      'http://localhost:5000',
+    ];
+    // Allow requests with no origin (like mobile apps or curl)
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      console.warn(`❌ CORS blocked origin: ${origin}`);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true,
-  optionsSuccessStatus: 200
+  optionsSuccessStatus: 200,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
 };
+
 app.use(cors(corsOptions));
+app.options('*', cors(corsOptions)); // Handle preflight explicitly
+
+// Log every request origin (for debugging)
 app.use((req, res, next) => {
-  console.log(`${req.method} ${req.url} - Origin: ${req.headers.origin}`);
+  console.log(`${req.method} ${req.url} - Origin: ${req.headers.origin || 'none'}`);
   next();
 });
+
 app.use(express.json({ limit: '50mb' }));
 app.use(morgan('dev'));
 
