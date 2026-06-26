@@ -14,7 +14,7 @@ const BidSchema = new mongoose.Schema({
   contactEmail: { type: String },
   biddingFee: { type: String },
   
-  // Bid tracking fields
+  // Bid tracking
   status: {
     type: String,
     enum: ['bidded', 'shortlisted', 'interviewing', 'awarded', 'lost', 'withdrawn'],
@@ -31,7 +31,7 @@ const BidSchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now },
 
-  // ─── Conversion tracking ──────────────────────────────
+  // ─── Conversion to Project ──────────────────────────────
   convertedToProject: { type: mongoose.Schema.Types.ObjectId, ref: 'Project' },
   isConverted: { type: Boolean, default: false },
 });

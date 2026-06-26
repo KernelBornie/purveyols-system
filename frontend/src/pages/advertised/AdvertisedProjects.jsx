@@ -58,7 +58,7 @@ const AdvertisedProjects = () => {
     return () => {
       if (refreshInterval.current) clearInterval(refreshInterval.current);
     };
-  }, []);
+  }, [autoRefresh]);
 
   const handleSearch = (e) => { e.preventDefault(); fetchProjects(); };
   const handleRefresh = () => { fetchProjects(); setSnackbar({ open: true, message: 'Projects refreshed!', severity: 'success' }); };

@@ -37,8 +37,8 @@ const BiddedProjects = () => {
   const fetchBids = async () => {
     setLoading(true);
     try {
-      const res = await api.get('/api/advertised-projects/bidded');
-      setBids(res.data.projects || []);
+      const res = await api.get('/api/bids');
+      setBids(res.data || []);
     } catch (err) {
       console.error(err);
     } finally {
@@ -99,8 +99,6 @@ const BiddedProjects = () => {
         severity: 'success'
       });
       fetchBids();
-      // Optionally navigate to the new project edit page
-      // navigate(`/projects/${res.data.project._id}`);
     } catch (err) {
       setSnackbar({
         open: true,
