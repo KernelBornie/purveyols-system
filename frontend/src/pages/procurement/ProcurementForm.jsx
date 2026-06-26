@@ -17,19 +17,17 @@ const ProcurementForm = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const printRef = useRef();
   const [loading, setLoading] = useState(false);
   const [projects, setProjects] = useState([]);
   const [message, setMessage] = useState(null);
   const [form, setForm] = useState({
     project: '',
     orderNumber: '',
-    items: [
-      { description: '', quantity: 1, unitPrice: 0, supplier: '', notes: '' }
-    ],
+    items: [{ description: '', unit: '', quantity: 1, unitPrice: 0, supplier: '', notes: '' }],
     preparedBy: '',
-    approvedBy: '',
-    authorisedBy: '',
+    approvedBy: '',      // set by backend on procurement-approve
+    authorisedBy: '',    // set by backend on final-approve
+    fundedBy: '',        // set by backend on fund
     preparedSign: false,
     approvedSign: false,
     authorisedSign: false,
@@ -37,6 +35,9 @@ const ProcurementForm = () => {
   });
   const [creator, setCreator] = useState(null);
   const [createdAt, setCreatedAt] = useState(null);
+  const [isProcurementApproved, setIsProcurementApproved] = useState(false);
+  const [isFinalApproved, setIsFinalApproved] = useState(false);
+  const [isFunded, setIsFunded] = useState(false);
 
   // ─── Fetch data ─────────────────────────────────────────────────
   useEffect(() => {
@@ -50,10 +51,11 @@ const ProcurementForm = () => {
           setForm({
             project: data.project?._id || data.project || '',
             orderNumber: data.orderNumber || '',
-            items: data.items || [{ description: '', quantity: 1, unitPrice: 0, supplier: '', notes: '' }],
+            items: data.items || [{ description: '', unit: '', quantity: 1, unitPrice: 0, supplier: '', notes: '' }],
             preparedBy: data.preparedBy || '',
-            approvedBy: data.approvedBy || '',
-            authorisedBy: data.authorisedBy || '',
+            approvedBy: data.approvedBy?.name || data.approvedBy || '',
+            authorisedBy: data.authorisedBy?.name || data.authorisedBy || '',
+            fundedBy: data.fundedBy?.name || data.fundedBy || '',
             preparedSign: data.preparedSign || false,
             approvedSign: data.approvedSign || false,
             authorisedSign: data.authorisedSign || false,
@@ -61,10 +63,12 @@ const ProcurementForm = () => {
           });
           setCreator(data.createdBy);
           setCreatedAt(data.createdAt);
+          setIsProcurementApproved(data.status === 'procurement_approved' || data.status === 'approved' || data.status === 'funded');
+          setIsFinalApproved(data.status === 'approved' || data.status === 'funded');
+          setIsFunded(data.status === 'funded');
         } else {
           setCreator(user);
           setCreatedAt(new Date().toISOString());
-          // Generate order number
           const today = new Date();
           const dateStr = today.getFullYear() + 
             String(today.getMonth() + 1).padStart(2, '0') + 
@@ -88,7 +92,7 @@ const ProcurementForm = () => {
   const addItem = () => {
     setForm({
       ...form,
-      items: [...form.items, { description: '', quantity: 1, unitPrice: 0, supplier: '', notes: '' }]
+      items: [...form.items, { description: '', unit: '', quantity: 1, unitPrice: 0, supplier: '', notes: '' }]
     });
   };
 
@@ -110,10 +114,13 @@ const ProcurementForm = () => {
     setMessage(null);
     try {
       const payload = {
-        ...form,
         project: form.project,
         items: form.items.filter(item => item.description.trim() !== ''),
         grandTotal: calculateGrandTotal(),
+        preparedBy: form.preparedBy,
+        preparedSign: form.preparedSign,
+        approvedSign: form.approvedSign,
+        authorisedSign: form.authorisedSign,
       };
       if (id) {
         await api.put(`/api/procurement/${id}`, payload);
@@ -130,7 +137,7 @@ const ProcurementForm = () => {
     }
   };
 
-  // ─── Print – with red header ──────────────────────────────────
+  // ─── Print ──────────────────────────────────────────────────────
   const handlePrint = () => {
     const printWindow = window.open('', '_blank');
     const filledItems = form.items.filter(item => item.description && item.description.trim() !== '');
@@ -173,7 +180,6 @@ const ProcurementForm = () => {
         </head>
         <body>
           <div class="print-container">
-            <!-- Header with red -->
             <div class="header">
               <h1>PURVEYOLS</h1>
               <div class="subtitle">Building and Civil contractors</div>
@@ -286,7 +292,7 @@ const ProcurementForm = () => {
 
       {message && <Alert severity={message.type} sx={{ mb: 2 }}>{message.text}</Alert>}
 
-      {/* ─── Company Header – matches BOQ style (red) ────────────── */}
+      {/* ─── Company Header ────────────────────────────────────────── */}
       <Box sx={{ textAlign: 'center', borderBottom: '2px solid #000', pb: 2, mb: 2 }}>
         <img
           src="/top-log.PNG?t=3"
@@ -328,6 +334,7 @@ const ProcurementForm = () => {
                 value={form.project}
                 onChange={e => setForm({ ...form, project: e.target.value })}
                 required
+                disabled={isFunded || isFinalApproved}
               >
                 {Array.isArray(projects) && projects.map(p => (
                   <MenuItem key={p._id} value={p._id}>{p.name}</MenuItem>
@@ -371,6 +378,7 @@ const ProcurementForm = () => {
                       value={item.description}
                       onChange={e => updateItem(idx, 'description', e.target.value)}
                       placeholder="Description"
+                      disabled={isFunded || isFinalApproved}
                     />
                   </TableCell>
                   <TableCell>
@@ -380,6 +388,7 @@ const ProcurementForm = () => {
                       onChange={e => updateItem(idx, 'unit', e.target.value)}
                       placeholder="Unit"
                       sx={{ width: 80 }}
+                      disabled={isFunded || isFinalApproved}
                     />
                   </TableCell>
                   <TableCell>
@@ -389,6 +398,7 @@ const ProcurementForm = () => {
                       value={item.quantity}
                       onChange={e => updateItem(idx, 'quantity', parseFloat(e.target.value) || 0)}
                       sx={{ width: 80 }}
+                      disabled={isFunded || isFinalApproved}
                     />
                   </TableCell>
                   <TableCell>
@@ -398,6 +408,7 @@ const ProcurementForm = () => {
                       value={item.unitPrice}
                       onChange={e => updateItem(idx, 'unitPrice', parseFloat(e.target.value) || 0)}
                       sx={{ width: 100 }}
+                      disabled={isFunded || isFinalApproved}
                     />
                   </TableCell>
                   <TableCell align="right">
@@ -410,6 +421,7 @@ const ProcurementForm = () => {
                       value={item.supplier}
                       onChange={e => updateItem(idx, 'supplier', e.target.value)}
                       placeholder="Supplier"
+                      disabled={isFunded || isFinalApproved}
                     />
                   </TableCell>
                   <TableCell>
@@ -419,10 +431,16 @@ const ProcurementForm = () => {
                       value={item.notes}
                       onChange={e => updateItem(idx, 'notes', e.target.value)}
                       placeholder="Notes"
+                      disabled={isFunded || isFinalApproved}
                     />
                   </TableCell>
                   <TableCell>
-                    <IconButton size="small" color="error" onClick={() => removeItem(idx)}>
+                    <IconButton
+                      size="small"
+                      color="error"
+                      onClick={() => removeItem(idx)}
+                      disabled={isFunded || isFinalApproved}
+                    >
                       <DeleteIcon fontSize="small" />
                     </IconButton>
                   </TableCell>
@@ -436,6 +454,7 @@ const ProcurementForm = () => {
             onClick={addItem}
             variant="outlined"
             sx={{ mt: 1 }}
+            disabled={isFunded || isFinalApproved}
           >
             Add Row
           </Button>
@@ -457,12 +476,14 @@ const ProcurementForm = () => {
                   size="small"
                   value={form.preparedBy}
                   onChange={e => setForm({ ...form, preparedBy: e.target.value })}
+                  disabled={isFunded || isFinalApproved}
                 />
                 <FormControlLabel
                   control={
                     <Checkbox
                       checked={form.preparedSign}
                       onChange={e => setForm({ ...form, preparedSign: e.target.checked })}
+                      disabled={isFunded || isFinalApproved}
                     />
                   }
                   label="Signed"
@@ -474,13 +495,15 @@ const ProcurementForm = () => {
                   fullWidth
                   size="small"
                   value={form.approvedBy}
-                  onChange={e => setForm({ ...form, approvedBy: e.target.value })}
+                  InputProps={{ readOnly: true }}
+                  disabled
                 />
                 <FormControlLabel
                   control={
                     <Checkbox
                       checked={form.approvedSign}
                       onChange={e => setForm({ ...form, approvedSign: e.target.checked })}
+                      disabled={!isProcurementApproved || isFunded}
                     />
                   }
                   label="Signed"
@@ -492,13 +515,15 @@ const ProcurementForm = () => {
                   fullWidth
                   size="small"
                   value={form.authorisedBy}
-                  onChange={e => setForm({ ...form, authorisedBy: e.target.value })}
+                  InputProps={{ readOnly: true }}
+                  disabled
                 />
                 <FormControlLabel
                   control={
                     <Checkbox
                       checked={form.authorisedSign}
                       onChange={e => setForm({ ...form, authorisedSign: e.target.checked })}
+                      disabled={!isFinalApproved || isFunded}
                     />
                   }
                   label="Signed"

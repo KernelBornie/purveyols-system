@@ -5,7 +5,6 @@ import {
   Button, Chip, CircularProgress, IconButton, Tooltip
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
-import VisibilityIcon from '@mui/icons-material/Visibility';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import DescriptionIcon from '@mui/icons-material/Description';
@@ -126,18 +125,33 @@ const DrawingList = () => {
                 </TableCell>
                 <TableCell>{drawing.designer?.name || '—'}</TableCell>
                 <TableCell>
-                  <Tooltip title="View">
-                    <IconButton component={Link} to={`/drawings/${drawing._id}`} size="small" color="info">
-                      <VisibilityIcon fontSize="small" />
-                    </IconButton>
-                  </Tooltip>
+                  {/* ─── View button (text) ──────────────────────────── */}
+                  <Button
+                    component={Link}
+                    to={`/drawings/${drawing._id}`}
+                    size="small"
+                    variant="outlined"
+                    sx={{ mr: 0.5, minWidth: '40px', textTransform: 'none' }}
+                  >
+                    View
+                  </Button>
+
                   <Tooltip title="Edit">
-                    <IconButton component={Link} to={`/drawings/${drawing._id}/edit`} size="small" color="primary">
+                    <IconButton
+                      component={Link}
+                      to={`/drawings/${drawing._id}/edit`}
+                      size="small"
+                      color="primary"
+                    >
                       <EditIcon fontSize="small" />
                     </IconButton>
                   </Tooltip>
                   <Tooltip title="Delete">
-                    <IconButton size="small" color="error" onClick={() => handleDelete(drawing._id)}>
+                    <IconButton
+                      size="small"
+                      color="error"
+                      onClick={() => handleDelete(drawing._id)}
+                    >
                       <DeleteIcon fontSize="small" />
                     </IconButton>
                   </Tooltip>

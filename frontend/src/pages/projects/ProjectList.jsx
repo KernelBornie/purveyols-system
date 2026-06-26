@@ -5,7 +5,6 @@ import {
   Button, Chip, CircularProgress, IconButton, Tooltip, Alert, LinearProgress
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
-import VisibilityIcon from '@mui/icons-material/Visibility';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import TimelineIcon from '@mui/icons-material/Timeline';
@@ -170,26 +169,45 @@ const ProjectList = () => {
                 <TableCell>{project.timeFrame || '—'}</TableCell>
                 <TableCell>{project.manager?.name || 'N/A'}</TableCell>
                 <TableCell>
-                  <Tooltip title="View">
-                    <IconButton component={Link} to={`/projects/${project._id}`} size="small" color="info">
-                      <VisibilityIcon fontSize="small" />
-                    </IconButton>
-                  </Tooltip>
+                  {/* ─── View button (text) ──────────────────────────── */}
+                  <Button
+                    component={Link}
+                    to={`/projects/${project._id}`}
+                    size="small"
+                    variant="outlined"
+                    sx={{ mr: 0.5, minWidth: '40px', textTransform: 'none' }}
+                  >
+                    View
+                  </Button>
 
                   {canEdit && (
                     <>
                       <Tooltip title="Edit">
-                        <IconButton component={Link} to={`/projects/${project._id}/edit`} size="small" color="primary">
+                        <IconButton
+                          component={Link}
+                          to={`/projects/${project._id}/edit`}
+                          size="small"
+                          color="primary"
+                        >
                           <EditIcon fontSize="small" />
                         </IconButton>
                       </Tooltip>
                       <Tooltip title="Planning">
-                        <IconButton component={Link} to={`/projects/${project._id}/planning`} size="small" color="secondary">
+                        <IconButton
+                          component={Link}
+                          to={`/projects/${project._id}/planning`}
+                          size="small"
+                          color="secondary"
+                        >
                           <TimelineIcon fontSize="small" />
                         </IconButton>
                       </Tooltip>
                       <Tooltip title="Delete">
-                        <IconButton size="small" color="error" onClick={() => handleDelete(project._id)}>
+                        <IconButton
+                          size="small"
+                          color="error"
+                          onClick={() => handleDelete(project._id)}
+                        >
                           <DeleteIcon fontSize="small" />
                         </IconButton>
                       </Tooltip>
@@ -199,12 +217,20 @@ const ProjectList = () => {
                   {canApprove && project.status === 'planning' && (
                     <>
                       <Tooltip title="Approve">
-                        <IconButton size="small" color="success" onClick={() => handleApprove(project._id)}>
+                        <IconButton
+                          size="small"
+                          color="success"
+                          onClick={() => handleApprove(project._id)}
+                        >
                           <CheckIcon fontSize="small" />
                         </IconButton>
                       </Tooltip>
                       <Tooltip title="Reject">
-                        <IconButton size="small" color="error" onClick={() => handleReject(project._id)}>
+                        <IconButton
+                          size="small"
+                          color="error"
+                          onClick={() => handleReject(project._id)}
+                        >
                           <CloseIcon fontSize="small" />
                         </IconButton>
                       </Tooltip>

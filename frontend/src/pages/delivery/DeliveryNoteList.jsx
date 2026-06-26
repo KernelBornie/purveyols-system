@@ -4,7 +4,6 @@ import {
   Table, TableHead, TableRow, TableCell, TableBody, Button, Paper, Typography,
   IconButton, Tooltip, Box, Alert, CircularProgress
 } from '@mui/material';
-import VisibilityIcon from '@mui/icons-material/Visibility';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import PrintIcon from '@mui/icons-material/Print';
@@ -19,7 +18,6 @@ const DeliveryNoteList = () => {
   const [error, setError] = useState(null);
   const { user } = useAuth();
 
-  // ✅ Foreman added
   const canEdit = ['procurement-officer', 'civil-engineer', 'quantity-surveyor', 'director', 'admin', 'driver', 'accountant', 'foreman'].includes(user?.role);
 
   useEffect(() => {
@@ -82,20 +80,35 @@ const DeliveryNoteList = () => {
               <TableCell>{new Date(n.date).toLocaleDateString()}</TableCell>
               <TableCell>{n.items?.length || 0}</TableCell>
               <TableCell>
-                <Tooltip title="View">
-                  <IconButton component={Link} to={`/delivery/${n._id}`} size="small">
-                    <VisibilityIcon fontSize="small" />
-                  </IconButton>
-                </Tooltip>
+                {/* ─── View button (text) ──────────────────────────── */}
+                <Button
+                  component={Link}
+                  to={`/delivery/${n._id}`}
+                  size="small"
+                  variant="outlined"
+                  sx={{ mr: 0.5, minWidth: '40px', textTransform: 'none' }}
+                >
+                  View
+                </Button>
+
                 {canEdit && (
                   <>
                     <Tooltip title="Edit">
-                      <IconButton component={Link} to={`/delivery/${n._id}/edit`} size="small" color="primary">
+                      <IconButton
+                        component={Link}
+                        to={`/delivery/${n._id}/edit`}
+                        size="small"
+                        color="primary"
+                      >
                         <EditIcon fontSize="small" />
                       </IconButton>
                     </Tooltip>
                     <Tooltip title="Delete">
-                      <IconButton size="small" color="error" onClick={() => handleDelete(n._id)}>
+                      <IconButton
+                        size="small"
+                        color="error"
+                        onClick={() => handleDelete(n._id)}
+                      >
                         <DeleteIcon fontSize="small" />
                       </IconButton>
                     </Tooltip>

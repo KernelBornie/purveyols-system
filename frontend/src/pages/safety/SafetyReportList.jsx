@@ -7,7 +7,6 @@ import {
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
-import VisibilityIcon from '@mui/icons-material/Visibility';
 import AddIcon from '@mui/icons-material/Add';
 import api from '../../api/axios';
 
@@ -108,10 +107,20 @@ const SafetyReportList = () => {
                   </TableCell>
                   <TableCell>{report.createdBy?.name || 'Unknown'}</TableCell>
                   <TableCell>
-                    <IconButton size="small" onClick={() => navigate(`/safety-reports/${report._id}`)}>
-                      <VisibilityIcon fontSize="small" />
-                    </IconButton>
-                    <IconButton size="small" onClick={() => navigate(`/safety-reports/${report._id}/edit`)}>
+                    {/* ─── View button (text) ──────────────────────────── */}
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      onClick={() => navigate(`/safety-reports/${report._id}`)}
+                      sx={{ mr: 0.5, minWidth: '40px', textTransform: 'none' }}
+                    >
+                      View
+                    </Button>
+
+                    <IconButton
+                      size="small"
+                      onClick={() => navigate(`/safety-reports/${report._id}/edit`)}
+                    >
                       <EditIcon fontSize="small" />
                     </IconButton>
                     <IconButton
