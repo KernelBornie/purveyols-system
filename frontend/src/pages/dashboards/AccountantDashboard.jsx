@@ -12,7 +12,6 @@ import {
 } from '@mui/material';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
-import VisibilityIcon from '@mui/icons-material/Visibility';
 import FilterListIcon from '@mui/icons-material/FilterList';
 import SkipNextIcon from '@mui/icons-material/SkipNext';
 import {
@@ -40,6 +39,8 @@ const getCached = (key) => {
 const setCached = (key, data) => {
   cache[key] = { data, timestamp: Date.now() };
 };
+
+const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042'];
 
 const AccountantDashboard = () => {
   const { user, updateUser } = useAuth();
@@ -104,8 +105,6 @@ const AccountantDashboard = () => {
   // ─── Subcontract Funding Modal ──────────────────────────────────
   const [subcontractFundOpen, setSubcontractFundOpen] = useState(false);
   const [subcontractToFund, setSubcontractToFund] = useState(null);
-
-  const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042'];
 
   const initialLoadDone = useRef(false);
 
@@ -327,7 +326,7 @@ const AccountantDashboard = () => {
       initialLoadDone.current = true;
       refreshAll();
     }
-  }, []);
+  }, [refreshAll]);
 
   // ─── Funding request handlers ────────────────────────────────────
   const handleApproveFunding = async (id) => {
@@ -679,28 +678,24 @@ const AccountantDashboard = () => {
         <Typography variant="h6" gutterBottom>Quick Actions</Typography>
         <Grid container spacing={2}>
           <Grid item xs={12} sm={6} md={3}>
-            <Button component={Link} to="/projects" variant="contained" fullWidth startIcon={<VisibilityIcon />}>
+            <Button component={Link} to="/projects" variant="contained" fullWidth>
               View Projects
             </Button>
-            <Typography variant="caption" color="textSecondary">See all projects</Typography>
           </Grid>
           <Grid item xs={12} sm={6} md={3}>
-            <Button component={Link} to="/workers" variant="contained" fullWidth startIcon={<VisibilityIcon />}>
+            <Button component={Link} to="/workers" variant="contained" fullWidth>
               View Workers
             </Button>
-            <Typography variant="caption" color="textSecondary">See all enrolled workers</Typography>
           </Grid>
           <Grid item xs={12} sm={6} md={3}>
-            <Button component={Link} to="/funding" variant="contained" fullWidth startIcon={<VisibilityIcon />}>
+            <Button component={Link} to="/funding" variant="contained" fullWidth>
               Funding Requests
             </Button>
-            <Typography variant="caption" color="textSecondary">Manage funding requests</Typography>
           </Grid>
           <Grid item xs={12} sm={6} md={3}>
-            <Button component={Link} to="/procurement" variant="contained" fullWidth startIcon={<VisibilityIcon />}>
+            <Button component={Link} to="/procurement" variant="contained" fullWidth>
               Procurement Orders
             </Button>
-            <Typography variant="caption" color="textSecondary">View requisition notes</Typography>
           </Grid>
         </Grid>
       </Paper>
@@ -730,34 +725,43 @@ const AccountantDashboard = () => {
         Total pending: {formatCurrency(stats.totalPendingAmount)} ({pendingWorkersCount} workers, {pendingFunding} funding requests awaiting funding, {pendingProcurement} procurement orders, {pendingSubcontracts} subcontracts)
       </Typography>
 
+      {/* ─── Professional Stats Cards ─────────────────────────────── */}
       <Grid container spacing={3} sx={{ mb: 3 }}>
         <Grid item xs={12} sm={6} md={3}>
-          <Card><CardContent>
-            <Typography variant="body2" color="textSecondary">Workers</Typography>
-            <Typography variant="h4">{stats.workers}</Typography>
-            <Typography variant="caption" color="textSecondary">{pendingWorkersCount} pending</Typography>
-          </CardContent></Card>
+          <Card sx={{ height: '100%', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', color: 'white' }}>
+            <CardContent>
+              <Typography variant="body2" sx={{ opacity: 0.8 }}>Workers</Typography>
+              <Typography variant="h3">{stats.workers}</Typography>
+              <Typography variant="caption" sx={{ opacity: 0.8 }}>{pendingWorkersCount} pending</Typography>
+            </CardContent>
+          </Card>
         </Grid>
         <Grid item xs={12} sm={6} md={3}>
-          <Card><CardContent>
-            <Typography variant="body2" color="textSecondary">Projects</Typography>
-            <Typography variant="h4">{stats.projects}</Typography>
-          </CardContent></Card>
+          <Card sx={{ height: '100%', borderLeft: '4px solid #2196f3' }}>
+            <CardContent>
+              <Typography variant="body2" color="textSecondary">Projects</Typography>
+              <Typography variant="h4" color="#2196f3">{stats.projects}</Typography>
+            </CardContent>
+          </Card>
         </Grid>
         <Grid item xs={12} sm={6} md={3}>
-          <Card><CardContent>
-            <Typography variant="body2" color="textSecondary">Total Released</Typography>
-            <Typography variant="h4">{formatCurrency(stats.totalReleased)}</Typography>
-          </CardContent></Card>
+          <Card sx={{ height: '100%', borderLeft: '4px solid #4caf50' }}>
+            <CardContent>
+              <Typography variant="body2" color="textSecondary">Total Released</Typography>
+              <Typography variant="h4" color="#4caf50">{formatCurrency(stats.totalReleased)}</Typography>
+            </CardContent>
+          </Card>
         </Grid>
         <Grid item xs={12} sm={6} md={3}>
-          <Card><CardContent>
-            <Typography variant="body2" color="textSecondary">Funding Requests</Typography>
-            <Typography variant="h4">{stats.fundingRequests}</Typography>
-            <Typography variant="caption" color="textSecondary">
-              {pendingFundingCount} awaiting funding ({approvedFundingCount} approved)
-            </Typography>
-          </CardContent></Card>
+          <Card sx={{ height: '100%', borderLeft: '4px solid #ff9800' }}>
+            <CardContent>
+              <Typography variant="body2" color="textSecondary">Funding Requests</Typography>
+              <Typography variant="h4" color="#ff9800">{stats.fundingRequests}</Typography>
+              <Typography variant="caption" color="textSecondary">
+                {pendingFundingCount} awaiting funding ({approvedFundingCount} approved)
+              </Typography>
+            </CardContent>
+          </Card>
         </Grid>
       </Grid>
 
@@ -771,7 +775,7 @@ const AccountantDashboard = () => {
                   <BarChart data={paymentTrends}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="date" />
-                    <YAxis />
+                    <YAxis tickFormatter={(value) => `K${value.toLocaleString()}`} />
                     <RechartsTooltip formatter={(value) => formatCurrency(value)} />
                     <Legend />
                     <Bar dataKey="amount" fill="#82ca9d" />
@@ -788,7 +792,7 @@ const AccountantDashboard = () => {
                   <BarChart data={projectSpending}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="name" />
-                    <YAxis />
+                    <YAxis tickFormatter={(value) => `K${value.toLocaleString()}`} />
                     <RechartsTooltip formatter={(value) => formatCurrency(value)} />
                     <Legend />
                     <Bar dataKey="amount" fill="#8884d8" />
@@ -930,7 +934,7 @@ const AccountantDashboard = () => {
         )}
       </Paper>
 
-      {/* ─── Funding Requests Table – with Recipient Phone ─────────── */}
+      {/* ─── Funding Requests Table ─────────────────────────────────── */}
       <Paper sx={{ p: 2, mb: 3 }}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <Typography variant="h6">Funding Requests</Typography>
@@ -944,7 +948,7 @@ const AccountantDashboard = () => {
               <TableCell>Recipient Phone</TableCell>
               <TableCell>Status</TableCell>
               <TableCell>Requested By</TableCell>
-              <TableCell>Action</TableCell>
+              <TableCell>Actions</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
