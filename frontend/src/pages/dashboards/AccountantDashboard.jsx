@@ -930,7 +930,7 @@ const AccountantDashboard = () => {
         )}
       </Paper>
 
-      {/* ─── Funding Requests Table ────────────────────────────────── */}
+      {/* ─── Funding Requests Table – with Recipient Phone ─────────── */}
       <Paper sx={{ p: 2, mb: 3 }}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <Typography variant="h6">Funding Requests</Typography>
@@ -941,73 +941,78 @@ const AccountantDashboard = () => {
             <TableRow>
               <TableCell>Project</TableCell>
               <TableCell>Amount</TableCell>
+              <TableCell>Recipient Phone</TableCell>
               <TableCell>Status</TableCell>
               <TableCell>Requested By</TableCell>
               <TableCell>Action</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
-            {fundingRequests.slice(0, 5).map(fr => (
-              <TableRow key={fr._id}>
-                <TableCell>{fr.project?.name || 'N/A'}</TableCell>
-                <TableCell>{formatCurrency(fr.amount)}</TableCell>
-                <TableCell>
-                  <Chip
-                    label={fr.status}
-                    color={fr.status === 'funded' ? 'info' : fr.status === 'approved' ? 'success' : fr.status === 'rejected' ? 'error' : 'warning'}
-                    size="small"
-                  />
-                </TableCell>
-                <TableCell>{fr.requestedBy?.name || 'N/A'}</TableCell>
-                <TableCell>
-                  {fr.status === 'pending' && canApprove && (
-                    <>
-                      <Button
-                        variant="contained"
-                        color="info"
-                        size="small"
-                        onClick={() => handleForwardFunding(fr._id)}
-                        sx={{ mr: 1 }}
-                      >
-                        Forward
-                      </Button>
+            {fundingRequests.slice(0, 5).map(fr => {
+              const phone = fr.requestedBy?.mobileMoneyNumber || fr.requestedBy?.phone || 'N/A';
+              return (
+                <TableRow key={fr._id}>
+                  <TableCell>{fr.project?.name || 'N/A'}</TableCell>
+                  <TableCell>{formatCurrency(fr.amount)}</TableCell>
+                  <TableCell>{phone}</TableCell>
+                  <TableCell>
+                    <Chip
+                      label={fr.status}
+                      color={fr.status === 'funded' ? 'info' : fr.status === 'approved' ? 'success' : fr.status === 'rejected' ? 'error' : 'warning'}
+                      size="small"
+                    />
+                  </TableCell>
+                  <TableCell>{fr.requestedBy?.name || 'N/A'}</TableCell>
+                  <TableCell>
+                    {fr.status === 'pending' && canApprove && (
+                      <>
+                        <Button
+                          variant="contained"
+                          color="info"
+                          size="small"
+                          onClick={() => handleForwardFunding(fr._id)}
+                          sx={{ mr: 1 }}
+                        >
+                          Forward
+                        </Button>
+                        <Button
+                          variant="contained"
+                          color="success"
+                          size="small"
+                          onClick={() => handleApproveFunding(fr._id)}
+                          sx={{ mr: 1 }}
+                        >
+                          Approve
+                        </Button>
+                        <Button
+                          variant="contained"
+                          color="error"
+                          size="small"
+                          onClick={() => handleRejectFunding(fr._id)}
+                        >
+                          Reject
+                        </Button>
+                      </>
+                    )}
+                    {fr.status === 'approved' && canFund && (
                       <Button
                         variant="contained"
                         color="success"
                         size="small"
-                        onClick={() => handleApproveFunding(fr._id)}
+                        startIcon={<AttachMoneyIcon />}
+                        onClick={() => handleFundClick(fr)}
                         sx={{ mr: 1 }}
                       >
-                        Approve
+                        Fund
                       </Button>
-                      <Button
-                        variant="contained"
-                        color="error"
-                        size="small"
-                        onClick={() => handleRejectFunding(fr._id)}
-                      >
-                        Reject
-                      </Button>
-                    </>
-                  )}
-                  {fr.status === 'approved' && canFund && (
-                    <Button
-                      variant="contained"
-                      color="success"
-                      size="small"
-                      startIcon={<AttachMoneyIcon />}
-                      onClick={() => handleFundClick(fr)}
-                      sx={{ mr: 1 }}
-                    >
-                      Fund
+                    )}
+                    <Button component={Link} to={`/funding/${fr._id}`} size="small" variant="outlined">
+                      View
                     </Button>
-                  )}
-                  <Button component={Link} to={`/funding/${fr._id}`} size="small" variant="outlined">
-                    View
-                  </Button>
-                </TableCell>
-              </TableRow>
-            ))}
+                  </TableCell>
+                </TableRow>
+              );
+            })}
           </TableBody>
         </Table>
       </Paper>
@@ -1071,7 +1076,7 @@ const AccountantDashboard = () => {
         </Table>
       </Paper>
 
-      {/* ─── Subcontracts Table – FIXED Fund button ─────────────────── */}
+      {/* Subcontracts Table */}
       <Paper sx={{ p: 2, mb: 3 }}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <Typography variant="h6">Subcontracts</Typography>
@@ -1106,7 +1111,6 @@ const AccountantDashboard = () => {
                   <Button component={Link} to={`/subcontracts/${s._id}`} size="small" variant="outlined" sx={{ mr: 1 }}>
                     View
                   </Button>
-                  {/* ─── Only show Fund for approved (not funded) ─── */}
                   {s.status === 'approved' && (
                     <Button
                       variant="contained"
