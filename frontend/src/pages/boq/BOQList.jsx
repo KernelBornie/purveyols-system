@@ -5,7 +5,6 @@ import {
   Button, IconButton, Tooltip, Alert, CircularProgress, Chip
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
-import VisibilityIcon from '@mui/icons-material/Visibility';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import CheckIcon from '@mui/icons-material/Check';
@@ -113,34 +112,62 @@ const BOQList = () => {
               </TableCell>
               <TableCell>{boq.createdBy?.name || '—'}</TableCell>
               <TableCell>
-                <Tooltip title="View">
-                  <IconButton component={Link} to={`/boq/${boq._id}`} size="small">
-                    <VisibilityIcon fontSize="small" />
-                  </IconButton>
-                </Tooltip>
+                {/* ─── View button (text) ──────────────────────────── */}
+                <Button
+                  component={Link}
+                  to={`/boq/${boq._id}`}
+                  size="small"
+                  variant="outlined"
+                  sx={{ mr: 0.5, minWidth: '40px', textTransform: 'none' }}
+                >
+                  View
+                </Button>
+
+                {/* ─── Edit ────────────────────────────────────────── */}
                 {canEdit && boq.status !== 'approved' && (
-                  <>
-                    <Tooltip title="Edit">
-                      <IconButton component={Link} to={`/boq/${boq._id}/edit`} size="small" color="primary">
-                        <EditIcon fontSize="small" />
-                      </IconButton>
-                    </Tooltip>
-                    <Tooltip title="Delete">
-                      <IconButton size="small" color="error" onClick={() => handleDelete(boq._id)}>
-                        <DeleteIcon fontSize="small" />
-                      </IconButton>
-                    </Tooltip>
-                  </>
+                  <Tooltip title="Edit">
+                    <IconButton
+                      component={Link}
+                      to={`/boq/${boq._id}/edit`}
+                      size="small"
+                      color="primary"
+                    >
+                      <EditIcon fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
                 )}
+
+                {/* ─── Delete ───────────────────────────────────────── */}
+                {canEdit && boq.status !== 'approved' && (
+                  <Tooltip title="Delete">
+                    <IconButton
+                      size="small"
+                      color="error"
+                      onClick={() => handleDelete(boq._id)}
+                    >
+                      <DeleteIcon fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
+                )}
+
+                {/* ─── Approve/Reject ──────────────────────────────── */}
                 {canApprove && boq.status === 'submitted' && (
                   <>
                     <Tooltip title="Approve">
-                      <IconButton size="small" color="success" onClick={() => handleApprove(boq._id)}>
+                      <IconButton
+                        size="small"
+                        color="success"
+                        onClick={() => handleApprove(boq._id)}
+                      >
                         <CheckIcon fontSize="small" />
                       </IconButton>
                     </Tooltip>
                     <Tooltip title="Reject">
-                      <IconButton size="small" color="error" onClick={() => handleReject(boq._id)}>
+                      <IconButton
+                        size="small"
+                        color="error"
+                        onClick={() => handleReject(boq._id)}
+                      >
                         <CloseIcon fontSize="small" />
                       </IconButton>
                     </Tooltip>
