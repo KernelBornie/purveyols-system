@@ -70,7 +70,17 @@ router.post('/:id/bid', auth, async (req, res) => {
 });
 
 // ─── Fetch fresh projects from external sources ──────────────────
-router.post('/fetch', auth, authorize('admin', 'director', 'procurement-officer'), async (req, res) => {
+// 👇 Expanded role list – now includes more roles
+router.post('/fetch', auth, authorize(
+  'admin',
+  'director',
+  'procurement-officer',
+  'accountant',
+  'civil-engineer',
+  'quantity-surveyor',
+  'foreman',
+  'safety-officer'
+), async (req, res) => {
   try {
     const { fetchFreshProjects } = require('../services/newsScraper');
     const results = await fetchFreshProjects();
