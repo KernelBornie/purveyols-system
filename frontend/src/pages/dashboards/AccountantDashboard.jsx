@@ -7,16 +7,17 @@ import {
   Chip, Paper, CircularProgress, Alert,
   FormControlLabel, Switch, Dialog, DialogTitle,
   DialogContent, DialogActions, Skeleton, IconButton, Tooltip,
-  TextField, FormGroup, FormControlLabel as MuiFormControlLabel, Checkbox,
-  Divider, List, ListItem, ListItemText, ListItemSecondaryAction
+  TextField, FormGroup, Checkbox, Divider, List, ListItem,
+  ListItemText, ListItemSecondaryAction, InputAdornment
 } from '@mui/material';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import FilterListIcon from '@mui/icons-material/FilterList';
+import SkipNextIcon from '@mui/icons-material/SkipNext';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip,
-  Legend, LineChart, Line, PieChart, Pie, Cell
+  Legend, LineChart, Line, PieChart, Pie, Cell, ResponsiveContainer
 } from 'recharts';
 import api from '../../api/axios';
 import WorkerSearch from '../../components/WorkerSearch';
@@ -79,7 +80,7 @@ const AccountantDashboard = () => {
     procurement: true,
     subcontracts: true,
   });
-  const [payAllSummary, setPayAllSummary] = useState([]);
+  const [payAllItems, setPayAllItems] = useState([]);
   const [payAllTotal, setPayAllTotal] = useState(0);
   const [payAllProcessing, setPayAllProcessing] = useState(false);
   const [payAllStatus, setPayAllStatus] = useState(null);
@@ -100,7 +101,7 @@ const AccountantDashboard = () => {
   const [subcontractFundOpen, setSubcontractFundOpen] = useState(false);
   const [subcontractToFund, setSubcontractToFund] = useState(null);
 
-  const COLORS = ['#8884d8', '#82ca9d', '#ffc658', '#ff8042', '#0088FE'];
+  const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042'];
 
   const initialLoadDone = useRef(false);
 
@@ -197,15 +198,14 @@ const AccountantDashboard = () => {
         .sort((a, b) => b.amount - a.amount)
         .slice(0, 5);
 
+      // ─── Payment Trends (last 14 days) ──────────────────────────
       const trends = {};
       const now = new Date();
-      for (let i = 6; i >= 0; i--) {
+      for (let i = 13; i >= 0; i--) {
         const d = new Date(now);
         d.setDate(d.getDate() - i);
-        if (d) {
-          const key = d.toISOString().split('T')[0];
-          trends[key] = 0;
-        }
+        const key = d.toISOString().split('T')[0];
+        trends[key] = 0;
       }
       completedPayments.forEach(p => {
         if (p.createdAt) {
@@ -213,7 +213,10 @@ const AccountantDashboard = () => {
           if (trends[date] !== undefined) trends[date] += p.amount;
         }
       });
-      const trendData = Object.entries(trends).map(([date, amount]) => ({ date, amount }));
+      const trendData = Object.entries(trends).map(([date, amount]) => ({ 
+        date: date.slice(5), // show MM-DD
+        amount 
+      }));
 
       const projectSpendingMap = {};
       completedPayments.forEach(p => {
@@ -413,7 +416,7 @@ const AccountantDashboard = () => {
   }, [refreshAll]);
 
   // ─── Pay All ──────────────────────────────────────────────────────
-  const buildPayAllSummary = useCallback(() => {
+  const buildPayAllItems = useCallback(() => {
     const items = [];
     let total = 0;
 
@@ -428,7 +431,8 @@ const AccountantDashboard = () => {
           amount: w.balance,
           phone: phone,
           id: w._id,
-          category: 'worker'
+          category: 'worker',
+          phoneEditable: true, // allow entering phone number
         });
         total += w.balance;
       });
@@ -445,7 +449,8 @@ const AccountantDashboard = () => {
           amount: f.amount,
           phone: phone,
           id: f._id,
-          category: 'funding'
+          category: 'funding',
+          phoneEditable: true,
         });
         total += f.amount;
       });
@@ -462,7 +467,8 @@ const AccountantDashboard = () => {
           amount: o.grandTotal || o.total || 0,
           phone: phone,
           id: o._id,
-          category: 'procurement'
+          category: 'procurement',
+          phoneEditable: true,
         });
         total += (o.grandTotal || o.total || 0);
       });
@@ -479,73 +485,74 @@ const AccountantDashboard = () => {
           amount: s.amount || 0,
           phone: phone,
           id: s._id,
-          category: 'subcontract'
+          category: 'subcontract',
+          phoneEditable: true,
         });
         total += (s.amount || 0);
       });
     }
 
-    setPayAllSummary(items);
+    setPayAllItems(items);
     setPayAllTotal(total);
   }, [workers, fundingRequests, procurementOrders, subcontracts, payAllFilters]);
 
   const handlePayAllOpen = () => {
     setPayAllFilters({ workers: true, funding: true, procurement: true, subcontracts: true });
-    setPayAllSummary([]);
+    setPayAllItems([]);
     setPayAllTotal(0);
     setPayAllStatus(null);
     setPayAllOpen(true);
-    // Build initial summary after state update
-    setTimeout(() => buildPayAllSummary(), 100);
   };
 
   useEffect(() => {
     if (payAllOpen) {
-      buildPayAllSummary();
+      buildPayAllItems();
     }
-  }, [payAllOpen, payAllFilters, buildPayAllSummary]);
+  }, [payAllOpen, payAllFilters, buildPayAllItems]);
+
+  // ─── Update phone number for an item ─────────────────────────────
+  const updatePhoneNumber = (index, newPhone) => {
+    const updated = [...payAllItems];
+    updated[index].phone = newPhone;
+    setPayAllItems(updated);
+  };
+
+  // ─── Skip an item ──────────────────────────────────────────────
+  const skipItem = (index) => {
+    const updated = payAllItems.filter((_, i) => i !== index);
+    setPayAllItems(updated);
+    // Recalculate total
+    const newTotal = updated.reduce((sum, item) => sum + item.amount, 0);
+    setPayAllTotal(newTotal);
+  };
 
   const handlePayAllConfirm = async () => {
-    if (payAllSummary.length === 0) {
-      alert('No pending items to pay.');
+    // Filter items with phone numbers
+    const validItems = payAllItems.filter(item => item.phone && item.phone.trim() !== '');
+    const skippedItems = payAllItems.filter(item => !item.phone || item.phone.trim() === '');
+
+    if (validItems.length === 0) {
+      alert('No valid recipients with phone numbers. Please enter phone numbers or skip items.');
       return;
     }
 
-    // Check for missing phone numbers
-    const missingPhone = payAllSummary.filter(item => !item.phone || item.phone.trim() === '');
-    if (missingPhone.length > 0) {
-      const names = missingPhone.map(item => `${item.name} (${item.type})`).join(', ');
-      if (!window.confirm(`The following recipients have no phone number: ${names}. Continue without them?`)) {
+    if (skippedItems.length > 0) {
+      if (!window.confirm(`${skippedItems.length} item(s) will be skipped because they have no phone number. Continue with ${validItems.length} valid item(s)?`)) {
         return;
       }
-      // Remove items without phone
-      const validItems = payAllSummary.filter(item => item.phone && item.phone.trim() !== '');
-      if (validItems.length === 0) {
-        alert('No valid recipients with phone numbers.');
-        return;
-      }
-      setPayAllSummary(validItems);
-      // Recalculate total
-      const newTotal = validItems.reduce((sum, i) => sum + i.amount, 0);
-      setPayAllTotal(newTotal);
-      // Proceed with valid items
     }
 
     setPayAllProcessing(true);
     setPayAllStatus(null);
 
     try {
-      const results = [];
       let successCount = 0;
       let failCount = 0;
+      const results = [];
 
-      // Process each item – individual payment calls
-      for (const item of payAllSummary) {
+      for (const item of validItems) {
         try {
-          let endpoint = '';
-          let payload = {};
           if (item.category === 'worker') {
-            // For workers, we use the payment endpoint
             await api.post('/api/payments', {
               workerId: item.id,
               amount: item.amount,
@@ -568,7 +575,7 @@ const AccountantDashboard = () => {
 
       setPayAllStatus({
         type: successCount > 0 && failCount === 0 ? 'success' : failCount > 0 ? 'warning' : 'error',
-        message: `Processed ${successCount} successful, ${failCount} failed.`
+        message: `Processed ${successCount} successful, ${failCount} failed. ${skippedItems.length} skipped.`
       });
       refreshAll();
     } catch (err) {
@@ -612,7 +619,7 @@ const AccountantDashboard = () => {
     return groups;
   }, [workers, projects]);
 
-  // ─── Stats for pending items across all categories ──────────────
+  // ─── Pending counts by category ──────────────────────────────────
   const pendingWorkersCount = pendingWorkers.length;
   const pendingFunding = fundingRequests.filter(f => f.status === 'approved').length;
   const pendingProcurement = procurementOrders.filter(o => o.status === 'approved').length;
@@ -742,54 +749,78 @@ const AccountantDashboard = () => {
 
       {showCharts && (
         <Grid container spacing={3} sx={{ mb: 3 }}>
+          {/* ─── Payment Trends ─────────────────────────────────────── */}
           {paymentTrends.length > 0 && (
             <Grid item xs={12} md={6}>
               <Paper sx={{ p: 2 }}>
-                <Typography variant="h6">Payment Trends</Typography>
-                <LineChart width={400} height={200} data={paymentTrends}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="date" />
-                  <YAxis />
-                  <RechartsTooltip />
-                  <Legend />
-                  <Line type="monotone" dataKey="amount" stroke="#82ca9d" />
-                </LineChart>
+                <Typography variant="h6" gutterBottom>Payment Trends</Typography>
+                <ResponsiveContainer width="100%" height={200}>
+                  <BarChart data={paymentTrends}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="date" />
+                    <YAxis />
+                    <RechartsTooltip formatter={(value) => formatCurrency(value)} />
+                    <Legend />
+                    <Bar dataKey="amount" fill="#82ca9d" />
+                  </BarChart>
+                </ResponsiveContainer>
               </Paper>
             </Grid>
           )}
+
+          {/* ─── Spending by Project ─────────────────────────────────── */}
           {projectSpending.length > 0 && (
             <Grid item xs={12} md={6}>
               <Paper sx={{ p: 2 }}>
-                <Typography variant="h6">Spending by Project</Typography>
-                <BarChart width={400} height={200} data={projectSpending}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="name" />
-                  <YAxis />
-                  <RechartsTooltip />
-                  <Legend />
-                  <Bar dataKey="amount" fill="#8884d8" />
-                </BarChart>
+                <Typography variant="h6" gutterBottom>Spending by Project</Typography>
+                <ResponsiveContainer width="100%" height={200}>
+                  <BarChart data={projectSpending}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="name" />
+                    <YAxis />
+                    <RechartsTooltip formatter={(value) => formatCurrency(value)} />
+                    <Legend />
+                    <Bar dataKey="amount" fill="#8884d8" />
+                  </BarChart>
+                </ResponsiveContainer>
               </Paper>
             </Grid>
           )}
+
+          {/* ─── Funding Approval Ratio (Pie/Donut) ────────────────── */}
           {approvalRatio.length > 0 && (
             <Grid item xs={12} md={6}>
               <Paper sx={{ p: 2 }}>
-                <Typography variant="h6">Funding Approval Ratio</Typography>
-                <PieChart width={300} height={200}>
-                  <Pie data={approvalRatio} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} label>
-                    {approvalRatio.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
-                  </Pie>
-                  <RechartsTooltip />
-                  <Legend />
-                </PieChart>
+                <Typography variant="h6" gutterBottom>Funding Approval Ratio</Typography>
+                <ResponsiveContainer width="100%" height={200}>
+                  <PieChart>
+                    <Pie
+                      data={approvalRatio}
+                      dataKey="value"
+                      nameKey="name"
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={40}
+                      outerRadius={80}
+                      label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                    >
+                      {approvalRatio.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <RechartsTooltip formatter={(value) => `${value} requests`} />
+                    <Legend />
+                  </PieChart>
+                </ResponsiveContainer>
               </Paper>
             </Grid>
           )}
+
+          {/* ─── Top Workers ─────────────────────────────────────────── */}
           {topWorkers.length > 0 && (
             <Grid item xs={12} md={6}>
               <Paper sx={{ p: 2 }}>
-                <Typography variant="h6">Top Workers (Earnings)</Typography>
+                <Typography variant="h6" gutterBottom>Top Workers (Earnings)</Typography>
                 <Table size="small">
                   <TableHead><TableRow><TableCell>Worker</TableCell><TableCell>Total Earned</TableCell></TableRow></TableHead>
                   <TableBody>
@@ -1120,19 +1151,19 @@ const AccountantDashboard = () => {
         <DialogContent dividers>
           <Typography variant="subtitle1" gutterBottom>Select categories to include:</Typography>
           <FormGroup row sx={{ mb: 2 }}>
-            <MuiFormControlLabel
+            <FormControlLabel
               control={<Checkbox checked={payAllFilters.workers} onChange={(e) => setPayAllFilters({ ...payAllFilters, workers: e.target.checked })} />}
               label={`Workers (${pendingWorkersCount})`}
             />
-            <MuiFormControlLabel
+            <FormControlLabel
               control={<Checkbox checked={payAllFilters.funding} onChange={(e) => setPayAllFilters({ ...payAllFilters, funding: e.target.checked })} />}
               label={`Funding Requests (${pendingFunding})`}
             />
-            <MuiFormControlLabel
+            <FormControlLabel
               control={<Checkbox checked={payAllFilters.procurement} onChange={(e) => setPayAllFilters({ ...payAllFilters, procurement: e.target.checked })} />}
               label={`Procurement Orders (${pendingProcurement})`}
             />
-            <MuiFormControlLabel
+            <FormControlLabel
               control={<Checkbox checked={payAllFilters.subcontracts} onChange={(e) => setPayAllFilters({ ...payAllFilters, subcontracts: e.target.checked })} />}
               label={`Subcontracts (${pendingSubcontracts})`}
             />
@@ -1140,27 +1171,53 @@ const AccountantDashboard = () => {
 
           <Divider sx={{ my: 2 }} />
 
-          {payAllSummary.length === 0 ? (
+          {payAllItems.length === 0 ? (
             <Typography variant="body2" color="textSecondary">No pending items match the selected filters.</Typography>
           ) : (
             <>
               <Typography variant="subtitle2" gutterBottom>
-                Summary – Total: {formatCurrency(payAllTotal)} ({payAllSummary.length} items)
+                Summary – Total: {formatCurrency(payAllTotal)} ({payAllItems.length} items)
+                {payAllItems.some(item => !item.phone || item.phone.trim() === '') && (
+                  <Chip label="Some phone numbers missing" color="warning" size="small" sx={{ ml: 1 }} />
+                )}
               </Typography>
               <List dense sx={{ maxHeight: 300, overflow: 'auto' }}>
-                {payAllSummary.map((item, idx) => (
-                  <ListItem key={idx} divider>
-                    <ListItemText
-                      primary={`${item.name} (${item.type})`}
-                      secondary={`Amount: ${formatCurrency(item.amount)} | Phone: ${item.phone || 'Missing'}`}
-                    />
-                    <ListItemSecondaryAction>
-                      <Typography variant="caption" color="textSecondary">
-                        {formatCurrency(item.amount)}
-                      </Typography>
-                    </ListItemSecondaryAction>
-                  </ListItem>
-                ))}
+                {payAllItems.map((item, idx) => {
+                  const hasPhone = item.phone && item.phone.trim() !== '';
+                  return (
+                    <ListItem key={idx} divider>
+                      <ListItemText
+                        primary={`${item.name} (${item.type})`}
+                        secondary={`Amount: ${formatCurrency(item.amount)}`}
+                      />
+                      <ListItemSecondaryAction sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <TextField
+                          size="small"
+                          placeholder="Phone number"
+                          value={item.phone || ''}
+                          onChange={(e) => updatePhoneNumber(idx, e.target.value)}
+                          InputProps={{
+                            startAdornment: hasPhone ? (
+                              <InputAdornment position="start">
+                                <Chip label="✓" color="success" size="small" />
+                              </InputAdornment>
+                            ) : null,
+                          }}
+                          sx={{ width: 160 }}
+                        />
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          color="error"
+                          startIcon={<SkipNextIcon />}
+                          onClick={() => skipItem(idx)}
+                        >
+                          Skip
+                        </Button>
+                      </ListItemSecondaryAction>
+                    </ListItem>
+                  );
+                })}
               </List>
             </>
           )}
@@ -1175,7 +1232,7 @@ const AccountantDashboard = () => {
             variant="contained"
             color="success"
             onClick={handlePayAllConfirm}
-            disabled={payAllProcessing || payAllSummary.length === 0}
+            disabled={payAllProcessing || payAllItems.length === 0}
             startIcon={<AttachMoneyIcon />}
           >
             {payAllProcessing ? 'Processing...' : `Pay All (${formatCurrency(payAllTotal)})`}
