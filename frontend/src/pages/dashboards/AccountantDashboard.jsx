@@ -11,7 +11,6 @@ import {
 } from '@mui/material';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
-import VisibilityIcon from '@mui/icons-material/Visibility';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip,
   Legend, LineChart, Line, PieChart, Pie, Cell
@@ -42,7 +41,7 @@ const AccountantDashboard = () => {
   const { user, updateUser } = useAuth();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [stats, setStats] = useState({ workers: 0, projects: 0, totalReleased: 0, fundingRequests: 0 });
+  const [stats, setStats] = useState({ workers: 0, projects: 0, totalReleased: 0, fundingRequests: 0, pendingFunding: 0 });
   const [workers, setWorkers] = useState([]);
   const [projects, setProjects] = useState([]);
   const [fundingRequests, setFundingRequests] = useState([]);
@@ -84,7 +83,6 @@ const AccountantDashboard = () => {
 
   const initialLoadDone = useRef(false);
 
-  // ─── Permission checks ──────────────────────────────────────────
   const canApprove = ['admin', 'director', 'accountant'].includes(user?.role);
   const canFund = ['admin', 'accountant'].includes(user?.role);
 
@@ -160,6 +158,7 @@ const AccountantDashboard = () => {
       const totalProjects = projectsData.length;
       const totalReleased = completedPayments.reduce((sum, p) => sum + (p.amount || 0), 0);
       const totalFunding = fundingData.length;
+      const pendingFunding = fundingData.filter(f => f.status === 'pending').length;
 
       const workerEarnings = {};
       completedPayments.forEach(p => {
@@ -208,10 +207,12 @@ const AccountantDashboard = () => {
       const pending = fundingData.filter(f => f.status === 'pending').length;
       const approved = fundingData.filter(f => f.status === 'approved').length;
       const rejected = fundingData.filter(f => f.status === 'rejected').length;
+      const funded = fundingData.filter(f => f.status === 'funded').length;
       const ratio = [
         { name: 'Pending', value: pending },
         { name: 'Approved', value: approved },
         { name: 'Rejected', value: rejected },
+        { name: 'Funded', value: funded },
       ].filter(item => item.value > 0);
 
       const report = {
@@ -221,7 +222,13 @@ const AccountantDashboard = () => {
         totalAmountReleased: totalReleased,
       };
 
-      const newStats = { workers: totalWorkers, projects: totalProjects, totalReleased, fundingRequests: totalFunding };
+      const newStats = { 
+        workers: totalWorkers, 
+        projects: totalProjects, 
+        totalReleased, 
+        fundingRequests: totalFunding,
+        pendingFunding: pendingFunding
+      };
       setStats(newStats);
       setWorkers(workersWithBalance);
       setProjects(projectsData);
@@ -280,7 +287,7 @@ const AccountantDashboard = () => {
     }
   }, []);
 
-  // ─── Funding request approve/reject handlers ────────────────────
+  // ─── Funding request handlers ────────────────────────────────────
   const handleApproveFunding = async (id) => {
     try {
       await api.put(`/api/funding-requests/${id}/approve`);
@@ -303,7 +310,6 @@ const AccountantDashboard = () => {
     }
   };
 
-  // ─── Forward to Director ──────────────────────────────────────────
   const handleForwardFunding = async (id) => {
     try {
       await api.put(`/api/funding-requests/${id}/forward`);
@@ -314,7 +320,7 @@ const AccountantDashboard = () => {
     }
   };
 
-  // ─── Procurement action handlers ──────────────────────────────
+  // ─── Procurement handlers ──────────────────────────────────────
   const handleFinalApproveProcurement = async (id) => {
     try {
       await api.put(`/api/procurement/${id}/final-approve`);
@@ -428,7 +434,6 @@ const AccountantDashboard = () => {
   const totalPending = useMemo(() => pendingWorkers.reduce((sum, w) => sum + (w.balance || 0), 0), [pendingWorkers]);
   const pendingFunding = useMemo(() => fundingRequests.filter(f => f.status === 'pending').length, [fundingRequests]);
 
-  // ─── Group workers by project ──────────────────────────────────
   const workersByProject = useMemo(() => {
     const groups = {};
     workers.forEach(w => {
@@ -540,7 +545,7 @@ const AccountantDashboard = () => {
       </Box>
 
       <Typography variant="caption" display="block" sx={{ mb: 2 }}>
-        Total pending: {formatCurrency(totalPending)} ({pendingWorkers.length} workers) | {pendingFunding} pending funding requests
+        Total pending: {formatCurrency(totalPending)} ({pendingWorkers.length} workers) | {stats.pendingFunding} pending funding requests
       </Typography>
 
       <Grid container spacing={3} sx={{ mb: 3 }}>
@@ -566,6 +571,7 @@ const AccountantDashboard = () => {
           <Card><CardContent>
             <Typography variant="body2" color="textSecondary">Funding Requests</Typography>
             <Typography variant="h4">{stats.fundingRequests}</Typography>
+            <Typography variant="caption" color="textSecondary">{stats.pendingFunding} pending</Typography>
           </CardContent></Card>
         </Grid>
       </Grid>
@@ -663,11 +669,9 @@ const AccountantDashboard = () => {
                 <TableCell>{formatCurrency(p.budget)}</TableCell>
                 <TableCell>{p.createdBy?.name || 'N/A'}</TableCell>
                 <TableCell>
-                  <Tooltip title="View">
-                    <IconButton component={Link} to={`/projects/${p._id}`} size="small" color="info">
-                      <VisibilityIcon fontSize="small" />
-                    </IconButton>
-                  </Tooltip>
+                  <Button component={Link} to={`/projects/${p._id}`} size="small" variant="outlined">
+                    View
+                  </Button>
                 </TableCell>
               </TableRow>
             ))}
@@ -711,11 +715,9 @@ const AccountantDashboard = () => {
                       <TableCell>{w.enrolledBy?.name || 'N/A'}</TableCell>
                       <TableCell>{formatCurrency(w.balance || 0)}</TableCell>
                       <TableCell>
-                        <Tooltip title="View">
-                          <IconButton component={Link} to={`/workers/${w._id}`} size="small" color="info">
-                            <VisibilityIcon fontSize="small" />
-                          </IconButton>
-                        </Tooltip>
+                        <Button component={Link} to={`/workers/${w._id}`} size="small" variant="outlined">
+                          View
+                        </Button>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -726,7 +728,7 @@ const AccountantDashboard = () => {
         )}
       </Paper>
 
-      {/* ─── Funding Requests Table (with Forward, Approve, Reject, Fund) ─── */}
+      {/* ─── Funding Requests Table ────────────────────────────────── */}
       <Paper sx={{ p: 2, mb: 3 }}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <Typography variant="h6">Funding Requests</Typography>
@@ -756,7 +758,6 @@ const AccountantDashboard = () => {
                 </TableCell>
                 <TableCell>{fr.requestedBy?.name || 'N/A'}</TableCell>
                 <TableCell>
-                  {/* ─── Forward / Approve / Reject for pending ─── */}
                   {fr.status === 'pending' && canApprove && (
                     <>
                       <Button
@@ -787,7 +788,6 @@ const AccountantDashboard = () => {
                       </Button>
                     </>
                   )}
-                  {/* ─── Fund for approved ─── */}
                   {fr.status === 'approved' && canFund && (
                     <Button
                       variant="contained"
@@ -795,16 +795,14 @@ const AccountantDashboard = () => {
                       size="small"
                       startIcon={<AttachMoneyIcon />}
                       onClick={() => handleFundClick(fr)}
+                      sx={{ mr: 1 }}
                     >
                       Fund
                     </Button>
                   )}
-                  {/* ─── View ─── */}
-                  <Tooltip title="View">
-                    <IconButton component={Link} to={`/funding/${fr._id}`} size="small" color="info">
-                      <VisibilityIcon fontSize="small" />
-                    </IconButton>
-                  </Tooltip>
+                  <Button component={Link} to={`/funding/${fr._id}`} size="small" variant="outlined">
+                    View
+                  </Button>
                 </TableCell>
               </TableRow>
             ))}
@@ -836,18 +834,16 @@ const AccountantDashboard = () => {
                 <TableCell><Chip label={o.status} color={o.status === 'funded' ? 'success' : o.status === 'procurement_approved' ? 'info' : 'warning'} size="small" /></TableCell>
                 <TableCell>{o.createdBy?.name}</TableCell>
                 <TableCell>
-                  <Tooltip title="View">
-                    <IconButton component={Link} to={`/procurement/${o._id}`} size="small" color="info">
-                      <VisibilityIcon fontSize="small" />
-                    </IconButton>
-                  </Tooltip>
+                  <Button component={Link} to={`/procurement/${o._id}`} size="small" variant="outlined" sx={{ mr: 1 }}>
+                    View
+                  </Button>
                   {o.status === 'procurement_approved' && (
                     <Button
                       variant="contained"
                       color="primary"
                       size="small"
                       onClick={() => handleFinalApproveProcurement(o._id)}
-                      sx={{ ml: 1 }}
+                      sx={{ mr: 1 }}
                     >
                       FINAL APPROVE
                     </Button>
@@ -905,11 +901,9 @@ const AccountantDashboard = () => {
                   />
                 </TableCell>
                 <TableCell>
-                  <Tooltip title="View">
-                    <IconButton component={Link} to={`/subcontracts/${s._id}`} size="small" color="info">
-                      <VisibilityIcon fontSize="small" />
-                    </IconButton>
-                  </Tooltip>
+                  <Button component={Link} to={`/subcontracts/${s._id}`} size="small" variant="outlined" sx={{ mr: 1 }}>
+                    View
+                  </Button>
                   {s.status !== 'completed' && s.status !== 'terminated' && (
                     <Button
                       variant="contained"
