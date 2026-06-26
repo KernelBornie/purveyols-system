@@ -23,6 +23,8 @@ const DirectorDashboard = () => {
     totalWorkers: 0,
     totalSubcontracts: 0,
     pendingProcurement: 0,
+    visitors: 0,
+    todayVisitors: 0,
   });
   const [projects, setProjects] = useState([]);
   const [fundingRequests, setFundingRequests] = useState([]);
@@ -33,18 +35,22 @@ const DirectorDashboard = () => {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [projectsRes, fundingRes, boqRes, procRes, workersRes] = await Promise.all([
+      const [projectsRes, fundingRes, boqRes, procRes, workersRes, visitorsRes] = await Promise.all([
         api.get('/api/projects'),
         api.get('/api/funding-requests'),
         api.get('/api/boq'),
         api.get('/api/procurement'),
         api.get('/api/workers'),
+        api.get('/api/visitors'),
       ]);
       const projectsData = Array.isArray(projectsRes.data) ? projectsRes.data : [];
       const fundingData = Array.isArray(fundingRes.data) ? fundingRes.data : [];
       const boqData = Array.isArray(boqRes.data) ? boqRes.data : [];
       const procData = Array.isArray(procRes.data) ? procRes.data : [];
       const workersData = Array.isArray(workersRes.data) ? workersRes.data : [];
+      const visitorsData = Array.isArray(visitorsRes.data) ? visitorsRes.data : [];
+      const totalVisitors = visitorsData.length;
+      const todayVisitors = visitorsData.filter(v => new Date(v.checkIn).toDateString() === new Date().toDateString()).length;
 
       setProjects(projectsData);
       setFundingRequests(fundingData);
@@ -67,6 +73,8 @@ const DirectorDashboard = () => {
         totalWorkers: workersData.length,
         totalSubcontracts: 0,
         pendingProcurement,
+        visitors: totalVisitors,
+        todayVisitors,
       });
     } catch (err) { console.error(err); } finally { setLoading(false); }
   };
@@ -177,9 +185,9 @@ const DirectorDashboard = () => {
             </Grid>
           </Paper>
 
-          {/* Stats Cards – Professional */}
+          {/* Stats Cards – Professional (5 cards) */}
           <Grid container spacing={3} sx={{ mb: 3 }}>
-            <Grid item xs={12} sm={6} md={3}>
+            <Grid item xs={12} sm={6} md={2.4}>
               <Card sx={{ height: '100%', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', color: 'white' }}>
                 <CardContent>
                   <Typography variant="body2" sx={{ opacity: 0.8 }}>Total Projects</Typography>
@@ -188,7 +196,7 @@ const DirectorDashboard = () => {
                 </CardContent>
               </Card>
             </Grid>
-            <Grid item xs={12} sm={6} md={3}>
+            <Grid item xs={12} sm={6} md={2.4}>
               <Card sx={{ height: '100%', borderLeft: '4px solid #ff9800' }}>
                 <CardContent>
                   <Typography variant="body2" color="textSecondary">Funding Requests</Typography>
@@ -197,7 +205,7 @@ const DirectorDashboard = () => {
                 </CardContent>
               </Card>
             </Grid>
-            <Grid item xs={12} sm={6} md={3}>
+            <Grid item xs={12} sm={6} md={2.4}>
               <Card sx={{ height: '100%', borderLeft: '4px solid #2196f3' }}>
                 <CardContent>
                   <Typography variant="body2" color="textSecondary">BOQs</Typography>
@@ -206,12 +214,21 @@ const DirectorDashboard = () => {
                 </CardContent>
               </Card>
             </Grid>
-            <Grid item xs={12} sm={6} md={3}>
+            <Grid item xs={12} sm={6} md={2.4}>
               <Card sx={{ height: '100%', borderLeft: '4px solid #4caf50' }}>
                 <CardContent>
                   <Typography variant="body2" color="textSecondary">Workers</Typography>
                   <Typography variant="h4" color="#4caf50">{stats.totalWorkers}</Typography>
                   <Typography variant="caption" color="textSecondary">enrolled</Typography>
+                </CardContent>
+              </Card>
+            </Grid>
+            <Grid item xs={12} sm={6} md={2.4}>
+              <Card sx={{ height: '100%', borderLeft: '4px solid #9c27b0' }}>
+                <CardContent>
+                  <Typography variant="body2" color="textSecondary">Visitors</Typography>
+                  <Typography variant="h4" color="#9c27b0">{stats.visitors}</Typography>
+                  <Typography variant="caption" color="textSecondary">{stats.todayVisitors} today</Typography>
                 </CardContent>
               </Card>
             </Grid>

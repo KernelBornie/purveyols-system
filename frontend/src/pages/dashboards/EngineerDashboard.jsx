@@ -33,20 +33,26 @@ const EngineerDashboard = () => {
     activeProjects: 0,
     boqs: 0,
     approvedBOQs: 0,
+    visitors: 0,
+    todayVisitors: 0,
   });
   const [workersByProject, setWorkersByProject] = useState([]);
 
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [projectsRes, workersRes, boqsRes] = await Promise.all([
+      const [projectsRes, workersRes, boqsRes, visitorsRes] = await Promise.all([
         api.get('/api/projects'),
         api.get('/api/workers'),
         api.get('/api/boq'),
+        api.get('/api/visitors'),
       ]);
       const projectsData = Array.isArray(projectsRes.data) ? projectsRes.data : [];
       const workersData = Array.isArray(workersRes.data) ? workersRes.data : [];
       const boqsData = Array.isArray(boqsRes.data) ? boqsRes.data : [];
+      const visitorsData = Array.isArray(visitorsRes.data) ? visitorsRes.data : [];
+      const totalVisitors = visitorsData.length;
+      const todayVisitors = visitorsData.filter(v => new Date(v.checkIn).toDateString() === new Date().toDateString()).length;
 
       setProjects(projectsData);
       setWorkers(workersData);
@@ -61,6 +67,8 @@ const EngineerDashboard = () => {
         activeProjects,
         boqs: boqsData.length,
         approvedBOQs,
+        visitors: totalVisitors,
+        todayVisitors,
       });
 
       // ─── Workers by project (top 5) ──────────────────────────────
@@ -172,8 +180,9 @@ const EngineerDashboard = () => {
             <Grid item xs={12} sm={6} md={2.4}>
               <Card sx={{ height: '100%', borderLeft: '4px solid #9c27b0' }}>
                 <CardContent>
-                  <Typography variant="body2" color="textSecondary">Active Projects</Typography>
-                  <Typography variant="h4" color="#9c27b0">{stats.activeProjects}</Typography>
+                  <Typography variant="body2" color="textSecondary">Visitors</Typography>
+                  <Typography variant="h4" color="#9c27b0">{stats.visitors}</Typography>
+                  <Typography variant="caption" color="textSecondary">{stats.todayVisitors} today</Typography>
                 </CardContent>
               </Card>
             </Grid>

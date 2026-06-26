@@ -26,6 +26,8 @@ const ProcurementDashboard = () => {
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [orders, setOrders] = useState([]);
+  const [visitors, setVisitors] = useState(0);
+  const [todayVisitors, setTodayVisitors] = useState(0);
   const [stats, setStats] = useState({
     total: 0,
     pending: 0,
@@ -55,13 +57,20 @@ const ProcurementDashboard = () => {
   const canFund = ['admin', 'accountant'].includes(userRole);
   const canEdit = ['admin', 'director', 'procurement-officer', 'civil-engineer', 'quantity-surveyor', 'driver', 'safety-officer', 'accountant', 'foreman'].includes(userRole);
 
-  const fetchOrders = useCallback(async () => {
+  const fetchData = useCallback(async () => {
     setLoading(true);
     setMessage(null);
     try {
-      const res = await api.get('/api/procurement');
-      const data = Array.isArray(res.data) ? res.data : (res.data?.data || []);
+      const [ordersRes, visitorsRes] = await Promise.all([
+        api.get('/api/procurement'),
+        api.get('/api/visitors'),
+      ]);
+      const data = Array.isArray(ordersRes.data) ? ordersRes.data : (ordersRes.data?.data || []);
       setOrders(data);
+
+      const visitorsData = Array.isArray(visitorsRes.data) ? visitorsRes.data : [];
+      setVisitors(visitorsData.length);
+      setTodayVisitors(visitorsData.filter(v => new Date(v.checkIn).toDateString() === new Date().toDateString()).length);
 
       const total = data.length;
       const pending = data.filter(o => o.status === 'pending' || o.status === 'procurement_approved').length;
@@ -83,15 +92,15 @@ const ProcurementDashboard = () => {
         averageOrder,
       });
     } catch (err) {
-      setMessage({ type: 'error', text: err.response?.data?.error || 'Failed to load orders' });
+      setMessage({ type: 'error', text: err.response?.data?.error || 'Failed to load data' });
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    fetchOrders();
-  }, [fetchOrders]);
+    fetchData();
+  }, [fetchData]);
 
   // ─── Chart data ─────────────────────────────────────────────────────
   const statusData = [
@@ -171,7 +180,7 @@ const ProcurementDashboard = () => {
         setMessage({ type: 'success', text: 'Order updated!' });
       }
       setEditOpen(false);
-      fetchOrders();
+      fetchData();
     } catch (err) {
       setMessage({ type: 'error', text: err.response?.data?.error || 'Operation failed' });
     }
@@ -200,7 +209,7 @@ const ProcurementDashboard = () => {
     try {
       await api.put(`/api/procurement/${id}/procurement-approve`);
       setMessage({ type: 'success', text: 'Order approved by Procurement Officer!' });
-      fetchOrders();
+      fetchData();
     } catch (err) {
       setMessage({ type: 'error', text: err.response?.data?.error || 'Approval failed' });
     }
@@ -211,7 +220,7 @@ const ProcurementDashboard = () => {
     try {
       await api.put(`/api/procurement/${id}/procurement-reject`);
       setMessage({ type: 'success', text: 'Order rejected.' });
-      fetchOrders();
+      fetchData();
     } catch (err) {
       setMessage({ type: 'error', text: err.response?.data?.error || 'Rejection failed' });
     }
@@ -221,7 +230,7 @@ const ProcurementDashboard = () => {
     try {
       await api.put(`/api/procurement/${id}/fund`);
       setMessage({ type: 'success', text: 'Order funded!' });
-      fetchOrders();
+      fetchData();
     } catch (err) {
       setMessage({ type: 'error', text: err.response?.data?.error || 'Funding failed' });
     }
@@ -256,7 +265,7 @@ const ProcurementDashboard = () => {
     <Box>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
         <Typography variant="h4">Procurement Dashboard</Typography>
-        <Button variant="contained" startIcon={<RefreshIcon />} onClick={fetchOrders}>
+        <Button variant="contained" startIcon={<RefreshIcon />} onClick={fetchData}>
           Refresh
         </Button>
       </Box>
@@ -267,9 +276,9 @@ const ProcurementDashboard = () => {
 
       <Typography variant="h6" gutterBottom>Acquire Materials & Services</Typography>
 
-      {/* ─── Stats Cards ───────────────────────────────────────────── */}
+      {/* ─── Stats Cards (6 cards per row) ─────────────────────────── */}
       <Grid container spacing={3} sx={{ mb: 3 }}>
-        <Grid item xs={12} sm={6} md={2.4}>
+        <Grid item xs={12} sm={6} md={2}>
           <Card sx={{ height: '100%', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', color: 'white' }}>
             <CardContent>
               <Typography variant="body2" sx={{ opacity: 0.8 }}>Total Orders</Typography>
@@ -277,7 +286,7 @@ const ProcurementDashboard = () => {
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={12} sm={6} md={2.4}>
+        <Grid item xs={12} sm={6} md={2}>
           <Card sx={{ height: '100%', borderLeft: '4px solid #ff9800' }}>
             <CardContent>
               <Typography variant="body2" color="textSecondary">Pending</Typography>
@@ -285,7 +294,7 @@ const ProcurementDashboard = () => {
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={12} sm={6} md={2.4}>
+        <Grid item xs={12} sm={6} md={2}>
           <Card sx={{ height: '100%', borderLeft: '4px solid #2196f3' }}>
             <CardContent>
               <Typography variant="body2" color="textSecondary">Funded</Typography>
@@ -293,7 +302,7 @@ const ProcurementDashboard = () => {
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={12} sm={6} md={2.4}>
+        <Grid item xs={12} sm={6} md={2}>
           <Card sx={{ height: '100%', borderLeft: '4px solid #4caf50' }}>
             <CardContent>
               <Typography variant="body2" color="textSecondary">Purchased</Typography>
@@ -301,12 +310,21 @@ const ProcurementDashboard = () => {
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={12} sm={6} md={2.4}>
+        <Grid item xs={12} sm={6} md={2}>
           <Card sx={{ height: '100%', borderLeft: '4px solid #9c27b0' }}>
             <CardContent>
               <Typography variant="body2" color="textSecondary">Total Spent</Typography>
               <Typography variant="h4" color="#9c27b0">{formatCurrency(stats.totalSpent)}</Typography>
               <Typography variant="caption" display="block">Avg: {formatCurrency(stats.averageOrder)}</Typography>
+            </CardContent>
+          </Card>
+        </Grid>
+        <Grid item xs={12} sm={6} md={2}>
+          <Card sx={{ height: '100%', borderLeft: '4px solid #607d8b' }}>
+            <CardContent>
+              <Typography variant="body2" color="textSecondary">Visitors</Typography>
+              <Typography variant="h4" color="#607d8b">{visitors}</Typography>
+              <Typography variant="caption" color="textSecondary">{todayVisitors} today</Typography>
             </CardContent>
           </Card>
         </Grid>

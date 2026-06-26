@@ -29,19 +29,25 @@ const QuantitySurveyorDashboard = () => {
     approved: 0,
     sitePlans: 0,
     surveyData: 0,
+    visitors: 0,
+    todayVisitors: 0,
   });
 
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [projectsRes, boqsRes, sitePlansRes] = await Promise.all([
+      const [projectsRes, boqsRes, sitePlansRes, visitorsRes] = await Promise.all([
         api.get('/api/projects'),
         api.get('/api/boq'),
         api.get('/api/site-plans'),
+        api.get('/api/visitors'),
       ]);
       const projectsData = Array.isArray(projectsRes.data) ? projectsRes.data : [];
       const boqsData = Array.isArray(boqsRes.data) ? boqsRes.data : [];
       const plansData = Array.isArray(sitePlansRes.data) ? sitePlansRes.data : [];
+      const visitorsData = Array.isArray(visitorsRes.data) ? visitorsRes.data : [];
+      const totalVisitors = visitorsData.length;
+      const todayVisitors = visitorsData.filter(v => new Date(v.checkIn).toDateString() === new Date().toDateString()).length;
 
       setProjects(projectsData);
       setBoqs(boqsData);
@@ -57,6 +63,8 @@ const QuantitySurveyorDashboard = () => {
         approved: boqsData.filter(b => b.status === 'approved').length,
         sitePlans: plansData.filter(p => p.type !== 'survey_data').length,
         surveyData: survey.length,
+        visitors: totalVisitors,
+        todayVisitors,
       });
     } catch (err) { console.error(err); } finally { setLoading(false); }
   };
@@ -108,9 +116,9 @@ const QuantitySurveyorDashboard = () => {
         <CircularProgress />
       ) : (
         <>
-          {/* ─── Professional Stats Cards ─────────────────────────────── */}
+          {/* ─── Professional Stats Cards (6 cards) ───────────────────── */}
           <Grid container spacing={3} sx={{ mb: 3 }}>
-            <Grid item xs={12} sm={6} md={2.4}>
+            <Grid item xs={12} sm={6} md={2}>
               <Card sx={{ height: '100%', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', color: 'white' }}>
                 <CardContent>
                   <Typography variant="body2" sx={{ opacity: 0.8 }}>Total Projects</Typography>
@@ -118,7 +126,7 @@ const QuantitySurveyorDashboard = () => {
                 </CardContent>
               </Card>
             </Grid>
-            <Grid item xs={12} sm={6} md={2.4}>
+            <Grid item xs={12} sm={6} md={2}>
               <Card sx={{ height: '100%', borderLeft: '4px solid #2196f3' }}>
                 <CardContent>
                   <Typography variant="body2" color="textSecondary">BOQs Created</Typography>
@@ -126,7 +134,7 @@ const QuantitySurveyorDashboard = () => {
                 </CardContent>
               </Card>
             </Grid>
-            <Grid item xs={12} sm={6} md={2.4}>
+            <Grid item xs={12} sm={6} md={2}>
               <Card sx={{ height: '100%', borderLeft: '4px solid #ff9800' }}>
                 <CardContent>
                   <Typography variant="body2" color="textSecondary">Submitted BOQs</Typography>
@@ -135,7 +143,7 @@ const QuantitySurveyorDashboard = () => {
                 </CardContent>
               </Card>
             </Grid>
-            <Grid item xs={12} sm={6} md={2.4}>
+            <Grid item xs={12} sm={6} md={2}>
               <Card sx={{ height: '100%', borderLeft: '4px solid #4caf50' }}>
                 <CardContent>
                   <Typography variant="body2" color="textSecondary">Site Plans</Typography>
@@ -143,11 +151,20 @@ const QuantitySurveyorDashboard = () => {
                 </CardContent>
               </Card>
             </Grid>
-            <Grid item xs={12} sm={6} md={2.4}>
+            <Grid item xs={12} sm={6} md={2}>
               <Card sx={{ height: '100%', borderLeft: '4px solid #9c27b0' }}>
                 <CardContent>
                   <Typography variant="body2" color="textSecondary">Survey Data</Typography>
                   <Typography variant="h4" color="#9c27b0">{stats.surveyData}</Typography>
+                </CardContent>
+              </Card>
+            </Grid>
+            <Grid item xs={12} sm={6} md={2}>
+              <Card sx={{ height: '100%', borderLeft: '4px solid #607d8b' }}>
+                <CardContent>
+                  <Typography variant="body2" color="textSecondary">Visitors</Typography>
+                  <Typography variant="h4" color="#607d8b">{stats.visitors}</Typography>
+                  <Typography variant="caption" color="textSecondary">{stats.todayVisitors} today</Typography>
                 </CardContent>
               </Card>
             </Grid>

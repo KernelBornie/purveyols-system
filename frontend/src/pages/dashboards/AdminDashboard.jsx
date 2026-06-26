@@ -16,18 +16,35 @@ const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d'
 const AdminDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [users, setUsers] = useState([]);
-  const [stats, setStats] = useState({ users: 0, roles: {} });
+  const [stats, setStats] = useState({
+    users: 0,
+    roles: {},
+    visitors: 0,
+    todayVisitors: 0,
+  });
 
   const fetchData = async () => {
     setLoading(true);
     try {
-      const res = await api.get('/api/users');
-      setUsers(res.data);
+      const [usersRes, visitorsRes] = await Promise.all([
+        api.get('/api/users'),
+        api.get('/api/visitors'),
+      ]);
+      setUsers(usersRes.data);
       const roles = {};
-      res.data.forEach(u => {
+      usersRes.data.forEach(u => {
         roles[u.role] = (roles[u.role] || 0) + 1;
       });
-      setStats({ users: res.data.length, roles });
+      const visitorsData = Array.isArray(visitorsRes.data) ? visitorsRes.data : [];
+      const totalVisitors = visitorsData.length;
+      const todayVisitors = visitorsData.filter(v => new Date(v.checkIn).toDateString() === new Date().toDateString()).length;
+
+      setStats({
+        users: usersRes.data.length,
+        roles,
+        visitors: totalVisitors,
+        todayVisitors,
+      });
     } catch (err) {
       console.error(err);
     } finally {
@@ -63,9 +80,9 @@ const AdminDashboard = () => {
         <CircularProgress />
       ) : (
         <>
-          {/* ─── Professional Stats Cards ─────────────────────────────── */}
+          {/* ─── Professional Stats Cards (5 cards per row) ──────────── */}
           <Grid container spacing={3} sx={{ mb: 3 }}>
-            <Grid item xs={12} sm={6} md={3}>
+            <Grid item xs={12} sm={6} md={2.4}>
               <Card sx={{ height: '100%', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', color: 'white' }}>
                 <CardContent>
                   <Typography variant="body2" sx={{ opacity: 0.8 }}>Total Users</Typography>
@@ -73,7 +90,7 @@ const AdminDashboard = () => {
                 </CardContent>
               </Card>
             </Grid>
-            <Grid item xs={12} sm={6} md={3}>
+            <Grid item xs={12} sm={6} md={2.4}>
               <Card sx={{ height: '100%', borderLeft: '4px solid #4caf50' }}>
                 <CardContent>
                   <Typography variant="body2" color="textSecondary">Active Users</Typography>
@@ -86,7 +103,7 @@ const AdminDashboard = () => {
                 </CardContent>
               </Card>
             </Grid>
-            <Grid item xs={12} sm={6} md={3}>
+            <Grid item xs={12} sm={6} md={2.4}>
               <Card sx={{ height: '100%', borderLeft: '4px solid #2196f3' }}>
                 <CardContent>
                   <Typography variant="body2" color="textSecondary">Roles</Typography>
@@ -95,7 +112,7 @@ const AdminDashboard = () => {
                 </CardContent>
               </Card>
             </Grid>
-            <Grid item xs={12} sm={6} md={3}>
+            <Grid item xs={12} sm={6} md={2.4}>
               <Card sx={{ height: '100%', borderLeft: '4px solid #ff9800' }}>
                 <CardContent>
                   <Typography variant="body2" color="textSecondary">Most Common Role</Typography>
@@ -105,6 +122,15 @@ const AdminDashboard = () => {
                   <Typography variant="caption" color="textSecondary">
                     {Object.entries(stats.roles).sort((a, b) => b[1] - a[1])[0]?.[1] || 0} users
                   </Typography>
+                </CardContent>
+              </Card>
+            </Grid>
+            <Grid item xs={12} sm={6} md={2.4}>
+              <Card sx={{ height: '100%', borderLeft: '4px solid #9c27b0' }}>
+                <CardContent>
+                  <Typography variant="body2" color="textSecondary">Visitors</Typography>
+                  <Typography variant="h4" color="#9c27b0">{stats.visitors}</Typography>
+                  <Typography variant="caption" color="textSecondary">{stats.todayVisitors} today</Typography>
                 </CardContent>
               </Card>
             </Grid>
