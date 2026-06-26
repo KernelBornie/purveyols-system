@@ -2,14 +2,14 @@ import React, { useState, useEffect } from 'react';
 import DeliveryNote from "../../components/DeliveryNote";
 import {
   Box, Typography, Grid, Card, CardContent, Button, Table, TableHead, TableRow, TableCell, TableBody,
-  Chip, Paper, CircularProgress, IconButton, Tooltip
+  Chip, Paper, CircularProgress, Tooltip
 } from '@mui/material';
 import { Link } from 'react-router-dom';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, PieChart, Pie, Cell } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 import RefreshIcon from '@mui/icons-material/Refresh';
-import EditIcon from '@mui/icons-material/Edit';
-import VisibilityIcon from '@mui/icons-material/Visibility';
 import api from '../../api/axios';
+
+const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8'];
 
 const DirectorDashboard = () => {
   const [loading, setLoading] = useState(true);
@@ -22,6 +22,7 @@ const DirectorDashboard = () => {
     pendingBOQs: 0,
     totalWorkers: 0,
     totalSubcontracts: 0,
+    pendingProcurement: 0,
   });
   const [projects, setProjects] = useState([]);
   const [fundingRequests, setFundingRequests] = useState([]);
@@ -54,6 +55,7 @@ const DirectorDashboard = () => {
       const activeProjects = projectsData.filter(p => p.status === 'active').length;
       const pendingFunding = fundingData.filter(f => f.status === 'pending').length;
       const pendingBOQs = boqData.filter(b => b.status === 'draft' || b.status === 'submitted').length;
+      const pendingProcurement = procData.filter(o => o.status === 'procurement_approved').length;
 
       setStats({
         totalProjects: projectsData.length,
@@ -64,6 +66,7 @@ const DirectorDashboard = () => {
         pendingBOQs,
         totalWorkers: workersData.length,
         totalSubcontracts: 0,
+        pendingProcurement,
       });
     } catch (err) { console.error(err); } finally { setLoading(false); }
   };
@@ -114,14 +117,21 @@ const DirectorDashboard = () => {
     } catch (err) { alert('Final approval failed'); }
   };
 
+  const formatCurrency = (amount) => {
+    return new Intl.NumberFormat('en-ZM', { style: 'currency', currency: 'ZMW' }).format(amount || 0);
+  };
+
   const projectStatusData = [
     { name: 'Planning', value: projects.filter(p => p.status === 'planning').length },
     { name: 'Active', value: projects.filter(p => p.status === 'active').length },
     { name: 'Paused', value: projects.filter(p => p.status === 'paused').length },
     { name: 'Completed', value: projects.filter(p => p.status === 'completed').length },
-  ];
-  const COLORS = ['#8884d8', '#82ca9d', '#ffc658', '#ff8042'];
-  const fundingChartData = fundingRequests.map(f => ({ name: f.project?.name || 'N/A', amount: f.amount }));
+  ].filter(d => d.value > 0);
+
+  const fundingChartData = fundingRequests
+    .filter(f => f.amount > 0)
+    .slice(0, 5)
+    .map(f => ({ name: f.project?.name || 'N/A', amount: f.amount }));
 
   return (
     <Box>
@@ -145,91 +155,114 @@ const DirectorDashboard = () => {
             <Typography variant="h6" gutterBottom>Quick Actions</Typography>
             <Grid container spacing={2}>
               <Grid item xs={12} sm={6} md={3}>
-                <Button component={Link} to="/projects" variant="contained" fullWidth startIcon={<EditIcon />}>
+                <Button component={Link} to="/projects" variant="contained" fullWidth>
                   Manage Projects
                 </Button>
-                <Typography variant="caption" color="textSecondary">Edit or view all projects</Typography>
               </Grid>
               <Grid item xs={12} sm={6} md={3}>
                 <Button component={Link} to="/workers" variant="contained" fullWidth>
                   View Workers
                 </Button>
-                <Typography variant="caption" color="textSecondary">See all enrolled workers</Typography>
               </Grid>
               <Grid item xs={12} sm={6} md={3}>
                 <Button component={Link} to="/funding" variant="contained" fullWidth>
                   Funding Requests
                 </Button>
-                <Typography variant="caption" color="textSecondary">Approve/reject requests</Typography>
               </Grid>
               <Grid item xs={12} sm={6} md={3}>
                 <Button component={Link} to="/boq" variant="contained" fullWidth>
                   BOQs
                 </Button>
-                <Typography variant="caption" color="textSecondary">Approve Bills of Quantities</Typography>
               </Grid>
             </Grid>
           </Paper>
 
-          {/* Stats Cards */}
+          {/* Stats Cards – Professional */}
           <Grid container spacing={3} sx={{ mb: 3 }}>
             <Grid item xs={12} sm={6} md={3}>
-              <Card><CardContent>
-                <Typography variant="body2" color="textSecondary">Total Projects</Typography>
-                <Typography variant="h4">{stats.totalProjects}</Typography>
-                <Typography variant="caption" color="textSecondary">{stats.activeProjects} active</Typography>
-              </CardContent></Card>
+              <Card sx={{ height: '100%', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', color: 'white' }}>
+                <CardContent>
+                  <Typography variant="body2" sx={{ opacity: 0.8 }}>Total Projects</Typography>
+                  <Typography variant="h3">{stats.totalProjects}</Typography>
+                  <Typography variant="caption" sx={{ opacity: 0.8 }}>{stats.activeProjects} active</Typography>
+                </CardContent>
+              </Card>
             </Grid>
             <Grid item xs={12} sm={6} md={3}>
-              <Card><CardContent>
-                <Typography variant="body2" color="textSecondary">Funding Requests</Typography>
-                <Typography variant="h4">{stats.totalFundingRequests}</Typography>
-                <Typography variant="caption" color="warning.main">{stats.pendingFunding} pending</Typography>
-              </CardContent></Card>
+              <Card sx={{ height: '100%', borderLeft: '4px solid #ff9800' }}>
+                <CardContent>
+                  <Typography variant="body2" color="textSecondary">Funding Requests</Typography>
+                  <Typography variant="h4" color="#ff9800">{stats.totalFundingRequests}</Typography>
+                  <Typography variant="caption" color="warning.main">{stats.pendingFunding} pending</Typography>
+                </CardContent>
+              </Card>
             </Grid>
             <Grid item xs={12} sm={6} md={3}>
-              <Card><CardContent>
-                <Typography variant="body2" color="textSecondary">BOQs</Typography>
-                <Typography variant="h4">{stats.totalBOQs}</Typography>
-                <Typography variant="caption" color="warning.main">{stats.pendingBOQs} pending</Typography>
-              </CardContent></Card>
+              <Card sx={{ height: '100%', borderLeft: '4px solid #2196f3' }}>
+                <CardContent>
+                  <Typography variant="body2" color="textSecondary">BOQs</Typography>
+                  <Typography variant="h4" color="#2196f3">{stats.totalBOQs}</Typography>
+                  <Typography variant="caption" color="warning.main">{stats.pendingBOQs} pending</Typography>
+                </CardContent>
+              </Card>
             </Grid>
             <Grid item xs={12} sm={6} md={3}>
-              <Card><CardContent>
-                <Typography variant="body2" color="textSecondary">Workers</Typography>
-                <Typography variant="h4">{stats.totalWorkers}</Typography>
-                <Typography variant="caption" color="textSecondary">enrolled</Typography>
-              </CardContent></Card>
+              <Card sx={{ height: '100%', borderLeft: '4px solid #4caf50' }}>
+                <CardContent>
+                  <Typography variant="body2" color="textSecondary">Workers</Typography>
+                  <Typography variant="h4" color="#4caf50">{stats.totalWorkers}</Typography>
+                  <Typography variant="caption" color="textSecondary">enrolled</Typography>
+                </CardContent>
+              </Card>
             </Grid>
           </Grid>
 
           {/* Charts */}
           <Grid container spacing={3} sx={{ mb: 3 }}>
             <Grid item xs={12} md={6}>
-              <Paper sx={{ p: 2 }}>
-                <Typography variant="h6">Project Status</Typography>
-                <PieChart width={300} height={200}>
-                  <Pie data={projectStatusData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} label>
-                    {projectStatusData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <RechartsTooltip />
-                  <Legend />
-                </PieChart>
+              <Paper sx={{ p: 2, height: '100%' }}>
+                <Typography variant="h6" gutterBottom>Project Status</Typography>
+                <ResponsiveContainer width="100%" height={200}>
+                  <PieChart>
+                    <Pie
+                      data={projectStatusData}
+                      dataKey="value"
+                      nameKey="name"
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={40}
+                      outerRadius={80}
+                      label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                    >
+                      {projectStatusData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <RechartsTooltip formatter={(value) => `${value} projects`} />
+                    <Legend />
+                  </PieChart>
+                </ResponsiveContainer>
               </Paper>
             </Grid>
             <Grid item xs={12} md={6}>
-              <Paper sx={{ p: 2 }}>
-                <Typography variant="h6">Funding Requests</Typography>
-                <BarChart width={350} height={200} data={fundingChartData.slice(0, 5)}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="name" />
-                  <YAxis />
-                  <RechartsTooltip />
-                  <Legend />
-                  <Bar dataKey="amount" fill="#8884d8" />
-                </BarChart>
+              <Paper sx={{ p: 2, height: '100%' }}>
+                <Typography variant="h6" gutterBottom>Top Funding Requests</Typography>
+                {fundingChartData.length > 0 ? (
+                  <ResponsiveContainer width="100%" height={200}>
+                    <BarChart data={fundingChartData}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="name" />
+                      <YAxis tickFormatter={(value) => `K${value.toLocaleString()}`} />
+                      <RechartsTooltip formatter={(value) => formatCurrency(value)} />
+                      <Legend />
+                      <Bar dataKey="amount" fill="#8884d8" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <Typography variant="body2" color="textSecondary" sx={{ textAlign: 'center', mt: 6 }}>
+                    No funding requests yet.
+                  </Typography>
+                )}
               </Paper>
             </Grid>
           </Grid>
@@ -248,6 +281,7 @@ const DirectorDashboard = () => {
                   <TableCell>Status</TableCell>
                   <TableCell>Budget</TableCell>
                   <TableCell>Manager</TableCell>
+                  <TableCell>Action</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -256,15 +290,20 @@ const DirectorDashboard = () => {
                     <TableCell>{p.name}</TableCell>
                     <TableCell>{p.location}</TableCell>
                     <TableCell><Chip label={p.status} size="small" color={p.status === 'active' ? 'success' : 'default'} /></TableCell>
-                    <TableCell>{p.budget}</TableCell>
+                    <TableCell>{formatCurrency(p.budget)}</TableCell>
                     <TableCell>{p.manager?.name || 'N/A'}</TableCell>
+                    <TableCell>
+                      <Button component={Link} to={`/projects/${p._id}`} size="small" variant="outlined">
+                        View
+                      </Button>
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
             </Table>
           </Paper>
 
-          {/* ─── Funding Requests Table (text buttons) ──────────── */}
+          {/* Funding Requests Table */}
           <Paper sx={{ p: 2, mb: 3 }}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <Typography variant="h6">Funding Requests</Typography>
@@ -284,10 +323,13 @@ const DirectorDashboard = () => {
                 {fundingRequests.slice(0, 5).map(f => (
                   <TableRow key={f._id}>
                     <TableCell>{f.project?.name}</TableCell>
-                    <TableCell>{f.amount}</TableCell>
+                    <TableCell>{formatCurrency(f.amount)}</TableCell>
                     <TableCell><Chip label={f.status} color={f.status === 'approved' ? 'success' : f.status === 'rejected' ? 'error' : 'warning'} /></TableCell>
                     <TableCell>{f.requestedBy?.name}</TableCell>
                     <TableCell>
+                      <Button component={Link} to={`/funding/${f._id}`} size="small" variant="outlined" sx={{ mr: 1 }}>
+                        View
+                      </Button>
                       {f.status === 'pending' && (
                         <>
                           <Button
@@ -316,7 +358,7 @@ const DirectorDashboard = () => {
             </Table>
           </Paper>
 
-          {/* ─── BOQs Table (text buttons) ──────────────────────── */}
+          {/* BOQs Table */}
           <Paper sx={{ p: 2, mb: 3 }}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <Typography variant="h6">BOQs</Typography>
@@ -340,6 +382,9 @@ const DirectorDashboard = () => {
                     <TableCell><Chip label={b.status} color={b.status === 'approved' ? 'success' : b.status === 'submitted' ? 'warning' : 'default'} /></TableCell>
                     <TableCell>{b.createdBy?.name}</TableCell>
                     <TableCell>
+                      <Button component={Link} to={`/boq/${b._id}`} size="small" variant="outlined" sx={{ mr: 1 }}>
+                        View
+                      </Button>
                       {b.status === 'submitted' && (
                         <>
                           <Button
@@ -368,13 +413,15 @@ const DirectorDashboard = () => {
             </Table>
           </Paper>
 
-          {/* Procurement Orders (Oversight) */}
+          {/* Procurement Orders */}
           <Paper sx={{ p: 2 }}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <Typography variant="h6">Procurement Orders (Oversight)</Typography>
               <Button component={Link} to="/procurement" size="small">View All</Button>
             </Box>
-            <Typography variant="caption" color="textSecondary">Procurement Officer adds prices, Accountant funds</Typography>
+            <Typography variant="caption" color="textSecondary">
+              Procurement Officer adds prices, Accountant funds – Director gives final approval.
+            </Typography>
             <Table size="small">
               <TableHead>
                 <TableRow>
@@ -393,20 +440,17 @@ const DirectorDashboard = () => {
                     <TableCell><Chip label={o.status} color={o.status === 'funded' ? 'success' : o.status === 'procurement_approved' ? 'info' : 'warning'} /></TableCell>
                     <TableCell>{o.createdBy?.name}</TableCell>
                     <TableCell>
-                      <Tooltip title="View">
-                        <IconButton component={Link} to={`/procurement/${o._id}`} size="small" color="info">
-                          <VisibilityIcon fontSize="small" />
-                        </IconButton>
-                      </Tooltip>
+                      <Button component={Link} to={`/procurement/${o._id}`} size="small" variant="outlined" sx={{ mr: 1 }}>
+                        View
+                      </Button>
                       {o.status === 'procurement_approved' && (
                         <Button
                           variant="contained"
                           color="primary"
                           size="small"
                           onClick={() => handleFinalApproveProcurement(o._id)}
-                          sx={{ ml: 1 }}
                         >
-                          FINAL APPROVE
+                          Final Approve
                         </Button>
                       )}
                     </TableCell>
