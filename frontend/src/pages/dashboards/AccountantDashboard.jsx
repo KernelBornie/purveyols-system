@@ -726,7 +726,6 @@ const AccountantDashboard = () => {
         )}
       </Box>
 
-      {/* ─── Summary line ──────────────────────────────────────────── */}
       <Typography variant="caption" display="block" sx={{ mb: 2 }}>
         Total pending: {formatCurrency(stats.totalPendingAmount)} ({pendingWorkersCount} workers, {pendingFunding} funding requests awaiting funding, {pendingProcurement} procurement orders, {pendingSubcontracts} subcontracts)
       </Typography>
@@ -764,7 +763,6 @@ const AccountantDashboard = () => {
 
       {showCharts && (
         <Grid container spacing={3} sx={{ mb: 3 }}>
-          {/* ─── Payment Trends ─────────────────────────────────────── */}
           {paymentTrends.length > 0 && (
             <Grid item xs={12} md={6}>
               <Paper sx={{ p: 2 }}>
@@ -782,8 +780,6 @@ const AccountantDashboard = () => {
               </Paper>
             </Grid>
           )}
-
-          {/* ─── Spending by Project ─────────────────────────────────── */}
           {projectSpending.length > 0 && (
             <Grid item xs={12} md={6}>
               <Paper sx={{ p: 2 }}>
@@ -801,8 +797,6 @@ const AccountantDashboard = () => {
               </Paper>
             </Grid>
           )}
-
-          {/* ─── Funding Approval Ratio (Pie/Donut) ────────────────── */}
           {approvalRatio.length > 0 && (
             <Grid item xs={12} md={6}>
               <Paper sx={{ p: 2 }}>
@@ -830,8 +824,6 @@ const AccountantDashboard = () => {
               </Paper>
             </Grid>
           )}
-
-          {/* ─── Top Workers ─────────────────────────────────────────── */}
           {topWorkers.length > 0 && (
             <Grid item xs={12} md={6}>
               <Paper sx={{ p: 2 }}>
@@ -1079,10 +1071,10 @@ const AccountantDashboard = () => {
         </Table>
       </Paper>
 
-      {/* Subcontracts Table */}
+      {/* ─── Subcontracts Table – FIXED Fund button ─────────────────── */}
       <Paper sx={{ p: 2, mb: 3 }}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Typography variant="h6">Subcontracts (Pending Funding)</Typography>
+          <Typography variant="h6">Subcontracts</Typography>
           <Button component={Link} to="/subcontracts" size="small">View All</Button>
         </Box>
         <Table size="small">
@@ -1114,7 +1106,8 @@ const AccountantDashboard = () => {
                   <Button component={Link} to={`/subcontracts/${s._id}`} size="small" variant="outlined" sx={{ mr: 1 }}>
                     View
                   </Button>
-                  {s.status !== 'completed' && s.status !== 'terminated' && (
+                  {/* ─── Only show Fund for approved (not funded) ─── */}
+                  {s.status === 'approved' && (
                     <Button
                       variant="contained"
                       color="success"
@@ -1142,7 +1135,7 @@ const AccountantDashboard = () => {
         </Table>
       </Paper>
 
-      {/* ─── Weekly Report ──────────────────────────────────────────── */}
+      {/* Weekly Report */}
       <Paper sx={{ p: 2, mb: 3 }}>
         <Typography variant="h6" gutterBottom>Weekly Report</Typography>
         {reportData ? (
