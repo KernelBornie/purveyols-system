@@ -1,8 +1,9 @@
 const express = require('express');
 const router = express.Router();
 const AdvertisedProject = require('../models/AdvertisedProject');
-const Bid = require('../models/Bid'); // 👈 import Bid model
+const Bid = require('../models/Bid');
 const auth = require('../middleware/auth');
+const authorize = require('../middleware/rbac');
 
 // ─── GET all advertised projects ──────────────────────────────
 router.get('/', auth, async (req, res) => {
@@ -31,19 +32,16 @@ router.post('/:id/bid', auth, async (req, res) => {
   try {
     const projectId = req.params.id;
 
-    // Find the advertised project
     const project = await AdvertisedProject.findOne({ id: projectId });
     if (!project) {
       return res.status(404).json({ error: 'Project not found' });
     }
 
-    // Check if user already bid on this project
     const existingBid = await Bid.findOne({ projectId, user: req.user.id });
     if (existingBid) {
       return res.status(400).json({ error: 'You have already bid on this project' });
     }
 
-    // Create a new bid
     const bid = new Bid({
       projectId: project.id,
       projectTitle: project.title,
@@ -64,9 +62,6 @@ router.post('/:id/bid', auth, async (req, res) => {
 
     await bid.save();
 
-    // Optionally, you could remove the project from the feed or mark it as bidded
-    // For now, we just return success and the frontend filters it out.
-
     res.status(201).json({ message: '✅ Project marked as bidded!', bid });
   } catch (err) {
     console.error('Bid error:', err);
@@ -74,7 +69,19 @@ router.post('/:id/bid', auth, async (req, res) => {
   }
 });
 
-// ─── (Optional) GET single project ─────────────────────────────
+// ─── Fetch fresh projects from external sources ──────────────────
+router.post('/fetch', auth, authorize('admin', 'director', 'procurement-officer'), async (req, res) => {
+  try {
+    const { fetchFreshProjects } = require('../services/newsScraper');
+    const results = await fetchFreshProjects();
+    res.json({ message: 'Fetch completed', results });
+  } catch (err) {
+    console.error('Fetch error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── GET single project ─────────────────────────────────────────
 router.get('/:id', auth, async (req, res) => {
   try {
     const project = await AdvertisedProject.findOne({ id: req.params.id });

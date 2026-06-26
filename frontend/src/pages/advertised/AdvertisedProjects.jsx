@@ -14,6 +14,7 @@ import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import GavelIcon from '@mui/icons-material/Gavel';
 import HistoryIcon from '@mui/icons-material/History';
+import CloudDownloadIcon from '@mui/icons-material/CloudDownload'; // 👈 NEW
 import { useNavigate } from 'react-router-dom';
 import api from '../../api/axios';
 import BackButton from '../../components/BackButton';
@@ -30,6 +31,7 @@ const AdvertisedProjects = () => {
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [lastRefresh, setLastRefresh] = useState(null);
+  const [fetching, setFetching] = useState(false); // 👈 NEW
   const refreshInterval = useRef(null);
 
   const fetchProjects = async () => {
@@ -47,6 +49,29 @@ const AdvertisedProjects = () => {
       setError('Failed to fetch advertised projects. Please try again.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  // ─── Fetch fresh projects from Google News ──────────────────────
+  const handleFetchProjects = async () => {
+    setFetching(true);
+    try {
+      const res = await api.post('/api/advertised-projects/fetch');
+      setSnackbar({
+        open: true,
+        message: `✅ ${res.data.results.added} new projects added, ${res.data.results.skipped} skipped.`,
+        severity: 'success',
+      });
+      fetchProjects();
+    } catch (err) {
+      console.error('Fetch error:', err);
+      setSnackbar({
+        open: true,
+        message: '❌ Failed to fetch projects. Please try again.',
+        severity: 'error',
+      });
+    } finally {
+      setFetching(false);
     }
   };
 
@@ -69,10 +94,10 @@ const AdvertisedProjects = () => {
   const handleBid = async (projectId) => {
     try {
       const res = await api.post(`/api/advertised-projects/${projectId}/bid`);
-      setSnackbar({ 
-        open: true, 
-        message: res.data.message || '✅ Project marked as bidded! Check the Bidded Projects page.', 
-        severity: 'success' 
+      setSnackbar({
+        open: true,
+        message: res.data.message || '✅ Project marked as bidded! Check the Bidded Projects page.',
+        severity: 'success'
       });
       setProjects(prev => prev.filter(p => p.id !== projectId));
       setDetailOpen(false);
@@ -120,6 +145,15 @@ const AdvertisedProjects = () => {
           <Button variant="contained" startIcon={<RefreshIcon />} onClick={handleRefresh}>
             Refresh Now
           </Button>
+          <Button 
+            variant="contained" 
+            color="secondary" 
+            startIcon={<CloudDownloadIcon />}
+            onClick={handleFetchProjects}
+            disabled={fetching}
+          >
+            {fetching ? 'Fetching...' : 'Fetch New Projects'}
+          </Button>
         </Box>
       </Box>
 
@@ -159,8 +193,10 @@ const AdvertisedProjects = () => {
       ) : projects.length === 0 ? (
         <Paper sx={{ p: 3, textAlign: 'center' }}>
           <Typography variant="h6">No open projects available</Typography>
-          <Typography variant="body2" color="textSecondary">All projects may have been bidded or closed. Check back later.</Typography>
-          <Button variant="contained" onClick={handleRefresh} sx={{ mt: 2 }}>Refresh</Button>
+          <Typography variant="body2" color="textSecondary">Click "Fetch New Projects" to discover fresh opportunities from Google News.</Typography>
+          <Button variant="contained" color="secondary" startIcon={<CloudDownloadIcon />} onClick={handleFetchProjects} disabled={fetching} sx={{ mt: 2 }}>
+            {fetching ? 'Fetching...' : 'Fetch New Projects'}
+          </Button>
         </Paper>
       ) : (
         <Grid container spacing={3}>
