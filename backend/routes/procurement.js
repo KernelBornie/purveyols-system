@@ -240,8 +240,8 @@ router.put('/:id/final-approve', auth, authorize('admin', 'director', 'accountan
   } catch (err) { res.status(400).json({ error: err.message }); }
 });
 
-// ─── FUND (with credential check) ──────────────────────────────────
-router.put('/:id/fund', auth, authorize('admin', 'director', 'accountant'), async (req, res) => {
+// ─── FUND (only admin & accountant) ──────────────────────────────────
+router.put('/:id/fund', auth, authorize('admin', 'accountant'), async (req, res) => {
   try {
     const { recipientPhone } = req.body;
     if (!recipientPhone) {

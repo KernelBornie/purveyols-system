@@ -29,8 +29,8 @@ const ProcurementList = () => {
   const canEdit = ['admin', 'director', 'procurement-officer', 'civil-engineer', 'quantity-surveyor', 'driver', 'safety-officer', 'accountant', 'foreman'].includes(user?.role);
   const canApprove = ['admin', 'director', 'procurement-officer', 'accountant'].includes(user?.role);
   const canFinalApprove = ['admin', 'director', 'accountant'].includes(user?.role);
-  const canFund = ['admin', 'director', 'accountant'].includes(user?.role);
-  const canDeleteAny = ['admin', 'director'].includes(user?.role); // admin/director can delete any
+  const canFund = ['admin', 'accountant'].includes(user?.role); // ✅ Director removed – only admin & accountant
+  const canDeleteAny = ['admin', 'director'].includes(user?.role);
 
   useEffect(() => {
     fetchOrders();
@@ -159,12 +159,11 @@ const ProcurementList = () => {
             </TableRow>
           ) : (
             orders.map(o => {
-              // Determine if delete is allowed
               let canDelete = false;
               if (canDeleteAny) {
-                canDelete = true; // admin/director can delete any
+                canDelete = true;
               } else if (canEdit && (o.status === 'pending' || o.status === 'rejected')) {
-                canDelete = true; // other roles only pending/rejected
+                canDelete = true;
               }
 
               return (
@@ -202,7 +201,7 @@ const ProcurementList = () => {
                       </Tooltip>
                     )}
 
-                    {/* ─── Fund (Director/Accountant) ────────────────── */}
+                    {/* ─── Fund (Admin/Accountant ONLY) ───────────────── */}
                     {canFund && o.status === 'approved' && (
                       <Tooltip title="Fund">
                         <IconButton size="small" color="info" onClick={() => handleFund(o._id)}>
@@ -229,7 +228,7 @@ const ProcurementList = () => {
                       </Tooltip>
                     )}
 
-                    {/* ─── Delete (always for admin/director; otherwise only pending/rejected) ── */}
+                    {/* ─── Delete ────────────────────────────────────── */}
                     {canDelete && (
                       <Tooltip title="Delete">
                         <IconButton size="small" color="error" onClick={() => handleDeleteClick(o)}>
