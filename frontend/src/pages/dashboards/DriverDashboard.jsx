@@ -1,17 +1,22 @@
-import DashboardActions from '../../components/DashboardActions';
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import DeliveryNote from "../../components/DeliveryNote";
 import {
   Box, Typography, Grid, Card, CardContent, Button, Table, TableHead, TableRow, TableCell, TableBody,
   Chip, Paper, TextField, Dialog, DialogTitle, DialogContent, DialogActions,
-  CircularProgress, Alert, IconButton, Divider
+  CircularProgress, Alert, IconButton, Tooltip
 } from '@mui/material';
-import { Link } from 'react-router-dom';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import AttachFileIcon from '@mui/icons-material/AttachFile';
 import ImageIcon from '@mui/icons-material/Image';
 import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
+import {
+  PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid,
+  Tooltip as RechartsTooltip, Legend, ResponsiveContainer
+} from 'recharts';
 import api from '../../api/axios';
+
+const COLORS = ['#4caf50', '#ff9800', '#2196f3', '#f44336'];
 
 const DriverDashboard = () => {
   const [loading, setLoading] = useState(true);
@@ -25,6 +30,7 @@ const DriverDashboard = () => {
     distance: '', fuelUsed: '', notes: '', file: null,
   });
   const [message, setMessage] = useState(null);
+  const [weeklyTrips, setWeeklyTrips] = useState([]);
 
   const fetchData = async () => {
     setLoading(true);
@@ -58,6 +64,28 @@ const DriverDashboard = () => {
       const completed = logData.filter(l => l.status === 'completed').length;
       const inProgress = logData.filter(l => l.status === 'in-progress').length;
       setStats({ total, completed, inProgress });
+
+      // ─── Weekly trips (last 7 days) ──────────────────────────────
+      const weekDays = {};
+      const now = new Date();
+      for (let i = 6; i >= 0; i--) {
+        const d = new Date(now);
+        d.setDate(d.getDate() - i);
+        const key = d.toISOString().split('T')[0];
+        weekDays[key] = 0;
+      }
+      logData.forEach(l => {
+        if (l.createdAt) {
+          const date = new Date(l.createdAt).toISOString().split('T')[0];
+          if (weekDays[date] !== undefined) weekDays[date]++;
+        }
+      });
+      const weeklyData = Object.entries(weekDays).map(([date, count]) => ({
+        date: date.slice(5), // MM-DD
+        trips: count,
+      }));
+      setWeeklyTrips(weeklyData);
+
     } catch (err) { console.error(err); } finally { setLoading(false); }
   };
 
@@ -101,6 +129,17 @@ const DriverDashboard = () => {
     const url = `data:${logbook.fileType};base64,${logbook.fileData}`;
     window.open(url, '_blank');
   };
+
+  const formatCurrency = (amount) => {
+    return new Intl.NumberFormat('en-ZM', { style: 'currency', currency: 'ZMW' }).format(amount || 0);
+  };
+
+  // ─── Trip status data for pie chart ──────────────────────────────
+  const tripStatusData = [
+    { name: 'Completed', value: stats.completed },
+    { name: 'In Progress', value: stats.inProgress },
+    { name: 'Pending', value: stats.total - stats.completed - stats.inProgress },
+  ].filter(d => d.value > 0);
 
   return (
     <Box>
@@ -150,32 +189,99 @@ const DriverDashboard = () => {
 
       {loading ? <CircularProgress /> : (
         <>
+          {/* ─── Professional Stats Cards ─────────────────────────────── */}
           <Grid container spacing={3} sx={{ mb: 3 }}>
             <Grid item xs={12} sm={4}>
-              <Card><CardContent>
-                <Typography variant="body2" color="textSecondary">Total Trips</Typography>
-                <Typography variant="h4">{stats.total}</Typography>
-              </CardContent></Card>
+              <Card sx={{ height: '100%', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', color: 'white' }}>
+                <CardContent>
+                  <Typography variant="body2" sx={{ opacity: 0.8 }}>Total Trips</Typography>
+                  <Typography variant="h3">{stats.total}</Typography>
+                </CardContent>
+              </Card>
             </Grid>
             <Grid item xs={12} sm={4}>
-              <Card><CardContent>
-                <Typography variant="body2" color="textSecondary">Completed</Typography>
-                <Typography variant="h4" color="success.main">{stats.completed}</Typography>
-              </CardContent></Card>
+              <Card sx={{ height: '100%', borderLeft: '4px solid #4caf50' }}>
+                <CardContent>
+                  <Typography variant="body2" color="textSecondary">Completed</Typography>
+                  <Typography variant="h4" color="#4caf50">{stats.completed}</Typography>
+                </CardContent>
+              </Card>
             </Grid>
             <Grid item xs={12} sm={4}>
-              <Card><CardContent>
-                <Typography variant="body2" color="textSecondary">In Progress</Typography>
-                <Typography variant="h4" color="warning.main">{stats.inProgress}</Typography>
-              </CardContent></Card>
+              <Card sx={{ height: '100%', borderLeft: '4px solid #ff9800' }}>
+                <CardContent>
+                  <Typography variant="body2" color="textSecondary">In Progress</Typography>
+                  <Typography variant="h4" color="#ff9800">{stats.inProgress}</Typography>
+                </CardContent>
+              </Card>
             </Grid>
           </Grid>
 
+          {/* ─── Charts ─────────────────────────────────────────────────── */}
+          <Grid container spacing={3} sx={{ mb: 3 }}>
+            <Grid item xs={12} md={6}>
+              <Paper sx={{ p: 2, height: '100%' }}>
+                <Typography variant="h6" gutterBottom>Trip Status Distribution</Typography>
+                {tripStatusData.length > 0 ? (
+                  <ResponsiveContainer width="100%" height={200}>
+                    <PieChart>
+                      <Pie
+                        data={tripStatusData}
+                        dataKey="value"
+                        nameKey="name"
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={40}
+                        outerRadius={80}
+                        label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                      >
+                        {tripStatusData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <RechartsTooltip formatter={(value) => `${value} trips`} />
+                      <Legend />
+                    </PieChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <Typography variant="body2" color="textSecondary" sx={{ textAlign: 'center', mt: 6 }}>
+                    No trip data available.
+                  </Typography>
+                )}
+              </Paper>
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <Paper sx={{ p: 2, height: '100%' }}>
+                <Typography variant="h6" gutterBottom>Weekly Trips</Typography>
+                {weeklyTrips.length > 0 && weeklyTrips.some(d => d.trips > 0) ? (
+                  <ResponsiveContainer width="100%" height={200}>
+                    <BarChart data={weeklyTrips}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="date" />
+                      <YAxis allowDecimals={false} />
+                      <RechartsTooltip formatter={(value) => `${value} trips`} />
+                      <Legend />
+                      <Bar dataKey="trips" fill="#8884d8" name="Trips" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <Typography variant="body2" color="textSecondary" sx={{ textAlign: 'center', mt: 6 }}>
+                    No trips recorded this week.
+                  </Typography>
+                )}
+              </Paper>
+            </Grid>
+          </Grid>
+
+          {/* ─── Tables ─────────────────────────────────────────────────── */}
           <Grid container spacing={3}>
             {/* Logbook Entries */}
             <Grid item xs={12} md={6}>
               <Paper sx={{ p: 2, height: '100%' }}>
-                <Typography variant="h6" gutterBottom>Logbook Entries</Typography>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                  <Typography variant="h6">Logbook Entries</Typography>
+                  <Button component={Link} to="/logbooks" size="small">View All</Button>
+                </Box>
                 <Table size="small">
                   <TableHead>
                     <TableRow>
@@ -193,13 +299,20 @@ const DriverDashboard = () => {
                         <TableCell><Chip label={l.status} color={l.status === 'completed' ? 'success' : 'warning'} size="small" /></TableCell>
                         <TableCell>
                           {l.fileData ? (
-                            <IconButton size="small" onClick={() => viewFile(l)}>
-                              {getFileIcon(l.fileType)}
-                            </IconButton>
+                            <Tooltip title="View Attachment">
+                              <IconButton size="small" onClick={() => viewFile(l)}>
+                                {getFileIcon(l.fileType)}
+                              </IconButton>
+                            </Tooltip>
                           ) : '—'}
                         </TableCell>
                       </TableRow>
                     ))}
+                    {logbooks.length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={4} align="center">No logbook entries.</TableCell>
+                      </TableRow>
+                    )}
                   </TableBody>
                 </Table>
               </Paper>
@@ -208,7 +321,10 @@ const DriverDashboard = () => {
             {/* Funding Requests */}
             <Grid item xs={12} md={6}>
               <Paper sx={{ p: 2, height: '100%' }}>
-                <Typography variant="h6" gutterBottom>My Funding Requests</Typography>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                  <Typography variant="h6">My Funding Requests</Typography>
+                  <Button component={Link} to="/funding" size="small">View All</Button>
+                </Box>
                 <Table size="small">
                   <TableHead>
                     <TableRow>
@@ -221,10 +337,15 @@ const DriverDashboard = () => {
                     {fundingRequests.slice(0, 5).map(f => (
                       <TableRow key={f._id}>
                         <TableCell>{f.description}</TableCell>
-                        <TableCell>{f.amount}</TableCell>
+                        <TableCell>{formatCurrency(f.amount)}</TableCell>
                         <TableCell><Chip label={f.status} color={f.status === 'approved' ? 'success' : f.status === 'rejected' ? 'error' : 'warning'} size="small" /></TableCell>
                       </TableRow>
                     ))}
+                    {fundingRequests.length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={3} align="center">No funding requests.</TableCell>
+                      </TableRow>
+                    )}
                   </TableBody>
                 </Table>
               </Paper>
@@ -233,7 +354,10 @@ const DriverDashboard = () => {
             {/* Procurement Orders (Spare Parts) */}
             <Grid item xs={12}>
               <Paper sx={{ p: 2 }}>
-                <Typography variant="h6" gutterBottom>My Spare Parts Requests (Procurement)</Typography>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                  <Typography variant="h6">My Spare Parts Requests</Typography>
+                  <Button component={Link} to="/spare-parts" size="small">View All</Button>
+                </Box>
                 <Table size="small">
                   <TableHead>
                     <TableRow>
@@ -254,6 +378,11 @@ const DriverDashboard = () => {
                         <TableCell>{new Date(p.createdAt).toLocaleDateString()}</TableCell>
                       </TableRow>
                     ))}
+                    {procurementOrders.length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={5} align="center">No spare parts requests.</TableCell>
+                      </TableRow>
+                    )}
                   </TableBody>
                 </Table>
               </Paper>
