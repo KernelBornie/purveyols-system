@@ -6,7 +6,6 @@ import {
   Dialog, DialogTitle, DialogContent, DialogActions, TextField
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
-import VisibilityIcon from '@mui/icons-material/Visibility';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import CheckIcon from '@mui/icons-material/Check';
@@ -144,48 +143,69 @@ const FundingRequestList = () => {
               <TableCell>{r.requestedBy?.name || 'N/A'}</TableCell>
               <TableCell>{r.approvedBy?.name || '—'}</TableCell>
               <TableCell>
-                {/* View */}
-                <Tooltip title="View">
-                  <IconButton component={Link} to={`/funding/${r._id}`} size="small">
-                    <VisibilityIcon fontSize="small" />
-                  </IconButton>
-                </Tooltip>
+                {/* ─── View button (text) ──────────────────────────── */}
+                <Button
+                  component={Link}
+                  to={`/funding/${r._id}`}
+                  size="small"
+                  variant="outlined"
+                  sx={{ mr: 0.5, minWidth: '40px', textTransform: 'none' }}
+                >
+                  View
+                </Button>
 
-                {/* Edit */}
+                {/* ─── Edit ────────────────────────────────────────── */}
                 {canEdit && (r.status === 'draft' || r.status === 'pending') && (
                   <Tooltip title="Edit">
-                    <IconButton component={Link} to={`/funding/${r._id}/edit`} size="small" color="primary">
+                    <IconButton
+                      component={Link}
+                      to={`/funding/${r._id}/edit`}
+                      size="small"
+                      color="primary"
+                    >
                       <EditIcon fontSize="small" />
                     </IconButton>
                   </Tooltip>
                 )}
 
-                {/* Delete */}
+                {/* ─── Delete ───────────────────────────────────────── */}
                 {canDelete && (
                   <Tooltip title="Delete">
-                    <IconButton size="small" color="error" onClick={() => handleDelete(r._id)}>
+                    <IconButton
+                      size="small"
+                      color="error"
+                      onClick={() => handleDelete(r._id)}
+                    >
                       <DeleteIcon fontSize="small" />
                     </IconButton>
                   </Tooltip>
                 )}
 
-                {/* Approve/Reject */}
+                {/* ─── Approve/Reject ──────────────────────────────── */}
                 {canApprove && r.status === 'pending' && (
                   <>
                     <Tooltip title="Approve">
-                      <IconButton size="small" color="success" onClick={() => handleApprove(r._id)}>
+                      <IconButton
+                        size="small"
+                        color="success"
+                        onClick={() => handleApprove(r._id)}
+                      >
                         <CheckIcon fontSize="small" />
                       </IconButton>
                     </Tooltip>
                     <Tooltip title="Reject">
-                      <IconButton size="small" color="error" onClick={() => handleReject(r._id)}>
+                      <IconButton
+                        size="small"
+                        color="error"
+                        onClick={() => handleReject(r._id)}
+                      >
                         <CloseIcon fontSize="small" />
                       </IconButton>
                     </Tooltip>
                   </>
                 )}
 
-                {/* ─── Fund button (text) ────────────────────── */}
+                {/* ─── Fund button (text) ──────────────────────────── */}
                 {canFund && r.status === 'approved' && (
                   <Button
                     variant="contained"
@@ -193,6 +213,7 @@ const FundingRequestList = () => {
                     size="small"
                     startIcon={<AttachMoneyIcon />}
                     onClick={() => openFundModal(r)}
+                    sx={{ ml: 0.5 }}
                   >
                     Fund
                   </Button>
