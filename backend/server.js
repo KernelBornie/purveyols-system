@@ -16,31 +16,40 @@ const io = new Server(server, {
   },
 });
 
-// ─── CORS (improved) ──────────────────────────────────────────────
+// ─── CORS (improved – allows all Vercel & Render subdomains) ──
 const corsOptions = {
   origin: (origin, callback) => {
-    const allowedOrigins = [
-      'https://purveyols-system.vercel.app',
-      'http://localhost:5173',
-      'http://localhost:3000',
-      'http://localhost:5000',
-    ];
-    if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      console.warn(`❌ CORS blocked origin: ${origin}`);
-      callback(new Error('Not allowed by CORS'));
+    // Allow requests with no origin (like mobile apps or curl)
+    if (!origin) return callback(null, true);
+
+    // Allow localhost for development
+    if (origin.match(/^https?:\/\/localhost(:\d+)?$/)) {
+      return callback(null, true);
     }
+
+    // Allow any Vercel subdomain (including preview deployments)
+    if (origin.endsWith('.vercel.app')) {
+      return callback(null, true);
+    }
+
+    // Allow any Render subdomain (backend itself)
+    if (origin.endsWith('.onrender.com')) {
+      return callback(null, true);
+    }
+
+    console.warn(`❌ CORS blocked origin: ${origin}`);
+    callback(new Error('Not allowed by CORS'));
   },
   credentials: true,
   optionsSuccessStatus: 200,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Cache-Control'], // ✅ Cache-Control added
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
 };
 
 app.use(cors(corsOptions));
-app.options('*', cors(corsOptions));
+app.options('*', cors(corsOptions)); // Handle preflight explicitly
 
+// Log every request origin (for debugging)
 app.use((req, res, next) => {
   console.log(`${req.method} ${req.url} - Origin: ${req.headers.origin || 'none'}`);
   next();
@@ -104,7 +113,6 @@ app.use('/api/site-plans', require('./routes/sitePlans'));
 app.use('/api/drawings', require('./routes/drawings'));
 app.use('/api/surveys', require('./routes/surveys'));
 app.use('/api/spare-parts', require('./routes/spareParts'));
-app.use('/api/tenders', require('./routes/tenders')); // ✅ NEW
 
 // ─── Project Planning ────────────────────────────────────────────
 const projectPlanRoutes = require('./routes/projectPlans');
@@ -119,6 +127,7 @@ app.get('/api/health', (req, res) => res.json({ status: 'OK', timestamp: new Dat
 // ─── Socket.io Signaling for Video Calls ────────────────────────
 const activeUsers = new Map(); // userId -> socketId
 
+// ─── Get online users (active socket connections) ──────────────
 app.get('/api/users/online', async (req, res) => {
   try {
     const onlineIds = Array.from(activeUsers.keys());
@@ -133,12 +142,14 @@ app.get('/api/users/online', async (req, res) => {
 io.on('connection', (socket) => {
   console.log(`🔌 New client connected: ${socket.id}`);
 
+  // Register user
   socket.on('register', (userId) => {
     activeUsers.set(userId, socket.id);
     socket.userId = userId;
     console.log(`✅ User ${userId} registered with socket ${socket.id}`);
   });
 
+  // Start a call
   socket.on('call-user', ({ to, offer }) => {
     const targetSocketId = activeUsers.get(to);
     if (targetSocketId) {
@@ -152,6 +163,7 @@ io.on('connection', (socket) => {
     }
   });
 
+  // Answer a call
   socket.on('answer-call', ({ to, answer }) => {
     const targetSocketId = activeUsers.get(to);
     if (targetSocketId) {
@@ -159,6 +171,7 @@ io.on('connection', (socket) => {
     }
   });
 
+  // ICE candidate exchange
   socket.on('ice-candidate', ({ to, candidate }) => {
     const targetSocketId = activeUsers.get(to);
     if (targetSocketId) {
@@ -166,6 +179,7 @@ io.on('connection', (socket) => {
     }
   });
 
+  // End call
   socket.on('end-call', ({ to }) => {
     const targetSocketId = activeUsers.get(to);
     if (targetSocketId) {
@@ -173,6 +187,7 @@ io.on('connection', (socket) => {
     }
   });
 
+  // ─── Invite to meeting ──────────────────────────────────────────
   socket.on('invite-to-meeting', ({ to, meetingLink, from, meetingName }) => {
     const targetSocketId = activeUsers.get(to);
     if (targetSocketId) {
@@ -187,6 +202,7 @@ io.on('connection', (socket) => {
     }
   });
 
+  // Handle disconnection
   socket.on('disconnect', () => {
     if (socket.userId) {
       activeUsers.delete(socket.userId);
