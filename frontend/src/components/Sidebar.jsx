@@ -26,7 +26,9 @@ import ArchitectureIcon from '@mui/icons-material/Architecture';
 import SurveyIcon from '@mui/icons-material/Map';
 import SmartToyIcon from '@mui/icons-material/SmartToy';
 import SafetyIcon from '@mui/icons-material/SafetyCheck';
-import PaymentsIcon from '@mui/icons-material/Payments'; // 👈 NEW
+import PaymentsIcon from '@mui/icons-material/Payments';
+import HandymanIcon from '@mui/icons-material/Handyman';
+import PeopleAltIcon from '@mui/icons-material/PeopleAlt'; // 👈 NEW for Visitors
 import { useAuth } from '../context/AuthContext';
 
 const drawerWidth = 240;
@@ -41,8 +43,10 @@ const Sidebar = ({ mobileOpen, handleDrawerToggle, isMobile }) => {
     { text: 'AI Assistant', icon: <SmartToyIcon />, path: '/dashboard', state: { openAI: true } },
     { text: 'Projects', icon: <BusinessIcon />, path: '/projects' },
     { text: 'Workers', icon: <PeopleIcon />, path: '/workers' },
+    { text: 'Visitors', icon: <PeopleAltIcon />, path: '/visitors' }, // 👈 NEW
     { text: 'Funding Requests', icon: <AttachMoneyIcon />, path: '/funding' },
     { text: 'Procurement', icon: <ReceiptIcon />, path: '/procurement' },
+    { text: 'Spare Parts', icon: <HandymanIcon />, path: '/spare-parts' },
     { text: 'BOQs', icon: <DescriptionIcon />, path: '/boq' },
     { text: 'Subcontracts', icon: <ConstructionIcon />, path: '/subcontracts' },
     { text: 'Advertised Projects', icon: <ConstructionIcon />, path: '/advertised-projects' },
@@ -52,7 +56,7 @@ const Sidebar = ({ mobileOpen, handleDrawerToggle, isMobile }) => {
     { text: 'Surveys', icon: <SurveyIcon />, path: '/surveys' },
     { text: 'Messages', icon: <MessageIcon />, path: '/messages' },
     { text: 'Safety Reports', icon: <SafetyIcon />, path: '/safety-reports' },
-    { text: 'Payment Notifications', icon: <PaymentsIcon />, path: '/payment-notifications' }, // 👈 NEW
+    { text: 'Payment Notifications', icon: <PaymentsIcon />, path: '/payment-notifications' },
     { text: 'Profile', icon: <PersonIcon />, path: '/profile' },
     { text: 'Settings', icon: <SettingsIcon />, path: '/settings' },
   ];
@@ -66,7 +70,9 @@ const Sidebar = ({ mobileOpen, handleDrawerToggle, isMobile }) => {
     'Safety Reports',
     'Messages',
     'Profile',
-    'Settings'
+    'Settings',
+    'Spare Parts',
+    'Visitors', // 👈 NEW – always visible
   ];
 
   const visibleMenuItems = allMenuItems.filter(item => {
