@@ -7,10 +7,14 @@ router.post('/:id/convert-to-tender', auth, async (req, res) => {
       return res.status(400).json({ error: 'This bid has already been forwarded to Tenders' });
     }
 
-    // Parse budget as number
     const budgetNumber = parseFloat(String(bid.budget).replace(/[^0-9.-]+/g, '')) || 0;
 
-    // Build notes with all extra info
+    // ─── Format dates ──────────────────────────────────────────
+    const bidDate = bid.bidDate || bid.createdAt || new Date();
+    const issueDateStr = new Date(bidDate).toISOString().split('T')[0];
+    const deadlineStr = bid.deadline ? new Date(bid.deadline).toISOString().split('T')[0] : '';
+
+    // ─── Build notes ──────────────────────────────────────────
     const notesParts = [
       `Forwarded from bidded project "${bid.projectTitle}" (ID: ${bid.projectId})`,
     ];
@@ -32,7 +36,8 @@ router.post('/:id/convert-to-tender', auth, async (req, res) => {
       projectName: bid.projectTitle || '',
       location: bid.location || '',
       description: bid.description || '',
-      dueDate: bid.deadline ? new Date(bid.deadline) : null,
+      issueDate: issueDateStr,   // ✅ Set from bid date
+      dueDate: deadlineStr,       // ✅ Set from deadline
       status: 'draft',
       createdBy: req.user.id,
       priceProposal: {
@@ -49,13 +54,11 @@ router.post('/:id/convert-to-tender', auth, async (req, res) => {
 
     await tender.save();
 
-    // Link the bid to the tender
     bid.convertedToTender = tender._id;
     bid.isConvertedToTender = true;
     bid.updatedAt = new Date();
     await bid.save();
 
-    // Populate the tender for response
     const populatedTender = await Tender.findById(tender._id)
       .populate('createdBy', 'name role');
 
