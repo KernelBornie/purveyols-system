@@ -122,11 +122,11 @@ const DriverDashboard = () => {
         <Typography variant="h6" gutterBottom>Quick Actions</Typography>
         <Grid container spacing={2}>
           <Grid item xs={12} sm={6} md={4}>
-            <Button component={Link} to="/procurement/new" variant="contained" fullWidth>
+            <Button component={Link} to="/spare-parts/new" variant="contained" fullWidth>
               Request Spare Parts
             </Button>
             <Typography variant="caption" color="textSecondary">
-              Create procurement order (leave unit prices blank)
+              Submit a spare parts request (procurement will handle pricing)
             </Typography>
           </Grid>
           <Grid item xs={12} sm={6} md={4}>
@@ -150,7 +150,6 @@ const DriverDashboard = () => {
 
       {loading ? <CircularProgress /> : (
         <>
-      <DeliveryNote />
           <Grid container spacing={3} sx={{ mb: 3 }}>
             <Grid item xs={12} sm={4}>
               <Card><CardContent>
@@ -231,10 +230,10 @@ const DriverDashboard = () => {
               </Paper>
             </Grid>
 
-            {/* Procurement Orders (Spare Parts) with Requested By */}
+            {/* Procurement Orders (Spare Parts) */}
             <Grid item xs={12}>
               <Paper sx={{ p: 2 }}>
-                <Typography variant="h6" gutterBottom>My Spare Parts Requests</Typography>
+                <Typography variant="h6" gutterBottom>My Spare Parts Requests (Procurement)</Typography>
                 <Table size="small">
                   <TableHead>
                     <TableRow>
@@ -248,7 +247,7 @@ const DriverDashboard = () => {
                   <TableBody>
                     {procurementOrders.slice(0, 5).map(p => (
                       <TableRow key={p._id}>
-                        <TableCell>{p.items?.length > 0 ? p.items.map(i => i.name).join(', ') : 'N/A'}</TableCell>
+                        <TableCell>{p.items?.length > 0 ? p.items.map(i => i.name || i.description).join(', ') : 'N/A'}</TableCell>
                         <TableCell>{p.items?.length || 0}</TableCell>
                         <TableCell><Chip label={p.status} color={p.status === 'funded' ? 'success' : p.status === 'purchased' ? 'info' : 'warning'} size="small" /></TableCell>
                         <TableCell>{p.createdBy?.name || 'N/A'}</TableCell>
