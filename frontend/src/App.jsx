@@ -47,6 +47,9 @@ import VisitorList from './pages/visitors/VisitorList';
 import VisitorForm from './pages/visitors/VisitorForm';
 // 👇 Logbook import
 import LogbookList from './pages/logbooks/LogbookList';
+// 👇 Tenders import
+import TenderList from './pages/tenders/TenderList';
+import TenderForm from './pages/tenders/TenderForm';
 
 const AuthRedirect = () => {
   const { user, loading } = useAuth();
@@ -169,6 +172,12 @@ function App() {
                 <Route path="/visitors/new" element={<VisitorForm />} />
                 <Route path="/visitors/:id" element={<VisitorForm />} />
                 <Route path="/visitors/:id/edit" element={<VisitorForm />} />
+
+                {/* 👇 Tenders & RFQs */}
+                <Route path="/tenders" element={<TenderList />} />
+                <Route path="/tenders/new" element={<TenderForm />} />
+                <Route path="/tenders/:id" element={<TenderForm />} />
+                <Route path="/tenders/:id/edit" element={<TenderForm />} />
               </Route>
             </Routes>
           </BrowserRouter>

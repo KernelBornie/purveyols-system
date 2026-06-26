@@ -28,7 +28,8 @@ import SmartToyIcon from '@mui/icons-material/SmartToy';
 import SafetyIcon from '@mui/icons-material/SafetyCheck';
 import PaymentsIcon from '@mui/icons-material/Payments';
 import HandymanIcon from '@mui/icons-material/Handyman';
-import PeopleAltIcon from '@mui/icons-material/PeopleAlt'; // 👈 NEW for Visitors
+import PeopleAltIcon from '@mui/icons-material/PeopleAlt';
+import RequestQuoteIcon from '@mui/icons-material/RequestQuote'; // 👈 NEW for Tenders
 import { useAuth } from '../context/AuthContext';
 
 const drawerWidth = 240;
@@ -43,7 +44,8 @@ const Sidebar = ({ mobileOpen, handleDrawerToggle, isMobile }) => {
     { text: 'AI Assistant', icon: <SmartToyIcon />, path: '/dashboard', state: { openAI: true } },
     { text: 'Projects', icon: <BusinessIcon />, path: '/projects' },
     { text: 'Workers', icon: <PeopleIcon />, path: '/workers' },
-    { text: 'Visitors', icon: <PeopleAltIcon />, path: '/visitors' }, // 👈 NEW
+    { text: 'Visitors', icon: <PeopleAltIcon />, path: '/visitors' },
+    { text: 'Tenders & RFQs', icon: <RequestQuoteIcon />, path: '/tenders' }, // 👈 NEW
     { text: 'Funding Requests', icon: <AttachMoneyIcon />, path: '/funding' },
     { text: 'Procurement', icon: <ReceiptIcon />, path: '/procurement' },
     { text: 'Spare Parts', icon: <HandymanIcon />, path: '/spare-parts' },
@@ -72,7 +74,8 @@ const Sidebar = ({ mobileOpen, handleDrawerToggle, isMobile }) => {
     'Profile',
     'Settings',
     'Spare Parts',
-    'Visitors', // 👈 NEW – always visible
+    'Visitors',
+    'Tenders & RFQs', // 👈 Always visible
   ];
 
   const visibleMenuItems = allMenuItems.filter(item => {
