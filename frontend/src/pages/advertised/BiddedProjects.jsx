@@ -14,7 +14,7 @@ import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
-import ForwardIcon from '@mui/icons-material/Forward'; // 👈 NEW
+import ForwardIcon from '@mui/icons-material/Forward';
 import { useNavigate } from 'react-router-dom';
 import api from '../../api/axios';
 import BackButton from '../../components/BackButton';
@@ -109,7 +109,7 @@ const BiddedProjects = () => {
     }
   };
 
-  // ─── NEW: Forward to Tenders ──────────────────────────────────
+  // ─── Forward to Tenders ──────────────────────────────────────
   const handleForwardToTenders = async (bidId) => {
     if (!window.confirm('Forward this bid to Tenders & RFQs? A tender document will be created.')) return;
     try {
@@ -215,7 +215,7 @@ const BiddedProjects = () => {
                       Create Project
                     </Button>
                   )}
-                  {/* ─── NEW: Forward to Tenders ─────────────────────── */}
+                  {/* ─── Forward to Tenders ─────────────────────────── */}
                   {!bid.isConvertedToTender && (
                     <Button
                       size="small"

@@ -113,7 +113,7 @@ router.post('/:id/convert-to-project', auth, async (req, res) => {
   }
 });
 
-// ─── NEW: Convert bid to Tender ──────────────────────────────
+// ─── Convert bid to Tender ──────────────────────────────
 router.post('/:id/convert-to-tender', auth, async (req, res) => {
   try {
     const bid = await Bid.findOne({ _id: req.params.id, user: req.user.id });
@@ -147,9 +147,7 @@ router.post('/:id/convert-to-tender', auth, async (req, res) => {
         vat: 0,
         exchangeRate: 1,
       },
-      // Copy source info
       notes: `Forwarded from bidded project "${bid.projectTitle}" (ID: ${bid.projectId})`,
-      // We can also copy the source URL
     });
 
     await tender.save();
