@@ -1,10 +1,10 @@
 import DashboardActions from '../../components/DashboardActions';
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import DeliveryNote from "../../components/DeliveryNote";
 import {
   Box, Typography, Grid, Card, CardContent, Button, Table, TableHead, TableRow, TableCell, TableBody,
-  Chip, Paper, TextField, Dialog, DialogTitle, DialogContent, DialogActions,
-  CircularProgress, Alert
+  Chip, Paper, CircularProgress, Alert
 } from '@mui/material';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
@@ -14,8 +14,6 @@ const ReceptionistDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [visitors, setVisitors] = useState([]);
   const [stats, setStats] = useState({ total: 0, today: 0 });
-  const [openModal, setOpenModal] = useState(false);
-  const [form, setForm] = useState({ name: '', phone: '', purpose: '', host: '', checkIn: new Date().toISOString().slice(0,16) });
   const [message, setMessage] = useState(null);
 
   const fetchData = async () => {
@@ -39,18 +37,6 @@ const ReceptionistDashboard = () => {
     fetchData();
   }, []);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    try {
-      await api.post('/api/visitors', form);
-      setMessage({ type: 'success', text: 'Visitor logged' });
-      setOpenModal(false);
-      fetchData();
-    } catch (err) {
-      setMessage({ type: 'error', text: err.response?.data?.error || 'Error' });
-    }
-  };
-
   return (
     <Box>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
@@ -59,7 +45,14 @@ const ReceptionistDashboard = () => {
           <Button variant="contained" startIcon={<RefreshIcon />} onClick={fetchData} sx={{ mr: 1 }}>
             Refresh
           </Button>
-          <Button variant="contained" color="primary" startIcon={<PersonAddIcon />} onClick={() => setOpenModal(true)}>
+          {/* ─── Log Visitor button now links to dedicated form ─── */}
+          <Button
+            component={Link}
+            to="/visitors/new"
+            variant="contained"
+            color="primary"
+            startIcon={<PersonAddIcon />}
+          >
             Log Visitor
           </Button>
         </Box>
@@ -75,7 +68,6 @@ const ReceptionistDashboard = () => {
         <CircularProgress />
       ) : (
         <>
-      <DeliveryNote />
           <Grid container spacing={3} sx={{ mb: 3 }}>
             <Grid item xs={12} sm={6}>
               <Card><CardContent>
@@ -107,9 +99,9 @@ const ReceptionistDashboard = () => {
                 {visitors.map(v => (
                   <TableRow key={v._id}>
                     <TableCell>{v.name}</TableCell>
-                    <TableCell>{v.phone}</TableCell>
-                    <TableCell>{v.purpose}</TableCell>
-                    <TableCell>{v.host}</TableCell>
+                    <TableCell>{v.phone || '—'}</TableCell>
+                    <TableCell>{v.purpose || '—'}</TableCell>
+                    <TableCell>{v.host || '—'}</TableCell>
                     <TableCell>{new Date(v.checkIn).toLocaleString()}</TableCell>
                   </TableRow>
                 ))}
@@ -118,23 +110,6 @@ const ReceptionistDashboard = () => {
           </Paper>
         </>
       )}
-
-      <Dialog open={openModal} onClose={() => setOpenModal(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Log Visitor</DialogTitle>
-        <form onSubmit={handleSubmit}>
-          <DialogContent>
-            <TextField label="Full Name" fullWidth margin="normal" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} required />
-            <TextField label="Phone" fullWidth margin="normal" value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} />
-            <TextField label="Purpose" fullWidth margin="normal" value={form.purpose} onChange={e => setForm({ ...form, purpose: e.target.value })} required />
-            <TextField label="Host / Person to see" fullWidth margin="normal" value={form.host} onChange={e => setForm({ ...form, host: e.target.value })} />
-            <TextField label="Check-in Time" type="datetime-local" fullWidth margin="normal" value={form.checkIn} onChange={e => setForm({ ...form, checkIn: e.target.value })} InputLabelProps={{ shrink: true }} />
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={() => setOpenModal(false)}>Cancel</Button>
-            <Button type="submit" variant="contained">Log Visitor</Button>
-          </DialogActions>
-        </form>
-      </Dialog>
     </Box>
   );
 };
