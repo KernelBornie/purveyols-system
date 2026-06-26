@@ -42,9 +42,11 @@ import SafetyReportForm from './pages/safety/SafetyReportForm';
 import PaymentNotifications from './pages/PaymentNotifications';
 import PaymentDetails from './pages/PaymentDetails';
 import PaymentList from './pages/payments/PaymentList';
-// 👇 NEW – Visitor imports
+// 👇 Visitor imports
 import VisitorList from './pages/visitors/VisitorList';
 import VisitorForm from './pages/visitors/VisitorForm';
+// 👇 Logbook import
+import LogbookList from './pages/logbooks/LogbookList';
 
 const AuthRedirect = () => {
   const { user, loading } = useAuth();
@@ -126,6 +128,9 @@ function App() {
                 <Route path="/delivery/:id" element={<DeliveryNote />} />
                 <Route path="/delivery/:id/edit" element={<DeliveryNote />} />
 
+                {/* Logbooks */}
+                <Route path="/logbooks" element={<LogbookList />} />
+
                 {/* Site Plans */}
                 <Route path="/site-plans" element={<SitePlanList />} />
                 <Route path="/site-plans/new" element={<SitePlanForm />} />
@@ -159,7 +164,7 @@ function App() {
                 {/* Payment Notifications */}
                 <Route path="/payment-notifications" element={<PaymentNotifications />} />
 
-                {/* 👇 NEW – Visitors */}
+                {/* Visitors */}
                 <Route path="/visitors" element={<VisitorList />} />
                 <Route path="/visitors/new" element={<VisitorForm />} />
                 <Route path="/visitors/:id" element={<VisitorForm />} />
