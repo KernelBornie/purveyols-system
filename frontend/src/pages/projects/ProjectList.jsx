@@ -126,7 +126,9 @@ const ProjectList = () => {
       setUploadErrors(res.data.errors || []);
       setUploadStep(2);
     } catch (err) {
-      setUploadErrors([err.response?.data?.error || 'Failed to parse file']);
+      const msg = err.response?.data?.error || 'Failed to parse file';
+      setUploadErrors([msg]);
+      setUploadStep(2); // show errors
     } finally {
       setUploading(false);
     }
@@ -150,7 +152,9 @@ const ProjectList = () => {
       setUploadStep(0);
       alert(`✅ ${res.data.count} projects uploaded successfully!`);
     } catch (err) {
-      setUploadErrors([err.response?.data?.error || 'Upload failed']);
+      const msg = err.response?.data?.error || 'Upload failed';
+      setUploadErrors([msg]);
+      setUploadStep(2); // stay on preview step with error
     } finally {
       setUploading(false);
     }
