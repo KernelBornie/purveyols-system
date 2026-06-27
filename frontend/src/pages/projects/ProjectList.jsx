@@ -2,17 +2,20 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Paper, Typography, Box, Table, TableHead, TableRow, TableCell, TableBody,
-  Button, Chip, CircularProgress, Alert, IconButton, Tooltip
+  Button, Chip, CircularProgress, Alert, IconButton, Tooltip, Avatar,
+  Dialog, DialogTitle, DialogContent, DialogActions
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import TimelineIcon from '@mui/icons-material/Timeline';
+import ZoomInIcon from '@mui/icons-material/ZoomIn';
 import api from '../../api/axios';
 import { useAuth } from '../../context/AuthContext';
 import BackButton from '../../components/BackButton';
 import getApiErrorMessage from '../../utils/getApiErrorMessage';
 
+// ─── Roles ──────────────────────────────────────────────────────
 const EDITABLE_ROLES = [
   'admin', 'director', 'procurement-officer', 'accountant',
   'civil-engineer', 'quantity-surveyor', 'foreman', 'safety-officer',
@@ -29,18 +32,13 @@ const ProjectList = () => {
   const [error, setError] = useState(null);
   const { user } = useAuth();
 
-  // ─── DEBUG ──────────────────────────────────────────────────────
-  console.log('🔍 ProjectList user:', user);
-  console.log('🔍 ProjectList user.role:', user?.role);
-  console.log('🔍 canEdit:', user && EDITABLE_ROLES.includes(user.role));
-  console.log('🔍 canDelete:', user && DELETABLE_ROLES.includes(user.role));
-
-  // ─── TEMPORARY FORCE (uncomment to test) ──────────────────────
-  // const canEdit = true;
-  // const canDelete = true;
-
+  // ─── Permission checks ──────────────────────────────────────
   const canEdit = user && EDITABLE_ROLES.includes(user.role);
   const canDelete = user && DELETABLE_ROLES.includes(user.role);
+
+  // ─── Photo preview state ──────────────────────────────────────
+  const [photoPreviewOpen, setPhotoPreviewOpen] = useState(false);
+  const [previewImage, setPreviewImage] = useState('');
 
   useEffect(() => {
     fetchProjects();
@@ -85,6 +83,14 @@ const ProjectList = () => {
     return new Intl.NumberFormat('en-ZM', { style: 'currency', currency: 'ZMW' }).format(amount || 0);
   };
 
+  // ─── Handle photo click to expand ────────────────────────────
+  const handlePhotoClick = (image) => {
+    if (image) {
+      setPreviewImage(image);
+      setPhotoPreviewOpen(true);
+    }
+  };
+
   if (loading) return <CircularProgress sx={{ display: 'block', margin: '40px auto' }} />;
   if (error) return <Alert severity="error">{error}</Alert>;
 
@@ -103,6 +109,7 @@ const ProjectList = () => {
       <Table size="small">
         <TableHead>
           <TableRow sx={{ bgcolor: '#f5f5f5' }}>
+            <TableCell>Image</TableCell>
             <TableCell>Name</TableCell>
             <TableCell>Location</TableCell>
             <TableCell>Status</TableCell>
@@ -116,6 +123,20 @@ const ProjectList = () => {
         <TableBody>
           {projects.map((project) => (
             <TableRow key={project._id}>
+              <TableCell>
+                <Box
+                  sx={{ cursor: project.image ? 'pointer' : 'default' }}
+                  onClick={() => handlePhotoClick(project.image)}
+                >
+                  <Avatar
+                    src={project.image || '/project-placeholder.jpg'}
+                    variant="rounded"
+                    sx={{ width: 40, height: 40 }}
+                  >
+                    {!project.image && project.name?.charAt(0).toUpperCase()}
+                  </Avatar>
+                </Box>
+              </TableCell>
               <TableCell>{project.name}</TableCell>
               <TableCell>{project.location || '—'}</TableCell>
               <TableCell>
@@ -126,6 +147,7 @@ const ProjectList = () => {
               <TableCell>{project.endDate ? new Date(project.endDate).toLocaleDateString() : '—'}</TableCell>
               <TableCell>{project.manager?.name || 'N/A'}</TableCell>
               <TableCell>
+                {/* ─── View ────────────────────────────────────── */}
                 <Button
                   component={Link}
                   to={`/projects/${project._id}/view`}
@@ -176,13 +198,35 @@ const ProjectList = () => {
           ))}
           {projects.length === 0 && (
             <TableRow>
-              <TableCell colSpan={8} align="center" sx={{ py: 3 }}>
+              <TableCell colSpan={9} align="center" sx={{ py: 3 }}>
                 <Typography variant="body2" color="textSecondary">No projects yet.</Typography>
               </TableCell>
             </TableRow>
           )}
         </TableBody>
       </Table>
+
+      {/* ─── Photo Preview Dialog ────────────────────────────────── */}
+      <Dialog open={photoPreviewOpen} onClose={() => setPhotoPreviewOpen(false)} maxWidth="md" fullWidth>
+        <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span>Project Image</span>
+          <IconButton onClick={() => setPhotoPreviewOpen(false)}>
+            <ZoomInIcon />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent sx={{ textAlign: 'center' }}>
+          {previewImage && (
+            <img
+              src={previewImage}
+              alt="Project"
+              style={{ maxWidth: '100%', maxHeight: '70vh', objectFit: 'contain' }}
+            />
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setPhotoPreviewOpen(false)}>Close</Button>
+        </DialogActions>
+      </Dialog>
     </Paper>
   );
 };
