@@ -29,7 +29,15 @@ const corsOptions = {
   credentials: true,
   optionsSuccessStatus: 200,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  // ─── FIX: allow 'cache-control' and other common headers ────
+  allowedHeaders: [
+    'Content-Type',
+    'Authorization',
+    'X-Requested-With',
+    'cache-control',     // ✅ added
+    'Accept',
+    'Origin',
+  ],
 };
 
 app.use(cors(corsOptions));
@@ -99,7 +107,7 @@ app.use('/api/drawings', require('./routes/drawings'));
 app.use('/api/surveys', require('./routes/surveys'));
 app.use('/api/spare-parts', require('./routes/spareParts'));
 // ─── Tenders ──────────────────────────────────────────────────────
-app.use('/api/tenders', require('./routes/tenders')); // 👈 ADDED
+app.use('/api/tenders', require('./routes/tenders'));
 
 // ─── Project Planning ────────────────────────────────────────────
 const projectPlanRoutes = require('./routes/projectPlans');
