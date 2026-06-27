@@ -374,7 +374,7 @@ const TenderForm = () => {
     }
   };
 
-  // ─── Custom Print ──────────────────────────────────────────────
+  // ─── Custom Print (clean standalone document) ────────────────────
   const handlePrint = () => {
     if (!form.title && !form.client) {
       alert('No data to print.');
@@ -382,7 +382,7 @@ const TenderForm = () => {
     }
     const { subtotal, grandTotal } = calculateGrandTotal();
 
-    // Build sections HTML
+    // ─── Build Sections HTML ────────────────────────────────────
     let sectionsHtml = '';
     if (form.sections.length === 0) {
       sectionsHtml = '<tr><td colspan="7" align="center">No sections defined</td></tr>';
@@ -413,7 +413,7 @@ const TenderForm = () => {
       });
     }
 
-    // Build personnel HTML
+    // ─── Build Personnel HTML ──────────────────────────────────
     let personnelHtml = '';
     if (form.volumeII.keyPersonnel.length === 0) {
       personnelHtml = '<tr><td colspan="6" align="center">No personnel added</td></tr>';
@@ -431,7 +431,7 @@ const TenderForm = () => {
       });
     }
 
-    // Build past performance HTML
+    // ─── Build Past Performance HTML ──────────────────────────
     let performanceHtml = '';
     if (form.volumeII.pastPerformance.length === 0) {
       performanceHtml = '<tr><td colspan="6" align="center">No past performance records</td></tr>';
@@ -449,6 +449,10 @@ const TenderForm = () => {
       });
     }
 
+    // ─── Build Management Info HTML ──────────────────────────
+    const mgmt = form.volumeII.managementInformation;
+
+    // ─── Open print window ────────────────────────────────────
     const printWindow = window.open('', '_blank');
     printWindow.document.write(`
       <html>
@@ -461,21 +465,26 @@ const TenderForm = () => {
             .header h1 { margin: 0; font-size: 28px; letter-spacing: 4px; font-weight: bold; color: #b71c1c; }
             .header .subtitle { font-weight: bold; font-size: 14px; margin: 2px 0; color: #b71c1c; }
             .header .details { font-size: 11px; margin: 1px 0; }
-            .title-row { border-bottom: 1px solid #000; padding-bottom: 4px; margin-bottom: 10px; }
+            .title-row { display: flex; justify-content: space-between; border-bottom: 1px solid #000; padding-bottom: 4px; margin-bottom: 10px; }
             .title-row .left { font-weight: bold; font-size: 18px; letter-spacing: 2px; color: #b71c1c; }
-            .info { margin-bottom: 10px; }
-            .info p { margin: 2px 0; font-size: 12px; }
+            .title-row .right { font-weight: bold; font-size: 14px; }
+            .meta { margin-bottom: 10px; font-size: 12px; }
+            .meta p { margin: 2px 0; }
             .section-title { font-weight: bold; font-size: 14px; margin-top: 12px; margin-bottom: 4px; border-bottom: 1px solid #ccc; }
             table { width: 100%; border-collapse: collapse; font-size: 11px; margin: 6px 0; }
             th { background: #f0f0f0; font-weight: bold; text-align: left; padding: 4px; border: 1px solid #ccc; }
             td { padding: 4px; border: 1px solid #ccc; }
+            .text-right { text-align: right; }
+            .text-center { text-align: center; }
             .approval { margin-top: 20px; border-top: 1px solid #000; padding-top: 10px; }
+            .approval .row { display: flex; justify-content: space-between; }
             .footer { text-align: center; font-size: 10px; margin-top: 20px; border-top: 1px solid #000; padding-top: 8px; }
             .total-row { font-weight: bold; background: #fafafa; }
           </style>
         </head>
         <body>
           <div class="print-container">
+            <!-- HEADER -->
             <div class="header">
               <h1>PURVEYOLS</h1>
               <div class="subtitle">Building and Civil contractors</div>
@@ -483,12 +492,15 @@ const TenderForm = () => {
               <div class="details">Tel: +260 211 235354 | Mobile: +260 977 393879 / +260 965 393879</div>
               <div class="details">Email: purveyols@gmail.com</div>
             </div>
+
+            <!-- TITLE ROW -->
             <div class="title-row">
               <span class="left">TENDER DOCUMENT</span>
-              <span style="float:right;font-size:12px;">Ref: ${form.referenceNumber || 'N/A'}</span>
+              <span class="right">Ref: ${form.referenceNumber || 'N/A'}</span>
             </div>
 
-            <div class="info">
+            <!-- META / BASIC INFO -->
+            <div class="meta">
               <p><strong>Title:</strong> ${form.title || '—'}</p>
               <p><strong>Type:</strong> ${form.type || '—'}</p>
               <p><strong>Client:</strong> ${form.client || '—'}</p>
@@ -512,6 +524,7 @@ const TenderForm = () => {
               <p><strong>Description:</strong> ${form.description || '—'}</p>
             </div>
 
+            <!-- SECTIONS & ITEMS -->
             <div class="section-title">Sections & Scope of Work</div>
             <table>
               <thead>
@@ -529,19 +542,22 @@ const TenderForm = () => {
               </tbody>
             </table>
 
+            <!-- PRICE PROPOSAL -->
             <div class="section-title">Price Proposal</div>
             <table>
-              <tr><td><strong>Subtotal:</strong></td><td align="right">${subtotal.toFixed(2)}</td></tr>
-              <tr><td><strong>Adjustment (${form.priceProposal.percentageAdjustment || 0}%):</strong></td><td align="right">${((subtotal * (form.priceProposal.percentageAdjustment || 0)) / 100).toFixed(2)}</td></tr>
-              <tr><td><strong>Contingencies (${form.priceProposal.contingencies || 0}%):</strong></td><td align="right">${((subtotal * (form.priceProposal.contingencies || 0)) / 100).toFixed(2)}</td></tr>
-              <tr><td><strong>VAT (${form.priceProposal.vat || 0}%):</strong></td><td align="right">${((subtotal * (form.priceProposal.vat || 0)) / 100).toFixed(2)}</td></tr>
-              <tr class="total-row"><td><strong>Grand Total (${form.priceProposal.currency || 'ZMW'}):</strong></td><td align="right">${grandTotal.toFixed(2)}</td></tr>
+              <tr><td><strong>Subtotal:</strong></td><td class="text-right">${subtotal.toFixed(2)}</td></tr>
+              <tr><td><strong>Adjustment (${form.priceProposal.percentageAdjustment || 0}%):</strong></td><td class="text-right">${((subtotal * (form.priceProposal.percentageAdjustment || 0)) / 100).toFixed(2)}</td></tr>
+              <tr><td><strong>Contingencies (${form.priceProposal.contingencies || 0}%):</strong></td><td class="text-right">${((subtotal * (form.priceProposal.contingencies || 0)) / 100).toFixed(2)}</td></tr>
+              <tr><td><strong>VAT (${form.priceProposal.vat || 0}%):</strong></td><td class="text-right">${((subtotal * (form.priceProposal.vat || 0)) / 100).toFixed(2)}</td></tr>
+              <tr class="total-row"><td><strong>Grand Total (${form.priceProposal.currency || 'ZMW'}):</strong></td><td class="text-right">${grandTotal.toFixed(2)}</td></tr>
             </table>
 
+            <!-- VOLUME I -->
             <div class="section-title">Volume I: Price Proposal</div>
             <p><strong>Signed SF 1442 Received:</strong> ${form.volumeI.sf1442Received ? 'Yes' : 'No'}</p>
             <p><strong>Price Breakdown:</strong> ${form.volumeI.priceBreakdown || '—'}</p>
 
+            <!-- VOLUME II -->
             <div class="section-title">Volume II: Business / Technical Proposal</div>
             <p><strong>1. Performance Schedule:</strong><br/>${form.volumeII.performanceSchedule || '—'}</p>
 
@@ -553,13 +569,13 @@ const TenderForm = () => {
 
             <p><strong>3. Management Information</strong></p>
             <table>
-              <tr><td><strong>Bidder Info:</strong></td><td>${form.volumeII.managementInformation.bidderInfo || '—'}</td></tr>
-              <tr><td><strong>SAM Registration:</strong></td><td>${form.volumeII.managementInformation.samRegistration || '—'}</td></tr>
-              <tr><td><strong>Certifications:</strong></td><td>${form.volumeII.managementInformation.certifications || '—'}</td></tr>
-              <tr><td><strong>Litigation Status:</strong></td><td>${form.volumeII.managementInformation.litigationStatus || '—'}</td></tr>
-              <tr><td><strong>Political Affiliation:</strong></td><td>${form.volumeII.managementInformation.politicalAffiliation || '—'}</td></tr>
-              <tr><td><strong>Equipment Schedule:</strong></td><td>${form.volumeII.managementInformation.equipmentSchedule || '—'}</td></tr>
-              <tr><td><strong>Company Profile:</strong></td><td>${form.volumeII.managementInformation.companyProfile || '—'}</td></tr>
+              <tr><td><strong>Bidder Info:</strong></td><td>${mgmt.bidderInfo || '—'}</td></tr>
+              <tr><td><strong>SAM Registration:</strong></td><td>${mgmt.samRegistration || '—'}</td></tr>
+              <tr><td><strong>Certifications:</strong></td><td>${mgmt.certifications || '—'}</td></tr>
+              <tr><td><strong>Litigation Status:</strong></td><td>${mgmt.litigationStatus || '—'}</td></tr>
+              <tr><td><strong>Political Affiliation:</strong></td><td>${mgmt.politicalAffiliation || '—'}</td></tr>
+              <tr><td><strong>Equipment Schedule:</strong></td><td>${mgmt.equipmentSchedule || '—'}</td></tr>
+              <tr><td><strong>Company Profile:</strong></td><td>${mgmt.companyProfile || '—'}</td></tr>
             </table>
 
             <p><strong>4. Financial Capability</strong></p>
@@ -574,9 +590,11 @@ const TenderForm = () => {
             <p><strong>6. Preliminary Safety Plan</strong></p>
             <p>${form.volumeII.preliminarySafetyPlan || '—'}</p>
 
+            <!-- ADDITIONAL INFO -->
             <div class="section-title">Additional Information</div>
             <p><strong>Notes:</strong> ${form.notes || '—'}</p>
 
+            <!-- APPROVAL -->
             <div class="approval">
               <div class="row">
                 <div><strong>Created by:</strong> ${creator ? `${creator.name} (${creator.role})` : '—'}</div>
@@ -588,9 +606,12 @@ const TenderForm = () => {
               </div>
             </div>
 
+            <!-- FOOTER -->
             <div class="footer">PURVEYOLS CMS – Construction Management System</div>
           </div>
-          <script>window.onload = function() { window.print(); }</script>
+          <script>
+            window.onload = function() { window.print(); }
+          <\/script>
         </body>
       </html>
     `);
