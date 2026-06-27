@@ -5,9 +5,8 @@ import {
   Button, Chip, CircularProgress, Alert, IconButton, Tooltip
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
-import RefreshIcon from '@mui/icons-material/Refresh';
-import EditIcon from '@mui/icons-material/Edit';   // ✅ Added
-import DeleteIcon from '@mui/icons-material/Delete'; // ✅ Added
+import EditIcon from '@mui/icons-material/Edit';
+import DeleteIcon from '@mui/icons-material/Delete';
 import api from '../../api/axios';
 import { useAuth } from '../../context/AuthContext';
 import BackButton from '../../components/BackButton';
@@ -131,7 +130,7 @@ const TenderList = () => {
                   <Tooltip title="Edit">
                     <IconButton
                       component={Link}
-                      to={`/tenders/${t._id}/edit`}
+                      to={`/tenders/${t._id}`}    // ✅ same as View – form will enable edit if canEdit
                       size="small"
                       color="primary"
                     >

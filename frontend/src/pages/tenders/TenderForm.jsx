@@ -96,6 +96,7 @@ const TenderForm = () => {
   const [editingSection, setEditingSection] = useState(null);
 
   const canEdit = ['admin', 'director', 'procurement-officer', 'civil-engineer', 'quantity-surveyor'].includes(user?.role);
+  const canDelete = ['admin', 'director'].includes(user?.role);
   const isReadOnly = form.status === 'submitted' || form.status === 'awarded' || !canEdit;
 
   useEffect(() => {
@@ -142,7 +143,6 @@ const TenderForm = () => {
               sf1442Received: false,
               priceBreakdown: '',
             },
-            // ✅ Safe fallback for volumeII and nested objects
             volumeII: {
               performanceSchedule: data.volumeII?.performanceSchedule || '',
               keyPersonnel: data.volumeII?.keyPersonnel || [],
@@ -307,7 +307,22 @@ const TenderForm = () => {
     setForm({ ...form, volumeII: { ...form.volumeII, pastPerformance } });
   };
 
-  // ─── Submit ──────────────────────────────────────────────────
+  // ─── Delete tender ─────────────────────────────────────────────
+  const handleDelete = async () => {
+    if (!window.confirm('Delete this tender permanently?')) return;
+    setLoading(true);
+    try {
+      await api.delete(`/api/tenders/${id}`);
+      setMessage({ type: 'success', text: 'Tender deleted' });
+      setTimeout(() => navigate('/tenders'), 1000);
+    } catch (err) {
+      setMessage({ type: 'error', text: err.response?.data?.error || 'Delete failed' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ─── Submit / Save ────────────────────────────────────────────
   const handleSubmit = async (submitForSubmission = false) => {
     setLoading(true);
     setMessage(null);
@@ -371,6 +386,19 @@ const TenderForm = () => {
           >
             Print
           </Button>
+
+          {id && canDelete && !isReadOnly && (
+            <Button
+              variant="contained"
+              color="error"
+              startIcon={<DeleteIcon />}
+              onClick={handleDelete}
+              sx={{ mr: 1 }}
+            >
+              Delete
+            </Button>
+          )}
+
           {!isReadOnly && (
             <>
               <Button
