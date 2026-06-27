@@ -1,17 +1,22 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import {
-  Paper, Typography, Box, Grid, TextField, Button, MenuItem, Alert, Chip, Slider, Avatar
+  Paper, Typography, Box, Grid, TextField, Button, MenuItem, Alert, Chip, Slider, Avatar,
+  IconButton, Dialog, DialogTitle, DialogContent, DialogActions
 } from '@mui/material';
 import SaveIcon from '@mui/icons-material/Save';
 import PrintIcon from '@mui/icons-material/Print';
-import PhotoCameraIcon from '@mui/icons-material/PhotoCamera';
+import DeleteIcon from '@mui/icons-material/Delete';
+import CloudUploadIcon from '@mui/icons-material/CloudUpload';
+import CameraAltIcon from '@mui/icons-material/CameraAlt';
+import ZoomInIcon from '@mui/icons-material/ZoomIn';
 import api from '../../api/axios';
 import { useAuth } from '../../context/AuthContext';
 import BackButton from '../../components/BackButton';
 
 const ProjectForm = () => {
   const { id } = useParams();
+  const location = useLocation();
   const navigate = useNavigate();
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
@@ -30,6 +35,21 @@ const ProjectForm = () => {
   const [approvedAt, setApprovedAt] = useState(null);
   const [message, setMessage] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
+
+  // ─── Detect mode ──────────────────────────────────────────────
+  const isView = location.pathname.includes('/view');
+  const isEdit = location.pathname.includes('/edit') || (id && !isView);
+  const isNew = !id;
+
+  const canEdit = !isView && !['driver', 'receptionist', 'safety-officer'].includes(user?.role);
+  const canDelete = !isView && ['admin', 'director', 'accountant'].includes(user?.role);
+
+  // ─── Photo preview dialog ──────────────────────────────────────
+  const [photoPreviewOpen, setPhotoPreviewOpen] = useState(false);
+
+  const handlePhotoClick = () => {
+    if (imagePreview) setPhotoPreviewOpen(true);
+  };
 
   useEffect(() => {
     if (id) {
@@ -61,9 +81,15 @@ const ProjectForm = () => {
     }
   }, [id, user]);
 
+  // ─── Image handlers ──────────────────────────────────────────
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (!file) return;
+    const validTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+    if (!validTypes.includes(file.type)) {
+      setMessage({ type: 'error', text: 'Only JPEG, PNG, GIF, and WEBP allowed.' });
+      return;
+    }
     const reader = new FileReader();
     reader.onload = (event) => {
       const img = new Image();
@@ -97,8 +123,15 @@ const ProjectForm = () => {
     reader.readAsDataURL(file);
   };
 
+  const removeImage = () => {
+    setForm({ ...form, image: '' });
+    setImagePreview(null);
+  };
+
+  // ─── Submit ──────────────────────────────────────────────────
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!canEdit || isView) return;
     setLoading(true);
     setMessage(null);
     try {
@@ -127,6 +160,21 @@ const ProjectForm = () => {
     }
   };
 
+  // ─── Delete ──────────────────────────────────────────────────
+  const handleDelete = async () => {
+    if (!window.confirm('Delete this project permanently?')) return;
+    setLoading(true);
+    try {
+      await api.delete(`/api/projects/${id}`);
+      setMessage({ type: 'success', text: 'Project deleted' });
+      setTimeout(() => navigate('/projects'), 1000);
+    } catch (err) {
+      setMessage({ type: 'error', text: err.response?.data?.error || 'Delete failed' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // ─── Custom print ────────────────────────────────────────────────
   const handlePrint = () => {
     if (!form.name) {
@@ -134,6 +182,8 @@ const ProjectForm = () => {
       return;
     }
     const printWindow = window.open('', '_blank');
+    const photoHtml = imagePreview ? `<img src="${imagePreview}" style="max-width:200px; border:1px solid #ccc; margin:5px 0;" />` : '';
+
     printWindow.document.write(`
       <html>
         <head>
@@ -167,6 +217,7 @@ const ProjectForm = () => {
               <span class="left">PROJECT</span>
             </div>
             <div class="info">
+              ${photoHtml ? `<div class="photo-container">${photoHtml}</div>` : ''}
               <p><strong>Name:</strong> ${form.name}</p>
               <p><strong>Location:</strong> ${form.location || '—'}</p>
               <p><strong>Budget:</strong> K ${parseFloat(form.budget).toFixed(2)}</p>
@@ -193,10 +244,14 @@ const ProjectForm = () => {
 
   const formatDate = (date) => date ? new Date(date).toLocaleString() : '—';
 
+  if (loading && id && !isNew) return <CircularProgress sx={{ display: 'block', margin: '40px auto' }} />;
+
   return (
     <Paper sx={{ p: 3, maxWidth: '800px', mx: 'auto' }}>
       <BackButton />
       {message && <Alert severity={message.type} sx={{ mb: 2 }}>{message.text}</Alert>}
+      {isView && <Alert severity="info" sx={{ mb: 2 }}>You are viewing this project in read‑only mode.</Alert>}
+      {!canEdit && !isView && <Alert severity="info" sx={{ mb: 2 }}>You have view‑only access. Edits are disabled.</Alert>}
 
       <form onSubmit={handleSubmit}>
         <Box sx={{ textAlign: 'center', borderBottom: '2px solid #000', pb: 2, mb: 2 }}>
@@ -209,8 +264,12 @@ const ProjectForm = () => {
         </Box>
 
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3, borderBottom: '1px solid #000', pb: 1 }}>
-          <Typography variant="h5" sx={{ fontWeight: 'bold', letterSpacing: 1 }}>{id ? 'EDIT PROJECT' : 'CREATE PROJECT'}</Typography>
-          <Typography variant="body2" sx={{ fontWeight: 'bold' }}>{id ? `Project ID: ${id.slice(-6)}` : 'New Project'}</Typography>
+          <Typography variant="h5" sx={{ fontWeight: 'bold', letterSpacing: 1 }}>
+            {isView ? 'VIEW PROJECT' : isNew ? 'CREATE PROJECT' : 'EDIT PROJECT'}
+          </Typography>
+          <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
+            {id ? `Project ID: ${id.slice(-6)}` : 'New Project'}
+          </Typography>
         </Box>
 
         {creator && (
@@ -220,38 +279,98 @@ const ProjectForm = () => {
           </Box>
         )}
 
+        {/* ─── Photo Upload ────────────────────────────────────────── */}
         <Box sx={{ mb: 3 }}>
           <Typography variant="subtitle1" gutterBottom>Project Photo</Typography>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <Avatar src={imagePreview || '/project-placeholder.jpg'} sx={{ width: 100, height: 100, borderRadius: 2, border: '1px solid #ccc' }} variant="rounded" />
-            <Button variant="outlined" component="label" startIcon={<PhotoCameraIcon />}>
-              Upload Image
-              <input type="file" accept="image/*" hidden onChange={handleImageChange} />
-            </Button>
-            {imagePreview && (
-              <Button variant="outlined" color="error" onClick={() => { setForm({ ...form, image: '' }); setImagePreview(null); }}>Remove</Button>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
+            <Avatar
+              src={imagePreview || '/project-placeholder.jpg'}
+              sx={{ width: 100, height: 100, borderRadius: 2, border: '1px solid #ccc', cursor: imagePreview ? 'pointer' : 'default' }}
+              variant="rounded"
+              onClick={handlePhotoClick}
+            />
+            {!isView && canEdit && (
+              <>
+                <Button
+                  variant="outlined"
+                  component="label"
+                  startIcon={<CloudUploadIcon />}
+                >
+                  {imagePreview ? 'Change Photo' : 'Upload Photo'}
+                  <input type="file" accept="image/*" hidden onChange={handleImageChange} />
+                </Button>
+                <Button
+                  variant="outlined"
+                  component="label"
+                  startIcon={<CameraAltIcon />}
+                >
+                  Take Photo
+                  <input type="file" accept="image/*" capture="environment" hidden onChange={handleImageChange} />
+                </Button>
+                {imagePreview && (
+                  <Button variant="outlined" color="error" startIcon={<DeleteIcon />} onClick={removeImage}>
+                    Remove
+                  </Button>
+                )}
+              </>
             )}
           </Box>
+          <Typography variant="caption" color="textSecondary">JPEG, PNG, GIF, WEBP</Typography>
         </Box>
 
         <Grid container spacing={2} sx={{ mb: 3 }}>
           <Grid item xs={12}>
-            <TextField label="Project Name *" fullWidth size="small" value={form.name || ''} onChange={e => setForm({ ...form, name: e.target.value })} required placeholder="Enter project name..." />
+            <TextField
+              label="Project Name *"
+              fullWidth
+              size="small"
+              value={form.name || ''}
+              onChange={e => setForm({ ...form, name: e.target.value })}
+              required
+              placeholder="Enter project name..."
+              disabled={isView || !canEdit}
+            />
           </Grid>
         </Grid>
 
         <Grid container spacing={2} sx={{ mb: 3 }}>
           <Grid item xs={12} md={6}>
-            <TextField label="Location" fullWidth size="small" value={form.location || ''} onChange={e => setForm({ ...form, location: e.target.value })} placeholder="City, Area, Site..." />
+            <TextField
+              label="Location"
+              fullWidth
+              size="small"
+              value={form.location || ''}
+              onChange={e => setForm({ ...form, location: e.target.value })}
+              placeholder="City, Area, Site..."
+              disabled={isView || !canEdit}
+            />
           </Grid>
           <Grid item xs={12} md={6}>
-            <TextField label="Budget (ZMW)" type="number" fullWidth size="small" value={form.budget || ''} onChange={e => setForm({ ...form, budget: e.target.value })} inputProps={{ min: 0, step: 0.01 }} placeholder="0.00" />
+            <TextField
+              label="Budget (ZMW)"
+              type="number"
+              fullWidth
+              size="small"
+              value={form.budget || ''}
+              onChange={e => setForm({ ...form, budget: e.target.value })}
+              inputProps={{ min: 0, step: 0.01 }}
+              placeholder="0.00"
+              disabled={isView || !canEdit}
+            />
           </Grid>
         </Grid>
 
         <Grid container spacing={2} sx={{ mb: 3 }}>
           <Grid item xs={12} md={4}>
-            <TextField select label="Status" fullWidth size="small" value={form.status || 'planning'} onChange={e => setForm({ ...form, status: e.target.value })}>
+            <TextField
+              select
+              label="Status"
+              fullWidth
+              size="small"
+              value={form.status || 'planning'}
+              onChange={e => setForm({ ...form, status: e.target.value })}
+              disabled={isView || !canEdit}
+            >
               <MenuItem value="planning">Planning</MenuItem>
               <MenuItem value="active">Active</MenuItem>
               <MenuItem value="paused">Paused</MenuItem>
@@ -260,13 +379,31 @@ const ProjectForm = () => {
           </Grid>
           <Grid item xs={12} md={8}>
             <Typography gutterBottom>Progress: {form.progress}%</Typography>
-            <Slider value={form.progress} onChange={(e, val) => setForm({ ...form, progress: val })} min={0} max={100} step={1} valueLabelDisplay="auto" />
+            <Slider
+              value={form.progress}
+              onChange={(e, val) => setForm({ ...form, progress: val })}
+              min={0}
+              max={100}
+              step={1}
+              valueLabelDisplay="auto"
+              disabled={isView || !canEdit}
+            />
           </Grid>
         </Grid>
 
         <Grid container spacing={2} sx={{ mb: 3 }}>
           <Grid item xs={12}>
-            <TextField label="Description" fullWidth multiline rows={4} size="small" value={form.description || ''} onChange={e => setForm({ ...form, description: e.target.value })} placeholder="Provide details about the project..." />
+            <TextField
+              label="Description"
+              fullWidth
+              multiline
+              rows={4}
+              size="small"
+              value={form.description || ''}
+              onChange={e => setForm({ ...form, description: e.target.value })}
+              placeholder="Provide details about the project..."
+              disabled={isView || !canEdit}
+            />
           </Grid>
         </Grid>
 
@@ -302,14 +439,43 @@ const ProjectForm = () => {
           <Chip label={form.status} color={form.status === 'active' ? 'success' : 'default'} size="small" />
         </Box>
 
-        <Box sx={{ mt: 4, display: 'flex', gap: 2 }}>
-          <Button type="submit" variant="contained" startIcon={<SaveIcon />} disabled={loading}>
-            {loading ? 'Saving...' : 'Save Project'}
-          </Button>
+        <Box sx={{ mt: 4, display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+          {!isView && canEdit && (
+            <Button type="submit" variant="contained" startIcon={<SaveIcon />} disabled={loading}>
+              {loading ? 'Saving...' : isNew ? 'Create Project' : 'Update Project'}
+            </Button>
+          )}
+          {id && !isView && canDelete && (
+            <Button variant="contained" color="error" startIcon={<DeleteIcon />} onClick={handleDelete} disabled={loading}>
+              Delete
+            </Button>
+          )}
           <Button variant="outlined" startIcon={<PrintIcon />} onClick={handlePrint}>Print</Button>
           <Button variant="outlined" onClick={() => navigate('/projects')}>Cancel</Button>
         </Box>
       </form>
+
+      {/* ─── Photo Preview Dialog ────────────────────────────────── */}
+      <Dialog open={photoPreviewOpen} onClose={() => setPhotoPreviewOpen(false)} maxWidth="md" fullWidth>
+        <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span>Project Image</span>
+          <IconButton onClick={() => setPhotoPreviewOpen(false)}>
+            <ZoomInIcon />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent sx={{ textAlign: 'center' }}>
+          {imagePreview && (
+            <img
+              src={imagePreview}
+              alt="Project"
+              style={{ maxWidth: '100%', maxHeight: '70vh', objectFit: 'contain' }}
+            />
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setPhotoPreviewOpen(false)}>Close</Button>
+        </DialogActions>
+      </Dialog>
     </Paper>
   );
 };

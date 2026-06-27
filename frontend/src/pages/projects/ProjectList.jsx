@@ -33,7 +33,7 @@ const ProjectList = () => {
   const [uploadData, setUploadData] = useState([]);
   const [uploadErrors, setUploadErrors] = useState([]);
   const [uploading, setUploading] = useState(false);
-  const [uploadStep, setUploadStep] = useState(0); // 0: select, 1: preview, 2: complete
+  const [uploadStep, setUploadStep] = useState(0);
 
   const canApprove = ['admin', 'director'].includes(user?.role);
   const canEdit = !['driver', 'receptionist', 'safety-officer'].includes(user?.role);
@@ -107,14 +107,8 @@ const ProjectList = () => {
     setUploadFile(file);
     setUploadErrors([]);
     setUploadStep(0);
-    // Auto-preview
     const reader = new FileReader();
-    reader.onload = (event) => {
-      // We'll send to backend for parsing, or parse client-side
-      // For simplicity, we'll parse on the server via FormData
-      // So we just store the file and move to step 1
-      setUploadStep(1);
-    };
+    reader.onload = () => setUploadStep(1);
     reader.readAsDataURL(file);
   };
 
@@ -150,7 +144,6 @@ const ProjectList = () => {
       setUploadStep(3);
       setUploadOpen(false);
       fetchProjects();
-      // Reset upload state
       setUploadFile(null);
       setUploadData([]);
       setUploadErrors([]);
