@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { addToSyncQueue, getAuth } from '../services/persistentStore';
+import { addToSyncQueue, getAuth, clearAuth } from '../services/persistentStore';
 
 const API_URL = import.meta.env.VITE_API_URL || 'https://purveyols-backend.onrender.com';
 
@@ -16,12 +16,22 @@ const api = axios.create({
 api.interceptors.request.use(
   async (config) => {
     // Try IndexedDB first, then localStorage as fallback
-    let token = await getAuth('token');
+    let token = null;
+    try {
+      token = await getAuth('token');
+    } catch (e) {
+      // fall through
+    }
     if (!token) {
       token = localStorage.getItem('token');
     }
+    
+    // Debug: log whether we found a token
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
+      console.log('🔑 Token found, attaching to request:', config.url);
+    } else {
+      console.warn('⚠️ No token found for request:', config.url);
     }
     return config;
   },
@@ -55,9 +65,8 @@ api.interceptors.response.use(
 
     // ─── 401 Unauthorized – clear auth and redirect to login ────
     if (response && response.status === 401) {
-      const { clearAuth } = await import('../services/persistentStore');
+      console.warn('🔒 401 Unauthorized – clearing auth and redirecting');
       await clearAuth();
-      // Clear localStorage fallback too
       localStorage.removeItem('token');
       localStorage.removeItem('user');
       // Only redirect if not already on login page

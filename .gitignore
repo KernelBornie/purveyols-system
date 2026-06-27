@@ -3,3 +3,4 @@ frontend/package-lock.json
 .vercel
 .env*
 node_modules/ 
+"frontend/node_modules/.vite/" 

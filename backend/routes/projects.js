@@ -3,13 +3,20 @@ const router = express.Router();
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
-const XLSX = require('xlsx');
 const csv = require('csv-parser');
 const Project = require('../models/Project');
 const User = require('../models/User');
 const auth = require('../middleware/auth');
 const authorize = require('../middleware/rbac');
 const { createNotification, getSenderName } = require('../utils/notificationHelper');
+
+// ─── Try to load xlsx (optional) ──────────────────────────────
+let XLSX;
+try {
+  XLSX = require('xlsx');
+} catch (e) {
+  console.warn('⚠️ xlsx module not installed. Excel uploads will not work.');
+}
 
 const upload = multer({ dest: 'uploads/' });
 
@@ -155,10 +162,13 @@ router.post('/upload/preview', auth, authorize('admin', 'director', 'accountant'
           .on('end', resolve)
           .on('error', reject);
       });
-    } else if (ext === '.xlsx' || ext === '.xls') {
+    } else if ((ext === '.xlsx' || ext === '.xls') && XLSX) {
       const workbook = XLSX.readFile(filePath);
       const sheet = workbook.Sheets[workbook.SheetNames[0]];
       rows = XLSX.utils.sheet_to_json(sheet);
+    } else if (ext === '.xlsx' || ext === '.xls') {
+      fs.unlinkSync(filePath);
+      return res.status(400).json({ error: 'xlsx module is not installed. Please install it via: npm install xlsx' });
     } else {
       fs.unlinkSync(filePath);
       return res.status(400).json({ error: 'Only CSV and Excel files are supported' });
@@ -214,10 +224,13 @@ router.post('/upload', auth, authorize('admin', 'director', 'accountant'), uploa
           .on('end', resolve)
           .on('error', reject);
       });
-    } else if (ext === '.xlsx' || ext === '.xls') {
+    } else if ((ext === '.xlsx' || ext === '.xls') && XLSX) {
       const workbook = XLSX.readFile(filePath);
       const sheet = workbook.Sheets[workbook.SheetNames[0]];
       rows = XLSX.utils.sheet_to_json(sheet);
+    } else if (ext === '.xlsx' || ext === '.xls') {
+      fs.unlinkSync(filePath);
+      return res.status(400).json({ error: 'xlsx module is not installed. Please install it via: npm install xlsx' });
     } else {
       fs.unlinkSync(filePath);
       return res.status(400).json({ error: 'Only CSV and Excel files are supported' });
