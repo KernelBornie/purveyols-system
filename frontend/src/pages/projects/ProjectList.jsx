@@ -29,25 +29,20 @@ const ProjectList = () => {
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
 
-  // ─── Fallback: read user from localStorage ──────────────────
-  const [localUser, setLocalUser] = useState(null);
-  useEffect(() => {
-    const stored = localStorage.getItem('user');
-    if (stored) {
-      try {
-        setLocalUser(JSON.parse(stored));
-      } catch (e) {}
-    }
-  }, []);
-
-  const effectiveUser = user || localUser;
+  // ─── Compute effective user – reactive to `user` and localStorage ──
+  const effectiveUser = user || (() => {
+    try {
+      const stored = localStorage.getItem('user');
+      return stored ? JSON.parse(stored) : null;
+    } catch { return null; }
+  })();
 
   // ─── Permission checks (same as Workers) ────────────────────
   const canEdit = effectiveUser && ALLOWED_EDIT_ROLES.includes(effectiveUser.role);
   const canDelete = effectiveUser && ['admin', 'director', 'accountant'].includes(effectiveUser.role);
   const canApprove = effectiveUser && ['admin', 'director'].includes(effectiveUser.role);
 
-  // ─── Debug logs ─────────────────────────────────────────────
+  // ─── Debug logs (remove after verification) ──────────────────
   console.log('👤 effectiveUser:', effectiveUser);
   console.log('🔑 effectiveUser.role:', effectiveUser?.role);
   console.log('✅ canEdit:', canEdit);
