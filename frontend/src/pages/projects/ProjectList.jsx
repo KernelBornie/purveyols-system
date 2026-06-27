@@ -23,8 +23,30 @@ const ProjectList = () => {
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
 
-  // ─── Debug: log user ──────────────────────────────────────────
-  console.log('👤 Current user in ProjectList:', user);
+  // ─── Fallback: read user from localStorage ──────────────────
+  const [localUser, setLocalUser] = useState(null);
+  useEffect(() => {
+    const stored = localStorage.getItem('user');
+    if (stored) {
+      try {
+        setLocalUser(JSON.parse(stored));
+      } catch (e) {}
+    }
+  }, []);
+
+  const effectiveUser = user || localUser;
+
+  // ─── Debug logs ─────────────────────────────────────────────
+  console.log('👤 effectiveUser:', effectiveUser);
+  console.log('🔑 effectiveUser.role:', effectiveUser?.role);
+
+  // ─── Permission checks ──────────────────────────────────────
+  const canEdit = effectiveUser && !['driver', 'receptionist', 'safety-officer'].includes(effectiveUser.role);
+  const canDelete = effectiveUser && ['admin', 'director', 'accountant'].includes(effectiveUser.role);
+  const canApprove = effectiveUser && ['admin', 'director'].includes(effectiveUser.role);
+
+  // ─── Force show for testing (remove after) ──────────────────
+  // const canEdit = true; // Uncomment to test if buttons appear
 
   // ─── Photo preview state ──────────────────────────────────────
   const [photoPreviewOpen, setPhotoPreviewOpen] = useState(false);
@@ -37,11 +59,6 @@ const ProjectList = () => {
   const [uploadErrors, setUploadErrors] = useState([]);
   const [uploading, setUploading] = useState(false);
   const [uploadStep, setUploadStep] = useState(0);
-
-  // ─── Permission checks ──────────────────────────────────────
-  const canEdit = user && !['driver', 'receptionist', 'safety-officer'].includes(user.role);
-  const canDelete = user && ['admin', 'director', 'accountant'].includes(user.role);
-  const canApprove = user && ['admin', 'director'].includes(user.role);
 
   useEffect(() => {
     fetchProjects();
@@ -172,10 +189,7 @@ const ProjectList = () => {
     setUploadStep(0);
   };
 
-  // ─── Show loading while user is being fetched ──────────────
-  if (user === undefined) {
-    return <CircularProgress sx={{ display: 'block', margin: '40px auto' }} />;
-  }
+  if (loading) return <CircularProgress sx={{ display: 'block', margin: '40px auto' }} />;
 
   return (
     <Paper sx={{ p: 2 }}>
@@ -207,170 +221,166 @@ const ProjectList = () => {
         </Box>
       </Box>
 
-      {!canEdit && user && (
+      {!canEdit && effectiveUser && (
         <Alert severity="info" sx={{ mb: 2 }}>
           You have view‑only access. You can view projects but cannot create, edit, or delete them.
         </Alert>
       )}
-      {!user && (
+      {!effectiveUser && (
         <Alert severity="warning" sx={{ mb: 2 }}>
           Please log in to manage projects.
         </Alert>
       )}
 
-      {loading ? (
-        <CircularProgress />
-      ) : (
-        <Table size="small">
-          <TableHead>
-            <TableRow sx={{ bgcolor: '#f5f5f5' }}>
-              <TableCell>Image</TableCell>
-              <TableCell>Name</TableCell>
-              <TableCell>Location</TableCell>
-              <TableCell>Status</TableCell>
-              <TableCell>Progress</TableCell>
-              <TableCell>Budget</TableCell>
-              <TableCell>Deadline</TableCell>
-              <TableCell>Bidder</TableCell>
-              <TableCell>Bid Source</TableCell>
-              <TableCell>Bid Amount</TableCell>
-              <TableCell>Assigned Staff</TableCell>
-              <TableCell>Time Frame</TableCell>
-              <TableCell>Manager</TableCell>
-              <TableCell>Actions</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {projects.map((project) => (
-              <TableRow key={project._id}>
-                <TableCell>
-                  <Avatar
-                    src={project.image || '/project-placeholder.jpg'}
-                    variant="rounded"
-                    sx={{ width: 50, height: 40, cursor: project.image ? 'pointer' : 'default' }}
-                    onClick={() => handlePhotoClick(project.image)}
-                  >
-                    {!project.image && project.name?.charAt(0).toUpperCase()}
-                  </Avatar>
-                </TableCell>
-                <TableCell>{project.name}</TableCell>
-                <TableCell>{project.location || '—'}</TableCell>
-                <TableCell>
-                  <Chip label={project.status} color={getStatusColor(project.status)} size="small" />
-                </TableCell>
-                <TableCell sx={{ minWidth: 100 }}>
-                  <LinearProgress
-                    variant="determinate"
-                    value={project.progress || 0}
-                    sx={{ height: 8, borderRadius: 4 }}
-                  />
-                  <Typography variant="caption">{project.progress || 0}%</Typography>
-                </TableCell>
-                <TableCell>
-                  {new Intl.NumberFormat('en-ZM', { style: 'currency', currency: 'ZMW' }).format(project.budget || 0)}
-                </TableCell>
-                <TableCell>
-                  {project.endDate ? new Date(project.endDate).toLocaleDateString() : '—'}
-                </TableCell>
-                <TableCell>{project.bidder?.name || '—'}</TableCell>
-                <TableCell>
-                  {project.bidSource ? (
-                    <Tooltip title={project.sourceUrl || ''}>
-                      <span>{project.bidSource}</span>
+      <Table size="small">
+        <TableHead>
+          <TableRow sx={{ bgcolor: '#f5f5f5' }}>
+            <TableCell>Image</TableCell>
+            <TableCell>Name</TableCell>
+            <TableCell>Location</TableCell>
+            <TableCell>Status</TableCell>
+            <TableCell>Progress</TableCell>
+            <TableCell>Budget</TableCell>
+            <TableCell>Deadline</TableCell>
+            <TableCell>Bidder</TableCell>
+            <TableCell>Bid Source</TableCell>
+            <TableCell>Bid Amount</TableCell>
+            <TableCell>Assigned Staff</TableCell>
+            <TableCell>Time Frame</TableCell>
+            <TableCell>Manager</TableCell>
+            <TableCell>Actions</TableCell>
+          </TableRow>
+        </TableHead>
+        <TableBody>
+          {projects.map((project) => (
+            <TableRow key={project._id}>
+              <TableCell>
+                <Avatar
+                  src={project.image || '/project-placeholder.jpg'}
+                  variant="rounded"
+                  sx={{ width: 50, height: 40, cursor: project.image ? 'pointer' : 'default' }}
+                  onClick={() => handlePhotoClick(project.image)}
+                >
+                  {!project.image && project.name?.charAt(0).toUpperCase()}
+                </Avatar>
+              </TableCell>
+              <TableCell>{project.name}</TableCell>
+              <TableCell>{project.location || '—'}</TableCell>
+              <TableCell>
+                <Chip label={project.status} color={getStatusColor(project.status)} size="small" />
+              </TableCell>
+              <TableCell sx={{ minWidth: 100 }}>
+                <LinearProgress
+                  variant="determinate"
+                  value={project.progress || 0}
+                  sx={{ height: 8, borderRadius: 4 }}
+                />
+                <Typography variant="caption">{project.progress || 0}%</Typography>
+              </TableCell>
+              <TableCell>
+                {new Intl.NumberFormat('en-ZM', { style: 'currency', currency: 'ZMW' }).format(project.budget || 0)}
+              </TableCell>
+              <TableCell>
+                {project.endDate ? new Date(project.endDate).toLocaleDateString() : '—'}
+              </TableCell>
+              <TableCell>{project.bidder?.name || '—'}</TableCell>
+              <TableCell>
+                {project.bidSource ? (
+                  <Tooltip title={project.sourceUrl || ''}>
+                    <span>{project.bidSource}</span>
+                  </Tooltip>
+                ) : '—'}
+              </TableCell>
+              <TableCell>
+                {project.bidAmount ? new Intl.NumberFormat('en-ZM', { style: 'currency', currency: 'ZMW' }).format(project.bidAmount) : '—'}
+              </TableCell>
+              <TableCell>
+                {project.assignedStaff?.map(staff => staff.name).join(', ') || '—'}
+              </TableCell>
+              <TableCell>{project.timeFrame || '—'}</TableCell>
+              <TableCell>{project.manager?.name || 'N/A'}</TableCell>
+              <TableCell>
+                {/* ─── View ────────────────────────────────────── */}
+                <Button
+                  component={Link}
+                  to={`/projects/${project._id}/view`}
+                  size="small"
+                  variant="outlined"
+                  sx={{ mr: 0.5, minWidth: '40px', textTransform: 'none' }}
+                >
+                  View
+                </Button>
+
+                {canEdit && (
+                  <>
+                    <Tooltip title="Edit">
+                      <IconButton
+                        component={Link}
+                        to={`/projects/${project._id}/edit`}
+                        size="small"
+                        color="primary"
+                      >
+                        <EditIcon fontSize="small" />
+                      </IconButton>
                     </Tooltip>
-                  ) : '—'}
-                </TableCell>
-                <TableCell>
-                  {project.bidAmount ? new Intl.NumberFormat('en-ZM', { style: 'currency', currency: 'ZMW' }).format(project.bidAmount) : '—'}
-                </TableCell>
-                <TableCell>
-                  {project.assignedStaff?.map(staff => staff.name).join(', ') || '—'}
-                </TableCell>
-                <TableCell>{project.timeFrame || '—'}</TableCell>
-                <TableCell>{project.manager?.name || 'N/A'}</TableCell>
-                <TableCell>
-                  {/* ─── View ────────────────────────────────────── */}
-                  <Button
-                    component={Link}
-                    to={`/projects/${project._id}/view`}
-                    size="small"
-                    variant="outlined"
-                    sx={{ mr: 0.5, minWidth: '40px', textTransform: 'none' }}
-                  >
-                    View
-                  </Button>
-
-                  {canEdit && (
-                    <>
-                      <Tooltip title="Edit">
-                        <IconButton
-                          component={Link}
-                          to={`/projects/${project._id}/edit`}
-                          size="small"
-                          color="primary"
-                        >
-                          <EditIcon fontSize="small" />
-                        </IconButton>
-                      </Tooltip>
-                      <Tooltip title="Planning">
-                        <IconButton
-                          component={Link}
-                          to={`/projects/${project._id}/planning`}
-                          size="small"
-                          color="secondary"
-                        >
-                          <TimelineIcon fontSize="small" />
-                        </IconButton>
-                      </Tooltip>
-                      {canDelete && (
-                        <Tooltip title="Delete">
-                          <IconButton
-                            size="small"
-                            color="error"
-                            onClick={() => handleDelete(project._id)}
-                          >
-                            <DeleteIcon fontSize="small" />
-                          </IconButton>
-                        </Tooltip>
-                      )}
-                    </>
-                  )}
-
-                  {canApprove && project.status === 'planning' && (
-                    <>
-                      <Tooltip title="Approve">
-                        <IconButton
-                          size="small"
-                          color="success"
-                          onClick={() => handleApprove(project._id)}
-                        >
-                          <CheckIcon fontSize="small" />
-                        </IconButton>
-                      </Tooltip>
-                      <Tooltip title="Reject">
+                    <Tooltip title="Planning">
+                      <IconButton
+                        component={Link}
+                        to={`/projects/${project._id}/planning`}
+                        size="small"
+                        color="secondary"
+                      >
+                        <TimelineIcon fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
+                    {canDelete && (
+                      <Tooltip title="Delete">
                         <IconButton
                           size="small"
                           color="error"
-                          onClick={() => handleReject(project._id)}
+                          onClick={() => handleDelete(project._id)}
                         >
-                          <CloseIcon fontSize="small" />
+                          <DeleteIcon fontSize="small" />
                         </IconButton>
                       </Tooltip>
-                    </>
-                  )}
-                </TableCell>
-              </TableRow>
-            ))}
-            {projects.length === 0 && (
-              <TableRow>
-                <TableCell colSpan={14} align="center" sx={{ py: 3 }}>
-                  <Typography variant="body2" color="textSecondary">No projects yet.</Typography>
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
-      )}
+                    )}
+                  </>
+                )}
+
+                {canApprove && project.status === 'planning' && (
+                  <>
+                    <Tooltip title="Approve">
+                      <IconButton
+                        size="small"
+                        color="success"
+                        onClick={() => handleApprove(project._id)}
+                      >
+                        <CheckIcon fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
+                    <Tooltip title="Reject">
+                      <IconButton
+                        size="small"
+                        color="error"
+                        onClick={() => handleReject(project._id)}
+                      >
+                        <CloseIcon fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
+                  </>
+                )}
+              </TableCell>
+            </TableRow>
+          ))}
+          {projects.length === 0 && (
+            <TableRow>
+              <TableCell colSpan={14} align="center" sx={{ py: 3 }}>
+                <Typography variant="body2" color="textSecondary">No projects yet.</Typography>
+              </TableCell>
+            </TableRow>
+          )}
+        </TableBody>
+      </Table>
 
       {/* ─── Photo Preview Dialog ────────────────────────────────── */}
       <Dialog open={photoPreviewOpen} onClose={() => setPhotoPreviewOpen(false)} maxWidth="md" fullWidth>
