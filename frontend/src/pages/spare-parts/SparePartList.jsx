@@ -10,6 +10,7 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import api from '../../api/axios';
 import { useAuth } from '../../context/AuthContext';
 import BackButton from '../../components/BackButton';
+import getApiErrorMessage from '../../utils/getApiErrorMessage';
 
 const SparePartList = () => {
   const [requests, setRequests] = useState([]);
@@ -18,6 +19,7 @@ const SparePartList = () => {
   const { user } = useAuth();
 
   const canEdit = ['driver', 'procurement-officer', 'director', 'admin'].includes(user?.role);
+  const canDelete = ['admin', 'director'].includes(user?.role);
 
   useEffect(() => {
     fetchRequests();
@@ -30,7 +32,7 @@ const SparePartList = () => {
       setRequests(res.data || []);
       setError(null);
     } catch (err) {
-      setError('Failed to load spare parts requests');
+      setError(getApiErrorMessage(err, 'Failed to load spare parts requests'));
     } finally {
       setLoading(false);
     }
@@ -42,7 +44,7 @@ const SparePartList = () => {
       await api.delete(`/api/spare-parts/${id}`);
       fetchRequests();
     } catch (err) {
-      alert('Delete failed');
+      alert(getApiErrorMessage(err, 'Delete failed'));
     }
   };
 
@@ -58,9 +60,20 @@ const SparePartList = () => {
   return (
     <Paper sx={{ p: 2 }}>
       <BackButton />
+
+      {/* ─── Company Header ────────────────────────────────────────── */}
+      <Box sx={{ textAlign: 'center', borderBottom: '2px solid #000', pb: 2, mb: 2 }}>
+        <img src="/top-log.PNG?t=3" alt="PURVEYOLS Logo" style={{ height: '60px', maxWidth: '100%' }} onError={(e) => e.target.style.display = 'none'} />
+        <Typography variant="h4" sx={{ fontWeight: 'bold', letterSpacing: 2, color: '#b71c1c' }}>PURVEYOLS</Typography>
+        <Typography variant="subtitle1" sx={{ fontWeight: 'bold', color: '#b71c1c' }}>Building and Civil contractors</Typography>
+        <Typography variant="body2">Plot No. 8, Buchi Road - Northmead, P.O. Box NH 87 Lusaka, Zambia</Typography>
+        <Typography variant="body2">Tel: +260 211 235354 | Mobile: +260 977 393879 / +260 965 393879</Typography>
+        <Typography variant="body2">Email: purveyols@gmail.com</Typography>
+      </Box>
+
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
         <Typography variant="h5" sx={{ fontWeight: 'bold' }}>Spare Parts Requests</Typography>
-        {(user?.role === 'driver' || user?.role === 'admin' || user?.role === 'director' || user?.role === 'procurement-officer') && (
+        {canEdit && (
           <Button component={Link} to="/spare-parts/new" variant="contained" startIcon={<AddIcon />}>
             New Request
           </Button>
@@ -93,7 +106,6 @@ const SparePartList = () => {
               <TableCell>{req.driver?.name}</TableCell>
               <TableCell>{new Date(req.requestedAt).toLocaleDateString()}</TableCell>
               <TableCell>
-                {/* ─── View button (text) ──────────────────────────── */}
                 <Button
                   component={Link}
                   to={`/spare-parts/${req._id}`}
@@ -116,15 +128,17 @@ const SparePartList = () => {
                         <EditIcon fontSize="small" />
                       </IconButton>
                     </Tooltip>
-                    <Tooltip title="Delete">
-                      <IconButton
-                        size="small"
-                        color="error"
-                        onClick={() => handleDelete(req._id)}
-                      >
-                        <DeleteIcon fontSize="small" />
-                      </IconButton>
-                    </Tooltip>
+                    {canDelete && (
+                      <Tooltip title="Delete">
+                        <IconButton
+                          size="small"
+                          color="error"
+                          onClick={() => handleDelete(req._id)}
+                        >
+                          <DeleteIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                    )}
                   </>
                 )}
               </TableCell>
