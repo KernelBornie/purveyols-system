@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Box, Typography, Paper, Table, TableHead, TableRow, TableCell, TableBody,
-  Button, Chip, CircularProgress, IconButton, Tooltip, Alert,
+  Button, Chip, CircularProgress, IconButton, Tooltip, Alert, Avatar,
   Dialog, DialogTitle, DialogContent, DialogActions, TextField
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
@@ -121,6 +121,7 @@ const WorkerList = () => {
       <Table size="small">
         <TableHead sx={{ bgcolor: '#f5f5f5' }}>
           <TableRow>
+            <TableCell>Photo</TableCell>
             <TableCell>Name</TableCell>
             <TableCell>NRC</TableCell>
             <TableCell>Phone</TableCell>
@@ -134,6 +135,14 @@ const WorkerList = () => {
         <TableBody>
           {workers.map((worker) => (
             <TableRow key={worker._id}>
+              <TableCell>
+                <Avatar
+                  src={worker.photo}
+                  sx={{ width: 40, height: 40 }}
+                >
+                  {!worker.photo && worker.name?.charAt(0).toUpperCase()}
+                </Avatar>
+              </TableCell>
               <TableCell>{worker.name}</TableCell>
               <TableCell>{worker.nrc}</TableCell>
               <TableCell>{worker.phone}</TableCell>
@@ -144,7 +153,7 @@ const WorkerList = () => {
               <TableCell>K {worker.dailyRate || 0}</TableCell>
               <TableCell>K {worker.balance || 0}</TableCell>
               <TableCell>
-                {/* ─── View button (text) ──────────────────────────── */}
+                {/* ─── View ────────────────────────────────────────── */}
                 <Button
                   component={Link}
                   to={`/workers/${worker._id}`}
@@ -169,7 +178,7 @@ const WorkerList = () => {
                   </Tooltip>
                 )}
 
-                {/* ─── Check In (text button) ──────────────────────── */}
+                {/* ─── Check In ────────────────────────────────────── */}
                 {canCheckIn && (
                   <Button
                     size="small"
@@ -200,7 +209,7 @@ const WorkerList = () => {
           ))}
           {workers.length === 0 && (
             <TableRow>
-              <TableCell colSpan={8} align="center" sx={{ py: 3 }}>
+              <TableCell colSpan={9} align="center" sx={{ py: 3 }}>
                 <Typography variant="body2" color="textSecondary">No workers enrolled yet.</Typography>
               </TableCell>
             </TableRow>

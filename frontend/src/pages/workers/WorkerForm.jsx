@@ -2,12 +2,15 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   Paper, Typography, Box, Grid, TextField, Button, MenuItem, Alert, Chip,
-  Dialog, DialogTitle, DialogContent, DialogActions
+  Dialog, DialogTitle, DialogContent, DialogActions, Avatar,
+  IconButton
 } from '@mui/material';
 import SaveIcon from '@mui/icons-material/Save';
 import PrintIcon from '@mui/icons-material/Print';
 import CheckInIcon from '@mui/icons-material/AssignmentTurnedIn';
 import VerifiedIcon from '@mui/icons-material/Verified';
+import CloudUploadIcon from '@mui/icons-material/CloudUpload';
+import DeleteIcon from '@mui/icons-material/Delete';
 import api from '../../api/axios';
 import { useAuth } from '../../context/AuthContext';
 import BackButton from '../../components/BackButton';
@@ -26,6 +29,7 @@ const WorkerForm = () => {
     site: '',
     status: 'active',
     project: '',
+    photo: '', // base64 data URL
   });
   const [enroller, setEnroller] = useState(null);
   const [verifiedBy, setVerifiedBy] = useState(null);
@@ -43,7 +47,7 @@ const WorkerForm = () => {
 
   const canEdit = ['admin', 'director', 'civil-engineer', 'foreman', 'accountant', 'qs', 'quantity-surveyor'].includes(user?.role);
   const canCheckIn = canEdit;
-  const canVerify = canEdit; // same permission as enrol
+  const canVerify = canEdit;
 
   useEffect(() => {
     const fetchData = async () => {
@@ -62,6 +66,7 @@ const WorkerForm = () => {
             site: data.site || '',
             status: data.status || 'active',
             project: data.project?._id || data.project || '',
+            photo: data.photo || '',
           });
           setEnroller(data.enrolledBy);
           setVerifiedBy(data.verifiedBy);
@@ -82,6 +87,26 @@ const WorkerForm = () => {
     fetchData();
   }, [id, user, canEdit, navigate]);
 
+  // ─── Photo handler ──────────────────────────────────────────
+  const handlePhotoUpload = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const validTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+    if (!validTypes.includes(file.type)) {
+      setMessage({ type: 'error', text: 'Only JPEG, PNG, GIF, and WEBP allowed.' });
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      setForm({ ...form, photo: event.target.result });
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const removePhoto = () => {
+    setForm({ ...form, photo: '' });
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!canEdit) return;
@@ -96,6 +121,7 @@ const WorkerForm = () => {
         site: form.site || '',
         status: form.status,
         project: form.project || null,
+        photo: form.photo || '',
       };
       if (id) {
         await api.put(`/api/workers/${id}`, payload);
@@ -104,7 +130,6 @@ const WorkerForm = () => {
         await api.post('/api/workers', payload);
         setMessage({ type: 'success', text: 'Worker enrolled successfully!' });
       }
-      // Refresh data after save
       if (id) {
         const updated = await api.get(`/api/workers/${id}`);
         const data = updated.data;
@@ -192,6 +217,8 @@ const WorkerForm = () => {
       return;
     }
     const printWindow = window.open('', '_blank');
+    const photoHtml = form.photo ? `<img src="${form.photo}" style="max-width:150px; border:1px solid #ccc; margin:5px 0;" />` : '';
+
     printWindow.document.write(`
       <html>
         <head>
@@ -209,6 +236,7 @@ const WorkerForm = () => {
             .info p { margin: 2px 0; font-size: 12px; }
             .approval { margin-top: 20px; border-top: 1px solid #000; padding-top: 10px; }
             .footer { text-align: center; font-size: 10px; margin-top: 20px; border-top: 1px solid #000; padding-top: 8px; }
+            .photo-container { margin: 5px 0; }
           </style>
         </head>
         <body>
@@ -224,6 +252,7 @@ const WorkerForm = () => {
               <span class="left">WORKER ENROLMENT</span>
             </div>
             <div class="info">
+              ${photoHtml ? `<div class="photo-container">${photoHtml}</div>` : ''}
               <p><strong>Name:</strong> ${form.name}</p>
               <p><strong>NRC:</strong> ${form.nrc}</p>
               <p><strong>Phone:</strong> ${form.phone || '—'}</p>
@@ -299,6 +328,52 @@ const WorkerForm = () => {
             )}
           </Box>
         )}
+
+        {/* ─── Photo Upload ────────────────────────────────────── */}
+        <Box sx={{ mb: 3 }}>
+          <Typography variant="subtitle2" gutterBottom>Photo (Optional)</Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
+            {form.photo ? (
+              <Box sx={{ position: 'relative', display: 'inline-block' }}>
+                <Avatar src={form.photo} sx={{ width: 80, height: 80 }} />
+                {canEdit && (
+                  <IconButton
+                    size="small"
+                    sx={{
+                      position: 'absolute',
+                      top: -8,
+                      right: -8,
+                      bgcolor: 'white',
+                      boxShadow: 1,
+                      '&:hover': { bgcolor: '#f44336', color: 'white' }
+                    }}
+                    onClick={removePhoto}
+                  >
+                    <DeleteIcon fontSize="small" />
+                  </IconButton>
+                )}
+              </Box>
+            ) : (
+              <Avatar sx={{ width: 80, height: 80 }} />
+            )}
+            {canEdit && (
+              <Button
+                variant="outlined"
+                component="label"
+                startIcon={<CloudUploadIcon />}
+              >
+                {form.photo ? 'Change Photo' : 'Upload Photo'}
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handlePhotoUpload}
+                  style={{ display: 'none' }}
+                />
+              </Button>
+            )}
+          </Box>
+          <Typography variant="caption" color="textSecondary">JPEG, PNG, GIF, WEBP</Typography>
+        </Box>
 
         <Grid container spacing={2}>
           <Grid item xs={12}>
