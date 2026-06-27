@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box, Typography, Paper, Grid, Card, CardContent, CardActions,
   Button, Chip, TextField, InputAdornment, CircularProgress,
@@ -28,11 +28,10 @@ const AdvertisedProjects = () => {
   const [detailOpen, setDetailOpen] = useState(false);
   const [error, setError] = useState(null);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
-  const [autoRefresh, setAutoRefresh] = useState(true);
   const [lastRefresh, setLastRefresh] = useState(null);
   const [fetching, setFetching] = useState(false);
-  const refreshInterval = useRef(null);
 
+  // ─── Fetch projects from DB ──────────────────────────────────
   const fetchProjects = async () => {
     setLoading(true);
     setError(null);
@@ -51,7 +50,7 @@ const AdvertisedProjects = () => {
     }
   };
 
-  // ─── Fetch fresh projects from Google News ──────────────────────
+  // ─── Fetch fresh projects from sources ────────────────────────
   const handleFetchProjects = async () => {
     setFetching(true);
     try {
@@ -74,16 +73,13 @@ const AdvertisedProjects = () => {
     }
   };
 
+  // ─── Load on mount (no auto‑refresh) ──────────────────────
   useEffect(() => {
     fetchProjects();
-    if (autoRefresh) {
-      refreshInterval.current = setInterval(fetchProjects, 30000);
-    }
-    return () => {
-      if (refreshInterval.current) clearInterval(refreshInterval.current);
-    };
-  }, [autoRefresh]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // runs once on mount
 
+  // ─── Handlers ──────────────────────────────────────────────
   const handleSearch = (e) => { e.preventDefault(); fetchProjects(); };
   const handleRefresh = () => { fetchProjects(); setSnackbar({ open: true, message: 'Projects refreshed!', severity: 'success' }); };
 
@@ -122,8 +118,8 @@ const AdvertisedProjects = () => {
         <Box>
           <Typography variant="h4">🏗️ Advertised Projects & Tenders</Typography>
           <Typography variant="caption" color="textSecondary" display="block">
-            Live feed – updates every 30 seconds • {projects.length} open projects
-            {lastRefresh && ` • Last refresh: ${lastRefresh.toLocaleTimeString()}`}
+            {projects.length} open projects
+            {lastRefresh && ` • Last updated: ${lastRefresh.toLocaleTimeString()}`}
           </Typography>
         </Box>
         <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
@@ -135,13 +131,10 @@ const AdvertisedProjects = () => {
             Bidded Projects
           </Button>
           <Button 
-            variant={autoRefresh ? 'contained' : 'outlined'} 
-            onClick={() => setAutoRefresh(!autoRefresh)}
-            size="small"
+            variant="contained" 
+            startIcon={<RefreshIcon />} 
+            onClick={handleRefresh}
           >
-            {autoRefresh ? '🔴 Auto-Refresh On' : '⏸️ Auto-Refresh Off'}
-          </Button>
-          <Button variant="contained" startIcon={<RefreshIcon />} onClick={handleRefresh}>
             Refresh Now
           </Button>
           <Button 
