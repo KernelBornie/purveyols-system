@@ -16,34 +16,26 @@ const io = new Server(server, {
   },
 });
 
-// ─── CORS (improved – allows all Vercel & Render subdomains) ──
+// ─── CORS (allows all Vercel & Render subdomains + cache-control) ──
 const corsOptions = {
   origin: (origin, callback) => {
-    // Allow requests with no origin (like mobile apps or curl)
     if (!origin) return callback(null, true);
-
-    // Allow localhost for development
-    if (origin.match(/^https?:\/\/localhost(:\d+)?$/)) {
-      return callback(null, true);
-    }
-
-    // Allow any Vercel subdomain (including preview deployments)
-    if (origin.endsWith('.vercel.app')) {
-      return callback(null, true);
-    }
-
-    // Allow any Render subdomain (backend itself)
-    if (origin.endsWith('.onrender.com')) {
-      return callback(null, true);
-    }
-
+    if (origin.match(/^https?:\/\/localhost(:\d+)?$/)) return callback(null, true);
+    if (origin.endsWith('.vercel.app')) return callback(null, true);
+    if (origin.endsWith('.onrender.com')) return callback(null, true);
     console.warn(`❌ CORS blocked origin: ${origin}`);
     callback(new Error('Not allowed by CORS'));
   },
   credentials: true,
   optionsSuccessStatus: 200,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  allowedHeaders: [
+    'Content-Type',
+    'Authorization',
+    'X-Requested-With',
+    'cache-control',   // ✅ ADDED – fixes preflight CORS errors
+    'Cache-Control',   // also add the capitalised version
+  ],
 };
 
 app.use(cors(corsOptions));
