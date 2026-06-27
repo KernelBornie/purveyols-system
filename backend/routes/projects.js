@@ -46,7 +46,8 @@ router.get('/:id', auth, async (req, res) => {
 });
 
 // ─── CREATE ──────────────────────────────────────────────────
-router.post('/', auth, authorize('admin', 'director'), async (req, res) => {
+// ✅ Expanded roles – same as Workers
+router.post('/', auth, authorize('admin', 'director', 'civil-engineer', 'foreman', 'accountant', 'qs', 'quantity-surveyor'), async (req, res) => {
   try {
     const project = new Project({ ...req.body, createdBy: req.user.id });
     await project.save();
@@ -72,7 +73,8 @@ router.post('/', auth, authorize('admin', 'director'), async (req, res) => {
 });
 
 // ─── UPDATE ──────────────────────────────────────────────────
-router.put('/:id', auth, authorize('admin', 'director'), async (req, res) => {
+// ✅ Expanded roles – same as Workers
+router.put('/:id', auth, authorize('admin', 'director', 'civil-engineer', 'foreman', 'accountant', 'qs', 'quantity-surveyor'), async (req, res) => {
   try {
     const updated = await Project.findByIdAndUpdate(req.params.id, req.body, { new: true })
       .populate('manager', 'name role')
@@ -85,7 +87,8 @@ router.put('/:id', auth, authorize('admin', 'director'), async (req, res) => {
 });
 
 // ─── DELETE ──────────────────────────────────────────────────
-router.delete('/:id', auth, authorize('admin', 'director'), async (req, res) => {
+// ✅ Also include accountant (matches frontend canDelete)
+router.delete('/:id', auth, authorize('admin', 'director', 'accountant'), async (req, res) => {
   try {
     const deleted = await Project.findByIdAndDelete(req.params.id);
     if (!deleted) return res.status(404).json({ error: 'Project not found' });
