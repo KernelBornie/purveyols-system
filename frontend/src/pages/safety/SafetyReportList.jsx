@@ -3,11 +3,12 @@ import { useNavigate } from 'react-router-dom';
 import {
   Box, Typography, Paper, Table, TableHead, TableRow, TableCell, TableBody,
   Button, Chip, IconButton, Alert, CircularProgress, Dialog, DialogTitle,
-  DialogContent, DialogContentText, DialogActions, Snackbar
+  DialogContent, DialogContentText, DialogActions, Snackbar, Avatar
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
+import ImageIcon from '@mui/icons-material/Image';
 import api from '../../api/axios';
 
 const SafetyReportList = () => {
@@ -84,6 +85,7 @@ const SafetyReportList = () => {
           <Table>
             <TableHead>
               <TableRow>
+                <TableCell>Evidence</TableCell>
                 <TableCell>Title</TableCell>
                 <TableCell>Location</TableCell>
                 <TableCell>Date</TableCell>
@@ -95,6 +97,19 @@ const SafetyReportList = () => {
             <TableBody>
               {reports.map((report) => (
                 <TableRow key={report._id}>
+                  <TableCell>
+                    {report.images && report.images.length > 0 ? (
+                      <Avatar
+                        src={report.images[0].dataURL}
+                        variant="rounded"
+                        sx={{ width: 40, height: 40 }}
+                      />
+                    ) : (
+                      <Avatar sx={{ width: 40, height: 40, bgcolor: '#eee' }}>
+                        <ImageIcon fontSize="small" color="disabled" />
+                      </Avatar>
+                    )}
+                  </TableCell>
                   <TableCell>{report.title || 'Untitled'}</TableCell>
                   <TableCell>{report.location || '-'}</TableCell>
                   <TableCell>{new Date(report.date).toLocaleDateString()}</TableCell>
