@@ -23,6 +23,9 @@ const ProjectList = () => {
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
 
+  // ─── Debug: log user ──────────────────────────────────────────
+  console.log('👤 Current user in ProjectList:', user);
+
   // ─── Photo preview state ──────────────────────────────────────
   const [photoPreviewOpen, setPhotoPreviewOpen] = useState(false);
   const [previewImage, setPreviewImage] = useState('');
@@ -35,7 +38,7 @@ const ProjectList = () => {
   const [uploading, setUploading] = useState(false);
   const [uploadStep, setUploadStep] = useState(0);
 
-  // ✅ Fix: require user to be logged in and role not restricted
+  // ─── Permission checks ──────────────────────────────────────
   const canEdit = user && !['driver', 'receptionist', 'safety-officer'].includes(user.role);
   const canDelete = user && ['admin', 'director', 'accountant'].includes(user.role);
   const canApprove = user && ['admin', 'director'].includes(user.role);
@@ -169,6 +172,11 @@ const ProjectList = () => {
     setUploadStep(0);
   };
 
+  // ─── Show loading while user is being fetched ──────────────
+  if (user === undefined) {
+    return <CircularProgress sx={{ display: 'block', margin: '40px auto' }} />;
+  }
+
   return (
     <Paper sx={{ p: 2 }}>
       <BackButton />
@@ -202,6 +210,11 @@ const ProjectList = () => {
       {!canEdit && user && (
         <Alert severity="info" sx={{ mb: 2 }}>
           You have view‑only access. You can view projects but cannot create, edit, or delete them.
+        </Alert>
+      )}
+      {!user && (
+        <Alert severity="warning" sx={{ mb: 2 }}>
+          Please log in to manage projects.
         </Alert>
       )}
 
