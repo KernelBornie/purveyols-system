@@ -2,6 +2,7 @@ const axios = require('axios');
 const cheerio = require('cheerio');
 const Parser = require('rss-parser');
 const parser = new Parser();
+const AdvertisedProject = require('../models/AdvertisedProject');
 
 // ─── State ──────────────────────────────────────────────────────
 let bidStatus = {};
@@ -118,10 +119,8 @@ const extractProjects = (items, source, type) => {
       id: `REAL-${Date.now()}-${index}-${Math.random().toString(36).substr(2, 4)}`,
       title: title.substring(0, 150) || 'Untitled Project',
       client: item.creator || source.name || 'Unknown Client',
-      category: 'Construction',
       location: 'Zambia',
       budget: randomBudget(),
-      postedDate: item.pubDate ? new Date(item.pubDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
       deadline: randomDeadline(),
       status: 'open',
       source: source.name,
@@ -130,7 +129,6 @@ const extractProjects = (items, source, type) => {
       skills: ['Construction', 'Project Management'],
       contactEmail: `procurement@${source.name.toLowerCase().replace(/ /g, '')}.com`,
       biddingFee: randomFee(),
-      isBidded: false,
     };
     projects.push(project);
   });
@@ -180,10 +178,8 @@ const fetchWeb = async (source) => {
           id: `WEB-${Date.now()}-${i}`,
           title: text.substring(0, 150),
           client: source.name,
-          category: 'Construction',
           location: 'Zambia',
           budget: randomBudget(),
-          postedDate: new Date().toISOString().split('T')[0],
           deadline: randomDeadline(),
           status: 'open',
           source: source.name,
@@ -192,7 +188,6 @@ const fetchWeb = async (source) => {
           skills: ['Construction', 'Project Management'],
           contactEmail: `info@${source.name.toLowerCase().replace(/ /g, '')}.com`,
           biddingFee: randomFee(),
-          isBidded: false,
         });
       }
     });
@@ -207,7 +202,6 @@ const fetchWeb = async (source) => {
 // ─── Generate dynamic fallback projects (changes daily) ──────
 const generateDynamicFallback = () => {
   const today = new Date().toISOString().split('T')[0];
-  const seed = Date.now(); // changes every millisecond, but we want daily change
   const daySeed = Math.floor(Date.now() / (24 * 60 * 60 * 1000));
 
   const titles = [
@@ -228,7 +222,7 @@ const generateDynamicFallback = () => {
     'Zambia Development Agency',
     'Ministry of Infrastructure',
     'Lusaka City Council',
-    'NDOLA City Council',
+    'Ndola City Council',
     'Kitwe City Council',
     'World Bank Group',
     'African Development Bank',
@@ -255,7 +249,6 @@ const generateDynamicFallback = () => {
   ];
 
   const fallbackProjects = [];
-  // Generate between 8-12 projects per day, different each day
   const count = 8 + (daySeed % 5);
   for (let i = 0; i < count; i++) {
     const idx = (i + daySeed) % titles.length;
@@ -267,10 +260,8 @@ const generateDynamicFallback = () => {
       id: `FALLBACK-${today}-${i}-${daySeed}`,
       title: titles[idx],
       client: clients[clientIdx],
-      category: 'Infrastructure & Construction',
       location: locations[locIdx],
       budget: randomBudget(),
-      postedDate: new Date(Date.now() - (i * 2 * 24 * 60 * 60 * 1000)).toISOString().split('T')[0],
       deadline: randomDeadline(),
       status: 'open',
       source: 'Zambia Public Procurement Authority',
@@ -279,23 +270,35 @@ const generateDynamicFallback = () => {
       skills: ['Civil Engineering', 'Project Management', 'Construction'],
       contactEmail: 'info@zppa.org.zm',
       biddingFee: randomFee(),
-      isBidded: false,
     });
   }
   return fallbackProjects;
 };
 
+// ─── Save projects to DB with deduplication ────────────────────
+const saveProjectsToDB = async (projects) => {
+  let added = 0;
+  let skipped = 0;
+  for (const project of projects) {
+    const uniqueKey = `${project.title}-${project.sourceUrl}`.replace(/\s/g, '_').toLowerCase();
+    const existing = await AdvertisedProject.findOne({ uniqueKey });
+    if (!existing) {
+      await AdvertisedProject.create({ ...project, uniqueKey });
+      added++;
+    } else {
+      skipped++;
+      // Optionally update existing fields like deadline, budget
+      await AdvertisedProject.updateOne(
+        { uniqueKey },
+        { deadline: project.deadline, budget: project.budget, updatedAt: new Date() }
+      );
+    }
+  }
+  return { added, skipped };
+};
+
 // ─── Main fetch function ──────────────────────────────────────
 const fetchAdvertisedProjects = async (filters = {}) => {
-  const now = Date.now();
-
-  // If cache is fresh, use it
-  if (cachedProjects.length > 0 && lastFetchTime && (now - lastFetchTime) < CACHE_DURATION) {
-    console.log('📦 Using cached projects');
-    let results = cachedProjects.filter(p => !p.isBidded && p.status === 'open');
-    return applyFilters(results, filters);
-  }
-
   console.log('🔄 Fetching fresh real data...');
 
   // Fetch from all sources
@@ -310,7 +313,6 @@ const fetchAdvertisedProjects = async (filters = {}) => {
     allProjects.push(...fetched);
   }
 
-  // If we got real projects, use them; otherwise generate dynamic fallback
   let finalProjects = [];
   if (allProjects.length > 0) {
     // Remove duplicates by title (keep first occurrence)
@@ -333,79 +335,59 @@ const fetchAdvertisedProjects = async (filters = {}) => {
     finalProjects = generateDynamicFallback();
   }
 
-  // Mark already bidded
-  finalProjects = finalProjects.map(p => ({
-    ...p,
-    isBidded: isBidded(p.id),
-  }));
+  // ─── Save to DB with deduplication ──────────────────────────────
+  const result = await saveProjectsToDB(finalProjects);
 
-  // Cache
+  // Update cache
   cachedProjects = finalProjects;
-  lastFetchTime = now;
+  lastFetchTime = Date.now();
 
-  let results = finalProjects.filter(p => !p.isBidded && p.status === 'open');
-  return applyFilters(results, filters);
+  // Return the results
+  return {
+    projects: finalProjects,
+    results: result,
+  };
 };
 
-// ─── Apply filters ─────────────────────────────────────────────
-const applyFilters = (projects, filters) => {
-  let results = projects;
-  if (filters.status) {
-    results = results.filter(p => p.status === filters.status);
-  }
-  if (filters.category) {
-    results = results.filter(p => p.category.toLowerCase().includes(filters.category.toLowerCase()));
+// ─── Get projects from DB with filters ─────────────────────────
+const getProjectsFromDB = async (filters = {}) => {
+  const query = { status: 'open' };
+  if (filters.status && filters.status !== 'all') {
+    query.status = filters.status;
   }
   if (filters.search) {
-    const q = filters.search.toLowerCase();
-    results = results.filter(p =>
-      p.title.toLowerCase().includes(q) ||
-      p.client.toLowerCase().includes(q) ||
-      p.location.toLowerCase().includes(q)
-    );
+    query.$or = [
+      { title: { $regex: filters.search, $options: 'i' } },
+      { client: { $regex: filters.search, $options: 'i' } },
+      { location: { $regex: filters.search, $options: 'i' } },
+    ];
   }
-  // Sort by postedDate descending
-  results.sort((a, b) => new Date(b.postedDate) - new Date(a.postedDate));
-  return results;
+  const projects = await AdvertisedProject.find(query)
+    .sort({ createdAt: -1 })
+    .limit(50);
+  return projects;
 };
 
 // ─── Mark as bidded ──────────────────────────────────────────
-const markProjectAsBidded = (projectId) => {
-  bidStatus[projectId] = { bidded: true, timestamp: Date.now() };
-  // Remove from cache so it won't appear again
-  cachedProjects = cachedProjects.filter(p => p.id !== projectId);
-  console.log(`📌 Project marked as bidded: ${projectId}`);
+const markProjectAsBidded = async (projectId) => {
+  const project = await AdvertisedProject.findOne({ id: projectId });
+  if (!project) return false;
+  project.status = 'bidded';
+  await project.save();
   return true;
 };
 
 const isBidded = (projectId) => {
-  const status = bidStatus[projectId];
-  if (!status) return false;
-  if (Date.now() - status.timestamp > BID_TRACKING_DURATION) {
-    delete bidStatus[projectId];
-    return false;
-  }
-  return status.bidded;
+  // Not used in this service anymore – we use DB status
 };
 
-// ─── Get bidded projects ──────────────────────────────────────
 const getBiddedProjects = async () => {
-  const bidded = [];
-  for (const [id, status] of Object.entries(bidStatus)) {
-    // Try to find in cache first (but we remove after bid, so we need to get from fallback or previous data)
-    // We'll just return the IDs with timestamp; the frontend will show them from its own list.
-    // Actually we'll store in DB, so we don't need to rely on this.
-    // This function is used by the route to get bidded projects from DB.
-    // We'll just return an empty array here, as the route uses the Bid model.
-    // The frontend uses /api/advertised-projects/bidded which queries the Bid model.
-    // So this function is not used. We keep it for compatibility.
-  }
-  return [];
+  return await AdvertisedProject.find({ status: 'bidded' }).sort({ updatedAt: -1 });
 };
 
 module.exports = {
   fetchAdvertisedProjects,
+  getProjectsFromDB,
   markProjectAsBidded,
-  isBidded,
   getBiddedProjects,
 };

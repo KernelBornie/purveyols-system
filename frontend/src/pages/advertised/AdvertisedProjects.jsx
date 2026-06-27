@@ -14,7 +14,7 @@ import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import GavelIcon from '@mui/icons-material/Gavel';
 import HistoryIcon from '@mui/icons-material/History';
-import CloudDownloadIcon from '@mui/icons-material/CloudDownload'; // 👈 NEW
+import CloudDownloadIcon from '@mui/icons-material/CloudDownload';
 import { useNavigate } from 'react-router-dom';
 import api from '../../api/axios';
 import BackButton from '../../components/BackButton';
@@ -31,7 +31,7 @@ const AdvertisedProjects = () => {
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [lastRefresh, setLastRefresh] = useState(null);
-  const [fetching, setFetching] = useState(false); // 👈 NEW
+  const [fetching, setFetching] = useState(false);
   const refreshInterval = useRef(null);
 
   const fetchProjects = async () => {
