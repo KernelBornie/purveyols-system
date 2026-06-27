@@ -9,6 +9,7 @@ import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import CheckInIcon from '@mui/icons-material/AssignmentTurnedIn';
+import ZoomInIcon from '@mui/icons-material/ZoomIn';
 import api from '../../api/axios';
 import { useAuth } from '../../context/AuthContext';
 import BackButton from '../../components/BackButton';
@@ -27,6 +28,10 @@ const WorkerList = () => {
     notes: '',
   });
   const [message, setMessage] = useState(null);
+
+  // ─── Photo preview state ──────────────────────────────────────
+  const [photoPreviewOpen, setPhotoPreviewOpen] = useState(false);
+  const [previewPhoto, setPreviewPhoto] = useState('');
 
   const canEdit = ['admin', 'director', 'civil-engineer', 'foreman', 'accountant', 'qs', 'quantity-surveyor'].includes(user?.role);
   const canCheckIn = canEdit;
@@ -102,6 +107,14 @@ const WorkerList = () => {
     }
   };
 
+  // ─── Handle photo click to expand ────────────────────────────
+  const handlePhotoClick = (photo) => {
+    if (photo) {
+      setPreviewPhoto(photo);
+      setPhotoPreviewOpen(true);
+    }
+  };
+
   if (loading) return <CircularProgress sx={{ display: 'block', margin: '40px auto' }} />;
 
   return (
@@ -136,12 +149,17 @@ const WorkerList = () => {
           {workers.map((worker) => (
             <TableRow key={worker._id}>
               <TableCell>
-                <Avatar
-                  src={worker.photo}
-                  sx={{ width: 40, height: 40 }}
+                <Box
+                  sx={{ cursor: worker.photo ? 'pointer' : 'default' }}
+                  onClick={() => handlePhotoClick(worker.photo)}
                 >
-                  {!worker.photo && worker.name?.charAt(0).toUpperCase()}
-                </Avatar>
+                  <Avatar
+                    src={worker.photo}
+                    sx={{ width: 40, height: 40 }}
+                  >
+                    {!worker.photo && worker.name?.charAt(0).toUpperCase()}
+                  </Avatar>
+                </Box>
               </TableCell>
               <TableCell>{worker.name}</TableCell>
               <TableCell>{worker.nrc}</TableCell>
@@ -216,6 +234,28 @@ const WorkerList = () => {
           )}
         </TableBody>
       </Table>
+
+      {/* ─── Photo Preview Dialog ────────────────────────────────── */}
+      <Dialog open={photoPreviewOpen} onClose={() => setPhotoPreviewOpen(false)} maxWidth="md" fullWidth>
+        <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span>Worker Photo</span>
+          <IconButton onClick={() => setPhotoPreviewOpen(false)}>
+            <ZoomInIcon />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent sx={{ textAlign: 'center' }}>
+          {previewPhoto && (
+            <img
+              src={previewPhoto}
+              alt="Worker"
+              style={{ maxWidth: '100%', maxHeight: '70vh', objectFit: 'contain' }}
+            />
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setPhotoPreviewOpen(false)}>Close</Button>
+        </DialogActions>
+      </Dialog>
 
       {/* Check‑in Modal */}
       <Dialog open={checkInOpen} onClose={() => setCheckInOpen(false)} maxWidth="sm" fullWidth>

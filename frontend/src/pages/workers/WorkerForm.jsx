@@ -10,6 +10,7 @@ import PrintIcon from '@mui/icons-material/Print';
 import CheckInIcon from '@mui/icons-material/AssignmentTurnedIn';
 import VerifiedIcon from '@mui/icons-material/Verified';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
+import CameraAltIcon from '@mui/icons-material/CameraAlt';
 import DeleteIcon from '@mui/icons-material/Delete';
 import api from '../../api/axios';
 import { useAuth } from '../../context/AuthContext';
@@ -87,8 +88,8 @@ const WorkerForm = () => {
     fetchData();
   }, [id, user, canEdit, navigate]);
 
-  // ─── Photo handler ──────────────────────────────────────────
-  const handlePhotoUpload = (e) => {
+  // ─── Photo handler (works for both upload and capture) ──────
+  const handlePhoto = (e) => {
     const file = e.target.files[0];
     if (!file) return;
     const validTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
@@ -329,7 +330,7 @@ const WorkerForm = () => {
           </Box>
         )}
 
-        {/* ─── Photo Upload ────────────────────────────────────── */}
+        {/* ─── Photo Upload & Capture ────────────────────────────── */}
         <Box sx={{ mb: 3 }}>
           <Typography variant="subtitle2" gutterBottom>Photo (Optional)</Typography>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
@@ -357,19 +358,35 @@ const WorkerForm = () => {
               <Avatar sx={{ width: 80, height: 80 }} />
             )}
             {canEdit && (
-              <Button
-                variant="outlined"
-                component="label"
-                startIcon={<CloudUploadIcon />}
-              >
-                {form.photo ? 'Change Photo' : 'Upload Photo'}
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handlePhotoUpload}
-                  style={{ display: 'none' }}
-                />
-              </Button>
+              <>
+                <Button
+                  variant="outlined"
+                  component="label"
+                  startIcon={<CloudUploadIcon />}
+                >
+                  {form.photo ? 'Change Photo' : 'Upload Photo'}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handlePhoto}
+                    style={{ display: 'none' }}
+                  />
+                </Button>
+                <Button
+                  variant="outlined"
+                  component="label"
+                  startIcon={<CameraAltIcon />}
+                >
+                  Take Photo
+                  <input
+                    type="file"
+                    accept="image/*"
+                    capture="environment"
+                    onChange={handlePhoto}
+                    style={{ display: 'none' }}
+                  />
+                </Button>
+              </>
             )}
           </Box>
           <Typography variant="caption" color="textSecondary">JPEG, PNG, GIF, WEBP</Typography>
