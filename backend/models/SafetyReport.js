@@ -13,6 +13,13 @@ const SafetyReportSchema = new mongoose.Schema({
   createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now },
+  // ─── New: Evidence images ──────────────────────────────────────
+  images: [
+    {
+      name: { type: String, required: true },
+      dataURL: { type: String, required: true },
+    }
+  ],
 });
 
 module.exports = mongoose.model('SafetyReport', SafetyReportSchema);

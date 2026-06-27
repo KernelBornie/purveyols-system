@@ -14,9 +14,11 @@ const WorkerSchema = new mongoose.Schema({
     enum: ['active', 'inactive', 'suspended'],
     default: 'active',
   },
-  // ─── Verification fields ──────────────────────────────────────────
+  // ─── Verification fields ──────────────────────────────────────
   verifiedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   verifiedAt: { type: Date },
+  // ─── New: Profile photo ──────────────────────────────────────
+  photo: { type: String, default: '' }, // base64 data URL
 });
 
 module.exports = mongoose.model('Worker', WorkerSchema);
