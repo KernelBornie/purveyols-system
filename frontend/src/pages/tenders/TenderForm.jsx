@@ -97,6 +97,7 @@ const TenderForm = () => {
     notes: '',
   });
   const [creator, setCreator] = useState(null);
+  const [createdAt, setCreatedAt] = useState(null);
 
   // ─── Dialogs ──────────────────────────────────────────────
   const [personnelDialog, setPersonnelDialog] = useState(false);
@@ -177,6 +178,7 @@ const TenderForm = () => {
             notes: data.notes || '',
           });
           setCreator(data.createdBy);
+          setCreatedAt(data.createdAt);
         }
       } catch (err) {
         setMessage({ type: 'error', text: 'Failed to load tender' });
@@ -372,9 +374,227 @@ const TenderForm = () => {
     }
   };
 
-  // ─── Print ──────────────────────────────────────────────────
+  // ─── Custom Print ──────────────────────────────────────────────
   const handlePrint = () => {
-    window.print();
+    if (!form.title && !form.client) {
+      alert('No data to print.');
+      return;
+    }
+    const { subtotal, grandTotal } = calculateGrandTotal();
+
+    // Build sections HTML
+    let sectionsHtml = '';
+    if (form.sections.length === 0) {
+      sectionsHtml = '<tr><td colspan="7" align="center">No sections defined</td></tr>';
+    } else {
+      form.sections.forEach((section, idx) => {
+        sectionsHtml += `
+          <tr><td colspan="7" style="background:#f0f0f0;font-weight:bold;padding:4px;">
+            Section ${idx+1}: ${section.name} ${section.pageNumber ? `(Page ${section.pageNumber})` : ''}
+          </td></tr>
+          <tr><td colspan="7" style="padding-left:16px;font-size:0.9em;">${section.description || ''}</td></tr>
+        `;
+        if (section.items.length === 0) {
+          sectionsHtml += `<tr><td colspan="7" style="text-align:center;color:#999;">No items</td></tr>`;
+        } else {
+          section.items.forEach(item => {
+            sectionsHtml += `
+              <tr>
+                <td style="padding:2px 4px;">${item.itemNumber || ''}</td>
+                <td style="padding:2px 4px;">${item.description}</td>
+                <td style="padding:2px 4px;text-align:right;">${item.quantity}</td>
+                <td style="padding:2px 4px;">${item.unit || 'Lot'}</td>
+                <td style="padding:2px 4px;text-align:right;">${(item.unitPrice || 0).toFixed(2)}</td>
+                <td style="padding:2px 4px;text-align:right;">${(item.quantity * item.unitPrice).toFixed(2)}</td>
+              </tr>
+            `;
+          });
+        }
+      });
+    }
+
+    // Build personnel HTML
+    let personnelHtml = '';
+    if (form.volumeII.keyPersonnel.length === 0) {
+      personnelHtml = '<tr><td colspan="6" align="center">No personnel added</td></tr>';
+    } else {
+      form.volumeII.keyPersonnel.forEach(p => {
+        personnelHtml += `
+          <tr>
+            <td>${p.name}</td>
+            <td>${p.role}</td>
+            <td>${p.qualifications || ''}</td>
+            <td>${p.experience || ''}</td>
+            <td>${p.yearsWithFirm || 0}</td>
+          </tr>
+        `;
+      });
+    }
+
+    // Build past performance HTML
+    let performanceHtml = '';
+    if (form.volumeII.pastPerformance.length === 0) {
+      performanceHtml = '<tr><td colspan="6" align="center">No past performance records</td></tr>';
+    } else {
+      form.volumeII.pastPerformance.forEach(p => {
+        performanceHtml += `
+          <tr>
+            <td>${p.projectName}</td>
+            <td>${p.client}</td>
+            <td>${p.value || ''}</td>
+            <td>${p.yearCompleted || ''}</td>
+            <td>${p.isReference ? '✓' : ''}</td>
+          </tr>
+        `;
+      });
+    }
+
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>Tender Document - ${form.referenceNumber || 'New Tender'}</title>
+          <style>
+            body { font-family: 'Courier New', monospace; padding: 20px; margin: 0; background: #fff; }
+            .print-container { max-width: 1100px; margin: 0 auto; }
+            .header { text-align: center; border-bottom: 2px solid #000; padding-bottom: 8px; margin-bottom: 15px; }
+            .header h1 { margin: 0; font-size: 28px; letter-spacing: 4px; font-weight: bold; color: #b71c1c; }
+            .header .subtitle { font-weight: bold; font-size: 14px; margin: 2px 0; color: #b71c1c; }
+            .header .details { font-size: 11px; margin: 1px 0; }
+            .title-row { border-bottom: 1px solid #000; padding-bottom: 4px; margin-bottom: 10px; }
+            .title-row .left { font-weight: bold; font-size: 18px; letter-spacing: 2px; color: #b71c1c; }
+            .info { margin-bottom: 10px; }
+            .info p { margin: 2px 0; font-size: 12px; }
+            .section-title { font-weight: bold; font-size: 14px; margin-top: 12px; margin-bottom: 4px; border-bottom: 1px solid #ccc; }
+            table { width: 100%; border-collapse: collapse; font-size: 11px; margin: 6px 0; }
+            th { background: #f0f0f0; font-weight: bold; text-align: left; padding: 4px; border: 1px solid #ccc; }
+            td { padding: 4px; border: 1px solid #ccc; }
+            .approval { margin-top: 20px; border-top: 1px solid #000; padding-top: 10px; }
+            .footer { text-align: center; font-size: 10px; margin-top: 20px; border-top: 1px solid #000; padding-top: 8px; }
+            .total-row { font-weight: bold; background: #fafafa; }
+          </style>
+        </head>
+        <body>
+          <div class="print-container">
+            <div class="header">
+              <h1>PURVEYOLS</h1>
+              <div class="subtitle">Building and Civil contractors</div>
+              <div class="details">Plot No. 8, Buchi Road - Northmead, P.O. Box NH 87 Lusaka, Zambia</div>
+              <div class="details">Tel: +260 211 235354 | Mobile: +260 977 393879 / +260 965 393879</div>
+              <div class="details">Email: purveyols@gmail.com</div>
+            </div>
+            <div class="title-row">
+              <span class="left">TENDER DOCUMENT</span>
+              <span style="float:right;font-size:12px;">Ref: ${form.referenceNumber || 'N/A'}</span>
+            </div>
+
+            <div class="info">
+              <p><strong>Title:</strong> ${form.title || '—'}</p>
+              <p><strong>Type:</strong> ${form.type || '—'}</p>
+              <p><strong>Client:</strong> ${form.client || '—'}</p>
+              <p><strong>Client Contact:</strong> ${form.clientContact || '—'}</p>
+              <p><strong>Client Address:</strong> ${form.clientAddress || '—'}</p>
+              <p><strong>Client Email:</strong> ${form.clientEmail || '—'}</p>
+              <p><strong>Client Phone:</strong> ${form.clientPhone || '—'}</p>
+              <p><strong>Project:</strong> ${form.projectName || '—'}</p>
+              <p><strong>Location:</strong> ${form.location || '—'}</p>
+              <p><strong>Solicitation #:</strong> ${form.solicitationNumber || '—'}</p>
+              <p><strong>Issue Date:</strong> ${form.issueDate || '—'}</p>
+              <p><strong>Due Date:</strong> ${form.dueDate || '—'}</p>
+              <p><strong>Site Visit:</strong> ${form.siteVisitDate || '—'}</p>
+              <p><strong>Award Date:</strong> ${form.awardDate || '—'}</p>
+              <p><strong>Status:</strong> ${form.status}</p>
+              ${form.isSF1442 ? `<p><strong>SF 1442:</strong> Yes</p>` : ''}
+              ${form.isSF1442 ? `<p><strong>Contracting Office:</strong> ${form.contractingOffice || '—'}</p>` : ''}
+              ${form.isSF1442 ? `<p><strong>Facility Code:</strong> ${form.facilityCode || '—'}</p>` : ''}
+              ${form.isSF1442 && form.isBondRequired ? `<p><strong>Bond Required:</strong> Yes (${form.bondDays} days)</p>` : ''}
+              ${form.isSF1442 ? `<p><strong>Acceptance Days:</strong> ${form.acceptanceDays || 30}</p>` : ''}
+              <p><strong>Description:</strong> ${form.description || '—'}</p>
+            </div>
+
+            <div class="section-title">Sections & Scope of Work</div>
+            <table>
+              <thead>
+                <tr>
+                  <th>Item #</th>
+                  <th>Description</th>
+                  <th>Qty</th>
+                  <th>Unit</th>
+                  <th>Unit Price</th>
+                  <th>Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${sectionsHtml}
+              </tbody>
+            </table>
+
+            <div class="section-title">Price Proposal</div>
+            <table>
+              <tr><td><strong>Subtotal:</strong></td><td align="right">${subtotal.toFixed(2)}</td></tr>
+              <tr><td><strong>Adjustment (${form.priceProposal.percentageAdjustment || 0}%):</strong></td><td align="right">${((subtotal * (form.priceProposal.percentageAdjustment || 0)) / 100).toFixed(2)}</td></tr>
+              <tr><td><strong>Contingencies (${form.priceProposal.contingencies || 0}%):</strong></td><td align="right">${((subtotal * (form.priceProposal.contingencies || 0)) / 100).toFixed(2)}</td></tr>
+              <tr><td><strong>VAT (${form.priceProposal.vat || 0}%):</strong></td><td align="right">${((subtotal * (form.priceProposal.vat || 0)) / 100).toFixed(2)}</td></tr>
+              <tr class="total-row"><td><strong>Grand Total (${form.priceProposal.currency || 'ZMW'}):</strong></td><td align="right">${grandTotal.toFixed(2)}</td></tr>
+            </table>
+
+            <div class="section-title">Volume I: Price Proposal</div>
+            <p><strong>Signed SF 1442 Received:</strong> ${form.volumeI.sf1442Received ? 'Yes' : 'No'}</p>
+            <p><strong>Price Breakdown:</strong> ${form.volumeI.priceBreakdown || '—'}</p>
+
+            <div class="section-title">Volume II: Business / Technical Proposal</div>
+            <p><strong>1. Performance Schedule:</strong><br/>${form.volumeII.performanceSchedule || '—'}</p>
+
+            <p><strong>2. Key Personnel</strong></p>
+            <table>
+              <thead><tr><th>Name</th><th>Role</th><th>Qualifications</th><th>Experience</th><th>Years with Firm</th></tr></thead>
+              <tbody>${personnelHtml}</tbody>
+            </table>
+
+            <p><strong>3. Management Information</strong></p>
+            <table>
+              <tr><td><strong>Bidder Info:</strong></td><td>${form.volumeII.managementInformation.bidderInfo || '—'}</td></tr>
+              <tr><td><strong>SAM Registration:</strong></td><td>${form.volumeII.managementInformation.samRegistration || '—'}</td></tr>
+              <tr><td><strong>Certifications:</strong></td><td>${form.volumeII.managementInformation.certifications || '—'}</td></tr>
+              <tr><td><strong>Litigation Status:</strong></td><td>${form.volumeII.managementInformation.litigationStatus || '—'}</td></tr>
+              <tr><td><strong>Political Affiliation:</strong></td><td>${form.volumeII.managementInformation.politicalAffiliation || '—'}</td></tr>
+              <tr><td><strong>Equipment Schedule:</strong></td><td>${form.volumeII.managementInformation.equipmentSchedule || '—'}</td></tr>
+              <tr><td><strong>Company Profile:</strong></td><td>${form.volumeII.managementInformation.companyProfile || '—'}</td></tr>
+            </table>
+
+            <p><strong>4. Financial Capability</strong></p>
+            <p><strong>Bank Statements:</strong> ${form.volumeII.financialCapability.bankStatements.length ? form.volumeII.financialCapability.bankStatements.join(', ') : '—'}</p>
+
+            <p><strong>5. Past Performance</strong></p>
+            <table>
+              <thead><tr><th>Project</th><th>Client</th><th>Value</th><th>Year</th><th>Reference</th></tr></thead>
+              <tbody>${performanceHtml}</tbody>
+            </table>
+
+            <p><strong>6. Preliminary Safety Plan</strong></p>
+            <p>${form.volumeII.preliminarySafetyPlan || '—'}</p>
+
+            <div class="section-title">Additional Information</div>
+            <p><strong>Notes:</strong> ${form.notes || '—'}</p>
+
+            <div class="approval">
+              <div class="row">
+                <div><strong>Created by:</strong> ${creator ? `${creator.name} (${creator.role})` : '—'}</div>
+                <div><strong>Date:</strong> ${createdAt ? new Date(createdAt).toLocaleString() : '—'}</div>
+              </div>
+              <div class="row" style="margin-top:8px;">
+                <div><strong>Approved by:</strong> _________________</div>
+                <div><strong>Date:</strong> _________________</div>
+              </div>
+            </div>
+
+            <div class="footer">PURVEYOLS CMS – Construction Management System</div>
+          </div>
+          <script>window.onload = function() { window.print(); }</script>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
   };
 
   const { subtotal, grandTotal } = calculateGrandTotal();
@@ -383,37 +603,6 @@ const TenderForm = () => {
 
   return (
     <Paper sx={{ p: 3, maxWidth: 1400, mx: 'auto' }}>
-      {/* ─── PRINT HEADER (visible only when printing) ──────────── */}
-      <Box className="print-header" sx={{ 
-        display: 'none', 
-        '@media print': { display: 'block', textAlign: 'center', mb: 3, pb: 2, borderBottom: '2px solid #000' } 
-      }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 2, mb: 1 }}>
-          <img 
-            src="/top-log.PNG" 
-            alt="PURVEYOLS Logo" 
-            style={{ height: 60, width: 'auto' }} 
-          />
-          <Box sx={{ textAlign: 'left' }}>
-            <Typography variant="h4" sx={{ fontWeight: 'bold', letterSpacing: 1 }}>
-              PURVEYOLS
-            </Typography>
-            <Typography variant="subtitle1" sx={{ fontWeight: 500 }}>
-              Building and Civil Contractors
-            </Typography>
-          </Box>
-        </Box>
-        <Typography variant="body2" sx={{ fontSize: '0.9rem' }}>
-          Plot No. 8, Buchi Road - Northmead, P.O. Box NH 87 Lusaka, Zambia
-        </Typography>
-        <Typography variant="body2" sx={{ fontSize: '0.9rem' }}>
-          Tel: +260 211 235354 | Mobile: +260 977 393879 / +260 965 393879
-        </Typography>
-        <Typography variant="body2" sx={{ fontSize: '0.9rem' }}>
-          Email: purveyols@gmail.com
-        </Typography>
-      </Box>
-
       <BackButton />
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
         <Typography variant="h5" sx={{ fontWeight: 'bold' }}>
