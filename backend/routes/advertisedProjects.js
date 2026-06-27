@@ -1,93 +1,84 @@
 const express = require('express');
 const router = express.Router();
-const AdvertisedProject = require('../models/AdvertisedProject');
-const Bid = require('../models/Bid');
 const auth = require('../middleware/auth');
 const authorize = require('../middleware/rbac');
 
-// ─── GET all advertised projects ──────────────────────────────
+const AdvertisedProject = require('../models/AdvertisedProject');
+const advertisedService = require('../services/advertisedProjectsService');
+
+// ─── GET all open projects (with filters) ──────────────────────
 router.get('/', auth, async (req, res) => {
   try {
     const { search, status } = req.query;
-    let filter = {};
+    const filters = {};
+    if (status && status !== 'all') filters.status = status;
+    if (search) filters.search = search;
 
-    if (status) filter.status = status;
-    if (search) {
-      filter.$or = [
-        { title: { $regex: search, $options: 'i' } },
-        { client: { $regex: search, $options: 'i' } },
-        { location: { $regex: search, $options: 'i' } },
-      ];
-    }
-
-    const projects = await AdvertisedProject.find(filter).sort({ createdAt: -1 });
+    const projects = await advertisedService.getProjectsFromDB(filters);
     res.json({ projects });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('❌ GET /api/advertised-projects error:', err);
+    res.status(500).json({ error: 'Failed to fetch projects' });
   }
 });
 
-// ─── Bid on an advertised project ──────────────────────────────
+// ─── POST /fetch – manually scrape and save new projects ──────
+// Allowed roles: any role that might need to fetch projects
+router.post(
+  '/fetch',
+  auth,
+  authorize(
+    'admin',
+    'director',
+    'procurement-officer',
+    'accountant',
+    'civil-engineer',
+    'quantity-surveyor',
+    'foreman',
+    'safety-officer',
+    'engineer',
+    'manager',
+    'supervisor',
+    'planner',
+    'estimator',
+    'surveyor',
+    'architect',
+    'project-manager',
+    'site-engineer',
+    'construction-manager',
+    'quality-control',
+    'store-keeper',
+    'driver',
+    'receptionist'
+  ),
+  async (req, res) => {
+    try {
+      const result = await advertisedService.fetchAdvertisedProjects();
+      res.json({
+        results: {
+          added: result.results?.added || 0,
+          skipped: result.results?.skipped || 0,
+        },
+        projects: result.projects || [],
+      });
+    } catch (err) {
+      console.error('❌ POST /api/advertised-projects/fetch error:', err);
+      res.status(500).json({ error: 'Failed to fetch new projects: ' + err.message });
+    }
+  }
+);
+
+// ─── POST /:id/bid – mark a project as bidded ─────────────────
 router.post('/:id/bid', auth, async (req, res) => {
   try {
-    const projectId = req.params.id;
-
-    const project = await AdvertisedProject.findOne({ id: projectId });
-    if (!project) {
+    const success = await advertisedService.markProjectAsBidded(req.params.id);
+    if (!success) {
       return res.status(404).json({ error: 'Project not found' });
     }
-
-    const existingBid = await Bid.findOne({ projectId, user: req.user.id });
-    if (existingBid) {
-      return res.status(400).json({ error: 'You have already bid on this project' });
-    }
-
-    const bid = new Bid({
-      projectId: project.id,
-      projectTitle: project.title,
-      client: project.client,
-      location: project.location,
-      budget: project.budget,
-      deadline: project.deadline,
-      source: project.source,
-      sourceUrl: project.sourceUrl,
-      description: project.description,
-      skills: project.skills || [],
-      contactEmail: project.contactEmail,
-      biddingFee: project.biddingFee,
-      status: 'bidded',
-      user: req.user.id,
-      bidDate: new Date(),
-    });
-
-    await bid.save();
-
-    res.status(201).json({ message: '✅ Project marked as bidded!', bid });
+    res.json({ message: 'Project marked as bidded successfully' });
   } catch (err) {
-    console.error('Bid error:', err);
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// ─── Fetch fresh projects from external sources ──────────────────
-// 👇 Expanded role list – now includes more roles
-router.post('/fetch', auth, authorize(
-  'admin',
-  'director',
-  'procurement-officer',
-  'accountant',
-  'civil-engineer',
-  'quantity-surveyor',
-  'foreman',
-  'safety-officer'
-), async (req, res) => {
-  try {
-    const { fetchFreshProjects } = require('../services/newsScraper');
-    const results = await fetchFreshProjects();
-    res.json({ message: 'Fetch completed', results });
-  } catch (err) {
-    console.error('Fetch error:', err);
-    res.status(500).json({ error: err.message });
+    console.error('❌ POST /api/advertised-projects/:id/bid error:', err);
+    res.status(500).json({ error: 'Failed to mark project as bidded' });
   }
 });
 
