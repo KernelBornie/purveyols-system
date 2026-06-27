@@ -2,13 +2,15 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   Box, Paper, Typography, TextField, Button, MenuItem, FormControl,
-  InputLabel, Select, Alert, CircularProgress, Grid
+  InputLabel, Select, Alert, CircularProgress, Grid, Chip, IconButton,
+  Snackbar
 } from '@mui/material';
 import SaveIcon from '@mui/icons-material/Save';
 import PrintIcon from '@mui/icons-material/Print';
-import ArrowBackIcon from '@mui/icons-material/ArrowBack';
-import api from '../../api/axios';
+import DeleteIcon from '@mui/icons-material/Delete';
+import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import BackButton from '../../components/BackButton';
+import api from '../../api/axios';
 
 const SafetyReportForm = () => {
   const { id } = useParams();
@@ -22,9 +24,11 @@ const SafetyReportForm = () => {
     date: new Date().toISOString().split('T')[0],
     status: 'pending',
   });
+  const [images, setImages] = useState([]); // array of { name, dataURL }
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
+  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'info' });
 
   useEffect(() => {
     if (isEdit) {
@@ -39,6 +43,9 @@ const SafetyReportForm = () => {
             date: data.date ? new Date(data.date).toISOString().split('T')[0] : '',
             status: data.status || 'pending',
           });
+          if (data.images && data.images.length) {
+            setImages(data.images.map(img => ({ name: img.name, dataURL: img.dataURL })));
+          }
         })
         .catch(err => setError('Failed to load report'))
         .finally(() => setLoading(false));
@@ -49,15 +56,54 @@ const SafetyReportForm = () => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
+  // ─── Image handlers ──────────────────────────────────────────
+  const handleImageUpload = (e) => {
+    const files = Array.from(e.target.files);
+    if (files.length === 0) return;
+
+    // Validate file type
+    const validTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+    const invalid = files.find(f => !validTypes.includes(f.type));
+    if (invalid) {
+      setSnackbar({ open: true, message: 'Only JPEG, PNG, GIF, and WEBP allowed.', severity: 'error' });
+      return;
+    }
+
+    // Read each file as dataURL
+    const newImages = [];
+    files.forEach(file => {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        newImages.push({
+          name: file.name,
+          dataURL: event.target.result,
+        });
+        if (newImages.length === files.length) {
+          setImages(prev => [...prev, ...newImages]);
+        }
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const removeImage = (index) => {
+    setImages(prev => prev.filter((_, i) => i !== index));
+  };
+
+  // ─── Submit ──────────────────────────────────────────────────
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSaving(true);
     setError(null);
     try {
+      const payload = {
+        ...formData,
+        images: images, // array of { name, dataURL }
+      };
       if (isEdit) {
-        await api.put(`/api/safety-reports/${id}`, formData);
+        await api.put(`/api/safety-reports/${id}`, payload);
       } else {
-        await api.post('/api/safety-reports', formData);
+        await api.post('/api/safety-reports', payload);
       }
       navigate('/safety-reports');
     } catch (err) {
@@ -67,13 +113,23 @@ const SafetyReportForm = () => {
     }
   };
 
-  // ─── Custom print ────────────────────────────────────────────────
+  // ─── Custom print ────────────────────────────────────────────
   const handlePrint = () => {
     if (!formData.title) {
       alert('No data to print.');
       return;
     }
     const printWindow = window.open('', '_blank');
+    // Build images HTML
+    let imagesHtml = '';
+    if (images.length > 0) {
+      imagesHtml = '<div style="margin-top:10px;"><strong>Attached Evidence:</strong><br/>';
+      images.forEach(img => {
+        imagesHtml += `<img src="${img.dataURL}" style="max-width:200px; max-height:200px; margin:5px; border:1px solid #ccc; padding:2px;" />`;
+      });
+      imagesHtml += '</div>';
+    }
+
     printWindow.document.write(`
       <html>
         <head>
@@ -90,6 +146,8 @@ const SafetyReportForm = () => {
             .info { margin-bottom: 10px; }
             .info p { margin: 2px 0; font-size: 12px; }
             .footer { text-align: center; font-size: 10px; margin-top: 20px; border-top: 1px solid #000; padding-top: 8px; }
+            .images { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px; }
+            .images img { max-width: 200px; max-height: 200px; border: 1px solid #ccc; padding: 2px; }
           </style>
         </head>
         <body>
@@ -111,6 +169,7 @@ const SafetyReportForm = () => {
               <p><strong>Status:</strong> ${formData.status}</p>
               <p><strong>Description:</strong> ${formData.description || '—'}</p>
             </div>
+            ${imagesHtml}
             <div class="footer">PURVEYOLS CMS - Construction Management System</div>
           </div>
           <script>window.onload = function() { window.print(); }</script>
@@ -206,6 +265,56 @@ const SafetyReportForm = () => {
                 </Select>
               </FormControl>
             </Grid>
+
+            {/* ─── Photo Upload ────────────────────────────────────── */}
+            <Grid item xs={12}>
+              <Typography variant="subtitle1" gutterBottom sx={{ fontWeight: 'bold', mt: 1 }}>
+                Attach Evidence (Photos)
+              </Typography>
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 2 }}>
+                {images.map((img, idx) => (
+                  <Box key={idx} sx={{ position: 'relative', display: 'inline-block' }}>
+                    <img
+                      src={img.dataURL}
+                      alt={img.name}
+                      style={{ width: '100px', height: '100px', objectFit: 'cover', borderRadius: '4px', border: '1px solid #ccc' }}
+                    />
+                    <IconButton
+                      size="small"
+                      sx={{
+                        position: 'absolute',
+                        top: -8,
+                        right: -8,
+                        bgcolor: 'white',
+                        boxShadow: 1,
+                        '&:hover': { bgcolor: '#f44336', color: 'white' }
+                      }}
+                      onClick={() => removeImage(idx)}
+                    >
+                      <DeleteIcon fontSize="small" />
+                    </IconButton>
+                  </Box>
+                ))}
+              </Box>
+              <Button
+                variant="outlined"
+                component="label"
+                startIcon={<CloudUploadIcon />}
+                sx={{ mb: 1 }}
+              >
+                Upload Photos
+                <input
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  onChange={handleImageUpload}
+                  style={{ display: 'none' }}
+                />
+              </Button>
+              <Typography variant="caption" display="block" color="textSecondary">
+                Supported: JPEG, PNG, GIF, WEBP
+              </Typography>
+            </Grid>
           </Grid>
 
           <Box sx={{ mt: 3, display: 'flex', gap: 2 }}>
@@ -226,6 +335,14 @@ const SafetyReportForm = () => {
           </Box>
         </form>
       </Paper>
+
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={4000}
+        onClose={() => setSnackbar({ ...snackbar, open: false })}
+      >
+        <Alert severity={snackbar.severity}>{snackbar.message}</Alert>
+      </Snackbar>
     </Box>
   );
 };
