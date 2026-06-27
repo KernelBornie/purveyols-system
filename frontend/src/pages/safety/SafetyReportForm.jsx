@@ -9,6 +9,7 @@ import SaveIcon from '@mui/icons-material/Save';
 import PrintIcon from '@mui/icons-material/Print';
 import DeleteIcon from '@mui/icons-material/Delete';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
+import CameraAltIcon from '@mui/icons-material/CameraAlt';
 import BackButton from '../../components/BackButton';
 import api from '../../api/axios';
 
@@ -57,11 +58,10 @@ const SafetyReportForm = () => {
   };
 
   // ─── Image handlers ──────────────────────────────────────────
-  const handleImageUpload = (e) => {
+  const handleImages = (e) => {
     const files = Array.from(e.target.files);
     if (files.length === 0) return;
 
-    // Validate file type
     const validTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
     const invalid = files.find(f => !validTypes.includes(f.type));
     if (invalid) {
@@ -69,7 +69,6 @@ const SafetyReportForm = () => {
       return;
     }
 
-    // Read each file as dataURL
     const newImages = [];
     files.forEach(file => {
       const reader = new FileReader();
@@ -86,6 +85,22 @@ const SafetyReportForm = () => {
     });
   };
 
+  // ─── Single image capture (camera) ──────────────────────────
+  const handleCapture = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const validTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+    if (!validTypes.includes(file.type)) {
+      setSnackbar({ open: true, message: 'Only JPEG, PNG, GIF, and WEBP allowed.', severity: 'error' });
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      setImages(prev => [...prev, { name: file.name || 'captured.jpg', dataURL: event.target.result }]);
+    };
+    reader.readAsDataURL(file);
+  };
+
   const removeImage = (index) => {
     setImages(prev => prev.filter((_, i) => i !== index));
   };
@@ -98,7 +113,7 @@ const SafetyReportForm = () => {
     try {
       const payload = {
         ...formData,
-        images: images, // array of { name, dataURL }
+        images: images,
       };
       if (isEdit) {
         await api.put(`/api/safety-reports/${id}`, payload);
@@ -120,7 +135,6 @@ const SafetyReportForm = () => {
       return;
     }
     const printWindow = window.open('', '_blank');
-    // Build images HTML
     let imagesHtml = '';
     if (images.length > 0) {
       imagesHtml = '<div style="margin-top:10px;"><strong>Attached Evidence:</strong><br/>';
@@ -266,7 +280,7 @@ const SafetyReportForm = () => {
               </FormControl>
             </Grid>
 
-            {/* ─── Photo Upload ────────────────────────────────────── */}
+            {/* ─── Photo Upload & Capture ──────────────────────────── */}
             <Grid item xs={12}>
               <Typography variant="subtitle1" gutterBottom sx={{ fontWeight: 'bold', mt: 1 }}>
                 Attach Evidence (Photos)
@@ -296,22 +310,37 @@ const SafetyReportForm = () => {
                   </Box>
                 ))}
               </Box>
-              <Button
-                variant="outlined"
-                component="label"
-                startIcon={<CloudUploadIcon />}
-                sx={{ mb: 1 }}
-              >
-                Upload Photos
-                <input
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  onChange={handleImageUpload}
-                  style={{ display: 'none' }}
-                />
-              </Button>
-              <Typography variant="caption" display="block" color="textSecondary">
+              <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                <Button
+                  variant="outlined"
+                  component="label"
+                  startIcon={<CloudUploadIcon />}
+                >
+                  Upload Photos
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    onChange={handleImages}
+                    style={{ display: 'none' }}
+                  />
+                </Button>
+                <Button
+                  variant="outlined"
+                  component="label"
+                  startIcon={<CameraAltIcon />}
+                >
+                  Take Photo
+                  <input
+                    type="file"
+                    accept="image/*"
+                    capture="environment"
+                    onChange={handleCapture}
+                    style={{ display: 'none' }}
+                  />
+                </Button>
+              </Box>
+              <Typography variant="caption" display="block" color="textSecondary" sx={{ mt: 1 }}>
                 Supported: JPEG, PNG, GIF, WEBP
               </Typography>
             </Grid>

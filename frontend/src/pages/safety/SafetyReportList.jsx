@@ -9,6 +9,7 @@ import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
 import ImageIcon from '@mui/icons-material/Image';
+import ZoomInIcon from '@mui/icons-material/ZoomIn';
 import api from '../../api/axios';
 
 const SafetyReportList = () => {
@@ -18,6 +19,10 @@ const SafetyReportList = () => {
   const [deleteDialog, setDeleteDialog] = useState({ open: false, id: null });
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'info' });
   const navigate = useNavigate();
+
+  // ─── Photo preview state ──────────────────────────────────────
+  const [photoPreviewOpen, setPhotoPreviewOpen] = useState(false);
+  const [previewImage, setPreviewImage] = useState('');
 
   const fetchReports = async () => {
     setLoading(true);
@@ -61,6 +66,14 @@ const SafetyReportList = () => {
     return colors[status] || 'default';
   };
 
+  // ─── Handle photo click to expand ────────────────────────────
+  const handlePhotoClick = (imageData) => {
+    if (imageData) {
+      setPreviewImage(imageData);
+      setPhotoPreviewOpen(true);
+    }
+  };
+
   return (
     <Box>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
@@ -102,8 +115,11 @@ const SafetyReportList = () => {
                       <Avatar
                         src={report.images[0].dataURL}
                         variant="rounded"
-                        sx={{ width: 40, height: 40 }}
-                      />
+                        sx={{ width: 40, height: 40, cursor: 'pointer' }}
+                        onClick={() => handlePhotoClick(report.images[0].dataURL)}
+                      >
+                        <ZoomInIcon fontSize="small" />
+                      </Avatar>
                     ) : (
                       <Avatar sx={{ width: 40, height: 40, bgcolor: '#eee' }}>
                         <ImageIcon fontSize="small" color="disabled" />
@@ -152,6 +168,28 @@ const SafetyReportList = () => {
           </Table>
         )}
       </Paper>
+
+      {/* ─── Photo Preview Dialog ────────────────────────────────── */}
+      <Dialog open={photoPreviewOpen} onClose={() => setPhotoPreviewOpen(false)} maxWidth="md" fullWidth>
+        <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span>Evidence Image</span>
+          <IconButton onClick={() => setPhotoPreviewOpen(false)}>
+            <ZoomInIcon />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent sx={{ textAlign: 'center' }}>
+          {previewImage && (
+            <img
+              src={previewImage}
+              alt="Evidence"
+              style={{ maxWidth: '100%', maxHeight: '70vh', objectFit: 'contain' }}
+            />
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setPhotoPreviewOpen(false)}>Close</Button>
+        </DialogActions>
+      </Dialog>
 
       <Dialog open={deleteDialog.open} onClose={() => setDeleteDialog({ open: false, id: null })}>
         <DialogTitle>Delete Report</DialogTitle>
