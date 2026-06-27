@@ -21,9 +21,15 @@ const Login = () => {
     setError('');
     setLoading(true);
     try {
-      await login(email, password);
-      navigate('/dashboard');
+      const result = await login(email, password);
+      console.log('🔑 Login result:', result);
+      if (result?.success) {
+        navigate('/dashboard');
+      } else {
+        setError(result?.error || 'Login failed');
+      }
     } catch (err) {
+      console.error('Login exception:', err);
       setError(err.response?.data?.error || 'Login failed. Please check your credentials.');
     } finally {
       setLoading(false);

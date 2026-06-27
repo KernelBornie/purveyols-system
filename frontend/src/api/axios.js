@@ -22,6 +22,9 @@ api.interceptors.request.use(
     }
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
+      console.log('🔐 Interceptor - token attached for:', config.url);
+    } else {
+      console.warn('⚠️ No token for request:', config.url);
     }
     return config;
   },
@@ -34,7 +37,6 @@ api.interceptors.response.use(
   async (error) => {
     const { config, response } = error;
 
-    // Offline / network errors – queue the request for later
     if (!navigator.onLine || !response || response.status === 0) {
       if (config && config.method && config.method.toLowerCase() !== 'get') {
         const operation = {
@@ -53,14 +55,12 @@ api.interceptors.response.use(
       }
     }
 
-    // ─── 401 Unauthorized – clear auth and redirect to login ────
     if (response && response.status === 401) {
+      console.warn('⚠️ 401 Unauthorized – clearing auth...');
       const { clearAuth } = await import('../services/persistentStore');
       await clearAuth();
-      // Clear localStorage fallback too
       localStorage.removeItem('token');
       localStorage.removeItem('user');
-      // Only redirect if not already on login page
       if (window.location.pathname !== '/login') {
         window.location.href = '/login';
       }

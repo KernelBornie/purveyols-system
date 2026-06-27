@@ -8,15 +8,17 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // ─── Restore session from IndexedDB ──────────────────────────────
+  // ─── Restore session ──────────────────────────────────────────────
   useEffect(() => {
     const restoreSession = async () => {
       try {
         const token = await getAuth('token');
         const storedUser = await getAuth('user');
+        console.log('🔐 Restore - token:', token ? 'exists' : 'null');
         if (token && storedUser) {
           api.defaults.headers.common.Authorization = `Bearer ${token}`;
           setUser(storedUser);
+          console.log('✅ Session restored');
         }
       } catch (err) {
         console.error('Failed to restore session:', err);
@@ -31,36 +33,35 @@ export const AuthProvider = ({ children }) => {
   const login = async (email, password) => {
     try {
       const res = await api.post('/api/auth/login', { email, password });
-      console.log('🔑 Login response:', res.data); // Debug – check the actual field names
+      console.log('🔑 Login response FULL:', JSON.stringify(res.data, null, 2));
 
-      // ─── Support different token field names ──────────────────────
-      const token = res.data.token || res.data.accessToken || res.data.access_token || res.data.data?.token;
+      // ─── Try all possible token field names ──────────────────────
+      const token = res.data.token || res.data.accessToken || res.data.access_token || res.data.data?.token || res.data.data?.accessToken;
       const userData = res.data.user || res.data.data?.user;
 
+      console.log('🔑 Extracted token:', token ? 'found' : 'null');
+      console.log('👤 Extracted user:', userData ? 'found' : 'null');
+
       if (!token) {
-        throw new Error('No token received from server. Check login response format.');
+        throw new Error('No token in response. Check the login response format.');
       }
 
-      // ─── Store token in IndexedDB and localStorage (fallback) ────
+      // ─── Save to both stores ──────────────────────────────────────
       await saveAuth('token', token);
       await saveAuth('user', userData);
-
-      // Also store in localStorage for fallback in the interceptor
       localStorage.setItem('token', token);
       if (userData) {
         localStorage.setItem('user', JSON.stringify(userData));
         sessionStorage.setItem('user', JSON.stringify(userData));
       }
 
-      // Set the default Authorization header for all future requests
       api.defaults.headers.common.Authorization = `Bearer ${token}`;
       setUser(userData);
 
+      console.log('✅ Login successful, token stored');
       return { success: true, user: userData };
     } catch (err) {
       console.error('Login error:', err);
-
-      // ─── Offline fallback – try to use stored credentials ──────
       if (!navigator.onLine || err.message === 'Network Error') {
         const token = await getAuth('token');
         const storedUser = await getAuth('user');
@@ -70,7 +71,6 @@ export const AuthProvider = ({ children }) => {
           return { success: true, user: storedUser, offline: true };
         }
       }
-
       return { success: false, error: err.response?.data?.error || err.message };
     }
   };
