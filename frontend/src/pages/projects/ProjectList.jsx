@@ -18,6 +18,12 @@ import api from '../../api/axios';
 import { useAuth } from '../../context/AuthContext';
 import BackButton from '../../components/BackButton';
 
+// ─── Shared allowed roles (exactly as in WorkerList) ────────────
+const ALLOWED_EDIT_ROLES = [
+  'admin', 'director', 'civil-engineer', 'foreman',
+  'accountant', 'qs', 'quantity-surveyor'
+];
+
 const ProjectList = () => {
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -37,17 +43,14 @@ const ProjectList = () => {
   const effectiveUser = user || localUser;
 
   // ─── Permission checks (same as Workers) ────────────────────
-  const EDIT_ROLES = [
-    'admin', 'director', 'civil-engineer', 'accountant',
-    'quantity-surveyor', 'foreman', 'engineer', 'manager',
-    'supervisor', 'planner', 'estimator', 'surveyor',
-    'architect', 'project-manager', 'site-engineer',
-    'construction-manager', 'quality-control', 'store-keeper'
-  ];
-
-  const canEdit = effectiveUser && EDIT_ROLES.includes(effectiveUser.role);
+  const canEdit = effectiveUser && ALLOWED_EDIT_ROLES.includes(effectiveUser.role);
   const canDelete = effectiveUser && ['admin', 'director', 'accountant'].includes(effectiveUser.role);
   const canApprove = effectiveUser && ['admin', 'director'].includes(effectiveUser.role);
+
+  // ─── Debug logs ─────────────────────────────────────────────
+  console.log('👤 effectiveUser:', effectiveUser);
+  console.log('🔑 effectiveUser.role:', effectiveUser?.role);
+  console.log('✅ canEdit:', canEdit);
 
   // ─── Photo preview state ──────────────────────────────────────
   const [photoPreviewOpen, setPhotoPreviewOpen] = useState(false);
