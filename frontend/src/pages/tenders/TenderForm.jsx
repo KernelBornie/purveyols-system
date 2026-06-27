@@ -383,6 +383,37 @@ const TenderForm = () => {
 
   return (
     <Paper sx={{ p: 3, maxWidth: 1400, mx: 'auto' }}>
+      {/* ─── PRINT HEADER (visible only when printing) ──────────── */}
+      <Box className="print-header" sx={{ 
+        display: 'none', 
+        '@media print': { display: 'block', textAlign: 'center', mb: 3, pb: 2, borderBottom: '2px solid #000' } 
+      }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 2, mb: 1 }}>
+          <img 
+            src="/top-log.PNG" 
+            alt="PURVEYOLS Logo" 
+            style={{ height: 60, width: 'auto' }} 
+          />
+          <Box sx={{ textAlign: 'left' }}>
+            <Typography variant="h4" sx={{ fontWeight: 'bold', letterSpacing: 1 }}>
+              PURVEYOLS
+            </Typography>
+            <Typography variant="subtitle1" sx={{ fontWeight: 500 }}>
+              Building and Civil Contractors
+            </Typography>
+          </Box>
+        </Box>
+        <Typography variant="body2" sx={{ fontSize: '0.9rem' }}>
+          Plot No. 8, Buchi Road - Northmead, P.O. Box NH 87 Lusaka, Zambia
+        </Typography>
+        <Typography variant="body2" sx={{ fontSize: '0.9rem' }}>
+          Tel: +260 211 235354 | Mobile: +260 977 393879 / +260 965 393879
+        </Typography>
+        <Typography variant="body2" sx={{ fontSize: '0.9rem' }}>
+          Email: purveyols@gmail.com
+        </Typography>
+      </Box>
+
       <BackButton />
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
         <Typography variant="h5" sx={{ fontWeight: 'bold' }}>
