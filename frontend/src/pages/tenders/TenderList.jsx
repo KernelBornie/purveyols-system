@@ -11,14 +11,25 @@ import api from '../../api/axios';
 import { useAuth } from '../../context/AuthContext';
 import BackButton from '../../components/BackButton';
 
+// ─── Expanded roles that can edit/delete ─────────────────────────
+const EDITABLE_ROLES = [
+  'admin', 'director', 'procurement-officer', 'accountant',
+  'civil-engineer', 'quantity-surveyor', 'foreman', 'safety-officer',
+  'engineer', 'manager', 'supervisor', 'planner', 'estimator',
+  'surveyor', 'architect', 'project-manager', 'site-engineer',
+  'construction-manager', 'quality-control', 'store-keeper'
+];
+
+const DELETABLE_ROLES = ['admin', 'director', 'accountant']; // accountant can delete
+
 const TenderList = () => {
   const [tenders, setTenders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const { user } = useAuth();
 
-  const canEdit = ['admin', 'director', 'procurement-officer', 'civil-engineer', 'quantity-surveyor'].includes(user?.role);
-  const canDelete = ['admin', 'director'].includes(user?.role);
+  const canEdit = EDITABLE_ROLES.includes(user?.role);
+  const canDelete = DELETABLE_ROLES.includes(user?.role);
 
   useEffect(() => {
     fetchTenders();
@@ -130,7 +141,7 @@ const TenderList = () => {
                   <Tooltip title="Edit">
                     <IconButton
                       component={Link}
-                      to={`/tenders/${t._id}`}    // ✅ same as View – form will enable edit if canEdit
+                      to={`/tenders/${t._id}`}
                       size="small"
                       color="primary"
                     >

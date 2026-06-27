@@ -19,6 +19,17 @@ import api from '../../api/axios';
 import { useAuth } from '../../context/AuthContext';
 import BackButton from '../../components/BackButton';
 
+// ─── Expanded roles that can edit ───────────────────────────────
+const EDITABLE_ROLES = [
+  'admin', 'director', 'procurement-officer', 'accountant',
+  'civil-engineer', 'quantity-surveyor', 'foreman', 'safety-officer',
+  'engineer', 'manager', 'supervisor', 'planner', 'estimator',
+  'surveyor', 'architect', 'project-manager', 'site-engineer',
+  'construction-manager', 'quality-control', 'store-keeper'
+];
+
+const DELETABLE_ROLES = ['admin', 'director', 'accountant'];
+
 const TenderForm = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -95,8 +106,8 @@ const TenderForm = () => {
   const [sectionDialog, setSectionDialog] = useState(false);
   const [editingSection, setEditingSection] = useState(null);
 
-  const canEdit = ['admin', 'director', 'procurement-officer', 'civil-engineer', 'quantity-surveyor'].includes(user?.role);
-  const canDelete = ['admin', 'director'].includes(user?.role);
+  const canEdit = EDITABLE_ROLES.includes(user?.role);
+  const canDelete = DELETABLE_ROLES.includes(user?.role);
   const isReadOnly = form.status === 'submitted' || form.status === 'awarded' || !canEdit;
 
   useEffect(() => {
