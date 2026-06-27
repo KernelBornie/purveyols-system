@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState, useRef } from 'react';
 import { useAuth } from './AuthContext';
 import io from 'socket.io-client';
+import api from '../api/axios'; // ✅ ADDED – was missing
 
 const SOCKET_URL = process.env.REACT_APP_API_URL || 'https://purveyols-backend.onrender.com';
 
@@ -37,8 +38,6 @@ export const SocketProvider = ({ children }) => {
 
     // ─── Listen for online users updates ──────────────────────────
     newSocket.on('online-users', (userIds) => {
-      // We'll fetch user details from the server separately
-      // For now, just store the IDs, or we can fetch details
       setOnlineUsers(userIds);
     });
 

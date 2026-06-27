@@ -14,7 +14,7 @@ export const AuthProvider = ({ children }) => {
       try {
         const token = await getAuth('token');
         const storedUser = await getAuth('user');
-        console.log('🔐 Restore - token:', token ? 'exists' : 'null');
+        console.log('🔐 Restore - token:', token ? '✅ exists' : '❌ null');
         if (token && storedUser) {
           api.defaults.headers.common.Authorization = `Bearer ${token}`;
           setUser(storedUser);
@@ -35,15 +35,16 @@ export const AuthProvider = ({ children }) => {
       const res = await api.post('/api/auth/login', { email, password });
       console.log('🔑 Login response FULL:', JSON.stringify(res.data, null, 2));
 
-      // ─── Try all possible token field names ──────────────────────
-      const token = res.data.token || res.data.accessToken || res.data.access_token || res.data.data?.token || res.data.data?.accessToken;
-      const userData = res.data.user || res.data.data?.user;
+      // ─── Try ALL possible token field names ──────────────────────
+      const token = res.data.token || res.data.accessToken || res.data.access_token || res.data.data?.token || res.data.data?.accessToken || res.data.data?.access_token || res.data;
+      const userData = res.data.user || res.data.data?.user || res.data;
 
-      console.log('🔑 Extracted token:', token ? 'found' : 'null');
-      console.log('👤 Extracted user:', userData ? 'found' : 'null');
+      console.log('🔑 Extracted token:', typeof token === 'string' ? '✅ string' : typeof token);
+      console.log('👤 Extracted user:', userData ? '✅ found' : '❌ null');
 
-      if (!token) {
-        throw new Error('No token in response. Check the login response format.');
+      if (typeof token !== 'string' || token.length < 10) {
+        console.error('❌ No valid token in response. Raw response:', res.data);
+        throw new Error('Invalid token received. Check login response format.');
       }
 
       // ─── Save to both stores ──────────────────────────────────────
