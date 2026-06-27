@@ -5,13 +5,11 @@ const parser = new Parser();
 const AdvertisedProject = require('../models/AdvertisedProject');
 
 // ─── State ──────────────────────────────────────────────────────
-let bidStatus = {};
 let cachedProjects = [];
 let lastFetchTime = null;
-const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes – quick refresh
-const BID_TRACKING_DURATION = 7 * 24 * 60 * 60 * 1000;
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
-// ─── Real Sources (mix of RSS + Web) ──────────────────────────
+// ─── Sources ──────────────────────────────────────────────────
 const SOURCES = [
   {
     name: 'Google News - Construction Zambia',
@@ -63,25 +61,20 @@ const SOURCES = [
   },
 ];
 
-// ─── Helper: generate random budget ──────────────────────────
+// ─── Helpers ──────────────────────────────────────────────────
 const randomBudget = () => {
-  const min = 500000;
-  const max = 50000000;
+  const min = 500000, max = 50000000;
   const amount = Math.floor(Math.random() * (max - min + 1)) + min;
   return `ZMW ${amount.toLocaleString()}`;
 };
-
 const randomDeadline = () => {
   const days = Math.floor(Math.random() * 60) + 15;
   return new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 };
+const randomFee = () => `ZMW ${(Math.floor(Math.random() * 5000) + 500).toLocaleString()}`;
 
-const randomFee = () => {
-  return `ZMW ${(Math.floor(Math.random() * 5000) + 500).toLocaleString()}`;
-};
-
-// ─── Extract construction projects from RSS/Web ──────────────
-const extractProjects = (items, source, type) => {
+// ─── Extract projects ────────────────────────────────────────
+const extractProjects = (items, source) => {
   const projects = [];
   const keywords = [
     'construction', 'tender', 'project', 'building', 'renovation', 'upgrade',
@@ -91,31 +84,23 @@ const extractProjects = (items, source, type) => {
   ];
 
   const itemsArray = Array.isArray(items) ? items : [];
-
   itemsArray.forEach((item, index) => {
     const title = (item.title || '').trim();
     const content = (item.contentSnippet || item.description || '').trim();
     const fullText = (title + ' ' + content).toLowerCase();
-
-    // Check if it's construction-related
     if (!keywords.some(kw => fullText.includes(kw))) return;
 
-    // Extract link (prioritize item.link)
     let link = item.link || source.url;
-    // For Google News, extract actual article URL
     if (link.includes('news.google.com') && link.includes('url=')) {
       const match = link.match(/url=([^&]+)/);
       if (match) link = decodeURIComponent(match[1]);
     }
-
-    // Ensure absolute URL
     if (link && !link.startsWith('http')) {
       if (link.startsWith('/')) link = (source.baseUrl || '') + link;
       else link = (source.baseUrl || '') + '/' + link;
     }
 
-    // Build project object
-    const project = {
+    projects.push({
       id: `REAL-${Date.now()}-${index}-${Math.random().toString(36).substr(2, 4)}`,
       title: title.substring(0, 150) || 'Untitled Project',
       client: item.creator || source.name || 'Unknown Client',
@@ -129,26 +114,24 @@ const extractProjects = (items, source, type) => {
       skills: ['Construction', 'Project Management'],
       contactEmail: `procurement@${source.name.toLowerCase().replace(/ /g, '')}.com`,
       biddingFee: randomFee(),
-    };
-    projects.push(project);
+    });
   });
-
   return projects;
 };
 
-// ─── Fetch from RSS ─────────────────────────────────────────────
+// ─── Fetch from RSS ──────────────────────────────────────────
 const fetchRSS = async (source) => {
   try {
     console.log(`📡 Fetching RSS: ${source.name}`);
     const feed = await parser.parseURL(source.url);
-    return extractProjects(feed.items, source, 'rss');
+    return extractProjects(feed.items, source);
   } catch (err) {
     console.log(`   ❌ RSS failed: ${source.name} - ${err.message}`);
     return [];
   }
 };
 
-// ─── Fetch from Web (scrape) ──────────────────────────────────
+// ─── Fetch from Web (scrape) ────────────────────────────────
 const fetchWeb = async (source) => {
   try {
     console.log(`🌐 Fetching web: ${source.name}`);
@@ -160,8 +143,6 @@ const fetchWeb = async (source) => {
       },
     });
     const $ = cheerio.load(response.data);
-
-    // Extract headings and paragraph texts that look like project titles
     const elements = $('h1, h2, h3, h4, .project-title, .post-title, .entry-title, .item-title, .title');
     const projects = [];
     const keywords = ['construction', 'tender', 'project', 'building', 'road', 'bridge', 'school', 'hospital', 'power', 'water'];
@@ -191,7 +172,6 @@ const fetchWeb = async (source) => {
         });
       }
     });
-
     return projects;
   } catch (err) {
     console.log(`   ❌ Web failed: ${source.name} - ${err.message}`);
@@ -199,11 +179,9 @@ const fetchWeb = async (source) => {
   }
 };
 
-// ─── Generate dynamic fallback projects (changes daily) ──────
+// ─── Fallback projects (daily changing) ──────────────────────
 const generateDynamicFallback = () => {
-  const today = new Date().toISOString().split('T')[0];
   const daySeed = Math.floor(Date.now() / (24 * 60 * 60 * 1000));
-
   const titles = [
     'Zambia – Rural Electrification Project',
     'Lusaka – Urban Road Rehabilitation',
@@ -216,25 +194,12 @@ const generateDynamicFallback = () => {
     'Chipata – School Building Program',
     'Mongu – Bridge Construction',
   ];
-
   const clients = [
-    'Government of Zambia',
-    'Zambia Development Agency',
-    'Ministry of Infrastructure',
-    'Lusaka City Council',
-    'Ndola City Council',
-    'Kitwe City Council',
-    'World Bank Group',
-    'African Development Bank',
-    'European Union',
-    'Chinese Government',
+    'Government of Zambia', 'Zambia Development Agency', 'Ministry of Infrastructure',
+    'Lusaka City Council', 'Ndola City Council', 'Kitwe City Council',
+    'World Bank Group', 'African Development Bank', 'European Union', 'Chinese Government'
   ];
-
-  const locations = [
-    'Lusaka', 'Ndola', 'Kitwe', 'Livingstone', 'Chingola',
-    'Kabwe', 'Solwezi', 'Chipata', 'Mongu', 'Kasama'
-  ];
-
+  const locations = ['Lusaka', 'Ndola', 'Kitwe', 'Livingstone', 'Chingola', 'Kabwe', 'Solwezi', 'Chipata', 'Mongu', 'Kasama'];
   const descriptions = [
     'Infrastructure upgrade to improve connectivity.',
     'Construction of new facilities to support local economy.',
@@ -248,16 +213,15 @@ const generateDynamicFallback = () => {
     'Flood control and drainage improvement works.',
   ];
 
-  const fallbackProjects = [];
+  const fallback = [];
   const count = 8 + (daySeed % 5);
   for (let i = 0; i < count; i++) {
     const idx = (i + daySeed) % titles.length;
     const clientIdx = (i + daySeed + 2) % clients.length;
     const locIdx = (i + daySeed + 3) % locations.length;
     const descIdx = (i + daySeed + 4) % descriptions.length;
-
-    fallbackProjects.push({
-      id: `FALLBACK-${today}-${i}-${daySeed}`,
+    fallback.push({
+      id: `FALLBACK-${new Date().toISOString().split('T')[0]}-${i}-${daySeed}`,
       title: titles[idx],
       client: clients[clientIdx],
       location: locations[locIdx],
@@ -272,13 +236,12 @@ const generateDynamicFallback = () => {
       biddingFee: randomFee(),
     });
   }
-  return fallbackProjects;
+  return fallback;
 };
 
-// ─── Save projects to DB with deduplication ────────────────────
+// ─── Save projects to DB with deduplication ──────────────────
 const saveProjectsToDB = async (projects) => {
-  let added = 0;
-  let skipped = 0;
+  let added = 0, skipped = 0;
   for (const project of projects) {
     const uniqueKey = `${project.title}-${project.sourceUrl}`.replace(/\s/g, '_').toLowerCase();
     const existing = await AdvertisedProject.findOne({ uniqueKey });
@@ -287,7 +250,7 @@ const saveProjectsToDB = async (projects) => {
       added++;
     } else {
       skipped++;
-      // Optionally update existing fields like deadline, budget
+      // Optionally update fields
       await AdvertisedProject.updateOne(
         { uniqueKey },
         { deadline: project.deadline, budget: project.budget, updatedAt: new Date() }
@@ -297,64 +260,52 @@ const saveProjectsToDB = async (projects) => {
   return { added, skipped };
 };
 
-// ─── Main fetch function ──────────────────────────────────────
-const fetchAdvertisedProjects = async (filters = {}) => {
+// ─── Main fetch function (called by the route) ──────────────
+const fetchAdvertisedProjects = async () => {
   console.log('🔄 Fetching fresh real data...');
 
-  // Fetch from all sources
-  const allProjects = [];
+  // Collect from all sources
+  let allProjects = [];
   for (const source of SOURCES) {
     let fetched = [];
-    if (source.type === 'rss') {
-      fetched = await fetchRSS(source);
-    } else if (source.type === 'web') {
-      fetched = await fetchWeb(source);
-    }
+    if (source.type === 'rss') fetched = await fetchRSS(source);
+    else if (source.type === 'web') fetched = await fetchWeb(source);
     allProjects.push(...fetched);
   }
 
   let finalProjects = [];
   if (allProjects.length > 0) {
-    // Remove duplicates by title (keep first occurrence)
-    const unique = [];
+    // Deduplicate in‑memory by title (first 30 chars)
     const seen = new Set();
     for (const p of allProjects) {
       const key = p.title.substring(0, 30);
       if (!seen.has(key)) {
         seen.add(key);
-        unique.push(p);
+        finalProjects.push(p);
       }
     }
-    finalProjects = unique;
-    // Shuffle to make it more dynamic
-    finalProjects = finalProjects.sort(() => Math.random() - 0.5);
-    // Limit to 30 projects (to avoid overwhelming)
-    if (finalProjects.length > 30) finalProjects = finalProjects.slice(0, 30);
+    finalProjects = finalProjects.sort(() => Math.random() - 0.5).slice(0, 30);
   } else {
-    // No real data – use dynamic fallback
     finalProjects = generateDynamicFallback();
   }
 
-  // ─── Save to DB with deduplication ──────────────────────────────
+  // Save to DB and get stats
   const result = await saveProjectsToDB(finalProjects);
 
-  // Update cache
+  // Update cache (optional)
   cachedProjects = finalProjects;
   lastFetchTime = Date.now();
 
-  // Return the results
   return {
     projects: finalProjects,
     results: result,
   };
 };
 
-// ─── Get projects from DB with filters ─────────────────────────
+// ─── Get projects from DB with filters ──────────────────────
 const getProjectsFromDB = async (filters = {}) => {
   const query = { status: 'open' };
-  if (filters.status && filters.status !== 'all') {
-    query.status = filters.status;
-  }
+  if (filters.status && filters.status !== 'all') query.status = filters.status;
   if (filters.search) {
     query.$or = [
       { title: { $regex: filters.search, $options: 'i' } },
@@ -362,10 +313,7 @@ const getProjectsFromDB = async (filters = {}) => {
       { location: { $regex: filters.search, $options: 'i' } },
     ];
   }
-  const projects = await AdvertisedProject.find(query)
-    .sort({ createdAt: -1 })
-    .limit(50);
-  return projects;
+  return await AdvertisedProject.find(query).sort({ createdAt: -1 }).limit(50);
 };
 
 // ─── Mark as bidded ──────────────────────────────────────────
@@ -375,10 +323,6 @@ const markProjectAsBidded = async (projectId) => {
   project.status = 'bidded';
   await project.save();
   return true;
-};
-
-const isBidded = (projectId) => {
-  // Not used in this service anymore – we use DB status
 };
 
 const getBiddedProjects = async () => {

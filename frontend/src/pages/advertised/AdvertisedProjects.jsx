@@ -2,8 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
   Box, Typography, Paper, Grid, Card, CardContent, CardActions,
   Button, Chip, TextField, InputAdornment, CircularProgress,
-  Dialog, DialogTitle, DialogContent, DialogContentText,
-  Link, Alert, Snackbar
+  Dialog, DialogTitle, DialogContent, Link, Alert, Snackbar
 } from '@mui/material';
 import DialogActions from '@mui/material/DialogActions';
 import SearchIcon from '@mui/icons-material/Search';
