@@ -36,17 +36,18 @@ const ProjectList = () => {
 
   const effectiveUser = user || localUser;
 
-  // ─── Debug logs ─────────────────────────────────────────────
-  console.log('👤 effectiveUser:', effectiveUser);
-  console.log('🔑 effectiveUser.role:', effectiveUser?.role);
+  // ─── Permission checks (same as Workers) ────────────────────
+  const EDIT_ROLES = [
+    'admin', 'director', 'civil-engineer', 'accountant',
+    'quantity-surveyor', 'foreman', 'engineer', 'manager',
+    'supervisor', 'planner', 'estimator', 'surveyor',
+    'architect', 'project-manager', 'site-engineer',
+    'construction-manager', 'quality-control', 'store-keeper'
+  ];
 
-  // ─── Permission checks ──────────────────────────────────────
-  const canEdit = effectiveUser && !['driver', 'receptionist', 'safety-officer'].includes(effectiveUser.role);
+  const canEdit = effectiveUser && EDIT_ROLES.includes(effectiveUser.role);
   const canDelete = effectiveUser && ['admin', 'director', 'accountant'].includes(effectiveUser.role);
   const canApprove = effectiveUser && ['admin', 'director'].includes(effectiveUser.role);
-
-  // ─── Force show for testing (remove after) ──────────────────
-  // const canEdit = true; // Uncomment to test if buttons appear
 
   // ─── Photo preview state ──────────────────────────────────────
   const [photoPreviewOpen, setPhotoPreviewOpen] = useState(false);
@@ -255,14 +256,18 @@ const ProjectList = () => {
           {projects.map((project) => (
             <TableRow key={project._id}>
               <TableCell>
-                <Avatar
-                  src={project.image || '/project-placeholder.jpg'}
-                  variant="rounded"
-                  sx={{ width: 50, height: 40, cursor: project.image ? 'pointer' : 'default' }}
+                <Box
+                  sx={{ cursor: project.image ? 'pointer' : 'default' }}
                   onClick={() => handlePhotoClick(project.image)}
                 >
-                  {!project.image && project.name?.charAt(0).toUpperCase()}
-                </Avatar>
+                  <Avatar
+                    src={project.image || '/project-placeholder.jpg'}
+                    variant="rounded"
+                    sx={{ width: 50, height: 40 }}
+                  >
+                    {!project.image && project.name?.charAt(0).toUpperCase()}
+                  </Avatar>
+                </Box>
               </TableCell>
               <TableCell>{project.name}</TableCell>
               <TableCell>{project.location || '—'}</TableCell>
