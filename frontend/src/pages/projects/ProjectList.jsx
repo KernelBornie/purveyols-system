@@ -2,7 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Box, Typography, Paper, Table, TableHead, TableRow, TableCell, TableBody,
-  Button, Chip, CircularProgress, IconButton, Tooltip, Alert, LinearProgress
+  Button, Chip, CircularProgress, IconButton, Tooltip, Alert, LinearProgress,
+  Avatar, Dialog, DialogTitle, DialogContent, DialogActions,
+  TextField, Stepper, Step, StepLabel
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
@@ -10,6 +12,8 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import TimelineIcon from '@mui/icons-material/Timeline';
 import CheckIcon from '@mui/icons-material/Check';
 import CloseIcon from '@mui/icons-material/Close';
+import ZoomInIcon from '@mui/icons-material/ZoomIn';
+import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import api from '../../api/axios';
 import { useAuth } from '../../context/AuthContext';
 import BackButton from '../../components/BackButton';
@@ -19,8 +23,21 @@ const ProjectList = () => {
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
 
+  // ─── Photo preview state ──────────────────────────────────────
+  const [photoPreviewOpen, setPhotoPreviewOpen] = useState(false);
+  const [previewImage, setPreviewImage] = useState('');
+
+  // ─── Upload modal state ──────────────────────────────────────
+  const [uploadOpen, setUploadOpen] = useState(false);
+  const [uploadFile, setUploadFile] = useState(null);
+  const [uploadData, setUploadData] = useState([]);
+  const [uploadErrors, setUploadErrors] = useState([]);
+  const [uploading, setUploading] = useState(false);
+  const [uploadStep, setUploadStep] = useState(0); // 0: select, 1: preview, 2: complete
+
   const canApprove = ['admin', 'director'].includes(user?.role);
   const canEdit = !['driver', 'receptionist', 'safety-officer'].includes(user?.role);
+  const canDelete = ['admin', 'director', 'accountant'].includes(user?.role);
 
   useEffect(() => {
     fetchProjects();
@@ -76,6 +93,84 @@ const ProjectList = () => {
     }
   };
 
+  const handlePhotoClick = (image) => {
+    if (image) {
+      setPreviewImage(image);
+      setPhotoPreviewOpen(true);
+    }
+  };
+
+  // ─── Upload handlers ──────────────────────────────────────────
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setUploadFile(file);
+    setUploadErrors([]);
+    setUploadStep(0);
+    // Auto-preview
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      // We'll send to backend for parsing, or parse client-side
+      // For simplicity, we'll parse on the server via FormData
+      // So we just store the file and move to step 1
+      setUploadStep(1);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleUploadPreview = async () => {
+    if (!uploadFile) return;
+    setUploading(true);
+    setUploadErrors([]);
+    try {
+      const formData = new FormData();
+      formData.append('file', uploadFile);
+      const res = await api.post('/api/projects/upload/preview', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      setUploadData(res.data.projects || []);
+      setUploadErrors(res.data.errors || []);
+      setUploadStep(2);
+    } catch (err) {
+      setUploadErrors([err.response?.data?.error || 'Failed to parse file']);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleUploadConfirm = async () => {
+    if (!uploadFile || uploadData.length === 0) return;
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', uploadFile);
+      const res = await api.post('/api/projects/upload', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      setUploadStep(3);
+      setUploadOpen(false);
+      fetchProjects();
+      // Reset upload state
+      setUploadFile(null);
+      setUploadData([]);
+      setUploadErrors([]);
+      setUploadStep(0);
+      alert(`✅ ${res.data.count} projects uploaded successfully!`);
+    } catch (err) {
+      setUploadErrors([err.response?.data?.error || 'Upload failed']);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleUploadClose = () => {
+    setUploadOpen(false);
+    setUploadFile(null);
+    setUploadData([]);
+    setUploadErrors([]);
+    setUploadStep(0);
+  };
+
   return (
     <Paper sx={{ p: 2 }}>
       <BackButton />
@@ -83,16 +178,27 @@ const ProjectList = () => {
         <Typography variant="h5" sx={{ fontWeight: 'bold' }}>
           Projects
         </Typography>
-        {canEdit && (
-          <Button
-            component={Link}
-            to="/projects/new"
-            variant="contained"
-            startIcon={<AddIcon />}
-          >
-            New Project
-          </Button>
-        )}
+        <Box sx={{ display: 'flex', gap: 1 }}>
+          {canEdit && (
+            <Button
+              variant="outlined"
+              startIcon={<CloudUploadIcon />}
+              onClick={() => setUploadOpen(true)}
+            >
+              Upload Projects
+            </Button>
+          )}
+          {canEdit && (
+            <Button
+              component={Link}
+              to="/projects/new"
+              variant="contained"
+              startIcon={<AddIcon />}
+            >
+              New Project
+            </Button>
+          )}
+        </Box>
       </Box>
 
       {!canEdit && (
@@ -127,11 +233,14 @@ const ProjectList = () => {
             {projects.map((project) => (
               <TableRow key={project._id}>
                 <TableCell>
-                  <img
+                  <Avatar
                     src={project.image || '/project-placeholder.jpg'}
-                    alt={project.name}
-                    style={{ width: 60, height: 40, objectFit: 'cover', borderRadius: 4 }}
-                  />
+                    variant="rounded"
+                    sx={{ width: 50, height: 40, cursor: project.image ? 'pointer' : 'default' }}
+                    onClick={() => handlePhotoClick(project.image)}
+                  >
+                    {!project.image && project.name?.charAt(0).toUpperCase()}
+                  </Avatar>
                 </TableCell>
                 <TableCell>{project.name}</TableCell>
                 <TableCell>{project.location || '—'}</TableCell>
@@ -169,10 +278,10 @@ const ProjectList = () => {
                 <TableCell>{project.timeFrame || '—'}</TableCell>
                 <TableCell>{project.manager?.name || 'N/A'}</TableCell>
                 <TableCell>
-                  {/* ─── View button (text) ──────────────────────────── */}
+                  {/* ─── View ────────────────────────────────────── */}
                   <Button
                     component={Link}
-                    to={`/projects/${project._id}`}
+                    to={`/projects/${project._id}/view`}
                     size="small"
                     variant="outlined"
                     sx={{ mr: 0.5, minWidth: '40px', textTransform: 'none' }}
@@ -202,15 +311,17 @@ const ProjectList = () => {
                           <TimelineIcon fontSize="small" />
                         </IconButton>
                       </Tooltip>
-                      <Tooltip title="Delete">
-                        <IconButton
-                          size="small"
-                          color="error"
-                          onClick={() => handleDelete(project._id)}
-                        >
-                          <DeleteIcon fontSize="small" />
-                        </IconButton>
-                      </Tooltip>
+                      {canDelete && (
+                        <Tooltip title="Delete">
+                          <IconButton
+                            size="small"
+                            color="error"
+                            onClick={() => handleDelete(project._id)}
+                          >
+                            <DeleteIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                      )}
                     </>
                   )}
 
@@ -249,6 +360,159 @@ const ProjectList = () => {
           </TableBody>
         </Table>
       )}
+
+      {/* ─── Photo Preview Dialog ────────────────────────────────── */}
+      <Dialog open={photoPreviewOpen} onClose={() => setPhotoPreviewOpen(false)} maxWidth="md" fullWidth>
+        <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span>Project Image</span>
+          <IconButton onClick={() => setPhotoPreviewOpen(false)}>
+            <ZoomInIcon />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent sx={{ textAlign: 'center' }}>
+          {previewImage && (
+            <img
+              src={previewImage}
+              alt="Project"
+              style={{ maxWidth: '100%', maxHeight: '70vh', objectFit: 'contain' }}
+            />
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setPhotoPreviewOpen(false)}>Close</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* ─── Upload Dialog ───────────────────────────────────────── */}
+      <Dialog open={uploadOpen} onClose={handleUploadClose} maxWidth="md" fullWidth>
+        <DialogTitle>Upload Projects</DialogTitle>
+        <DialogContent>
+          <Stepper activeStep={uploadStep} sx={{ my: 2 }}>
+            <Step><StepLabel>Select File</StepLabel></Step>
+            <Step><StepLabel>Preview</StepLabel></Step>
+            <Step><StepLabel>Upload</StepLabel></Step>
+          </Stepper>
+
+          {uploadStep === 0 && (
+            <Box sx={{ textAlign: 'center', py: 4 }}>
+              <Typography variant="body1" gutterBottom>
+                Upload a CSV or Excel file with project data.
+              </Typography>
+              <Typography variant="caption" color="textSecondary">
+                Required column: <strong>name</strong>
+                <br />
+                Supported: location, budget, status, description, progress, endDate, image (base64)
+              </Typography>
+              <Button
+                variant="contained"
+                component="label"
+                startIcon={<CloudUploadIcon />}
+                sx={{ mt: 2 }}
+              >
+                Choose File
+                <input
+                  type="file"
+                  accept=".csv,.xlsx,.xls"
+                  hidden
+                  onChange={handleFileChange}
+                />
+              </Button>
+              {uploadFile && (
+                <Typography variant="body2" sx={{ mt: 1 }}>
+                  Selected: {uploadFile.name}
+                </Typography>
+              )}
+            </Box>
+          )}
+
+          {uploadStep === 1 && (
+            <Box>
+              <Typography variant="body2" gutterBottom>
+                Parsing file... {uploading && <CircularProgress size={20} />}
+              </Typography>
+              <Button
+                variant="contained"
+                onClick={handleUploadPreview}
+                disabled={uploading}
+                sx={{ mt: 1 }}
+              >
+                Preview Data
+              </Button>
+              <Button
+                variant="outlined"
+                onClick={() => setUploadStep(0)}
+                sx={{ mt: 1, ml: 1 }}
+              >
+                Back
+              </Button>
+            </Box>
+          )}
+
+          {uploadStep === 2 && (
+            <Box>
+              {uploadErrors.length > 0 && (
+                <Alert severity="error" sx={{ mb: 2 }}>
+                  {uploadErrors.map((err, i) => <div key={i}>• {err}</div>)}
+                </Alert>
+              )}
+              <Typography variant="body2" gutterBottom>
+                Found {uploadData.length} project(s) to upload.
+              </Typography>
+              <Table size="small" sx={{ maxHeight: 300, overflow: 'auto' }}>
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Name</TableCell>
+                    <TableCell>Location</TableCell>
+                    <TableCell>Budget</TableCell>
+                    <TableCell>Status</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {uploadData.slice(0, 10).map((p, idx) => (
+                    <TableRow key={idx}>
+                      <TableCell>{p.name}</TableCell>
+                      <TableCell>{p.location || '—'}</TableCell>
+                      <TableCell>{p.budget || '—'}</TableCell>
+                      <TableCell>{p.status || 'planning'}</TableCell>
+                    </TableRow>
+                  ))}
+                  {uploadData.length > 10 && (
+                    <TableRow>
+                      <TableCell colSpan={4} align="center">
+                        ... and {uploadData.length - 10} more
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+              <Box sx={{ mt: 2, display: 'flex', gap: 1 }}>
+                <Button
+                  variant="contained"
+                  color="primary"
+                  onClick={handleUploadConfirm}
+                  disabled={uploading || uploadData.length === 0}
+                >
+                  {uploading ? 'Uploading...' : 'Confirm Upload'}
+                </Button>
+                <Button variant="outlined" onClick={() => setUploadStep(0)}>Back</Button>
+              </Box>
+            </Box>
+          )}
+
+          {uploadStep === 3 && (
+            <Box sx={{ textAlign: 'center', py: 4 }}>
+              <Typography variant="h6" color="success">✅ Upload Complete!</Typography>
+              <Typography variant="body2">Projects have been created.</Typography>
+              <Button variant="contained" onClick={() => setUploadOpen(false)} sx={{ mt: 2 }}>
+                Close
+              </Button>
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleUploadClose}>Cancel</Button>
+        </DialogActions>
+      </Dialog>
     </Paper>
   );
 };
