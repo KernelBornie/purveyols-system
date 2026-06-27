@@ -35,9 +35,10 @@ const ProjectList = () => {
   const [uploading, setUploading] = useState(false);
   const [uploadStep, setUploadStep] = useState(0);
 
-  const canApprove = ['admin', 'director'].includes(user?.role);
-  const canEdit = !['driver', 'receptionist', 'safety-officer'].includes(user?.role);
-  const canDelete = ['admin', 'director', 'accountant'].includes(user?.role);
+  // ✅ Fix: require user to be logged in and role not restricted
+  const canEdit = user && !['driver', 'receptionist', 'safety-officer'].includes(user.role);
+  const canDelete = user && ['admin', 'director', 'accountant'].includes(user.role);
+  const canApprove = user && ['admin', 'director'].includes(user.role);
 
   useEffect(() => {
     fetchProjects();
@@ -128,7 +129,7 @@ const ProjectList = () => {
     } catch (err) {
       const msg = err.response?.data?.error || 'Failed to parse file';
       setUploadErrors([msg]);
-      setUploadStep(2); // show errors
+      setUploadStep(2);
     } finally {
       setUploading(false);
     }
@@ -154,7 +155,7 @@ const ProjectList = () => {
     } catch (err) {
       const msg = err.response?.data?.error || 'Upload failed';
       setUploadErrors([msg]);
-      setUploadStep(2); // stay on preview step with error
+      setUploadStep(2);
     } finally {
       setUploading(false);
     }
@@ -198,7 +199,7 @@ const ProjectList = () => {
         </Box>
       </Box>
 
-      {!canEdit && (
+      {!canEdit && user && (
         <Alert severity="info" sx={{ mb: 2 }}>
           You have view‑only access. You can view projects but cannot create, edit, or delete them.
         </Alert>
