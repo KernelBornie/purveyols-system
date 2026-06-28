@@ -105,10 +105,10 @@ const TenderForm = () => {
     image: '',
     status: 'draft',
     notes: '',
-    // ─── New actor fields ──────────────────────────────────────
+    // ─── Actor fields ──────────────────────────────────────────
     approvedBy: null,
     approvedAt: null,
-    assignedTo: null,
+    assignedStaff: [],      // ← changed from assignedTo
     assignedAt: null,
     verifiedBy: null,
     verifiedAt: null,
@@ -267,10 +267,10 @@ const TenderForm = () => {
             image: data.image || '',
             status: data.status || 'draft',
             notes: data.notes || '',
-            // ─── New actor fields ────────────────────────────────
+            // ─── Actor fields ────────────────────────────────
             approvedBy: data.approvedBy || null,
             approvedAt: data.approvedAt || null,
-            assignedTo: data.assignedTo || null,
+            assignedStaff: data.assignedStaff || [],      // ← array
             assignedAt: data.assignedAt || null,
             verifiedBy: data.verifiedBy || null,
             verifiedAt: data.verifiedAt || null,
@@ -486,6 +486,11 @@ const TenderForm = () => {
       return new Intl.NumberFormat('en-ZM', { style: 'currency', currency: 'ZMW' }).format(amount || 0);
     };
 
+    // ─── Build assigned staff string ──────────────────────────
+    const assignedNames = form.assignedStaff && form.assignedStaff.length > 0
+      ? form.assignedStaff.map(s => `${s.name} (${s.role})`).join(', ')
+      : '—';
+
     printWindow.document.write(`
       <html>
         <head>
@@ -539,7 +544,7 @@ const TenderForm = () => {
               ${creator ? `<p><strong>Created by:</strong> ${creator.name} (${creator.role})</p>` : ''}
               ${createdAt ? `<p><strong>Created on:</strong> ${new Date(createdAt).toLocaleString()}</p>` : ''}
               ${form.approvedBy ? `<p><strong>Approved by:</strong> ${form.approvedBy.name} (${form.approvedBy.role}) at ${new Date(form.approvedAt).toLocaleString()}</p>` : ''}
-              ${form.assignedTo ? `<p><strong>Assigned to:</strong> ${form.assignedTo.name} (${form.assignedTo.role}) at ${new Date(form.assignedAt).toLocaleString()}</p>` : ''}
+              ${form.assignedStaff && form.assignedStaff.length > 0 ? `<p><strong>Assigned to:</strong> ${assignedNames} at ${new Date(form.assignedAt).toLocaleString()}</p>` : ''}
               ${form.verifiedBy ? `<p><strong>Verified by:</strong> ${form.verifiedBy.name} (${form.verifiedBy.role}) at ${new Date(form.verifiedAt).toLocaleString()}</p>` : ''}
             </div>
             ${form.sections && form.sections.length > 0 ? `
@@ -572,6 +577,10 @@ const TenderForm = () => {
               <div class="row">
                 <div><strong>Approved by:</strong> ${form.approvedBy ? `${form.approvedBy.name} (${form.approvedBy.role})` : '_________________'}</div>
                 <div><strong>Date:</strong> ${form.approvedAt ? new Date(form.approvedAt).toLocaleString() : '_________________'}</div>
+              </div>
+              <div class="row">
+                <div><strong>Assigned to:</strong> ${assignedNames}</div>
+                <div><strong>Date:</strong> ${form.assignedAt ? new Date(form.assignedAt).toLocaleString() : '_________________'}</div>
               </div>
             </div>
             <div class="footer">PURVEYOLS CMS - Construction Management System</div>
@@ -1414,9 +1423,9 @@ const TenderForm = () => {
                 Approved by: {form.approvedBy.name} ({form.approvedBy.role}) at {new Date(form.approvedAt).toLocaleString()}
               </Typography>
             )}
-            {form.assignedTo && (
+            {form.assignedStaff && form.assignedStaff.length > 0 && (
               <Typography variant="caption" display="block">
-                Assigned to: {form.assignedTo.name} ({form.assignedTo.role}) at {new Date(form.assignedAt).toLocaleString()}
+                Assigned to: {form.assignedStaff.map(s => `${s.name} (${s.role})`).join(', ')} at {new Date(form.assignedAt).toLocaleString()}
               </Typography>
             )}
             {form.verifiedBy && (
