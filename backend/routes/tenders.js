@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const Tender = require('../models/Tender');
+const Project = require('../models/Project'); // ← NEW for conversion
 const auth = require('../middleware/auth');
 const authorize = require('../middleware/rbac');
 
@@ -138,6 +139,49 @@ router.delete('/:id', auth, authorize('admin', 'director'), async (req, res) => 
     res.json({ message: 'Tender deleted' });
   } catch (err) {
     res.status(400).json({ error: err.message });
+  }
+});
+
+// ─── NEW: CONVERT AWARDED TENDER TO PROJECT ────────────────────────
+router.post('/:id/convert-to-project', auth, authorize('admin', 'director', 'procurement-officer', 'civil-engineer', 'quantity-surveyor'), async (req, res) => {
+  try {
+    const tender = await Tender.findById(req.params.id).populate('createdBy', 'name role');
+    if (!tender) {
+      return res.status(404).json({ error: 'Tender not found' });
+    }
+    if (tender.status !== 'awarded') {
+      return res.status(400).json({ error: 'Tender must be awarded first' });
+    }
+    if (tender.convertedToProject) {
+      return res.status(400).json({ error: 'Project already created from this tender' });
+    }
+
+    const project = new Project({
+      name: tender.title,
+      location: tender.location,
+      budget: tender.priceProposal?.grandTotal || 0,
+      status: 'planning',
+      description: tender.description,
+      image: tender.image,
+      createdBy: tender.createdBy?._id || req.user.id,
+      manager: req.user.id,
+      isFromTender: true,
+      tenderSource: tender._id,
+      sourceUrl: tender.sourceUrl || '',
+      bidAmount: tender.priceProposal?.grandTotal,
+    });
+    await project.save();
+
+    tender.convertedToProject = project._id;
+    await tender.save();
+
+    res.status(201).json({
+      message: 'Project created successfully',
+      project
+    });
+  } catch (err) {
+    console.error('Conversion error:', err);
+    res.status(500).json({ error: err.message || 'Server error' });
   }
 });
 
