@@ -7,6 +7,7 @@ const http = require('http');
 const { Server } = require('socket.io');
 const multer = require('multer');
 const path = require('path');
+const fs = require('fs'); // ← added
 dotenv.config();
 
 const app = express();
@@ -18,7 +19,7 @@ const io = new Server(server, {
   },
 });
 
-// ─── CORS (improved – allows all Vercel & Render subdomains) ──
+// ─── CORS (unchanged) ─────────────────────────────────────────────
 const corsOptions = {
   origin: (origin, callback) => {
     if (!origin) return callback(null, true);
@@ -52,7 +53,7 @@ app.use((req, res, next) => {
 app.use(express.json({ limit: '50mb' }));
 app.use(morgan('dev'));
 
-// ─── File upload configuration ──────────────────────────────────────
+// ─── File upload configuration ────────────────────────────────────
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     cb(null, 'uploads/tenders/');
@@ -64,18 +65,25 @@ const storage = multer.diskStorage({
   }
 });
 
+// ─── Ensure upload directory exists ──────────────────────────────
+const uploadDir = 'uploads/tenders';
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
+  console.log(`📁 Created upload directory: ${uploadDir}`);
+}
+
 const fileFilter = (req, file, cb) => {
   const allowed = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf'];
   if (allowed.includes(file.mimetype)) cb(null, true);
   else cb(new Error('Only images and PDFs are allowed'), false);
 };
 
-const upload = multer({ storage, fileFilter, limits: { fileSize: 10 * 1024 * 1024 } }); // 10MB
+const upload = multer({ storage, fileFilter, limits: { fileSize: 10 * 1024 * 1024 } });
 
-// ─── Serve uploaded files statically ───────────────────────────────
+// ─── Serve uploaded files statically ─────────────────────────────
 app.use('/uploads', express.static('uploads'));
 
-// ─── Auto‑seed if database is empty ────────────────────────────────
+// ─── Auto‑seed (unchanged) ──────────────────────────────────────
 const User = require('./models/User');
 const { exec } = require('child_process');
 
@@ -101,7 +109,7 @@ const seedIfEmpty = async () => {
   }
 };
 
-// ─── Routes ──────────────────────────────────────────────────────────
+// ─── Routes (unchanged) ───────────────────────────────────────────
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/chat-history', require('./routes/chatHistory'));
 app.use('/api/ai', require('./routes/ai'));
@@ -130,7 +138,6 @@ app.use('/api/site-plans', require('./routes/sitePlans'));
 app.use('/api/drawings', require('./routes/drawings'));
 app.use('/api/surveys', require('./routes/surveys'));
 app.use('/api/spare-parts', require('./routes/spareParts'));
-// ─── Tenders ──────────────────────────────────────────────────────
 app.use('/api/tenders', require('./routes/tenders'));
 
 // ─── Project Planning ────────────────────────────────────────────
@@ -143,9 +150,8 @@ app.use('/api/site-diary', siteDiaryRoutes);
 // ─── Health check ────────────────────────────────────────────────
 app.get('/api/health', (req, res) => res.json({ status: 'OK', timestamp: new Date().toISOString() }));
 
-// ─── Socket.io Signaling for Video Calls ────────────────────────
+// ─── Socket.io (unchanged) ──────────────────────────────────────
 const activeUsers = new Map();
-
 app.get('/api/users/online', async (req, res) => {
   try {
     const onlineIds = Array.from(activeUsers.keys());
@@ -159,13 +165,11 @@ app.get('/api/users/online', async (req, res) => {
 
 io.on('connection', (socket) => {
   console.log(`🔌 New client connected: ${socket.id}`);
-
   socket.on('register', (userId) => {
     activeUsers.set(userId, socket.id);
     socket.userId = userId;
     console.log(`✅ User ${userId} registered with socket ${socket.id}`);
   });
-
   socket.on('call-user', ({ to, offer }) => {
     const targetSocketId = activeUsers.get(to);
     if (targetSocketId) {
@@ -178,28 +182,24 @@ io.on('connection', (socket) => {
       socket.emit('call-error', { message: 'User is offline' });
     }
   });
-
   socket.on('answer-call', ({ to, answer }) => {
     const targetSocketId = activeUsers.get(to);
     if (targetSocketId) {
       io.to(targetSocketId).emit('call-answered', { answer });
     }
   });
-
   socket.on('ice-candidate', ({ to, candidate }) => {
     const targetSocketId = activeUsers.get(to);
     if (targetSocketId) {
       io.to(targetSocketId).emit('ice-candidate', { candidate });
     }
   });
-
   socket.on('end-call', ({ to }) => {
     const targetSocketId = activeUsers.get(to);
     if (targetSocketId) {
       io.to(targetSocketId).emit('call-ended');
     }
   });
-
   socket.on('invite-to-meeting', ({ to, meetingLink, from, meetingName }) => {
     const targetSocketId = activeUsers.get(to);
     if (targetSocketId) {
@@ -213,7 +213,6 @@ io.on('connection', (socket) => {
       socket.emit('invite-error', { message: 'User is offline' });
     }
   });
-
   socket.on('disconnect', () => {
     if (socket.userId) {
       activeUsers.delete(socket.userId);
