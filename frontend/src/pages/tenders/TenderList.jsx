@@ -13,6 +13,7 @@ import ZoomInIcon from '@mui/icons-material/ZoomIn';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import VerifiedIcon from '@mui/icons-material/Verified';
+import LaunchIcon from '@mui/icons-material/Launch';
 import api from '../../api/axios';
 import { useAuth } from '../../context/AuthContext';
 import BackButton from '../../components/BackButton';
@@ -89,7 +90,6 @@ const TenderList = () => {
     }
   };
 
-  // ─── Convert awarded tender to Project ────────────────────────
   const handleConvertToProject = async (tenderId) => {
     if (!window.confirm('Create a project from this awarded tender?')) return;
     try {
@@ -101,7 +101,6 @@ const TenderList = () => {
     }
   };
 
-  // ─── Approve handler ──────────────────────────────────────────
   const handleApprove = async (id) => {
     if (!window.confirm('Approve this tender?')) return;
     try {
@@ -113,7 +112,6 @@ const TenderList = () => {
     }
   };
 
-  // ─── Assign handler (opens dialog) ────────────────────────────
   const handleAssignOpen = async (tenderId) => {
     setAssigningTenderId(tenderId);
     setSelectedUserId('');
@@ -136,7 +134,6 @@ const TenderList = () => {
     }
   };
 
-  // ─── Verify handler ────────────────────────────────────────────
   const handleVerify = async (id) => {
     if (!window.confirm('Verify this awarded tender?')) return;
     try {
@@ -210,6 +207,8 @@ const TenderList = () => {
             <TableCell>Items</TableCell>
             <TableCell>Grand Total</TableCell>
             <TableCell>Status</TableCell>
+            <TableCell>Assigned To</TableCell>
+            <TableCell>Project</TableCell>
             <TableCell>Created By</TableCell>
             <TableCell>Actions</TableCell>
           </TableRow>
@@ -240,9 +239,22 @@ const TenderList = () => {
               <TableCell>
                 <Chip label={t.status} size="small" color={getStatusColor(t.status)} />
               </TableCell>
+              <TableCell>{t.assignedTo ? t.assignedTo.name : '—'}</TableCell>
+              <TableCell>
+                {t.convertedToProject ? (
+                  <Button
+                    component={Link}
+                    to={`/projects/${t.convertedToProject._id}`}
+                    size="small"
+                    variant="outlined"
+                    endIcon={<LaunchIcon />}
+                  >
+                    {t.convertedToProject.name}
+                  </Button>
+                ) : '—'}
+              </TableCell>
               <TableCell>{t.createdBy?.name}</TableCell>
               <TableCell>
-                {/* ─── VIEW (read‑only) ──────────────────────────── */}
                 <Button
                   component={Link}
                   to={`/tenders/${t._id}/view`}
@@ -253,7 +265,6 @@ const TenderList = () => {
                   View
                 </Button>
 
-                {/* ─── EDIT (only if editable) ───────────────────── */}
                 {canEdit && t.status !== 'submitted' && t.status !== 'awarded' && t.status !== 'verified' && (
                   <Tooltip title="Edit">
                     <IconButton
@@ -279,7 +290,6 @@ const TenderList = () => {
                   </Tooltip>
                 )}
 
-                {/* ─── Approve: procurement-officer, director, admin, engineer, accountant ── */}
                 {t.status === 'submitted' && 
                  (user?.role === 'procurement-officer' || 
                   user?.role === 'director' || 
@@ -297,7 +307,6 @@ const TenderList = () => {
                   </Tooltip>
                 )}
 
-                {/* ─── Assign: admin, director, project-manager, engineer, accountant ── */}
                 {(t.status === 'approved' || t.status === 'awarded') && 
                  (user?.role === 'admin' || 
                   user?.role === 'director' || 
@@ -315,7 +324,6 @@ const TenderList = () => {
                   </Tooltip>
                 )}
 
-                {/* ─── Verify: accountant, admin, director ── */}
                 {t.status === 'awarded' && 
                  (user?.role === 'accountant' || 
                   user?.role === 'admin' || 
@@ -331,7 +339,6 @@ const TenderList = () => {
                   </Tooltip>
                 )}
 
-                {/* ─── Create Project (awarded or verified) ────── */}
                 {(t.status === 'awarded' || t.status === 'verified') && !t.convertedToProject && (
                   <Tooltip title="Create Project">
                     <IconButton
@@ -353,7 +360,7 @@ const TenderList = () => {
           ))}
           {tenders.length === 0 && (
             <TableRow>
-              <TableCell colSpan={10} align="center" sx={{ py: 3 }}>
+              <TableCell colSpan={12} align="center" sx={{ py: 3 }}>
                 <Typography variant="body2" color="textSecondary">No tenders or RFQs yet.</Typography>
               </TableCell>
             </TableRow>

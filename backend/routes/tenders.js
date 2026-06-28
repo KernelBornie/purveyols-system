@@ -14,6 +14,7 @@ router.get('/', auth, async (req, res) => {
       .populate('approvedBy', 'name role')
       .populate('assignedTo', 'name role')
       .populate('verifiedBy', 'name role')
+      .populate('convertedToProject', 'name')  // 👈 NEW – shows project name
       .sort({ createdAt: -1 });
     res.json(tenders);
   } catch (err) {
@@ -29,7 +30,8 @@ router.get('/:id', auth, async (req, res) => {
       .populate('submittedBy', 'name role')
       .populate('approvedBy', 'name role')
       .populate('assignedTo', 'name role')
-      .populate('verifiedBy', 'name role');
+      .populate('verifiedBy', 'name role')
+      .populate('convertedToProject', 'name');
     if (!tender) return res.status(404).json({ error: 'Tender not found' });
     res.json(tender);
   } catch (err) {
@@ -50,7 +52,8 @@ router.post('/', auth, authorize('admin', 'director', 'procurement-officer', 'ci
       .populate('submittedBy', 'name role')
       .populate('approvedBy', 'name role')
       .populate('assignedTo', 'name role')
-      .populate('verifiedBy', 'name role');
+      .populate('verifiedBy', 'name role')
+      .populate('convertedToProject', 'name');
     res.status(201).json(populated);
   } catch (err) {
     res.status(400).json({ error: err.message });
@@ -74,7 +77,8 @@ router.put('/:id', auth, authorize('admin', 'director', 'procurement-officer', '
       .populate('submittedBy', 'name role')
       .populate('approvedBy', 'name role')
       .populate('assignedTo', 'name role')
-      .populate('verifiedBy', 'name role');
+      .populate('verifiedBy', 'name role')
+      .populate('convertedToProject', 'name');
     res.json(updated);
   } catch (err) {
     res.status(400).json({ error: err.message });
@@ -98,7 +102,8 @@ router.put('/:id/submit', auth, authorize('admin', 'director', 'procurement-offi
       .populate('submittedBy', 'name role')
       .populate('approvedBy', 'name role')
       .populate('assignedTo', 'name role')
-      .populate('verifiedBy', 'name role');
+      .populate('verifiedBy', 'name role')
+      .populate('convertedToProject', 'name');
     res.json(populated);
   } catch (err) {
     res.status(400).json({ error: err.message });
@@ -106,7 +111,7 @@ router.put('/:id/submit', auth, authorize('admin', 'director', 'procurement-offi
 });
 
 // ─── APPROVE ────────────────────────────────────────────────────────
-router.put('/:id/approve', auth, authorize('admin', 'director', 'procurement-officer'), async (req, res) => {
+router.put('/:id/approve', auth, authorize('admin', 'director', 'procurement-officer', 'engineer', 'accountant'), async (req, res) => {
   try {
     const tender = await Tender.findById(req.params.id);
     if (!tender) return res.status(404).json({ error: 'Tender not found' });
@@ -122,7 +127,8 @@ router.put('/:id/approve', auth, authorize('admin', 'director', 'procurement-off
       .populate('submittedBy', 'name role')
       .populate('approvedBy', 'name role')
       .populate('assignedTo', 'name role')
-      .populate('verifiedBy', 'name role');
+      .populate('verifiedBy', 'name role')
+      .populate('convertedToProject', 'name');
     res.json(populated);
   } catch (err) {
     res.status(400).json({ error: err.message });
@@ -130,7 +136,7 @@ router.put('/:id/approve', auth, authorize('admin', 'director', 'procurement-off
 });
 
 // ─── ASSIGN ─────────────────────────────────────────────────────────
-router.put('/:id/assign', auth, authorize('admin', 'director', 'project-manager'), async (req, res) => {
+router.put('/:id/assign', auth, authorize('admin', 'director', 'project-manager', 'engineer', 'accountant'), async (req, res) => {
   try {
     const { assigneeId } = req.body;
     if (!assigneeId) return res.status(400).json({ error: 'assigneeId is required' });
@@ -147,7 +153,8 @@ router.put('/:id/assign', auth, authorize('admin', 'director', 'project-manager'
       .populate('submittedBy', 'name role')
       .populate('approvedBy', 'name role')
       .populate('assignedTo', 'name role')
-      .populate('verifiedBy', 'name role');
+      .populate('verifiedBy', 'name role')
+      .populate('convertedToProject', 'name');
     res.json(populated);
   } catch (err) {
     res.status(400).json({ error: err.message });
@@ -173,7 +180,8 @@ router.put('/:id/award', auth, authorize('admin', 'director'), async (req, res) 
       .populate('submittedBy', 'name role')
       .populate('approvedBy', 'name role')
       .populate('assignedTo', 'name role')
-      .populate('verifiedBy', 'name role');
+      .populate('verifiedBy', 'name role')
+      .populate('convertedToProject', 'name');
     res.json(populated);
   } catch (err) {
     res.status(400).json({ error: err.message });
@@ -197,7 +205,8 @@ router.put('/:id/verify', auth, authorize('admin', 'director', 'accountant'), as
       .populate('submittedBy', 'name role')
       .populate('approvedBy', 'name role')
       .populate('assignedTo', 'name role')
-      .populate('verifiedBy', 'name role');
+      .populate('verifiedBy', 'name role')
+      .populate('convertedToProject', 'name');
     res.json(populated);
   } catch (err) {
     res.status(400).json({ error: err.message });
@@ -218,7 +227,8 @@ router.put('/:id/reject', auth, authorize('admin', 'director'), async (req, res)
       .populate('submittedBy', 'name role')
       .populate('approvedBy', 'name role')
       .populate('assignedTo', 'name role')
-      .populate('verifiedBy', 'name role');
+      .populate('verifiedBy', 'name role')
+      .populate('convertedToProject', 'name');
     res.json(populated);
   } catch (err) {
     res.status(400).json({ error: err.message });
