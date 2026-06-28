@@ -133,7 +133,6 @@ const TenderSchema = new mongoose.Schema({
   submittedAt: { type: Date },
   updatedAt: { type: Date, default: Date.now },
 
-  // ─── New actor fields ──────────────────────────────────────────
   approvedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   approvedAt: Date,
   assignedTo: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
