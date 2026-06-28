@@ -36,6 +36,16 @@ const TenderList = () => {
   const [error, setError] = useState(null);
   const { user } = useAuth();
 
+  // ─── Debug: log user role ──────────────────────────────────────
+  useEffect(() => {
+    if (user) {
+      console.log('👤 Current user role:', user.role);
+      console.log('📋 EDITABLE_ROLES includes?', EDITABLE_ROLES.includes(user.role));
+    } else {
+      console.warn('⚠️ No user found in AuthContext');
+    }
+  }, [user]);
+
   const canEdit = user && EDITABLE_ROLES.includes(user.role);
   const canDelete = user && DELETABLE_ROLES.includes(user.role);
 
@@ -214,150 +224,156 @@ const TenderList = () => {
           </TableRow>
         </TableHead>
         <TableBody>
-          {tenders.map((t) => (
-            <TableRow key={t._id}>
-              <TableCell>
-                <Box
-                  sx={{ cursor: t.image ? 'pointer' : 'default' }}
-                  onClick={() => handlePhotoClick(t.image)}
-                >
-                  <Avatar
-                    src={t.image || '/tender-placeholder.jpg'}
-                    variant="rounded"
-                    sx={{ width: 40, height: 40 }}
+          {tenders.map((t) => {
+            // ─── Determine if this tender can be edited by current user ──
+            const isCreator = user && t.createdBy && t.createdBy._id === user.id;
+            const canEditThis = (canEdit || isCreator) && t.status !== 'submitted' && t.status !== 'awarded' && t.status !== 'verified';
+
+            return (
+              <TableRow key={t._id}>
+                <TableCell>
+                  <Box
+                    sx={{ cursor: t.image ? 'pointer' : 'default' }}
+                    onClick={() => handlePhotoClick(t.image)}
                   >
-                    {!t.image && t.title?.charAt(0).toUpperCase()}
-                  </Avatar>
-                </Box>
-              </TableCell>
-              <TableCell>{t.referenceNumber}</TableCell>
-              <TableCell>{t.title}</TableCell>
-              <TableCell><Chip label={getTypeLabel(t.type)} size="small" color="primary" /></TableCell>
-              <TableCell>{t.client}</TableCell>
-              <TableCell>{t.sections?.reduce((sum, s) => sum + (s.items?.length || 0), 0) || 0}</TableCell>
-              <TableCell>{formatCurrency(t.priceProposal?.grandTotal || 0)}</TableCell>
-              <TableCell>
-                <Chip label={t.status} size="small" color={getStatusColor(t.status)} />
-              </TableCell>
-              <TableCell>{t.assignedTo ? t.assignedTo.name : '—'}</TableCell>
-              <TableCell>
-                {t.convertedToProject ? (
+                    <Avatar
+                      src={t.image || '/tender-placeholder.jpg'}
+                      variant="rounded"
+                      sx={{ width: 40, height: 40 }}
+                    >
+                      {!t.image && t.title?.charAt(0).toUpperCase()}
+                    </Avatar>
+                  </Box>
+                </TableCell>
+                <TableCell>{t.referenceNumber}</TableCell>
+                <TableCell>{t.title}</TableCell>
+                <TableCell><Chip label={getTypeLabel(t.type)} size="small" color="primary" /></TableCell>
+                <TableCell>{t.client}</TableCell>
+                <TableCell>{t.sections?.reduce((sum, s) => sum + (s.items?.length || 0), 0) || 0}</TableCell>
+                <TableCell>{formatCurrency(t.priceProposal?.grandTotal || 0)}</TableCell>
+                <TableCell>
+                  <Chip label={t.status} size="small" color={getStatusColor(t.status)} />
+                </TableCell>
+                <TableCell>{t.assignedTo ? t.assignedTo.name : '—'}</TableCell>
+                <TableCell>
+                  {t.convertedToProject ? (
+                    <Button
+                      component={Link}
+                      to={`/projects/${t.convertedToProject._id}`}
+                      size="small"
+                      variant="outlined"
+                      endIcon={<LaunchIcon />}
+                    >
+                      {t.convertedToProject.name}
+                    </Button>
+                  ) : '—'}
+                </TableCell>
+                <TableCell>{t.createdBy?.name}</TableCell>
+                <TableCell>
                   <Button
                     component={Link}
-                    to={`/projects/${t.convertedToProject._id}`}
+                    to={`/tenders/${t._id}/view`}
                     size="small"
                     variant="outlined"
-                    endIcon={<LaunchIcon />}
+                    sx={{ mr: 0.5, textTransform: 'none' }}
                   >
-                    {t.convertedToProject.name}
+                    View
                   </Button>
-                ) : '—'}
-              </TableCell>
-              <TableCell>{t.createdBy?.name}</TableCell>
-              <TableCell>
-                <Button
-                  component={Link}
-                  to={`/tenders/${t._id}/view`}
-                  size="small"
-                  variant="outlined"
-                  sx={{ mr: 0.5, textTransform: 'none' }}
-                >
-                  View
-                </Button>
 
-                {canEdit && t.status !== 'submitted' && t.status !== 'awarded' && t.status !== 'verified' && (
-                  <Tooltip title="Edit">
-                    <IconButton
-                      component={Link}
-                      to={`/tenders/${t._id}/edit`}
-                      size="small"
-                      color="primary"
-                    >
-                      <EditIcon fontSize="small" />
-                    </IconButton>
-                  </Tooltip>
-                )}
+                  {canEditThis && (
+                    <Tooltip title="Edit">
+                      <IconButton
+                        component={Link}
+                        to={`/tenders/${t._id}/edit`}
+                        size="small"
+                        color="primary"
+                      >
+                        <EditIcon fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
+                  )}
 
-                {canDelete && t.status !== 'awarded' && t.status !== 'verified' && (
-                  <Tooltip title="Delete">
-                    <IconButton
-                      size="small"
-                      color="error"
-                      onClick={() => handleDelete(t._id)}
-                    >
-                      <DeleteIcon fontSize="small" />
-                    </IconButton>
-                  </Tooltip>
-                )}
+                  {canDelete && t.status !== 'awarded' && t.status !== 'verified' && (
+                    <Tooltip title="Delete">
+                      <IconButton
+                        size="small"
+                        color="error"
+                        onClick={() => handleDelete(t._id)}
+                      >
+                        <DeleteIcon fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
+                  )}
 
-                {t.status === 'submitted' && 
-                 (user?.role === 'procurement-officer' || 
-                  user?.role === 'director' || 
-                  user?.role === 'admin' || 
-                  user?.role === 'engineer' || 
-                  user?.role === 'accountant') && (
-                  <Tooltip title="Approve">
-                    <IconButton
-                      size="small"
-                      color="success"
-                      onClick={() => handleApprove(t._id)}
-                    >
-                      <CheckCircleIcon fontSize="small" />
-                    </IconButton>
-                  </Tooltip>
-                )}
+                  {t.status === 'submitted' && 
+                   (user?.role === 'procurement-officer' || 
+                    user?.role === 'director' || 
+                    user?.role === 'admin' || 
+                    user?.role === 'engineer' || 
+                    user?.role === 'accountant') && (
+                    <Tooltip title="Approve">
+                      <IconButton
+                        size="small"
+                        color="success"
+                        onClick={() => handleApprove(t._id)}
+                      >
+                        <CheckCircleIcon fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
+                  )}
 
-                {(t.status === 'approved' || t.status === 'awarded') && 
-                 (user?.role === 'admin' || 
-                  user?.role === 'director' || 
-                  user?.role === 'project-manager' || 
-                  user?.role === 'engineer' || 
-                  user?.role === 'accountant') && (
-                  <Tooltip title="Assign">
-                    <IconButton
-                      size="small"
-                      color="primary"
-                      onClick={() => handleAssignOpen(t._id)}
-                    >
-                      <PersonAddIcon fontSize="small" />
-                    </IconButton>
-                  </Tooltip>
-                )}
+                  {(t.status === 'approved' || t.status === 'awarded') && 
+                   (user?.role === 'admin' || 
+                    user?.role === 'director' || 
+                    user?.role === 'project-manager' || 
+                    user?.role === 'engineer' || 
+                    user?.role === 'accountant') && (
+                    <Tooltip title="Assign">
+                      <IconButton
+                        size="small"
+                        color="primary"
+                        onClick={() => handleAssignOpen(t._id)}
+                      >
+                        <PersonAddIcon fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
+                  )}
 
-                {t.status === 'awarded' && 
-                 (user?.role === 'accountant' || 
-                  user?.role === 'admin' || 
-                  user?.role === 'director') && !t.verifiedBy && (
-                  <Tooltip title="Verify">
-                    <IconButton
-                      size="small"
-                      color="info"
-                      onClick={() => handleVerify(t._id)}
-                    >
-                      <VerifiedIcon fontSize="small" />
-                    </IconButton>
-                  </Tooltip>
-                )}
+                  {t.status === 'awarded' && 
+                   (user?.role === 'accountant' || 
+                    user?.role === 'admin' || 
+                    user?.role === 'director') && !t.verifiedBy && (
+                    <Tooltip title="Verify">
+                      <IconButton
+                        size="small"
+                        color="info"
+                        onClick={() => handleVerify(t._id)}
+                      >
+                        <VerifiedIcon fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
+                  )}
 
-                {(t.status === 'awarded' || t.status === 'verified') && !t.convertedToProject && (
-                  <Tooltip title="Create Project">
-                    <IconButton
-                      size="small"
-                      color="success"
-                      onClick={() => handleConvertToProject(t._id)}
-                    >
-                      <AddIcon fontSize="small" />
-                    </IconButton>
-                  </Tooltip>
-                )}
-                {t.convertedToProject && (
-                  <Tooltip title="Project Created">
-                    <Chip label="✅ Project" size="small" color="success" />
-                  </Tooltip>
-                )}
-              </TableCell>
-            </TableRow>
-          ))}
+                  {(t.status === 'awarded' || t.status === 'verified') && !t.convertedToProject && (
+                    <Tooltip title="Create Project">
+                      <IconButton
+                        size="small"
+                        color="success"
+                        onClick={() => handleConvertToProject(t._id)}
+                      >
+                        <AddIcon fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
+                  )}
+                  {t.convertedToProject && (
+                    <Tooltip title="Project Created">
+                      <Chip label="✅ Project" size="small" color="success" />
+                    </Tooltip>
+                  )}
+                </TableCell>
+              </TableRow>
+            );
+          })}
           {tenders.length === 0 && (
             <TableRow>
               <TableCell colSpan={12} align="center" sx={{ py: 3 }}>
