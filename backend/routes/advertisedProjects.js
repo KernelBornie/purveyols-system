@@ -4,7 +4,7 @@ const axios = require('axios');
 const cheerio = require('cheerio');
 const Parser = require('rss-parser');
 const parser = new Parser();
-const cron = require('node-cron'); // npm install node-cron
+const cron = require('node-cron');
 const AdvertisedProject = require('../models/AdvertisedProject');
 const Bid = require('../models/Bid');
 const auth = require('../middleware/auth');
@@ -16,19 +16,58 @@ const SOURCES = [
     type: 'newsapi',
     query: 'construction tender Zambia',
     apiKey: process.env.NEWS_API_KEY,
+    pageSize: 100,   // fetch up to 100 per query
   },
   {
     name: 'NewsAPI - Infrastructure Projects Zambia',
     type: 'newsapi',
     query: 'infrastructure project Zambia',
     apiKey: process.env.NEWS_API_KEY,
+    pageSize: 100,
   },
   {
     name: 'NewsAPI - Tenders Zambia',
     type: 'newsapi',
     query: 'tenders Zambia',
     apiKey: process.env.NEWS_API_KEY,
+    pageSize: 100,
   },
+  {
+    name: 'NewsAPI - Construction Zambia',
+    type: 'newsapi',
+    query: 'construction Zambia',
+    apiKey: process.env.NEWS_API_KEY,
+    pageSize: 100,
+  },
+  {
+    name: 'NewsAPI - Infrastructure Zambia',
+    type: 'newsapi',
+    query: 'infrastructure Zambia',
+    apiKey: process.env.NEWS_API_KEY,
+    pageSize: 100,
+  },
+  {
+    name: 'NewsAPI - Road construction Zambia',
+    type: 'newsapi',
+    query: 'road construction Zambia',
+    apiKey: process.env.NEWS_API_KEY,
+    pageSize: 100,
+  },
+  {
+    name: 'NewsAPI - Building projects Zambia',
+    type: 'newsapi',
+    query: 'building projects Zambia',
+    apiKey: process.env.NEWS_API_KEY,
+    pageSize: 100,
+  },
+  {
+    name: 'NewsAPI - School construction Zambia',
+    type: 'newsapi',
+    query: 'school construction Zambia',
+    apiKey: process.env.NEWS_API_KEY,
+    pageSize: 100,
+  },
+  // Web & RSS sources remain...
   {
     name: 'Zambia Public Procurement Authority (ZPPA)',
     type: 'web',
@@ -61,23 +100,26 @@ const SOURCES = [
   },
 ];
 
-// ─── Helper: fetch from News API ─────────────────────────────────
-async function fetchFromNewsAPI(query) {
+// ─── Helper: fetch from News API with pagination (up to pageSize) ──
+async function fetchFromNewsAPI(source) {
   if (!process.env.NEWS_API_KEY) {
     console.log('⚠️ NEWS_API_KEY not set – skipping NewsAPI fetch.');
     return [];
   }
   try {
+    const { query, pageSize } = source;
     const response = await axios.get('https://newsapi.org/v2/everything', {
       params: {
         q: query,
         apiKey: process.env.NEWS_API_KEY,
-        pageSize: 10,
+        pageSize: pageSize || 100,
         language: 'en',
         sortBy: 'publishedAt',
       },
-      timeout: 10000,
+      timeout: 15000,
     });
+    // If more than pageSize results exist, we could loop with 'page' param, but free tier limits to 100 per day overall.
+    // We'll just take the first batch.
     return response.data.articles.map(article => ({
       title: article.title || 'Untitled',
       description: article.description || article.content || '',
@@ -86,7 +128,7 @@ async function fetchFromNewsAPI(query) {
       publishedAt: article.publishedAt,
     }));
   } catch (err) {
-    console.error(`NewsAPI fetch error for "${query}":`, err.message);
+    console.error(`NewsAPI fetch error for "${source.query}":`, err.message);
     return [];
   }
 }
@@ -121,7 +163,6 @@ async function fetchFromWeb(source) {
     });
     const $ = cheerio.load(response.data);
     const items = [];
-    // Common selectors for tender listings – adjust per site
     const selectors = [
       'h2', 'h3', 'h4', '.title', '.post-title', '.entry-title',
       '.tender-item', '.project-item', '.listing-item'
@@ -152,19 +193,15 @@ async function fetchFromWeb(source) {
 
 // ─── Helper: convert raw articles to AdvertisedProject format ──
 function normalizeProject(article) {
-  // Try to extract budget from title/description
   const budgetMatch = (article.description || article.title).match(/ZMW\s*([\d,]+)/) ||
                       (article.description || article.title).match(/K\s*([\d,]+)/);
   const budget = budgetMatch ? `ZMW ${budgetMatch[1]}` : 'ZMW 0';
 
-  // Try to extract client
   const clientMatch = (article.description || article.title).match(/(?:by|for|from)\s+([A-Z][A-Za-z\s]+)(?:\s|$)/);
   const client = clientMatch ? clientMatch[1].trim() : 'Various';
 
-  // Location – default to Zambia
   const location = 'Zambia';
 
-  // Deadline – parse if mentioned
   let deadline = new Date(Date.now() + 30*24*60*60*1000).toISOString().split('T')[0];
   const deadlineMatch = (article.description || article.title).match(/(\d{1,2}\s+[A-Za-z]+\s+\d{4})/);
   if (deadlineMatch) {
@@ -201,36 +238,38 @@ async function fetchAllSources() {
     try {
       let articles = [];
       if (source.type === 'newsapi') {
-        articles = await fetchFromNewsAPI(source.query);
+        articles = await fetchFromNewsAPI(source); // now passes entire source object
       } else if (source.type === 'rss') {
         articles = await fetchFromRSS(source);
       } else if (source.type === 'web') {
         articles = await fetchFromWeb(source);
       }
-      // Add source name to each article if not already present
       articles = articles.map(a => ({ ...a, source: a.source || source.name }));
       rawArticles = rawArticles.concat(articles);
+      console.log(`   ✅ ${source.name} returned ${articles.length} articles`);
     } catch (err) {
       console.log(`   ❌ Source ${source.name} failed:`, err.message);
     }
   }
 
-  // Deduplicate by sourceUrl
-  const seen = new Set();
+  // Deduplicate by sourceUrl (strongest) and title (fallback)
+  const seenUrl = new Set();
+  const seenTitle = new Set();
   const uniqueArticles = rawArticles.filter(a => {
-    const key = a.sourceUrl || a.title;
-    if (seen.has(key)) return false;
-    seen.add(key);
+    const urlKey = a.sourceUrl && a.sourceUrl !== '#' ? a.sourceUrl : a.title;
+    if (seenUrl.has(urlKey)) return false;
+    seenUrl.add(urlKey);
+    // Also dedup by title similarity (first 60 chars)
+    const titleKey = a.title.substring(0, 60).toLowerCase();
+    if (seenTitle.has(titleKey)) return false;
+    seenTitle.add(titleKey);
     return true;
   });
 
-  // Convert to AdvertisedProject format
   const projects = uniqueArticles.map(normalizeProject);
-
-  // Filter out projects with very short titles (likely noise)
   const filtered = projects.filter(p => p.title.length > 15);
 
-  console.log(`✅ Found ${filtered.length} real projects.`);
+  console.log(`✅ Total unique real projects found: ${filtered.length}`);
   return filtered;
 }
 
@@ -253,7 +292,6 @@ router.post('/fetch', async (req, res) => {
         await AdvertisedProject.create(proj);
         added++;
       } else {
-        // Optionally update fields like budget, deadline
         await AdvertisedProject.updateOne(
           { uniqueKey: proj.uniqueKey },
           { budget: proj.budget, deadline: proj.deadline, updatedAt: new Date() }
@@ -272,11 +310,17 @@ router.post('/fetch', async (req, res) => {
   }
 });
 
-// ─── GET / – list open projects (only real, no mocks) ──────────
+// ─── GET / – list open projects (excludes mocks, no limit) ────
 router.get('/', async (req, res) => {
   try {
     const { search, status } = req.query;
-    const query = { status: 'open' };
+    const query = {
+      status: 'open',
+      $and: [
+        { source: { $not: /Mock/i } },
+        { description: { $not: /mock/i } },
+      ],
+    };
     if (status && status !== 'all') query.status = status;
     if (search) {
       query.$or = [
@@ -285,7 +329,10 @@ router.get('/', async (req, res) => {
         { location: { $regex: search, $options: 'i' } },
       ];
     }
-    const projects = await AdvertisedProject.find(query).sort({ createdAt: -1 }).limit(50);
+    // Return up to 200 to show many projects, but you can remove limit entirely
+    const projects = await AdvertisedProject.find(query)
+      .sort({ createdAt: -1 })
+      .limit(200);
     res.json({ projects });
   } catch (err) {
     res.status(500).json({ error: err.message });
