@@ -14,7 +14,7 @@ router.get('/', auth, async (req, res) => {
       .populate('approvedBy', 'name role')
       .populate('assignedTo', 'name role')
       .populate('verifiedBy', 'name role')
-      .populate('convertedToProject', 'name')  // 👈 NEW – shows project name
+      .populate('convertedToProject', 'name')
       .sort({ createdAt: -1 });
     res.json(tenders);
   } catch (err) {
