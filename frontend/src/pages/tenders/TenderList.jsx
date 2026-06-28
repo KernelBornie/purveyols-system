@@ -249,8 +249,9 @@ const TenderList = () => {
                   </Tooltip>
                 )}
 
-                {/* ─── Approve (procurement-officer) ─────────────── */}
-                {t.status === 'submitted' && user?.role === 'procurement-officer' && (
+                {/* ─── Approve (procurement-officer, director, admin) ─ */}
+                {t.status === 'submitted' && 
+                 (user?.role === 'procurement-officer' || user?.role === 'director' || user?.role === 'admin') && (
                   <Tooltip title="Approve">
                     <IconButton
                       size="small"
@@ -276,8 +277,9 @@ const TenderList = () => {
                   </Tooltip>
                 )}
 
-                {/* ─── Verify (accountant) ────────────────────────── */}
-                {t.status === 'awarded' && user?.role === 'accountant' && !t.verifiedBy && (
+                {/* ─── Verify (accountant, admin, director) ──────── */}
+                {t.status === 'awarded' && 
+                 (user?.role === 'accountant' || user?.role === 'admin' || user?.role === 'director') && !t.verifiedBy && (
                   <Tooltip title="Verify">
                     <IconButton
                       size="small"
