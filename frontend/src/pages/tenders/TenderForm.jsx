@@ -706,9 +706,19 @@ const TenderForm = () => {
                   const isImage = mimeType.startsWith('image/');
                   const isPdf = mimeType === 'application/pdf';
 
-                  // ─── Build full URL using the backend base URL ────
-                  const baseURL = api.defaults.baseURL || '';
-                  const fullUrl = `${baseURL}${doc.path}`;
+                  // ─── Build absolute URL using api baseURL or env ────
+                  const getFileUrl = (path) => {
+                    if (path.startsWith('http')) return path;
+                    if (api.defaults.baseURL) {
+                      return `${api.defaults.baseURL}${path}`;
+                    }
+                    if (process.env.REACT_APP_API_URL) {
+                      return `${process.env.REACT_APP_API_URL}${path}`;
+                    }
+                    // fallback – same origin (should not happen in production)
+                    return `${window.location.origin}${path}`;
+                  };
+                  const fullUrl = getFileUrl(doc.path);
 
                   return (
                     <Box key={idx} sx={{ mb: 2 }}>
