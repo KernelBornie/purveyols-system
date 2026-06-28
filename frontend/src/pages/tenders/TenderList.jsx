@@ -2,14 +2,17 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Paper, Typography, Box, Table, TableHead, TableRow, TableCell, TableBody,
-  Button, Chip, CircularProgress, Alert, IconButton, Tooltip
+  Button, Chip, CircularProgress, Alert, IconButton, Tooltip, Avatar,
+  Dialog, DialogTitle, DialogContent, DialogActions
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
+import ZoomInIcon from '@mui/icons-material/ZoomIn';
 import api from '../../api/axios';
 import { useAuth } from '../../context/AuthContext';
 import BackButton from '../../components/BackButton';
+import getApiErrorMessage from '../../utils/getApiErrorMessage';
 
 // ─── Expanded roles that can edit/delete ─────────────────────────
 const EDITABLE_ROLES = [
@@ -20,7 +23,7 @@ const EDITABLE_ROLES = [
   'construction-manager', 'quality-control', 'store-keeper'
 ];
 
-const DELETABLE_ROLES = ['admin', 'director', 'accountant']; // accountant can delete
+const DELETABLE_ROLES = ['admin', 'director', 'accountant'];
 
 const TenderList = () => {
   const [tenders, setTenders] = useState([]);
@@ -28,8 +31,12 @@ const TenderList = () => {
   const [error, setError] = useState(null);
   const { user } = useAuth();
 
-  const canEdit = EDITABLE_ROLES.includes(user?.role);
-  const canDelete = DELETABLE_ROLES.includes(user?.role);
+  const canEdit = user && EDITABLE_ROLES.includes(user.role);
+  const canDelete = user && DELETABLE_ROLES.includes(user.role);
+
+  // ─── Photo preview state ──────────────────────────────────────
+  const [photoPreviewOpen, setPhotoPreviewOpen] = useState(false);
+  const [previewImage, setPreviewImage] = useState('');
 
   useEffect(() => {
     fetchTenders();
@@ -37,12 +44,13 @@ const TenderList = () => {
 
   const fetchTenders = async () => {
     setLoading(true);
+    setError(null);
     try {
       const res = await api.get('/api/tenders');
       setTenders(res.data || []);
-      setError(null);
     } catch (err) {
-      setError('Failed to load tenders');
+      setError(getApiErrorMessage(err, 'Failed to load tenders'));
+      setTenders([]);
     } finally {
       setLoading(false);
     }
@@ -54,7 +62,7 @@ const TenderList = () => {
       await api.delete(`/api/tenders/${id}`);
       fetchTenders();
     } catch (err) {
-      alert('Delete failed');
+      alert(getApiErrorMessage(err, 'Delete failed'));
     }
   };
 
@@ -85,6 +93,14 @@ const TenderList = () => {
     return new Intl.NumberFormat('en-ZM', { style: 'currency', currency: 'ZMW' }).format(amount || 0);
   };
 
+  // ─── Handle photo click to expand ────────────────────────────
+  const handlePhotoClick = (image) => {
+    if (image) {
+      setPreviewImage(image);
+      setPhotoPreviewOpen(true);
+    }
+  };
+
   if (loading) return <CircularProgress sx={{ display: 'block', margin: '40px auto' }} />;
   if (error) return <Alert severity="error">{error}</Alert>;
 
@@ -103,6 +119,7 @@ const TenderList = () => {
       <Table size="small">
         <TableHead>
           <TableRow sx={{ bgcolor: '#f5f5f5' }}>
+            <TableCell>Image</TableCell>
             <TableCell>Reference</TableCell>
             <TableCell>Title</TableCell>
             <TableCell>Type</TableCell>
@@ -117,6 +134,20 @@ const TenderList = () => {
         <TableBody>
           {tenders.map((t) => (
             <TableRow key={t._id}>
+              <TableCell>
+                <Box
+                  sx={{ cursor: t.image ? 'pointer' : 'default' }}
+                  onClick={() => handlePhotoClick(t.image)}
+                >
+                  <Avatar
+                    src={t.image || '/tender-placeholder.jpg'}
+                    variant="rounded"
+                    sx={{ width: 40, height: 40 }}
+                  >
+                    {!t.image && t.title?.charAt(0).toUpperCase()}
+                  </Avatar>
+                </Box>
+              </TableCell>
               <TableCell>{t.referenceNumber}</TableCell>
               <TableCell>{t.title}</TableCell>
               <TableCell><Chip label={getTypeLabel(t.type)} size="small" color="primary" /></TableCell>
@@ -165,13 +196,35 @@ const TenderList = () => {
           ))}
           {tenders.length === 0 && (
             <TableRow>
-              <TableCell colSpan={9} align="center" sx={{ py: 3 }}>
+              <TableCell colSpan={10} align="center" sx={{ py: 3 }}>
                 <Typography variant="body2" color="textSecondary">No tenders or RFQs yet.</Typography>
               </TableCell>
             </TableRow>
           )}
         </TableBody>
       </Table>
+
+      {/* ─── Photo Preview Dialog ────────────────────────────────── */}
+      <Dialog open={photoPreviewOpen} onClose={() => setPhotoPreviewOpen(false)} maxWidth="md" fullWidth>
+        <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span>Tender Image</span>
+          <IconButton onClick={() => setPhotoPreviewOpen(false)}>
+            <ZoomInIcon />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent sx={{ textAlign: 'center' }}>
+          {previewImage && (
+            <img
+              src={previewImage}
+              alt="Tender"
+              style={{ maxWidth: '100%', maxHeight: '70vh', objectFit: 'contain' }}
+            />
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setPhotoPreviewOpen(false)}>Close</Button>
+        </DialogActions>
+      </Dialog>
     </Paper>
   );
 };

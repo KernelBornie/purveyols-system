@@ -126,6 +126,9 @@ const TenderSchema = new mongoose.Schema({
   // ─── Documents ──────────────────────────────────────────────
   documents: [DocumentSchema],
 
+  // ─── Image ────────────────────────────────────────────────────
+  image: { type: String, default: '' }, // base64 data URL
+
   // ─── Status ──────────────────────────────────────────────────
   status: {
     type: String,
