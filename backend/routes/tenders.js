@@ -7,10 +7,8 @@ const authorize = require('../middleware/rbac');
 const multer = require('multer');
 const path = require('path');
 
-// ─── Log that the router is loaded ──────────────────────────────
 console.log('✅ Tenders router loaded');
 
-// ─── Multer config for hard copy upload ───────────────────────────
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, 'uploads/tenders/'),
   filename: (req, file, cb) => {
@@ -20,14 +18,11 @@ const storage = multer.diskStorage({
   }
 });
 
-// ✅ Accept any file type – remove fileFilter
-// ✅ Increase file size limit to 100MB
 const upload = multer({ 
   storage, 
   limits: { fileSize: 100 * 1024 * 1024 }   // 100MB
 });
 
-// ─── Upload hard copy tender ───────────────────────────────────────
 router.post('/upload-hardcopy', auth, upload.single('file'), async (req, res) => {
   try {
     if (!req.file) {
@@ -60,12 +55,10 @@ router.post('/upload-hardcopy', auth, upload.single('file'), async (req, res) =>
   }
 });
 
-// ─── Test route ──────────────────────────────────────────────────
 router.get('/test', (req, res) => {
   res.json({ message: 'Tenders router is working' });
 });
 
-// ─── GET all tenders ──────────────────────────────────────────────
 router.get('/', auth, async (req, res) => {
   try {
     const tenders = await Tender.find()
@@ -82,7 +75,6 @@ router.get('/', auth, async (req, res) => {
   }
 });
 
-// ─── GET single tender ────────────────────────────────────────────
 router.get('/:id', auth, async (req, res) => {
   try {
     const tender = await Tender.findById(req.params.id)
@@ -99,7 +91,6 @@ router.get('/:id', auth, async (req, res) => {
   }
 });
 
-// ─── CREATE tender ──────────────────────────────────────────────────
 router.post('/', auth, authorize('admin', 'director', 'procurement-officer', 'civil-engineer', 'quantity-surveyor'), async (req, res) => {
   try {
     const tender = new Tender({
@@ -120,7 +111,6 @@ router.post('/', auth, authorize('admin', 'director', 'procurement-officer', 'ci
   }
 });
 
-// ─── UPDATE tender ──────────────────────────────────────────────────
 router.put('/:id', auth, authorize('admin', 'director', 'procurement-officer', 'civil-engineer', 'quantity-surveyor'), async (req, res) => {
   try {
     const tender = await Tender.findById(req.params.id);
@@ -145,7 +135,6 @@ router.put('/:id', auth, authorize('admin', 'director', 'procurement-officer', '
   }
 });
 
-// ─── SUBMIT tender ──────────────────────────────────────────────────
 router.put('/:id/submit', auth, authorize('admin', 'director', 'procurement-officer', 'civil-engineer', 'quantity-surveyor'), async (req, res) => {
   try {
     const tender = await Tender.findById(req.params.id);
@@ -170,7 +159,6 @@ router.put('/:id/submit', auth, authorize('admin', 'director', 'procurement-offi
   }
 });
 
-// ─── APPROVE tender ─────────────────────────────────────────────────
 router.put('/:id/approve', auth, authorize('admin', 'director', 'procurement-officer', 'engineer', 'accountant'), async (req, res) => {
   try {
     const tender = await Tender.findById(req.params.id);
@@ -195,7 +183,6 @@ router.put('/:id/approve', auth, authorize('admin', 'director', 'procurement-off
   }
 });
 
-// ─── ASSIGN tender (multi‑select) ──────────────────────────────────
 router.put('/:id/assign', auth, authorize('admin', 'director', 'project-manager', 'engineer', 'accountant'), async (req, res) => {
   try {
     const { assigneeIds } = req.body;
@@ -223,7 +210,6 @@ router.put('/:id/assign', auth, authorize('admin', 'director', 'project-manager'
   }
 });
 
-// ─── VERIFY tender ──────────────────────────────────────────────────
 router.put('/:id/verify', auth, authorize('admin', 'director', 'accountant'), async (req, res) => {
   try {
     const tender = await Tender.findById(req.params.id);
@@ -248,7 +234,6 @@ router.put('/:id/verify', auth, authorize('admin', 'director', 'accountant'), as
   }
 });
 
-// ─── AWARD tender ───────────────────────────────────────────────────
 router.put('/:id/award', auth, authorize('admin', 'director'), async (req, res) => {
   try {
     const { awardAmount, awardee } = req.body;
@@ -275,7 +260,6 @@ router.put('/:id/award', auth, authorize('admin', 'director'), async (req, res) 
   }
 });
 
-// ─── REJECT tender ──────────────────────────────────────────────────
 router.put('/:id/reject', auth, authorize('admin', 'director'), async (req, res) => {
   try {
     const { reason } = req.body;
@@ -297,7 +281,6 @@ router.put('/:id/reject', auth, authorize('admin', 'director'), async (req, res)
   }
 });
 
-// ─── DELETE tender ──────────────────────────────────────────────────
 router.delete('/:id', auth, authorize('admin', 'director'), async (req, res) => {
   try {
     const deleted = await Tender.findByIdAndDelete(req.params.id);
@@ -308,7 +291,6 @@ router.delete('/:id', auth, authorize('admin', 'director'), async (req, res) => 
   }
 });
 
-// ─── CONVERT AWARDED TENDER TO PROJECT ─────────────────────────────
 router.post('/:id/convert-to-project', auth, authorize('admin', 'director', 'procurement-officer', 'civil-engineer', 'quantity-surveyor'), async (req, res) => {
   try {
     const tender = await Tender.findById(req.params.id).populate('createdBy', 'name role');
@@ -351,5 +333,4 @@ router.post('/:id/convert-to-project', auth, authorize('admin', 'director', 'pro
   }
 });
 
-// ─── Always export the router ──────────────────────────────────
 module.exports = router;

@@ -28,14 +28,17 @@ const PastPerformanceSchema = new mongoose.Schema({
   completionCertificate: { type: String },
 });
 
+// ✅ Updated DocumentSchema – includes path and mimeType
 const DocumentSchema = new mongoose.Schema({
   name: { type: String, required: true },
   type: {
     type: String,
-    enum: ['sf1442', 'price_proposal', 'technical', 'safety_plan', 'certificate', 'bank_statement', 'profile', 'other'],
-    default: 'other'
+    enum: ['sf1442', 'price_proposal', 'technical', 'safety_plan', 'certificate', 'bank_statement', 'profile', 'other', 'hardcopy'],
+    default: 'hardcopy'
   },
-  url: { type: String },
+  path: { type: String },      // file path on server
+  url: { type: String },       // optional external URL
+  mimeType: { type: String },
   uploadedAt: { type: Date, default: Date.now },
 });
 
@@ -133,11 +136,10 @@ const TenderSchema = new mongoose.Schema({
   submittedAt: { type: Date },
   updatedAt: { type: Date, default: Date.now },
 
-  // ─── Actor fields ──────────────────────────────────────────
   approvedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   approvedAt: Date,
 
-  assignedStaff: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],   // ← array
+  assignedStaff: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
   assignedAt: Date,
 
   verifiedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
