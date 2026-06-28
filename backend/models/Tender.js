@@ -120,7 +120,7 @@ const TenderSchema = new mongoose.Schema({
 
   status: {
     type: String,
-    enum: ['draft', 'submitted', 'under_review', 'approved', 'awarded', 'verified', 'rejected', 'not_awarded'],
+    enum: ['draft', 'submitted', 'approved', 'verified', 'awarded', 'rejected', 'not_awarded', 'under_review'],
     default: 'draft'
   },
 
@@ -135,8 +135,10 @@ const TenderSchema = new mongoose.Schema({
 
   approvedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   approvedAt: Date,
-  assignedTo: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+
+  assignedStaff: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],   // ← multiple users
   assignedAt: Date,
+
   verifiedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   verifiedAt: Date,
 
