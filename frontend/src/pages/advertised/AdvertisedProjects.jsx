@@ -86,9 +86,11 @@ const AdvertisedProjects = () => {
   const handleOpenDetail = (project) => { setSelectedProject(project); setDetailOpen(true); };
   const handleCloseDetail = () => { setDetailOpen(false); setSelectedProject(null); };
 
+  // ─── 🔧 FIX: encode the project ID to avoid slashes breaking the URL ──
   const handleBid = async (projectId) => {
     try {
-      const res = await api.post(`/api/advertised-projects/${projectId}/bid`);
+      const encodedId = encodeURIComponent(projectId);
+      const res = await api.post(`/api/advertised-projects/${encodedId}/bid`);
       setSnackbar({
         open: true,
         message: res.data.message || '✅ Project marked as bidded! Check the Bidded Projects page.',
