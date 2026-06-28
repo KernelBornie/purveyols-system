@@ -120,7 +120,7 @@ const TenderSchema = new mongoose.Schema({
 
   status: {
     type: String,
-    enum: ['draft', 'submitted', 'under_review', 'awarded', 'rejected', 'not_awarded'],
+    enum: ['draft', 'submitted', 'under_review', 'approved', 'awarded', 'verified', 'rejected', 'not_awarded'],
     default: 'draft'
   },
 
@@ -132,6 +132,14 @@ const TenderSchema = new mongoose.Schema({
   submittedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   submittedAt: { type: Date },
   updatedAt: { type: Date, default: Date.now },
+
+  // ─── New actor fields ──────────────────────────────────────────
+  approvedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  approvedAt: Date,
+  assignedTo: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  assignedAt: Date,
+  verifiedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  verifiedAt: Date,
 
   convertedToProject: { type: mongoose.Schema.Types.ObjectId, ref: 'Project' },
 }, { timestamps: true });

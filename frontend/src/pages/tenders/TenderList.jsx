@@ -9,6 +9,9 @@ import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import ZoomInIcon from '@mui/icons-material/ZoomIn';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import PersonAddIcon from '@mui/icons-material/PersonAdd';
+import VerifiedIcon from '@mui/icons-material/Verified';
 import api from '../../api/axios';
 import { useAuth } from '../../context/AuthContext';
 import BackButton from '../../components/BackButton';
@@ -78,12 +81,51 @@ const TenderList = () => {
     }
   };
 
+  // ─── Approve handler ──────────────────────────────────────────
+  const handleApprove = async (id) => {
+    if (!window.confirm('Approve this tender?')) return;
+    try {
+      await api.put(`/api/tenders/${id}/approve`);
+      fetchTenders();
+      alert('Tender approved!');
+    } catch (err) {
+      alert(getApiErrorMessage(err));
+    }
+  };
+
+  // ─── Assign handler ────────────────────────────────────────────
+  const handleAssign = async (id) => {
+    const assigneeId = prompt('Enter the User ID to assign this tender:');
+    if (!assigneeId) return;
+    try {
+      await api.put(`/api/tenders/${id}/assign`, { assigneeId });
+      fetchTenders();
+      alert('Tender assigned!');
+    } catch (err) {
+      alert(getApiErrorMessage(err));
+    }
+  };
+
+  // ─── Verify handler ────────────────────────────────────────────
+  const handleVerify = async (id) => {
+    if (!window.confirm('Verify this awarded tender?')) return;
+    try {
+      await api.put(`/api/tenders/${id}/verify`);
+      fetchTenders();
+      alert('Tender verified!');
+    } catch (err) {
+      alert(getApiErrorMessage(err));
+    }
+  };
+
   const getStatusColor = (status) => {
     switch (status) {
       case 'draft': return 'default';
       case 'submitted': return 'warning';
       case 'under_review': return 'info';
+      case 'approved': return 'success';
       case 'awarded': return 'success';
+      case 'verified': return 'success';
       case 'rejected': return 'error';
       case 'not_awarded': return 'default';
       default: return 'default';
@@ -182,7 +224,7 @@ const TenderList = () => {
                 </Button>
 
                 {/* ─── EDIT (only if editable) ───────────────────── */}
-                {canEdit && t.status !== 'submitted' && t.status !== 'awarded' && (
+                {canEdit && t.status !== 'submitted' && t.status !== 'awarded' && t.status !== 'verified' && (
                   <Tooltip title="Edit">
                     <IconButton
                       component={Link}
@@ -195,7 +237,7 @@ const TenderList = () => {
                   </Tooltip>
                 )}
 
-                {canDelete && t.status !== 'awarded' && (
+                {canDelete && t.status !== 'awarded' && t.status !== 'verified' && (
                   <Tooltip title="Delete">
                     <IconButton
                       size="small"
@@ -206,7 +248,49 @@ const TenderList = () => {
                     </IconButton>
                   </Tooltip>
                 )}
-                {t.status === 'awarded' && !t.convertedToProject && (
+
+                {/* ─── Approve (procurement-officer) ─────────────── */}
+                {t.status === 'submitted' && user?.role === 'procurement-officer' && (
+                  <Tooltip title="Approve">
+                    <IconButton
+                      size="small"
+                      color="success"
+                      onClick={() => handleApprove(t._id)}
+                    >
+                      <CheckCircleIcon fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
+                )}
+
+                {/* ─── Assign (admin, director, project-manager) ─── */}
+                {(t.status === 'approved' || t.status === 'awarded') && 
+                 (user?.role === 'admin' || user?.role === 'director' || user?.role === 'project-manager') && (
+                  <Tooltip title="Assign">
+                    <IconButton
+                      size="small"
+                      color="primary"
+                      onClick={() => handleAssign(t._id)}
+                    >
+                      <PersonAddIcon fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
+                )}
+
+                {/* ─── Verify (accountant) ────────────────────────── */}
+                {t.status === 'awarded' && user?.role === 'accountant' && !t.verifiedBy && (
+                  <Tooltip title="Verify">
+                    <IconButton
+                      size="small"
+                      color="info"
+                      onClick={() => handleVerify(t._id)}
+                    >
+                      <VerifiedIcon fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
+                )}
+
+                {/* ─── Create Project (awarded or verified) ────── */}
+                {(t.status === 'awarded' || t.status === 'verified') && !t.convertedToProject && (
                   <Tooltip title="Create Project">
                     <IconButton
                       size="small"

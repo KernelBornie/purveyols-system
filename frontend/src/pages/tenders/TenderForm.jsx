@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useParams, useLocation } from 'react-router-dom'; // ← added useLocation
+import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import {
   Paper, Typography, Box, Grid, TextField, Button, MenuItem,
   Alert, CircularProgress, Chip, IconButton, Table, TableHead,
@@ -36,7 +36,7 @@ const DELETABLE_ROLES = ['admin', 'director', 'accountant'];
 
 const TenderForm = () => {
   const { id } = useParams();
-  const location = useLocation(); // ← to detect view/edit mode
+  const location = useLocation();
   const navigate = useNavigate();
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
@@ -44,6 +44,8 @@ const TenderForm = () => {
   const [message, setMessage] = useState(null);
   const [imagePreview, setImagePreview] = useState('');
   const [photoPreviewOpen, setPhotoPreviewOpen] = useState(false);
+  
+  // ─── Form state with all fields ─────────────────────────────
   const [form, setForm] = useState({
     title: '',
     referenceNumber: '',
@@ -103,14 +105,22 @@ const TenderForm = () => {
     image: '',
     status: 'draft',
     notes: '',
+    // ─── New actor fields ──────────────────────────────────────
+    approvedBy: null,
+    approvedAt: null,
+    assignedTo: null,
+    assignedAt: null,
+    verifiedBy: null,
+    verifiedAt: null,
   });
+  
   const [creator, setCreator] = useState(null);
   const [createdAt, setCreatedAt] = useState(null);
   const [convertedToProject, setConvertedToProject] = useState(null);
 
   // ─── Determine mode from URL ──────────────────────────────────
   const isViewMode = location.pathname.includes('/view');
-  const isEditMode = location.pathname.includes('/edit') || (!isViewMode && id); // fallback
+  const isEditMode = location.pathname.includes('/edit') || (!isViewMode && id);
 
   // ─── Dialogs ──────────────────────────────────────────────
   const [personnelDialog, setPersonnelDialog] = useState(false);
@@ -122,7 +132,7 @@ const TenderForm = () => {
 
   const canEdit = EDITABLE_ROLES.includes(user?.role);
   const canDelete = DELETABLE_ROLES.includes(user?.role);
-  const isReadOnly = isViewMode || form.status === 'submitted' || form.status === 'awarded' || !canEdit;
+  const isReadOnly = isViewMode || form.status === 'submitted' || form.status === 'awarded' || form.status === 'verified' || !canEdit;
 
   // ─── Image handlers ──────────────────────────────────────────
   const handleImageChange = (e) => {
@@ -190,6 +200,7 @@ const TenderForm = () => {
     }
   };
 
+  // ─── Fetch tender data ──────────────────────────────────────
   useEffect(() => {
     const fetchData = async () => {
       setFetching(true);
@@ -256,6 +267,13 @@ const TenderForm = () => {
             image: data.image || '',
             status: data.status || 'draft',
             notes: data.notes || '',
+            // ─── New actor fields ────────────────────────────────
+            approvedBy: data.approvedBy || null,
+            approvedAt: data.approvedAt || null,
+            assignedTo: data.assignedTo || null,
+            assignedAt: data.assignedAt || null,
+            verifiedBy: data.verifiedBy || null,
+            verifiedAt: data.verifiedAt || null,
           });
           if (data.image) setImagePreview(data.image);
           setCreator(data.createdBy);
@@ -520,6 +538,9 @@ const TenderForm = () => {
               <p><strong>Description:</strong> ${form.description || '—'}</p>
               ${creator ? `<p><strong>Created by:</strong> ${creator.name} (${creator.role})</p>` : ''}
               ${createdAt ? `<p><strong>Created on:</strong> ${new Date(createdAt).toLocaleString()}</p>` : ''}
+              ${form.approvedBy ? `<p><strong>Approved by:</strong> ${form.approvedBy.name} (${form.approvedBy.role}) at ${new Date(form.approvedAt).toLocaleString()}</p>` : ''}
+              ${form.assignedTo ? `<p><strong>Assigned to:</strong> ${form.assignedTo.name} (${form.assignedTo.role}) at ${new Date(form.assignedAt).toLocaleString()}</p>` : ''}
+              ${form.verifiedBy ? `<p><strong>Verified by:</strong> ${form.verifiedBy.name} (${form.verifiedBy.role}) at ${new Date(form.verifiedAt).toLocaleString()}</p>` : ''}
             </div>
             ${form.sections && form.sections.length > 0 ? `
               <h3>Sections & Items</h3>
@@ -549,8 +570,8 @@ const TenderForm = () => {
             ` : ''}
             <div class="approval">
               <div class="row">
-                <div><strong>Approved by:</strong> _________________</div>
-                <div><strong>Date:</strong> _________________</div>
+                <div><strong>Approved by:</strong> ${form.approvedBy ? `${form.approvedBy.name} (${form.approvedBy.role})` : '_________________'}</div>
+                <div><strong>Date:</strong> ${form.approvedAt ? new Date(form.approvedAt).toLocaleString() : '_________________'}</div>
               </div>
             </div>
             <div class="footer">PURVEYOLS CMS - Construction Management System</div>
@@ -595,7 +616,7 @@ const TenderForm = () => {
             </Button>
           )}
 
-          {id && form.status === 'awarded' && !convertedToProject && (
+          {id && (form.status === 'awarded' || form.status === 'verified') && !convertedToProject && (
             <Button
               variant="contained"
               color="success"
@@ -643,8 +664,14 @@ const TenderForm = () => {
       {isReadOnly && form.status === 'submitted' && (
         <Alert severity="info" sx={{ mb: 2 }}>This tender has been submitted. Edits are disabled.</Alert>
       )}
+      {form.status === 'approved' && (
+        <Alert severity="success" sx={{ mb: 2 }}>This tender has been approved!</Alert>
+      )}
       {form.status === 'awarded' && (
         <Alert severity="success" sx={{ mb: 2 }}>This tender has been awarded!</Alert>
+      )}
+      {form.status === 'verified' && (
+        <Alert severity="success" sx={{ mb: 2 }}>This tender has been verified!</Alert>
       )}
 
       <form>
@@ -762,7 +789,9 @@ const TenderForm = () => {
                 <MenuItem value="draft">Draft</MenuItem>
                 <MenuItem value="submitted">Submitted</MenuItem>
                 <MenuItem value="under_review">Under Review</MenuItem>
+                <MenuItem value="approved">Approved</MenuItem>
                 <MenuItem value="awarded">Awarded</MenuItem>
+                <MenuItem value="verified">Verified</MenuItem>
                 <MenuItem value="rejected">Rejected</MenuItem>
                 <MenuItem value="not_awarded">Not Awarded</MenuItem>
               </TextField>
@@ -1374,10 +1403,27 @@ const TenderForm = () => {
           />
         </Paper>
 
-        {id && creator && (
+        {/* ─── Actor Info Block ───────────────────────────────────── */}
+        {id && (
           <Box sx={{ mt: 2 }}>
-            <Typography variant="caption" display="block">Created by: {creator.name} ({creator.role})</Typography>
-            <Typography variant="caption" display="block">Created at: {new Date(createdAt).toLocaleString()}</Typography>
+            <Typography variant="caption" display="block">
+              Created by: {creator?.name} ({creator?.role}) at {new Date(createdAt).toLocaleString()}
+            </Typography>
+            {form.approvedBy && (
+              <Typography variant="caption" display="block">
+                Approved by: {form.approvedBy.name} ({form.approvedBy.role}) at {new Date(form.approvedAt).toLocaleString()}
+              </Typography>
+            )}
+            {form.assignedTo && (
+              <Typography variant="caption" display="block">
+                Assigned to: {form.assignedTo.name} ({form.assignedTo.role}) at {new Date(form.assignedAt).toLocaleString()}
+              </Typography>
+            )}
+            {form.verifiedBy && (
+              <Typography variant="caption" display="block">
+                Verified by: {form.verifiedBy.name} ({form.verifiedBy.role}) at {new Date(form.verifiedAt).toLocaleString()}
+              </Typography>
+            )}
           </Box>
         )}
       </form>
