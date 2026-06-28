@@ -5,8 +5,9 @@ import {
   Alert, CircularProgress, Chip, IconButton, Table, TableHead,
   TableRow, TableCell, TableBody, Dialog, DialogTitle,
   DialogContent, DialogActions, Divider, FormControlLabel, Checkbox,
-  InputAdornment, Avatar
+  InputAdornment, Avatar, Accordion, AccordionSummary, AccordionDetails
 } from '@mui/material';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
 import SaveIcon from '@mui/icons-material/Save';
@@ -18,6 +19,8 @@ import DescriptionIcon from '@mui/icons-material/Description';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import CameraAltIcon from '@mui/icons-material/CameraAlt';
 import ZoomInIcon from '@mui/icons-material/ZoomIn';
+import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
+import ImageIcon from '@mui/icons-material/Image';
 import api from '../../api/axios';
 import { useAuth } from '../../context/AuthContext';
 import BackButton from '../../components/BackButton';
@@ -44,6 +47,7 @@ const TenderForm = () => {
   const [message, setMessage] = useState(null);
   const [imagePreview, setImagePreview] = useState('');
   const [photoPreviewOpen, setPhotoPreviewOpen] = useState(false);
+  const [docExpanded, setDocExpanded] = useState(true); // expand document viewer by default
   
   // ─── Form state with all fields ─────────────────────────────
   const [form, setForm] = useState({
@@ -105,10 +109,9 @@ const TenderForm = () => {
     image: '',
     status: 'draft',
     notes: '',
-    // ─── Actor fields ──────────────────────────────────────────
     approvedBy: null,
     approvedAt: null,
-    assignedStaff: [],      // ← changed from assignedTo
+    assignedStaff: [],
     assignedAt: null,
     verifiedBy: null,
     verifiedAt: null,
@@ -267,10 +270,9 @@ const TenderForm = () => {
             image: data.image || '',
             status: data.status || 'draft',
             notes: data.notes || '',
-            // ─── Actor fields ────────────────────────────────
             approvedBy: data.approvedBy || null,
             approvedAt: data.approvedAt || null,
-            assignedStaff: data.assignedStaff || [],      // ← array
+            assignedStaff: data.assignedStaff || [],
             assignedAt: data.assignedAt || null,
             verifiedBy: data.verifiedBy || null,
             verifiedAt: data.verifiedAt || null,
@@ -486,7 +488,6 @@ const TenderForm = () => {
       return new Intl.NumberFormat('en-ZM', { style: 'currency', currency: 'ZMW' }).format(amount || 0);
     };
 
-    // ─── Build assigned staff string ──────────────────────────
     const assignedNames = form.assignedStaff && form.assignedStaff.length > 0
       ? form.assignedStaff.map(s => `${s.name} (${s.role})`).join(', ')
       : '—';
@@ -684,6 +685,60 @@ const TenderForm = () => {
       )}
 
       <form>
+        {/* ─── Uploaded Documents – PROMINENT DISPLAY ─────────────── */}
+        {form.documents && form.documents.length > 0 && (
+          <Paper sx={{ p: 2, mb: 3, border: '2px solid #1976d2', backgroundColor: '#f5f9ff' }}>
+            <Accordion expanded={docExpanded} onChange={() => setDocExpanded(!docExpanded)}>
+              <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#1976d2' }}>
+                  📄 Uploaded Document (Original Form)
+                </Typography>
+              </AccordionSummary>
+              <AccordionDetails>
+                {form.documents.map((doc, idx) => (
+                  <Box key={idx} sx={{ mb: 2 }}>
+                    <Typography variant="body2" sx={{ mb: 1 }}>
+                      <strong>{doc.name}</strong> ({doc.mimeType || 'Unknown type'})
+                    </Typography>
+                    {doc.mimeType && doc.mimeType.startsWith('image/') ? (
+                      <Box sx={{ textAlign: 'center', bgcolor: '#fff', p: 1, border: '1px solid #ddd' }}>
+                        <img
+                          src={doc.path}
+                          alt={doc.name}
+                          style={{ maxWidth: '100%', maxHeight: '70vh', objectFit: 'contain' }}
+                        />
+                      </Box>
+                    ) : doc.mimeType === 'application/pdf' ? (
+                      <Box sx={{ bgcolor: '#fff', p: 1, border: '1px solid #ddd' }}>
+                        <iframe
+                          src={doc.path}
+                          style={{ width: '100%', height: '80vh', minHeight: '500px' }}
+                          title={doc.name}
+                        />
+                      </Box>
+                    ) : (
+                      <Box sx={{ textAlign: 'center', p: 4, bgcolor: '#fff', border: '1px solid #ddd' }}>
+                        <Typography variant="body1" color="textSecondary">
+                          Preview not available for this file type.
+                        </Typography>
+                        <Button
+                          component="a"
+                          href={doc.path}
+                          target="_blank"
+                          variant="contained"
+                          sx={{ mt: 2 }}
+                        >
+                          Download / View
+                        </Button>
+                      </Box>
+                    )}
+                  </Box>
+                ))}
+              </AccordionDetails>
+            </Accordion>
+          </Paper>
+        )}
+
         {/* ─── Image Upload ────────────────────────────────────────── */}
         <Paper sx={{ p: 2, mb: 3 }}>
           <Typography variant="h6" gutterBottom>Tender Image</Typography>
@@ -722,29 +777,6 @@ const TenderForm = () => {
           </Box>
           <Typography variant="caption" color="textSecondary">JPEG, PNG, GIF, WEBP</Typography>
         </Paper>
-
-        {/* ─── Uploaded Documents ───────────────────────────────────────── */}
-        {form.documents && form.documents.length > 0 && (
-          <Paper sx={{ p: 2, mb: 3 }}>
-            <Typography variant="h6" gutterBottom>Uploaded Documents</Typography>
-            {form.documents.map((doc, idx) => (
-              <Box key={idx} sx={{ mb: 2, border: '1px solid #e0e0e0', p: 1, borderRadius: 1 }}>
-                <Typography variant="body2">
-                  <strong>{doc.name}</strong> ({doc.mimeType})
-                </Typography>
-                {doc.mimeType && doc.mimeType.startsWith('image/') ? (
-                  <img src={doc.path} alt={doc.name} style={{ maxWidth: '100%', maxHeight: 200, objectFit: 'contain' }} />
-                ) : doc.mimeType === 'application/pdf' ? (
-                  <iframe src={doc.path} style={{ width: '100%', height: 400 }} title={doc.name} />
-                ) : (
-                  <Button component="a" href={doc.path} target="_blank" variant="outlined" size="small">
-                    View Document
-                  </Button>
-                )}
-              </Box>
-            ))}
-          </Paper>
-        )}
 
         {/* ─── Basic Information ────────────────────────────────────────── */}
         <Paper sx={{ p: 2, mb: 3 }}>
