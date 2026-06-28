@@ -1,10 +1,72 @@
 const express = require('express');
 const router = express.Router();
 const axios = require('axios');
+const cheerio = require('cheerio');
+const Parser = require('rss-parser');
+const parser = new Parser();
+const cron = require('node-cron'); // npm install node-cron
 const AdvertisedProject = require('../models/AdvertisedProject');
+const Bid = require('../models/Bid');
+const auth = require('../middleware/auth');
 
-// ─── Helper: fetch articles from News API ──────────────────────
-async function fetchNews(query) {
+// ─── Configure sources ──────────────────────────────────────────────
+const SOURCES = [
+  {
+    name: 'NewsAPI - Construction Tenders Zambia',
+    type: 'newsapi',
+    query: 'construction tender Zambia',
+    apiKey: process.env.NEWS_API_KEY,
+  },
+  {
+    name: 'NewsAPI - Infrastructure Projects Zambia',
+    type: 'newsapi',
+    query: 'infrastructure project Zambia',
+    apiKey: process.env.NEWS_API_KEY,
+  },
+  {
+    name: 'NewsAPI - Tenders Zambia',
+    type: 'newsapi',
+    query: 'tenders Zambia',
+    apiKey: process.env.NEWS_API_KEY,
+  },
+  {
+    name: 'Zambia Public Procurement Authority (ZPPA)',
+    type: 'web',
+    url: 'https://www.zppa.org.zm/tenders',
+    baseUrl: 'https://www.zppa.org.zm',
+  },
+  {
+    name: 'African Tenders - Zambia',
+    type: 'web',
+    url: 'https://www.africatenders.com/tenders/zambia',
+    baseUrl: 'https://www.africatenders.com',
+  },
+  {
+    name: 'Construction Review - Zambia',
+    type: 'rss',
+    url: 'https://constructionreviewonline.com/category/africa/zambia/feed',
+    baseUrl: 'https://constructionreviewonline.com',
+  },
+  {
+    name: 'Lusaka Times - Infrastructure',
+    type: 'rss',
+    url: 'https://www.lusakatimes.com/category/infrastructure/feed/',
+    baseUrl: 'https://www.lusakatimes.com',
+  },
+  {
+    name: 'Zambia Daily Mail - Construction',
+    type: 'rss',
+    url: 'https://www.daily-mail.co.zm/?feed=rss2&category_name=construction',
+    baseUrl: 'https://www.daily-mail.co.zm',
+  },
+];
+
+// ─── Helper: fetch from News API ─────────────────────────────────
+async function fetchFromNewsAPI(query) {
+  if (!process.env.NEWS_API_KEY) {
+    console.log('⚠️ NEWS_API_KEY not set – skipping NewsAPI fetch.');
+    return [];
+  }
   try {
     const response = await axios.get('https://newsapi.org/v2/everything', {
       params: {
@@ -24,128 +86,184 @@ async function fetchNews(query) {
       publishedAt: article.publishedAt,
     }));
   } catch (err) {
-    console.error(`Error fetching news for query "${query}":`, err.message);
+    console.error(`NewsAPI fetch error for "${query}":`, err.message);
     return [];
   }
 }
 
-// ─── Helper: generate mock project ─────────────────────────────
-function generateMockProject() {
-  const clients = ['ZANACO', 'ABSA Bank', 'FNB Zambia', 'Lusaka City Council', 'University of Zambia', 'UTH Hospital', 'ZESCO', 'ZRA', 'Road Development Agency', 'Ministry of Infrastructure'];
-  const locations = ['Lusaka', 'Ndola', 'Kitwe', 'Livingstone', 'Chipata', 'Kabwe', 'Mongu', 'Solwezi'];
-  const budgets = ['ZMW 500,000', 'ZMW 1,200,000', 'ZMW 2,500,000', 'ZMW 750,000', 'ZMW 3,000,000', 'ZMW 4,200,000', 'ZMW 6,800,000'];
-  const titles = [
-    'Construction of new office block',
-    'Renovation of hospital wing',
-    'Upgrade of university library',
-    'Road resurfacing project',
-    'Building of a new market',
-    'Installation of solar panels',
-    'Water treatment plant expansion',
-    'Construction of staff housing',
-    'Development of industrial park',
-    'Flood drainage system upgrade'
-  ];
-  const client = clients[Math.floor(Math.random() * clients.length)];
-  const title = `${client} – ${titles[Math.floor(Math.random() * titles.length)]}`;
-  const uniqueKey = `mock-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`;
+// ─── Helper: fetch from RSS ──────────────────────────────────────
+async function fetchFromRSS(source) {
+  try {
+    console.log(`📡 Fetching RSS: ${source.name}`);
+    const feed = await parser.parseURL(source.url);
+    return feed.items.map(item => ({
+      title: item.title || 'Untitled',
+      description: item.contentSnippet || item.description || '',
+      source: source.name,
+      sourceUrl: item.link || source.url,
+      publishedAt: item.pubDate || new Date().toISOString(),
+    }));
+  } catch (err) {
+    console.log(`   ❌ RSS failed: ${source.name} - ${err.message}`);
+    return [];
+  }
+}
+
+// ─── Helper: fetch from Web (scrape) ────────────────────────────
+async function fetchFromWeb(source) {
+  try {
+    console.log(`🌐 Fetching web: ${source.name}`);
+    const response = await axios.get(source.url, {
+      timeout: 15000,
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      },
+    });
+    const $ = cheerio.load(response.data);
+    const items = [];
+    // Common selectors for tender listings – adjust per site
+    const selectors = [
+      'h2', 'h3', 'h4', '.title', '.post-title', '.entry-title',
+      '.tender-item', '.project-item', '.listing-item'
+    ];
+    $(selectors.join(', ')).each((i, el) => {
+      const text = $(el).text().trim();
+      if (text.length > 20 && text.length < 300) {
+        let link = $(el).find('a').attr('href') || $(el).closest('a').attr('href') || '';
+        if (link && !link.startsWith('http')) {
+          if (link.startsWith('/')) link = (source.baseUrl || '') + link;
+          else link = (source.baseUrl || '') + '/' + link;
+        }
+        items.push({
+          title: text,
+          description: text,
+          source: source.name,
+          sourceUrl: link || source.url,
+          publishedAt: new Date().toISOString(),
+        });
+      }
+    });
+    return items;
+  } catch (err) {
+    console.log(`   ❌ Web failed: ${source.name} - ${err.message}`);
+    return [];
+  }
+}
+
+// ─── Helper: convert raw articles to AdvertisedProject format ──
+function normalizeProject(article) {
+  // Try to extract budget from title/description
+  const budgetMatch = (article.description || article.title).match(/ZMW\s*([\d,]+)/) ||
+                      (article.description || article.title).match(/K\s*([\d,]+)/);
+  const budget = budgetMatch ? `ZMW ${budgetMatch[1]}` : 'ZMW 0';
+
+  // Try to extract client
+  const clientMatch = (article.description || article.title).match(/(?:by|for|from)\s+([A-Z][A-Za-z\s]+)(?:\s|$)/);
+  const client = clientMatch ? clientMatch[1].trim() : 'Various';
+
+  // Location – default to Zambia
+  const location = 'Zambia';
+
+  // Deadline – parse if mentioned
+  let deadline = new Date(Date.now() + 30*24*60*60*1000).toISOString().split('T')[0];
+  const deadlineMatch = (article.description || article.title).match(/(\d{1,2}\s+[A-Za-z]+\s+\d{4})/);
+  if (deadlineMatch) {
+    const d = new Date(deadlineMatch[1]);
+    if (!isNaN(d)) deadline = d.toISOString().split('T')[0];
+  }
+
+  const uniqueKey = `${article.title}-${article.sourceUrl}`.replace(/\s/g, '_').toLowerCase();
+
   return {
     id: uniqueKey,
-    title,
-    client,
-    location: locations[Math.floor(Math.random() * locations.length)],
-    budget: budgets[Math.floor(Math.random() * budgets.length)],
-    deadline: new Date(Date.now() + 30*24*60*60*1000 + Math.random()*30*24*60*60*1000).toISOString().split('T')[0],
-    source: 'Mock Data (Zambia)',
-    sourceUrl: '#',
-    description: 'This is a mock project generated to ensure at least 20 advertised projects appear. It contains plausible details for a construction tender in Zambia.',
-    skills: ['Construction', 'Project Management', 'Civil Engineering'],
-    contactEmail: 'info@purveyols.com',
-    biddingFee: 'Free',
+    title: article.title.substring(0, 200),
+    client: client,
+    location: location,
+    budget: budget,
+    deadline: deadline,
     status: 'open',
+    source: article.source || 'Unknown',
+    sourceUrl: article.sourceUrl || '#',
+    description: article.description || article.title,
+    skills: ['Construction', 'Project Management'],
+    contactEmail: 'procurement@example.com',
+    biddingFee: 'Free',
     uniqueKey,
   };
 }
 
-// ─── POST /fetch – get new projects from multiple sources ──────
+// ─── Master fetch – collects from all sources ──────────────────
+async function fetchAllSources() {
+  console.log('🔄 Fetching real projects from all sources...');
+  let rawArticles = [];
+
+  for (const source of SOURCES) {
+    try {
+      let articles = [];
+      if (source.type === 'newsapi') {
+        articles = await fetchFromNewsAPI(source.query);
+      } else if (source.type === 'rss') {
+        articles = await fetchFromRSS(source);
+      } else if (source.type === 'web') {
+        articles = await fetchFromWeb(source);
+      }
+      // Add source name to each article if not already present
+      articles = articles.map(a => ({ ...a, source: a.source || source.name }));
+      rawArticles = rawArticles.concat(articles);
+    } catch (err) {
+      console.log(`   ❌ Source ${source.name} failed:`, err.message);
+    }
+  }
+
+  // Deduplicate by sourceUrl
+  const seen = new Set();
+  const uniqueArticles = rawArticles.filter(a => {
+    const key = a.sourceUrl || a.title;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+
+  // Convert to AdvertisedProject format
+  const projects = uniqueArticles.map(normalizeProject);
+
+  // Filter out projects with very short titles (likely noise)
+  const filtered = projects.filter(p => p.title.length > 15);
+
+  console.log(`✅ Found ${filtered.length} real projects.`);
+  return filtered;
+}
+
+// ─── POST /fetch – fetch and store real projects ──────────────
 router.post('/fetch', async (req, res) => {
   try {
-    const queries = [
-      'construction tender bank Zambia',
-      'council construction tender Zambia',
-      'university construction project Zambia',
-      'hospital construction tender Zambia',
-      'Zambia infrastructure tender',
-      'Zambia government construction tender',
-      'Zambia road construction tender',
-      'Zambia school construction project'
-    ];
+    const projects = await fetchAllSources();
 
-    let allArticles = [];
-    for (const q of queries) {
-      const articles = await fetchNews(q);
-      allArticles = allArticles.concat(articles);
+    if (projects.length === 0) {
+      return res.json({
+        message: 'No live projects found. Please try again later.',
+        results: { added: 0, skipped: 0 }
+      });
     }
 
-    // Deduplicate by sourceUrl
-    const seen = new Set();
-    const uniqueArticles = allArticles.filter(a => {
-      const key = a.sourceUrl || a.title;
-      if (seen.has(key)) return false;
-      seen.add(key);
-      return true;
-    });
-
-    // Build advertised projects from articles
-    const projectsFromNews = uniqueArticles.map(article => {
-      const budgetMatch = article.description?.match(/ZMW\s*([\d,]+)/) || article.title?.match(/ZMW\s*([\d,]+)/);
-      const budget = budgetMatch ? `ZMW ${budgetMatch[1]}` : 'ZMW 0';
-      const client = article.source || 'Various';
-      const location = 'Zambia';
-      const deadline = new Date(Date.now() + 30*24*60*60*1000 + Math.random()*30*24*60*60*1000).toISOString().split('T')[0];
-      const uniqueKey = `${article.title}-${article.sourceUrl}`.replace(/\s/g, '_').toLowerCase();
-
-      return {
-        id: uniqueKey,
-        title: article.title,
-        client,
-        location,
-        budget,
-        deadline,
-        source: article.source,
-        sourceUrl: article.sourceUrl,
-        description: article.description || article.title,
-        skills: ['Construction', 'Project Management'],
-        contactEmail: 'info@purveyols.com',
-        biddingFee: 'Free',
-        status: 'open',
-        uniqueKey,
-      };
-    });
-
-    // Combine news + mocks to reach at least 20
-    let finalProjects = [...projectsFromNews];
-    while (finalProjects.length < 20) {
-      const mock = generateMockProject();
-      if (!finalProjects.some(p => p.uniqueKey === mock.uniqueKey)) {
-        finalProjects.push(mock);
-      }
-    }
-
-    // Save to DB (skip duplicates)
     let added = 0, skipped = 0;
-    for (const proj of finalProjects) {
+    for (const proj of projects) {
       const existing = await AdvertisedProject.findOne({ uniqueKey: proj.uniqueKey });
       if (!existing) {
         await AdvertisedProject.create(proj);
         added++;
       } else {
+        // Optionally update fields like budget, deadline
+        await AdvertisedProject.updateOne(
+          { uniqueKey: proj.uniqueKey },
+          { budget: proj.budget, deadline: proj.deadline, updatedAt: new Date() }
+        );
         skipped++;
       }
     }
 
     res.json({
-      message: `Fetched ${finalProjects.length} projects. Added ${added}, skipped ${skipped}.`,
+      message: `Fetched ${projects.length} real projects. Added ${added}, updated ${skipped}.`,
       results: { added, skipped }
     });
   } catch (err) {
@@ -154,7 +272,7 @@ router.post('/fetch', async (req, res) => {
   }
 });
 
-// ─── GET / – list open projects with filters ──────────────────
+// ─── GET / – list open projects (only real, no mocks) ──────────
 router.get('/', async (req, res) => {
   try {
     const { search, status } = req.query;
@@ -174,8 +292,8 @@ router.get('/', async (req, res) => {
   }
 });
 
-// ─── POST /:projectId/bid – mark as bidded ────────────────────
-router.post('/:projectId/bid', async (req, res) => {
+// ─── POST /:projectId/bid – mark as bidded and create Bid ──
+router.post('/:projectId/bid', auth, async (req, res) => {
   try {
     const project = await AdvertisedProject.findOne({ id: req.params.projectId });
     if (!project) return res.status(404).json({ error: 'Project not found' });
@@ -185,10 +303,49 @@ router.post('/:projectId/bid', async (req, res) => {
     project.updatedAt = new Date();
     await project.save();
 
-    res.json({ message: 'Project marked as bidded', project });
+    const bidData = {
+      projectId: project.id,
+      projectTitle: project.title,
+      client: project.client,
+      location: project.location,
+      budget: project.budget,
+      deadline: project.deadline,
+      source: project.source,
+      sourceUrl: project.sourceUrl,
+      description: project.description,
+      skills: project.skills || [],
+      contactEmail: project.contactEmail,
+      biddingFee: project.biddingFee,
+      status: 'bidded',
+      bidDate: new Date(),
+      user: req.user.id,
+      notes: `Bidded from advertised project ${project.id}`,
+    };
+    const bid = new Bid(bidData);
+    await bid.save();
+
+    res.status(201).json({
+      message: 'Project marked as bidded and Bid created!',
+      project,
+      bid
+    });
   } catch (err) {
+    console.error('Bid creation error:', err);
     res.status(500).json({ error: err.message });
   }
 });
+
+// ─── Schedule automatic fetch every 6 hours ────────────────────
+if (process.env.NODE_ENV !== 'test') {
+  cron.schedule('0 */6 * * *', async () => {
+    console.log('⏰ Scheduled fetch: fetching real projects...');
+    try {
+      await fetchAllSources();
+      console.log('✅ Scheduled fetch completed.');
+    } catch (err) {
+      console.error('❌ Scheduled fetch failed:', err);
+    }
+  });
+}
 
 module.exports = router;
