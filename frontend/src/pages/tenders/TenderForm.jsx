@@ -5,7 +5,8 @@ import {
   Alert, CircularProgress, Chip, IconButton, Table, TableHead,
   TableRow, TableCell, TableBody, Dialog, DialogTitle,
   DialogContent, DialogActions, Divider, FormControlLabel, Checkbox,
-  InputAdornment, Avatar, Accordion, AccordionSummary, AccordionDetails
+  InputAdornment, Avatar, Accordion, AccordionSummary, AccordionDetails,
+  Backdrop
 } from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import AddIcon from '@mui/icons-material/Add';
@@ -48,6 +49,7 @@ const TenderForm = () => {
   const [imagePreview, setImagePreview] = useState('');
   const [photoPreviewOpen, setPhotoPreviewOpen] = useState(false);
   const [docExpanded, setDocExpanded] = useState(true);
+  const [pdfGenerating, setPdfGenerating] = useState(false); // loading indicator
 
   // ─── Form state with all fields ─────────────────────────────
   const [form, setForm] = useState({
@@ -487,7 +489,7 @@ const TenderForm = () => {
     const { subtotal, grandTotal } = calculateGrandTotal();
 
     return `
-      <div style="font-family: 'Courier New', monospace; max-width: 1000px; margin: 0 auto; padding: 20px; background: #fff;">
+      <div id="tender-pdf-content" style="font-family: 'Courier New', monospace; max-width: 1000px; margin: 0 auto; padding: 20px; background: #fff;">
         <div style="text-align: center; border-bottom: 2px solid #000; padding-bottom: 8px; margin-bottom: 15px;">
           <h1 style="margin: 0; font-size: 28px; letter-spacing: 4px; font-weight: bold; color: #b71c1c;">PURVEYOLS</h1>
           <div style="font-weight: bold; font-size: 14px; margin: 2px 0; color: #b71c1c;">Building and Civil contractors</div>
@@ -580,58 +582,55 @@ const TenderForm = () => {
       alert('No data to download.');
       return;
     }
-    // Build the HTML content (only the inner div)
+
+    setPdfGenerating(true);
+
+    // Build the HTML content
     const htmlContent = buildHTMLContent();
-    // Create a temporary container (visible but off-screen)
+
+    // Create a temporary container that is visible but hidden behind the UI
     const container = document.createElement('div');
     container.innerHTML = htmlContent;
-    container.style.position = 'absolute';
-    container.style.left = '-9999px';
+    container.style.position = 'fixed';
+    container.style.left = '0';
     container.style.top = '0';
-    container.style.width = '800px';
+    container.style.width = '100%';
+    container.style.maxWidth = '1000px';
     container.style.backgroundColor = '#fff';
     container.style.padding = '20px';
+    container.style.zIndex = '-1000';
+    container.style.opacity = '0';
+    container.style.pointerEvents = 'none';
     document.body.appendChild(container);
 
-    // Wait for images to load
-    const images = container.getElementsByTagName('img');
-    let imagesLoaded = 0;
-    const totalImages = images.length;
-    if (totalImages === 0) {
-      generatePDF(container);
-    } else {
-      for (let img of images) {
-        img.onload = () => {
-          imagesLoaded++;
-          if (imagesLoaded === totalImages) {
-            generatePDF(container);
-          }
-        };
-        img.onerror = () => {
-          imagesLoaded++;
-          if (imagesLoaded === totalImages) {
-            generatePDF(container);
-          }
-        };
-      }
-    }
-
-    function generatePDF(el) {
+    // Generate PDF after a small delay to ensure rendering
+    setTimeout(() => {
       const opt = {
         margin:       0.5,
         filename:     `Tender-${form.referenceNumber || 'document'}.pdf`,
         image:        { type: 'jpeg', quality: 0.98 },
-        html2canvas:  { scale: 2, useCORS: true, logging: false },
+        html2canvas:  { 
+          scale: 2, 
+          useCORS: true, 
+          logging: true,
+          windowWidth: 1000,
+          windowHeight: container.scrollHeight + 100,
+        },
         jsPDF:        { unit: 'in', format: 'a4', orientation: 'portrait' }
       };
-      html2pdf().set(opt).from(el).save().then(() => {
-        document.body.removeChild(el);
-      }).catch((err) => {
-        console.error('PDF generation error:', err);
-        document.body.removeChild(el);
-        alert('Failed to generate PDF. Please try again.');
-      });
-    }
+
+      html2pdf().set(opt).from(container).save()
+        .then(() => {
+          document.body.removeChild(container);
+          setPdfGenerating(false);
+        })
+        .catch((err) => {
+          console.error('PDF generation error:', err);
+          document.body.removeChild(container);
+          setPdfGenerating(false);
+          alert('Failed to generate PDF. Please try again.');
+        });
+    }, 300);
   };
 
   const { subtotal, grandTotal } = calculateGrandTotal();
@@ -640,6 +639,13 @@ const TenderForm = () => {
 
   return (
     <Paper sx={{ p: 3, maxWidth: 1400, mx: 'auto' }}>
+      <Backdrop open={pdfGenerating} sx={{ zIndex: 9999, color: '#fff' }}>
+        <Box sx={{ textAlign: 'center' }}>
+          <CircularProgress color="inherit" />
+          <Typography variant="h6" sx={{ mt: 2 }}>Generating PDF...</Typography>
+        </Box>
+      </Backdrop>
+
       <BackButton />
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
         <Typography variant="h5" sx={{ fontWeight: 'bold' }}>
@@ -660,8 +666,9 @@ const TenderForm = () => {
             startIcon={<PictureAsPdfIcon />}
             onClick={handleDownloadPDF}
             sx={{ mr: 1 }}
+            disabled={pdfGenerating}
           >
-            Download PDF
+            {pdfGenerating ? 'Generating...' : 'Download PDF'}
           </Button>
 
           {id && canDelete && !isReadOnly && (
