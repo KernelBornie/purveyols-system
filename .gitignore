@@ -6,3 +6,5 @@ node_modules/
 "frontend/node_modules/.vite/" 
 "backend/node_modules/.package-lock.json" 
 "frontend/node_modules/.vite/" 
+"git" 
+"package-lock.json" 
