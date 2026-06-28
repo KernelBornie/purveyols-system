@@ -19,8 +19,6 @@ import DescriptionIcon from '@mui/icons-material/Description';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import CameraAltIcon from '@mui/icons-material/CameraAlt';
 import ZoomInIcon from '@mui/icons-material/ZoomIn';
-import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
-import ImageIcon from '@mui/icons-material/Image';
 import api from '../../api/axios';
 import { useAuth } from '../../context/AuthContext';
 import BackButton from '../../components/BackButton';
@@ -47,8 +45,8 @@ const TenderForm = () => {
   const [message, setMessage] = useState(null);
   const [imagePreview, setImagePreview] = useState('');
   const [photoPreviewOpen, setPhotoPreviewOpen] = useState(false);
-  const [docExpanded, setDocExpanded] = useState(true); // expand document viewer by default
-  
+  const [docExpanded, setDocExpanded] = useState(true);
+
   // ─── Form state with all fields ─────────────────────────────
   const [form, setForm] = useState({
     title: '',
@@ -116,12 +114,11 @@ const TenderForm = () => {
     verifiedBy: null,
     verifiedAt: null,
   });
-  
+
   const [creator, setCreator] = useState(null);
   const [createdAt, setCreatedAt] = useState(null);
   const [convertedToProject, setConvertedToProject] = useState(null);
 
-  // ─── Determine mode from URL ──────────────────────────────────
   const isViewMode = location.pathname.includes('/view');
   const isEditMode = location.pathname.includes('/edit') || (!isViewMode && id);
 
@@ -708,7 +705,10 @@ const TenderForm = () => {
                   }
                   const isImage = mimeType.startsWith('image/');
                   const isPdf = mimeType === 'application/pdf';
-                  const isUnsupported = !isImage && !isPdf;
+
+                  // ─── Build full URL using the backend base URL ────
+                  const baseURL = api.defaults.baseURL || '';
+                  const fullUrl = `${baseURL}${doc.path}`;
 
                   return (
                     <Box key={idx} sx={{ mb: 2 }}>
@@ -718,7 +718,7 @@ const TenderForm = () => {
                       {isImage ? (
                         <Box sx={{ textAlign: 'center', bgcolor: '#fff', p: 1, border: '1px solid #ddd' }}>
                           <img
-                            src={doc.path}
+                            src={fullUrl}
                             alt={doc.name}
                             style={{ maxWidth: '100%', maxHeight: '70vh', objectFit: 'contain' }}
                             onError={() => alert('Failed to load image. Please check the file path.')}
@@ -727,7 +727,7 @@ const TenderForm = () => {
                       ) : isPdf ? (
                         <Box sx={{ bgcolor: '#fff', p: 1, border: '1px solid #ddd' }}>
                           <iframe
-                            src={doc.path}
+                            src={fullUrl}
                             style={{ width: '100%', height: '80vh', minHeight: '500px' }}
                             title={doc.name}
                           />
@@ -739,7 +739,7 @@ const TenderForm = () => {
                           </Typography>
                           <Button
                             component="a"
-                            href={doc.path}
+                            href={fullUrl}
                             target="_blank"
                             variant="contained"
                             sx={{ mt: 2 }}
