@@ -3,6 +3,7 @@ const router = express.Router();
 const User = require('../models/User');
 const auth = require('../middleware/auth');
 
+// ─── Get all users (admin only) ──────────────────────────────
 router.get('/', auth, async (req, res) => {
   try {
     const users = await User.find({}, 'name email role phone nrc mobileMoneyNumber lastLogin createdAt');
@@ -12,6 +13,7 @@ router.get('/', auth, async (req, res) => {
   }
 });
 
+// ─── Get current user's settings ─────────────────────────────
 router.get('/settings', auth, async (req, res) => {
   try {
     const user = await User.findById(req.user.id);
@@ -21,6 +23,7 @@ router.get('/settings', auth, async (req, res) => {
   }
 });
 
+// ─── Update settings ─────────────────────────────────────────
 router.put('/settings', auth, async (req, res) => {
   try {
     const { emailNotifications, pushNotifications, darkMode } = req.body;
@@ -39,6 +42,7 @@ router.put('/settings', auth, async (req, res) => {
   }
 });
 
+// ─── Get current user ─────────────────────────────────────────
 router.get('/me', auth, async (req, res) => {
   try {
     const user = await User.findById(req.user.id).select('-password');
@@ -48,6 +52,7 @@ router.get('/me', auth, async (req, res) => {
   }
 });
 
+// ─── Update profile ──────────────────────────────────────────
 router.put('/profile', auth, async (req, res) => {
   try {
     const { name, email, phone, nrc, mobileMoneyNumber } = req.body;
@@ -72,6 +77,7 @@ router.put('/profile', auth, async (req, res) => {
   }
 });
 
+// ─── Change password ──────────────────────────────────────────
 router.post('/change-password', auth, async (req, res) => {
   try {
     const { currentPassword, newPassword } = req.body;
