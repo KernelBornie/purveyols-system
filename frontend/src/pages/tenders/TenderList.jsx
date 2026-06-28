@@ -4,7 +4,7 @@ import {
   Paper, Typography, Box, Table, TableHead, TableRow, TableCell, TableBody,
   Button, Chip, CircularProgress, Alert, IconButton, Tooltip, Avatar,
   Dialog, DialogTitle, DialogContent, DialogActions,
-  TextField, MenuItem
+  TextField, MenuItem, FormControl, InputLabel, Select, OutlinedInput
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
@@ -40,11 +40,9 @@ const TenderList = () => {
   const [error, setError] = useState(null);
   const { user } = useAuth();
 
-  // ─── Debug: log user role ──────────────────────────────────────
   useEffect(() => {
     if (user) {
       console.log('👤 Current user role:', user.role);
-      console.log('📋 EDITABLE_ROLES includes?', EDITABLE_ROLES.includes(user.role));
     } else {
       console.warn('⚠️ No user found in AuthContext');
     }
@@ -53,15 +51,15 @@ const TenderList = () => {
   const canEdit = user && EDITABLE_ROLES.includes(user.role);
   const canDelete = user && DELETABLE_ROLES.includes(user.role);
 
-  // ─── Photo preview state ──────────────────────────────────────
+  // ─── Photo preview ──────────────────────────────────────────────
   const [photoPreviewOpen, setPhotoPreviewOpen] = useState(false);
   const [previewImage, setPreviewImage] = useState('');
 
-  // ─── Assign Dialog state ──────────────────────────────────────
+  // ─── Assign Dialog (multi-select) ──────────────────────────────
   const [assignDialogOpen, setAssignDialogOpen] = useState(false);
   const [assigningTenderId, setAssigningTenderId] = useState(null);
   const [users, setUsers] = useState([]);
-  const [selectedUserId, setSelectedUserId] = useState('');
+  const [selectedUserIds, setSelectedUserIds] = useState([]);
   const [usersLoading, setUsersLoading] = useState(false);
 
   useEffect(() => {
@@ -128,18 +126,18 @@ const TenderList = () => {
 
   const handleAssignOpen = async (tenderId) => {
     setAssigningTenderId(tenderId);
-    setSelectedUserId('');
+    setSelectedUserIds([]);
     await fetchUsers();
     setAssignDialogOpen(true);
   };
 
   const handleAssignSubmit = async () => {
-    if (!selectedUserId) {
-      alert('Please select a user to assign.');
+    if (!selectedUserIds || selectedUserIds.length === 0) {
+      alert('Please select at least one user to assign.');
       return;
     }
     try {
-      await api.put(`/api/tenders/${assigningTenderId}/assign`, { assigneeId: selectedUserId });
+      await api.put(`/api/tenders/${assigningTenderId}/assign`, { assigneeIds: selectedUserIds });
       alert('Tender assigned successfully!');
       setAssignDialogOpen(false);
       fetchTenders();
@@ -149,7 +147,7 @@ const TenderList = () => {
   };
 
   const handleVerify = async (id) => {
-    if (!window.confirm('Verify this awarded tender?')) return;
+    if (!window.confirm('Verify this approved tender?')) return;
     try {
       await api.put(`/api/tenders/${id}/verify`);
       fetchTenders();
@@ -180,8 +178,8 @@ const TenderList = () => {
       case 'submitted': return 'warning';
       case 'under_review': return 'info';
       case 'approved': return 'success';
+      case 'verified': return 'info';
       case 'awarded': return 'success';
-      case 'verified': return 'success';
       case 'rejected': return 'error';
       case 'not_awarded': return 'default';
       default: return 'default';
@@ -236,7 +234,7 @@ const TenderList = () => {
             <TableCell>Items</TableCell>
             <TableCell>Grand Total</TableCell>
             <TableCell>Status</TableCell>
-            <TableCell>Assigned To</TableCell>
+            <TableCell>Assigned Staff</TableCell>
             <TableCell>Project</TableCell>
             <TableCell>Created By</TableCell>
             <TableCell>Actions</TableCell>
@@ -245,14 +243,17 @@ const TenderList = () => {
         <TableBody>
           {tenders.map((t) => {
             const isCreator = user && t.createdBy && t.createdBy._id === user.id;
-            const canEditThis = (canEdit || isCreator) && t.status !== 'submitted' && t.status !== 'awarded' && t.status !== 'verified';
+            const canEditThis = (canEdit || isCreator) && t.status !== 'submitted' && t.status !== 'verified' && t.status !== 'awarded';
 
-            // ─── Role checks for actions ────────────────────────────
             const canApprove = t.status === 'submitted' && user && APPROVE_ROLES.includes(user.role);
-            const canAssign = (t.status === 'approved' || t.status === 'awarded') && user && ASSIGN_ROLES.includes(user.role);
+            const canAssign = (t.status === 'approved' || t.status === 'verified') && user && ASSIGN_ROLES.includes(user.role);
             const canVerify = t.status === 'approved' && user && VERIFY_ROLES.includes(user.role);
             const canAward = t.status === 'verified' && user && AWARD_ROLES.includes(user.role);
-            const canCreateProject = (t.status === 'awarded' || t.status === 'verified') && !t.convertedToProject && user && CREATE_PROJECT_ROLES.includes(user.role);
+            const canCreateProject = t.status === 'awarded' && !t.convertedToProject && user && CREATE_PROJECT_ROLES.includes(user.role);
+
+            const assignedNames = t.assignedStaff && t.assignedStaff.length > 0
+              ? t.assignedStaff.map(s => s.name).join(', ')
+              : '—';
 
             return (
               <TableRow key={t._id}>
@@ -279,7 +280,7 @@ const TenderList = () => {
                 <TableCell>
                   <Chip label={t.status} size="small" color={getStatusColor(t.status)} />
                 </TableCell>
-                <TableCell>{t.assignedTo ? t.assignedTo.name : '—'}</TableCell>
+                <TableCell>{assignedNames}</TableCell>
                 <TableCell>
                   {t.convertedToProject ? (
                     <Button
@@ -295,7 +296,6 @@ const TenderList = () => {
                 </TableCell>
                 <TableCell>{t.createdBy?.name}</TableCell>
                 <TableCell>
-                  {/* ─── View (always) ─────────────────────────────── */}
                   <Button
                     component={Link}
                     to={`/tenders/${t._id}/view`}
@@ -306,7 +306,6 @@ const TenderList = () => {
                     View
                   </Button>
 
-                  {/* ─── Edit (draft only) ─────────────────────────── */}
                   {canEditThis && (
                     <Button
                       component={Link}
@@ -320,7 +319,6 @@ const TenderList = () => {
                     </Button>
                   )}
 
-                  {/* ─── Delete ────────────────────────────────────── */}
                   {canDelete && t.status !== 'awarded' && t.status !== 'verified' && (
                     <Button
                       size="small"
@@ -333,7 +331,6 @@ const TenderList = () => {
                     </Button>
                   )}
 
-                  {/* ─── Approve ───────────────────────────────────── */}
                   {canApprove && (
                     <Button
                       size="small"
@@ -346,7 +343,6 @@ const TenderList = () => {
                     </Button>
                   )}
 
-                  {/* ─── Assign ────────────────────────────────────── */}
                   {canAssign && (
                     <Button
                       size="small"
@@ -359,7 +355,6 @@ const TenderList = () => {
                     </Button>
                   )}
 
-                  {/* ─── Verify ────────────────────────────────────── */}
                   {canVerify && !t.verifiedBy && (
                     <Button
                       size="small"
@@ -372,7 +367,6 @@ const TenderList = () => {
                     </Button>
                   )}
 
-                  {/* ─── Award ─────────────────────────────────────── */}
                   {canAward && (
                     <Button
                       size="small"
@@ -385,7 +379,6 @@ const TenderList = () => {
                     </Button>
                   )}
 
-                  {/* ─── Create Project ────────────────────────────── */}
                   {canCreateProject && (
                     <Button
                       size="small"
@@ -437,38 +430,44 @@ const TenderList = () => {
         </DialogActions>
       </Dialog>
 
-      {/* ─── Assign Dialog ───────────────────────────────────────── */}
+      {/* ─── Assign Dialog (multi-select) ───────────────────────── */}
       <Dialog open={assignDialogOpen} onClose={() => setAssignDialogOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Assign Tender</DialogTitle>
+        <DialogTitle>Assign Staff</DialogTitle>
         <DialogContent>
           <Typography variant="body2" sx={{ mt: 1, mb: 2 }}>
-            Select a user to assign this tender to.
+            Select one or more users to assign to this tender.
           </Typography>
           {usersLoading ? (
             <CircularProgress size={24} />
           ) : (
-            <TextField
-              select
-              fullWidth
-              label="Select User"
-              value={selectedUserId}
-              onChange={(e) => setSelectedUserId(e.target.value)}
-              margin="dense"
-            >
-              <MenuItem value="">
-                <em>None</em>
-              </MenuItem>
-              {users.map((u) => (
-                <MenuItem key={u._id} value={u._id}>
-                  {u.name} ({u.role})
-                </MenuItem>
-              ))}
-            </TextField>
+            <FormControl fullWidth>
+              <InputLabel id="assign-users-label">Select Users</InputLabel>
+              <Select
+                labelId="assign-users-label"
+                multiple
+                value={selectedUserIds}
+                onChange={(e) => setSelectedUserIds(e.target.value)}
+                input={<OutlinedInput label="Select Users" />}
+                renderValue={(selected) => {
+                  const names = selected.map(id => {
+                    const user = users.find(u => u._id === id);
+                    return user ? user.name : id;
+                  });
+                  return names.join(', ');
+                }}
+              >
+                {users.map((u) => (
+                  <MenuItem key={u._id} value={u._id}>
+                    {u.name} ({u.role})
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
           )}
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setAssignDialogOpen(false)}>Cancel</Button>
-          <Button variant="contained" onClick={handleAssignSubmit} disabled={!selectedUserId || usersLoading}>
+          <Button variant="contained" onClick={handleAssignSubmit} disabled={!selectedUserIds.length || usersLoading}>
             Assign
           </Button>
         </DialogActions>

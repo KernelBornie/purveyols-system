@@ -133,10 +133,11 @@ const TenderSchema = new mongoose.Schema({
   submittedAt: { type: Date },
   updatedAt: { type: Date, default: Date.now },
 
+  // ─── Actor fields ──────────────────────────────────────────
   approvedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   approvedAt: Date,
 
-  assignedStaff: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],   // ← multiple users
+  assignedStaff: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],   // ← array
   assignedAt: Date,
 
   verifiedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
