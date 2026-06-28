@@ -9,6 +9,7 @@ const path = require('path');
 
 console.log('✅ Tenders router loaded');
 
+// ─── Multer config ──────────────────────────────────────────────────
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, 'uploads/tenders/'),
   filename: (req, file, cb) => {
@@ -23,6 +24,7 @@ const upload = multer({
   limits: { fileSize: 100 * 1024 * 1024 }   // 100MB
 });
 
+// ─── Upload hard copy ──────────────────────────────────────────────
 router.post('/upload-hardcopy', auth, upload.single('file'), async (req, res) => {
   try {
     if (!req.file) {
@@ -55,10 +57,12 @@ router.post('/upload-hardcopy', auth, upload.single('file'), async (req, res) =>
   }
 });
 
+// ─── Test route ──────────────────────────────────────────────────
 router.get('/test', (req, res) => {
   res.json({ message: 'Tenders router is working' });
 });
 
+// ─── GET all ──────────────────────────────────────────────────────
 router.get('/', auth, async (req, res) => {
   try {
     const tenders = await Tender.find()
@@ -75,6 +79,7 @@ router.get('/', auth, async (req, res) => {
   }
 });
 
+// ─── GET single ──────────────────────────────────────────────────
 router.get('/:id', auth, async (req, res) => {
   try {
     const tender = await Tender.findById(req.params.id)
@@ -91,6 +96,7 @@ router.get('/:id', auth, async (req, res) => {
   }
 });
 
+// ─── CREATE ──────────────────────────────────────────────────────
 router.post('/', auth, authorize('admin', 'director', 'procurement-officer', 'civil-engineer', 'quantity-surveyor'), async (req, res) => {
   try {
     const tender = new Tender({
@@ -111,7 +117,9 @@ router.post('/', auth, authorize('admin', 'director', 'procurement-officer', 'ci
   }
 });
 
-router.put('/:id', auth, authorize('admin', 'director', 'procurement-officer', 'civil-engineer', 'quantity-surveyor'), async (req, res) => {
+// ─── UPDATE (Edit) ──────────────────────────────────────────────
+// Allowed: admin, director, accountant, engineer, quantity-surveyor
+router.put('/:id', auth, authorize('admin', 'director', 'accountant', 'engineer', 'quantity-surveyor'), async (req, res) => {
   try {
     const tender = await Tender.findById(req.params.id);
     if (!tender) return res.status(404).json({ error: 'Tender not found' });
@@ -135,10 +143,16 @@ router.put('/:id', auth, authorize('admin', 'director', 'procurement-officer', '
   }
 });
 
-router.put('/:id/submit', auth, authorize('admin', 'director', 'procurement-officer', 'civil-engineer', 'quantity-surveyor'), async (req, res) => {
+// ─── SUBMIT ──────────────────────────────────────────────────────
+// Any authenticated user can submit their own tender (no role restriction)
+router.put('/:id/submit', auth, async (req, res) => {
   try {
     const tender = await Tender.findById(req.params.id);
     if (!tender) return res.status(404).json({ error: 'Tender not found' });
+    if (tender.createdBy.toString() !== req.user.id && 
+        !['admin', 'director', 'accountant'].includes(req.user.role)) {
+      return res.status(403).json({ error: 'You are not allowed to submit this tender' });
+    }
     if (tender.status === 'submitted' || tender.status === 'awarded' || tender.status === 'verified') {
       return res.status(400).json({ error: 'Tender already submitted or further' });
     }
@@ -159,7 +173,9 @@ router.put('/:id/submit', auth, authorize('admin', 'director', 'procurement-offi
   }
 });
 
-router.put('/:id/approve', auth, authorize('admin', 'director', 'procurement-officer', 'engineer', 'accountant'), async (req, res) => {
+// ─── APPROVE ─────────────────────────────────────────────────────
+// Allowed: admin, director, accountant
+router.put('/:id/approve', auth, authorize('admin', 'director', 'accountant'), async (req, res) => {
   try {
     const tender = await Tender.findById(req.params.id);
     if (!tender) return res.status(404).json({ error: 'Tender not found' });
@@ -183,7 +199,8 @@ router.put('/:id/approve', auth, authorize('admin', 'director', 'procurement-off
   }
 });
 
-router.put('/:id/assign', auth, authorize('admin', 'director', 'project-manager', 'engineer', 'accountant'), async (req, res) => {
+// ─── ASSIGN (replace entire list) ──────────────────────────────
+router.put('/:id/assign', auth, authorize('admin', 'director', 'accountant', 'engineer', 'quantity-surveyor'), async (req, res) => {
   try {
     const { assigneeIds } = req.body;
     if (!assigneeIds || !Array.isArray(assigneeIds) || assigneeIds.length === 0) {
@@ -210,6 +227,68 @@ router.put('/:id/assign', auth, authorize('admin', 'director', 'project-manager'
   }
 });
 
+// ─── ASSIGN ADD (add a single user) ─────────────────────────────
+router.post('/:id/assign/add', auth, authorize('admin', 'director', 'accountant', 'engineer', 'quantity-surveyor'), async (req, res) => {
+  try {
+    const { userId } = req.body;
+    if (!userId) {
+      return res.status(400).json({ error: 'userId is required' });
+    }
+    const tender = await Tender.findById(req.params.id);
+    if (!tender) return res.status(404).json({ error: 'Tender not found' });
+    if (tender.status !== 'approved' && tender.status !== 'verified') {
+      return res.status(400).json({ error: 'Tender must be approved or verified to assign' });
+    }
+    if (tender.assignedStaff.includes(userId)) {
+      return res.status(400).json({ error: 'User already assigned to this tender' });
+    }
+    tender.assignedStaff.push(userId);
+    tender.assignedAt = new Date();
+    await tender.save();
+    const populated = await Tender.findById(tender._id)
+      .populate('createdBy', 'name role')
+      .populate('submittedBy', 'name role')
+      .populate('approvedBy', 'name role')
+      .populate('assignedStaff', 'name role')
+      .populate('verifiedBy', 'name role')
+      .populate('convertedToProject', 'name');
+    res.json(populated);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// ─── ASSIGN REMOVE (remove a single user) ──────────────────────
+router.post('/:id/assign/remove', auth, authorize('admin', 'director', 'accountant', 'engineer', 'quantity-surveyor'), async (req, res) => {
+  try {
+    const { userId } = req.body;
+    if (!userId) {
+      return res.status(400).json({ error: 'userId is required' });
+    }
+    const tender = await Tender.findById(req.params.id);
+    if (!tender) return res.status(404).json({ error: 'Tender not found' });
+    if (tender.status !== 'approved' && tender.status !== 'verified') {
+      return res.status(400).json({ error: 'Tender must be approved or verified to remove assignment' });
+    }
+    if (!tender.assignedStaff.includes(userId)) {
+      return res.status(400).json({ error: 'User not assigned to this tender' });
+    }
+    tender.assignedStaff = tender.assignedStaff.filter(id => id.toString() !== userId);
+    await tender.save();
+    const populated = await Tender.findById(tender._id)
+      .populate('createdBy', 'name role')
+      .populate('submittedBy', 'name role')
+      .populate('approvedBy', 'name role')
+      .populate('assignedStaff', 'name role')
+      .populate('verifiedBy', 'name role')
+      .populate('convertedToProject', 'name');
+    res.json(populated);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// ─── VERIFY ──────────────────────────────────────────────────────
 router.put('/:id/verify', auth, authorize('admin', 'director', 'accountant'), async (req, res) => {
   try {
     const tender = await Tender.findById(req.params.id);
@@ -234,19 +313,46 @@ router.put('/:id/verify', auth, authorize('admin', 'director', 'accountant'), as
   }
 });
 
-router.put('/:id/award', auth, authorize('admin', 'director'), async (req, res) => {
+// ─── AWARD ──────────────────────────────────────────────────────
+// Allowed: only director
+// Automatically creates a project on award
+router.put('/:id/award', auth, authorize('director'), async (req, res) => {
   try {
     const { awardAmount, awardee } = req.body;
-    const tender = await Tender.findById(req.params.id);
+    const tender = await Tender.findById(req.params.id).populate('createdBy', 'name role');
     if (!tender) return res.status(404).json({ error: 'Tender not found' });
     if (tender.status !== 'verified') {
       return res.status(400).json({ error: 'Tender must be verified to award' });
     }
+    if (tender.convertedToProject) {
+      return res.status(400).json({ error: 'Project already created from this tender' });
+    }
+
     tender.status = 'awarded';
     tender.awardAmount = awardAmount || tender.priceProposal.grandTotal;
     tender.awardee = awardee || tender.client;
     tender.awardDate = new Date();
+
+    // ─── Auto‑create project ──────────────────────────────────────
+    const project = new Project({
+      name: tender.title,
+      location: tender.location,
+      budget: tender.priceProposal?.grandTotal || 0,
+      status: 'planning',
+      description: tender.description,
+      image: tender.image,
+      createdBy: tender.createdBy?._id || req.user.id,
+      manager: req.user.id,
+      isFromTender: true,
+      tenderSource: tender._id,
+      sourceUrl: tender.sourceUrl || '',
+      bidAmount: tender.priceProposal?.grandTotal,
+    });
+    await project.save();
+
+    tender.convertedToProject = project._id;
     await tender.save();
+
     const populated = await Tender.findById(tender._id)
       .populate('createdBy', 'name role')
       .populate('submittedBy', 'name role')
@@ -254,12 +360,19 @@ router.put('/:id/award', auth, authorize('admin', 'director'), async (req, res) 
       .populate('assignedStaff', 'name role')
       .populate('verifiedBy', 'name role')
       .populate('convertedToProject', 'name');
-    res.json(populated);
+
+    res.json({
+      message: 'Tender awarded and project created automatically!',
+      tender: populated,
+      project
+    });
   } catch (err) {
-    res.status(400).json({ error: err.message });
+    console.error('Award error:', err);
+    res.status(500).json({ error: err.message || 'Server error' });
   }
 });
 
+// ─── REJECT ──────────────────────────────────────────────────────
 router.put('/:id/reject', auth, authorize('admin', 'director'), async (req, res) => {
   try {
     const { reason } = req.body;
@@ -281,6 +394,7 @@ router.put('/:id/reject', auth, authorize('admin', 'director'), async (req, res)
   }
 });
 
+// ─── DELETE ──────────────────────────────────────────────────────
 router.delete('/:id', auth, authorize('admin', 'director'), async (req, res) => {
   try {
     const deleted = await Tender.findByIdAndDelete(req.params.id);
@@ -291,12 +405,11 @@ router.delete('/:id', auth, authorize('admin', 'director'), async (req, res) => 
   }
 });
 
-router.post('/:id/convert-to-project', auth, authorize('admin', 'director', 'procurement-officer', 'civil-engineer', 'quantity-surveyor'), async (req, res) => {
+// ─── MANUAL CONVERT TO PROJECT ────────────────────────────────
+router.post('/:id/convert-to-project', auth, authorize('admin', 'director', 'accountant', 'engineer', 'quantity-surveyor'), async (req, res) => {
   try {
     const tender = await Tender.findById(req.params.id).populate('createdBy', 'name role');
-    if (!tender) {
-      return res.status(404).json({ error: 'Tender not found' });
-    }
+    if (!tender) return res.status(404).json({ error: 'Tender not found' });
     if (tender.status !== 'awarded') {
       return res.status(400).json({ error: 'Tender must be awarded to convert' });
     }

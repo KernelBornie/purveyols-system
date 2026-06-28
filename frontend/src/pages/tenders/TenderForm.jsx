@@ -27,16 +27,9 @@ import BackButton from '../../components/BackButton';
 import getApiErrorMessage from '../../utils/getApiErrorMessage';
 import html2pdf from 'html2pdf.js';
 
-// ─── Expanded roles that can edit ───────────────────────────────
-const EDITABLE_ROLES = [
-  'admin', 'director', 'procurement-officer', 'accountant',
-  'civil-engineer', 'quantity-surveyor', 'foreman', 'safety-officer',
-  'engineer', 'manager', 'supervisor', 'planner', 'estimator',
-  'surveyor', 'architect', 'project-manager', 'site-engineer',
-  'construction-manager', 'quality-control', 'store-keeper'
-];
-
-const DELETABLE_ROLES = ['admin', 'director', 'accountant'];
+// ─── Role constants (narrowed) ────────────────────────────────────
+const EDITABLE_ROLES = ['admin', 'director', 'accountant', 'engineer', 'quantity-surveyor'];
+const DELETABLE_ROLES = ['admin', 'director'];
 
 const TenderForm = () => {
   const { id } = useParams();
@@ -49,9 +42,9 @@ const TenderForm = () => {
   const [imagePreview, setImagePreview] = useState('');
   const [photoPreviewOpen, setPhotoPreviewOpen] = useState(false);
   const [docExpanded, setDocExpanded] = useState(true);
-  const [pdfGenerating, setPdfGenerating] = useState(false); // loading indicator
+  const [pdfGenerating, setPdfGenerating] = useState(false);
 
-  // ─── Form state with all fields ─────────────────────────────
+  // ─── Form state ──────────────────────────────────────────────────
   const [form, setForm] = useState({
     title: '',
     referenceNumber: '',

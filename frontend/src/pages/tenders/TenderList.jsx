@@ -7,7 +7,6 @@ import {
   TextField, MenuItem, FormControl, InputLabel, Select, OutlinedInput
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
-import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import ZoomInIcon from '@mui/icons-material/ZoomIn';
 import LaunchIcon from '@mui/icons-material/Launch';
@@ -17,23 +16,15 @@ import { useAuth } from '../../context/AuthContext';
 import BackButton from '../../components/BackButton';
 import getApiErrorMessage from '../../utils/getApiErrorMessage';
 
-// ─── Expanded roles that can edit/delete ─────────────────────────
-const EDITABLE_ROLES = [
-  'admin', 'director', 'procurement-officer', 'accountant',
-  'civil-engineer', 'quantity-surveyor', 'foreman', 'safety-officer',
-  'engineer', 'manager', 'supervisor', 'planner', 'estimator',
-  'surveyor', 'architect', 'project-manager', 'site-engineer',
-  'construction-manager', 'quality-control', 'store-keeper'
-];
+// ─── Updated role constants ──────────────────────────────────────
+const EDITABLE_ROLES = ['admin', 'director', 'accountant', 'engineer', 'quantity-surveyor'];
+const DELETABLE_ROLES = ['admin', 'director'];
 
-const DELETABLE_ROLES = ['admin', 'director', 'accountant'];
-
-// ─── Roles that can perform each action ──────────────────────────
-const APPROVE_ROLES = ['procurement-officer', 'director', 'admin', 'engineer', 'accountant'];
-const ASSIGN_ROLES = ['admin', 'director', 'project-manager', 'engineer', 'accountant'];
-const VERIFY_ROLES = ['accountant', 'admin', 'director'];
-const AWARD_ROLES = ['admin', 'director'];
-const CREATE_PROJECT_ROLES = ['admin', 'director', 'procurement-officer', 'civil-engineer', 'quantity-surveyor'];
+const APPROVE_ROLES = ['admin', 'director', 'accountant'];
+const ASSIGN_ROLES = ['admin', 'director', 'accountant', 'engineer', 'quantity-surveyor'];
+const VERIFY_ROLES = ['admin', 'director', 'accountant'];
+const AWARD_ROLES = ['director'];
+const CREATE_PROJECT_ROLES = ['admin', 'director', 'accountant', 'engineer', 'quantity-surveyor'];
 
 const TenderList = () => {
   const navigate = useNavigate();
@@ -163,12 +154,12 @@ const TenderList = () => {
     const awardAmount = prompt('Enter award amount (or leave blank to use tender total):');
     const awardee = prompt('Enter awardee (or leave blank to use client name):');
     try {
-      await api.put(`/api/tenders/${id}/award`, {
+      const res = await api.put(`/api/tenders/${id}/award`, {
         awardAmount: awardAmount ? parseFloat(awardAmount) : undefined,
         awardee: awardee || undefined,
       });
+      alert(res.data.message || 'Tender awarded and project created!');
       fetchTenders();
-      alert('Tender awarded!');
     } catch (err) {
       alert(getApiErrorMessage(err));
     }
@@ -282,8 +273,11 @@ const TenderList = () => {
         <TableBody>
           {tenders.map((t) => {
             const isCreator = user && t.createdBy && t.createdBy._id === user.id;
+            // Can edit if draft and (creator OR allowed role) – but we restrict to only allowed roles.
+            // We'll allow editing if status is draft and user has EDITABLE_ROLES or is creator.
             const canEditThis = (canEdit || isCreator) && t.status !== 'submitted' && t.status !== 'verified' && t.status !== 'awarded';
 
+            // Action buttons visibility
             const canApprove = t.status === 'submitted' && user && APPROVE_ROLES.includes(user.role);
             const canAssign = (t.status === 'approved' || t.status === 'verified') && user && ASSIGN_ROLES.includes(user.role);
             const canVerify = t.status === 'approved' && user && VERIFY_ROLES.includes(user.role);
