@@ -693,6 +693,11 @@ const TenderForm = () => {
               </AccordionSummary>
               <AccordionDetails>
                 {form.documents.map((doc, idx) => {
+                  // ✅ Skip invalid documents
+                  if (!doc || !doc.path) {
+                    return null;
+                  }
+
                   // ─── Determine MIME type (fallback from extension) ──
                   let mimeType = doc.mimeType || '';
                   if (!mimeType && doc.name) {
@@ -703,10 +708,12 @@ const TenderForm = () => {
                       mimeType = 'application/pdf';
                     }
                   }
+                  // Ensure mimeType is a string
+                  mimeType = mimeType || '';
                   const isImage = mimeType.startsWith('image/');
                   const isPdf = mimeType === 'application/pdf';
 
-                  // ─── Build absolute URL using api baseURL or env ────
+                  // ─── Build absolute URL ─────────────────────────────
                   const getFileUrl = (path) => {
                     if (path.startsWith('http')) return path;
                     if (api.defaults.baseURL) {
@@ -715,7 +722,6 @@ const TenderForm = () => {
                     if (process.env.REACT_APP_API_URL) {
                       return `${process.env.REACT_APP_API_URL}${path}`;
                     }
-                    // fallback – same origin (should not happen in production)
                     return `${window.location.origin}${path}`;
                   };
                   const fullUrl = getFileUrl(doc.path);
@@ -723,13 +729,13 @@ const TenderForm = () => {
                   return (
                     <Box key={idx} sx={{ mb: 2 }}>
                       <Typography variant="body2" sx={{ mb: 1 }}>
-                        <strong>{doc.name}</strong> ({mimeType || 'Unknown type'})
+                        <strong>{doc.name || 'Untitled'}</strong> ({mimeType || 'Unknown type'})
                       </Typography>
                       {isImage ? (
                         <Box sx={{ textAlign: 'center', bgcolor: '#fff', p: 1, border: '1px solid #ddd' }}>
                           <img
                             src={fullUrl}
-                            alt={doc.name}
+                            alt={doc.name || 'Document'}
                             style={{ maxWidth: '100%', maxHeight: '70vh', objectFit: 'contain' }}
                             onError={() => alert('Failed to load image. Please check the file path.')}
                           />
@@ -739,7 +745,7 @@ const TenderForm = () => {
                           <iframe
                             src={fullUrl}
                             style={{ width: '100%', height: '80vh', minHeight: '500px' }}
-                            title={doc.name}
+                            title={doc.name || 'PDF Document'}
                           />
                         </Box>
                       ) : (
