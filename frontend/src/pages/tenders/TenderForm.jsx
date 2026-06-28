@@ -695,45 +695,62 @@ const TenderForm = () => {
                 </Typography>
               </AccordionSummary>
               <AccordionDetails>
-                {form.documents.map((doc, idx) => (
-                  <Box key={idx} sx={{ mb: 2 }}>
-                    <Typography variant="body2" sx={{ mb: 1 }}>
-                      <strong>{doc.name}</strong> ({doc.mimeType || 'Unknown type'})
-                    </Typography>
-                    {doc.mimeType && doc.mimeType.startsWith('image/') ? (
-                      <Box sx={{ textAlign: 'center', bgcolor: '#fff', p: 1, border: '1px solid #ddd' }}>
-                        <img
-                          src={doc.path}
-                          alt={doc.name}
-                          style={{ maxWidth: '100%', maxHeight: '70vh', objectFit: 'contain' }}
-                        />
-                      </Box>
-                    ) : doc.mimeType === 'application/pdf' ? (
-                      <Box sx={{ bgcolor: '#fff', p: 1, border: '1px solid #ddd' }}>
-                        <iframe
-                          src={doc.path}
-                          style={{ width: '100%', height: '80vh', minHeight: '500px' }}
-                          title={doc.name}
-                        />
-                      </Box>
-                    ) : (
-                      <Box sx={{ textAlign: 'center', p: 4, bgcolor: '#fff', border: '1px solid #ddd' }}>
-                        <Typography variant="body1" color="textSecondary">
-                          Preview not available for this file type.
-                        </Typography>
-                        <Button
-                          component="a"
-                          href={doc.path}
-                          target="_blank"
-                          variant="contained"
-                          sx={{ mt: 2 }}
-                        >
-                          Download / View
-                        </Button>
-                      </Box>
-                    )}
-                  </Box>
-                ))}
+                {form.documents.map((doc, idx) => {
+                  // ─── Determine MIME type (fallback from extension) ──
+                  let mimeType = doc.mimeType || '';
+                  if (!mimeType && doc.name) {
+                    const ext = doc.name.split('.').pop().toLowerCase();
+                    if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext)) {
+                      mimeType = `image/${ext === 'jpg' ? 'jpeg' : ext}`;
+                    } else if (ext === 'pdf') {
+                      mimeType = 'application/pdf';
+                    }
+                  }
+                  const isImage = mimeType.startsWith('image/');
+                  const isPdf = mimeType === 'application/pdf';
+                  const isUnsupported = !isImage && !isPdf;
+
+                  return (
+                    <Box key={idx} sx={{ mb: 2 }}>
+                      <Typography variant="body2" sx={{ mb: 1 }}>
+                        <strong>{doc.name}</strong> ({mimeType || 'Unknown type'})
+                      </Typography>
+                      {isImage ? (
+                        <Box sx={{ textAlign: 'center', bgcolor: '#fff', p: 1, border: '1px solid #ddd' }}>
+                          <img
+                            src={doc.path}
+                            alt={doc.name}
+                            style={{ maxWidth: '100%', maxHeight: '70vh', objectFit: 'contain' }}
+                            onError={() => alert('Failed to load image. Please check the file path.')}
+                          />
+                        </Box>
+                      ) : isPdf ? (
+                        <Box sx={{ bgcolor: '#fff', p: 1, border: '1px solid #ddd' }}>
+                          <iframe
+                            src={doc.path}
+                            style={{ width: '100%', height: '80vh', minHeight: '500px' }}
+                            title={doc.name}
+                          />
+                        </Box>
+                      ) : (
+                        <Box sx={{ textAlign: 'center', p: 4, bgcolor: '#fff', border: '1px solid #ddd' }}>
+                          <Typography variant="body1" color="textSecondary">
+                            Preview not available for this file type.
+                          </Typography>
+                          <Button
+                            component="a"
+                            href={doc.path}
+                            target="_blank"
+                            variant="contained"
+                            sx={{ mt: 2 }}
+                          >
+                            Download / View
+                          </Button>
+                        </Box>
+                      )}
+                    </Box>
+                  );
+                })}
               </AccordionDetails>
             </Accordion>
           </Paper>
