@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import {
   Paper, Typography, Box, Table, TableHead, TableRow, TableCell, TableBody,
   Button, Chip, CircularProgress, Alert, IconButton, Tooltip, Avatar,
@@ -11,6 +11,7 @@ import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import ZoomInIcon from '@mui/icons-material/ZoomIn';
 import LaunchIcon from '@mui/icons-material/Launch';
+import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import api from '../../api/axios';
 import { useAuth } from '../../context/AuthContext';
 import BackButton from '../../components/BackButton';
@@ -35,6 +36,7 @@ const AWARD_ROLES = ['admin', 'director'];
 const CREATE_PROJECT_ROLES = ['admin', 'director', 'procurement-officer', 'civil-engineer', 'quantity-surveyor'];
 
 const TenderList = () => {
+  const navigate = useNavigate();
   const [tenders, setTenders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -172,6 +174,27 @@ const TenderList = () => {
     }
   };
 
+  // ─── Upload hard copy tender ──────────────────────────────────────
+  const handleUploadHardCopy = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('title', file.name.replace(/\.[^.]+$/, ''));
+    formData.append('referenceNumber', `HCT-${Date.now()}`);
+    try {
+      const res = await api.post('/api/tenders/upload-hardcopy', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      alert('Hard copy tender uploaded!');
+      navigate(`/tenders/${res.data.tender._id}/edit`);
+      fetchTenders();
+    } catch (err) {
+      alert(getApiErrorMessage(err, 'Upload failed'));
+    }
+    e.target.value = ''; // reset input
+  };
+
   const getStatusColor = (status) => {
     switch (status) {
       case 'draft': return 'default';
@@ -214,13 +237,29 @@ const TenderList = () => {
   return (
     <Paper sx={{ p: 2 }}>
       <BackButton />
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2, flexWrap: 'wrap', gap: 1 }}>
         <Typography variant="h5" sx={{ fontWeight: 'bold' }}>Tenders & RFQs</Typography>
-        {canEdit && (
-          <Button component={Link} to="/tenders/new" variant="contained" startIcon={<AddIcon />}>
-            New Tender / RFQ
+        <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+          {canEdit && (
+            <Button component={Link} to="/tenders/new" variant="contained" startIcon={<AddIcon />}>
+              New Tender / RFQ
+            </Button>
+          )}
+          <Button
+            variant="contained"
+            color="secondary"
+            component="label"
+            startIcon={<CloudUploadIcon />}
+          >
+            Upload Hard Copy
+            <input
+              type="file"
+              accept="image/*,application/pdf"
+              hidden
+              onChange={handleUploadHardCopy}
+            />
           </Button>
-        )}
+        </Box>
       </Box>
 
       <Table size="small">

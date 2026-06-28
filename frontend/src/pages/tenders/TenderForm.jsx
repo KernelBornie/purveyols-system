@@ -723,7 +723,30 @@ const TenderForm = () => {
           <Typography variant="caption" color="textSecondary">JPEG, PNG, GIF, WEBP</Typography>
         </Paper>
 
-        {/* ─── Basic Info ────────────────────────────────────────── */}
+        {/* ─── Uploaded Documents ───────────────────────────────────────── */}
+        {form.documents && form.documents.length > 0 && (
+          <Paper sx={{ p: 2, mb: 3 }}>
+            <Typography variant="h6" gutterBottom>Uploaded Documents</Typography>
+            {form.documents.map((doc, idx) => (
+              <Box key={idx} sx={{ mb: 2, border: '1px solid #e0e0e0', p: 1, borderRadius: 1 }}>
+                <Typography variant="body2">
+                  <strong>{doc.name}</strong> ({doc.mimeType})
+                </Typography>
+                {doc.mimeType && doc.mimeType.startsWith('image/') ? (
+                  <img src={doc.path} alt={doc.name} style={{ maxWidth: '100%', maxHeight: 200, objectFit: 'contain' }} />
+                ) : doc.mimeType === 'application/pdf' ? (
+                  <iframe src={doc.path} style={{ width: '100%', height: 400 }} title={doc.name} />
+                ) : (
+                  <Button component="a" href={doc.path} target="_blank" variant="outlined" size="small">
+                    View Document
+                  </Button>
+                )}
+              </Box>
+            ))}
+          </Paper>
+        )}
+
+        {/* ─── Basic Information ────────────────────────────────────────── */}
         <Paper sx={{ p: 2, mb: 3 }}>
           <Typography variant="h6" gutterBottom>Basic Information</Typography>
           <Grid container spacing={2}>

@@ -5,6 +5,8 @@ const morgan = require('morgan');
 const dotenv = require('dotenv');
 const http = require('http');
 const { Server } = require('socket.io');
+const multer = require('multer');
+const path = require('path');
 dotenv.config();
 
 const app = express();
@@ -29,12 +31,11 @@ const corsOptions = {
   credentials: true,
   optionsSuccessStatus: 200,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  // ─── FIX: allow 'cache-control' and other common headers ────
   allowedHeaders: [
     'Content-Type',
     'Authorization',
     'X-Requested-With',
-    'cache-control',     // ✅ added
+    'cache-control',
     'Accept',
     'Origin',
   ],
@@ -51,7 +52,30 @@ app.use((req, res, next) => {
 app.use(express.json({ limit: '50mb' }));
 app.use(morgan('dev'));
 
-// ─── Auto‑seed if database is empty ──────────────────────────
+// ─── File upload configuration ──────────────────────────────────────
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, 'uploads/tenders/');
+  },
+  filename: (req, file, cb) => {
+    const unique = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    const ext = path.extname(file.originalname);
+    cb(null, `tender-${unique}${ext}`);
+  }
+});
+
+const fileFilter = (req, file, cb) => {
+  const allowed = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf'];
+  if (allowed.includes(file.mimetype)) cb(null, true);
+  else cb(new Error('Only images and PDFs are allowed'), false);
+};
+
+const upload = multer({ storage, fileFilter, limits: { fileSize: 10 * 1024 * 1024 } }); // 10MB
+
+// ─── Serve uploaded files statically ───────────────────────────────
+app.use('/uploads', express.static('uploads'));
+
+// ─── Auto‑seed if database is empty ────────────────────────────────
 const User = require('./models/User');
 const { exec } = require('child_process');
 
@@ -77,7 +101,7 @@ const seedIfEmpty = async () => {
   }
 };
 
-// ─── Routes ──────────────────────────────────────────────────────
+// ─── Routes ──────────────────────────────────────────────────────────
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/chat-history', require('./routes/chatHistory'));
 app.use('/api/ai', require('./routes/ai'));
