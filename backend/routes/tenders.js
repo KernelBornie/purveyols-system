@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const Tender = require('../models/Tender');
-const Project = require('../models/Project'); // ← NEW for conversion
+const Project = require('../models/Project');
 const auth = require('../middleware/auth');
 const authorize = require('../middleware/rbac');
 
@@ -142,7 +142,7 @@ router.delete('/:id', auth, authorize('admin', 'director'), async (req, res) => 
   }
 });
 
-// ─── NEW: CONVERT AWARDED TENDER TO PROJECT ────────────────────────
+// ─── CONVERT AWARDED TENDER TO PROJECT ─────────────────────────────
 router.post('/:id/convert-to-project', auth, authorize('admin', 'director', 'procurement-officer', 'civil-engineer', 'quantity-surveyor'), async (req, res) => {
   try {
     const tender = await Tender.findById(req.params.id).populate('createdBy', 'name role');

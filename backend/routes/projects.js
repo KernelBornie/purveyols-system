@@ -10,7 +10,6 @@ const auth = require('../middleware/auth');
 const authorize = require('../middleware/rbac');
 const { createNotification, getSenderName } = require('../utils/notificationHelper');
 
-// ─── Try to load xlsx (optional) ──────────────────────────────
 let XLSX;
 try {
   XLSX = require('xlsx');
@@ -20,7 +19,6 @@ try {
 
 const upload = multer({ dest: 'uploads/' });
 
-// ─── GET all ──────────────────────────────────────────────────
 router.get('/', auth, async (req, res) => {
   try {
     const projects = await Project.find()
@@ -32,7 +30,6 @@ router.get('/', auth, async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// ─── GET single ──────────────────────────────────────────────
 router.get('/:id', auth, async (req, res) => {
   try {
     const project = await Project.findById(req.params.id)
@@ -45,8 +42,6 @@ router.get('/:id', auth, async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// ─── CREATE ──────────────────────────────────────────────────
-// ✅ Expanded roles – same as Workers
 router.post('/', auth, authorize('admin', 'director', 'civil-engineer', 'foreman', 'accountant', 'qs', 'quantity-surveyor'), async (req, res) => {
   try {
     const project = new Project({ ...req.body, createdBy: req.user.id });
@@ -72,8 +67,6 @@ router.post('/', auth, authorize('admin', 'director', 'civil-engineer', 'foreman
   } catch (err) { res.status(400).json({ error: err.message }); }
 });
 
-// ─── UPDATE ──────────────────────────────────────────────────
-// ✅ Expanded roles – same as Workers
 router.put('/:id', auth, authorize('admin', 'director', 'civil-engineer', 'foreman', 'accountant', 'qs', 'quantity-surveyor'), async (req, res) => {
   try {
     const updated = await Project.findByIdAndUpdate(req.params.id, req.body, { new: true })
@@ -86,8 +79,6 @@ router.put('/:id', auth, authorize('admin', 'director', 'civil-engineer', 'forem
   } catch (err) { res.status(400).json({ error: err.message }); }
 });
 
-// ─── DELETE ──────────────────────────────────────────────────
-// ✅ Also include accountant (matches frontend canDelete)
 router.delete('/:id', auth, authorize('admin', 'director', 'accountant'), async (req, res) => {
   try {
     const deleted = await Project.findByIdAndDelete(req.params.id);
@@ -96,7 +87,6 @@ router.delete('/:id', auth, authorize('admin', 'director', 'accountant'), async 
   } catch (err) { res.status(400).json({ error: err.message }); }
 });
 
-// ─── APPROVE ──────────────────────────────────────────────────
 router.put('/:id/approve', auth, authorize('admin', 'director'), async (req, res) => {
   try {
     const project = await Project.findById(req.params.id);
@@ -121,7 +111,6 @@ router.put('/:id/approve', auth, authorize('admin', 'director'), async (req, res
   } catch (err) { res.status(400).json({ error: err.message }); }
 });
 
-// ─── REJECT ──────────────────────────────────────────────────
 router.put('/:id/reject', auth, authorize('admin', 'director'), async (req, res) => {
   try {
     const project = await Project.findById(req.params.id);
@@ -146,17 +135,13 @@ router.put('/:id/reject', auth, authorize('admin', 'director'), async (req, res)
   } catch (err) { res.status(400).json({ error: err.message }); }
 });
 
-// ─── UPLOAD: Preview ─────────────────────────────────────────
+// ─── UPLOAD routes (preview + import) ──────────────────────────────
 router.post('/upload/preview', auth, authorize('admin', 'director', 'accountant'), upload.single('file'), async (req, res) => {
   try {
-    if (!req.file) {
-      return res.status(400).json({ error: 'No file uploaded' });
-    }
-
+    if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
     const filePath = req.file.path;
     const ext = path.extname(req.file.originalname).toLowerCase();
     let rows = [];
-
     if (ext === '.csv') {
       await new Promise((resolve, reject) => {
         fs.createReadStream(filePath)
@@ -176,12 +161,9 @@ router.post('/upload/preview', auth, authorize('admin', 'director', 'accountant'
       fs.unlinkSync(filePath);
       return res.status(400).json({ error: 'Only CSV and Excel files are supported' });
     }
-
-    fs.unlinkSync(filePath); // clean up
-
+    fs.unlinkSync(filePath);
     const errors = [];
     const projects = [];
-
     rows.forEach((row, idx) => {
       const name = row.name || row.Name || row.NAME || '';
       if (!name || !name.trim()) {
@@ -200,7 +182,6 @@ router.post('/upload/preview', auth, authorize('admin', 'director', 'accountant'
       };
       projects.push(project);
     });
-
     res.json({ projects, errors });
   } catch (err) {
     console.error('Preview error:', err);
@@ -208,17 +189,12 @@ router.post('/upload/preview', auth, authorize('admin', 'director', 'accountant'
   }
 });
 
-// ─── UPLOAD: Import ──────────────────────────────────────────
 router.post('/upload', auth, authorize('admin', 'director', 'accountant'), upload.single('file'), async (req, res) => {
   try {
-    if (!req.file) {
-      return res.status(400).json({ error: 'No file uploaded' });
-    }
-
+    if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
     const filePath = req.file.path;
     const ext = path.extname(req.file.originalname).toLowerCase();
     let rows = [];
-
     if (ext === '.csv') {
       await new Promise((resolve, reject) => {
         fs.createReadStream(filePath)
@@ -238,12 +214,9 @@ router.post('/upload', auth, authorize('admin', 'director', 'accountant'), uploa
       fs.unlinkSync(filePath);
       return res.status(400).json({ error: 'Only CSV and Excel files are supported' });
     }
-
     fs.unlinkSync(filePath);
-
     const created = [];
     const errors = [];
-
     for (const row of rows) {
       const name = row.name || row.Name || row.NAME || '';
       if (!name || !name.trim()) {
@@ -265,8 +238,6 @@ router.post('/upload', auth, authorize('admin', 'director', 'accountant'), uploa
       await project.save();
       created.push(project);
     }
-
-    // Notify creators
     if (created.length > 0) {
       const senderName = await getSenderName(req.user.id);
       const recipients = await User.find({ role: { $in: ['admin', 'director'] } });
@@ -280,7 +251,6 @@ router.post('/upload', auth, authorize('admin', 'director', 'accountant'), uploa
         );
       }
     }
-
     res.json({ count: created.length, errors, projects: created });
   } catch (err) {
     console.error('Upload error:', err);

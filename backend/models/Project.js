@@ -25,11 +25,9 @@ const ProjectSchema = new mongoose.Schema({
   isFromBid: { type: Boolean, default: false },
   sourceUrl: { type: String, default: '' },
   
-  // ─── Approval fields ────────────────────────────────────────
   approvedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   approvedAt: Date,
 
-  // ─── NEW fields for Tender conversion ──────────────────────
   isFromTender: { type: Boolean, default: false },
   tenderSource: { type: mongoose.Schema.Types.ObjectId, ref: 'Tender' },
 });

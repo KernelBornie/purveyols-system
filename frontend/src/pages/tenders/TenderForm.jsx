@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useLocation } from 'react-router-dom'; // ← added useLocation
 import {
   Paper, Typography, Box, Grid, TextField, Button, MenuItem,
   Alert, CircularProgress, Chip, IconButton, Table, TableHead,
@@ -36,6 +36,7 @@ const DELETABLE_ROLES = ['admin', 'director', 'accountant'];
 
 const TenderForm = () => {
   const { id } = useParams();
+  const location = useLocation(); // ← to detect view/edit mode
   const navigate = useNavigate();
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
@@ -107,6 +108,10 @@ const TenderForm = () => {
   const [createdAt, setCreatedAt] = useState(null);
   const [convertedToProject, setConvertedToProject] = useState(null);
 
+  // ─── Determine mode from URL ──────────────────────────────────
+  const isViewMode = location.pathname.includes('/view');
+  const isEditMode = location.pathname.includes('/edit') || (!isViewMode && id); // fallback
+
   // ─── Dialogs ──────────────────────────────────────────────
   const [personnelDialog, setPersonnelDialog] = useState(false);
   const [editingPersonnel, setEditingPersonnel] = useState(null);
@@ -117,7 +122,7 @@ const TenderForm = () => {
 
   const canEdit = EDITABLE_ROLES.includes(user?.role);
   const canDelete = DELETABLE_ROLES.includes(user?.role);
-  const isReadOnly = form.status === 'submitted' || form.status === 'awarded' || !canEdit;
+  const isReadOnly = isViewMode || form.status === 'submitted' || form.status === 'awarded' || !canEdit;
 
   // ─── Image handlers ──────────────────────────────────────────
   const handleImageChange = (e) => {
@@ -170,7 +175,7 @@ const TenderForm = () => {
     if (imagePreview) setPhotoPreviewOpen(true);
   };
 
-  // ─── NEW: Convert to Project ──────────────────────────────────
+  // ─── Convert to Project ──────────────────────────────────────
   const handleConvertToProject = async () => {
     if (!window.confirm('Create a project from this awarded tender?')) return;
     setLoading(true);
@@ -178,8 +183,6 @@ const TenderForm = () => {
       const res = await api.post(`/api/tenders/${id}/convert-to-project`);
       setMessage({ type: 'success', text: `✅ Project "${res.data.project.name}" created!` });
       setConvertedToProject(res.data.project._id);
-      // Optionally navigate to the new project
-      // navigate(`/projects/${res.data.project._id}`);
     } catch (err) {
       setMessage({ type: 'error', text: getApiErrorMessage(err, 'Failed to create project') });
     } finally {
@@ -315,7 +318,7 @@ const TenderForm = () => {
     setForm({ ...form, sections });
   };
 
-  // ─── Item handlers (within section) ────────────────────────────
+  // ─── Item handlers ────────────────────────────────────────────
   const addItemToSection = (sectionIndex) => {
     const sections = [...form.sections];
     sections[sectionIndex].items.push({ description: '', quantity: 1, unit: 'Lot', unitPrice: 0, total: 0 });
@@ -568,7 +571,7 @@ const TenderForm = () => {
       <BackButton />
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
         <Typography variant="h5" sx={{ fontWeight: 'bold' }}>
-          {id ? (isReadOnly ? 'View Tender' : 'Edit Tender') : 'New Tender / RFQ'}
+          {id ? (isViewMode ? 'View Tender' : 'Edit Tender') : 'New Tender / RFQ'}
         </Typography>
         <Box className="no-print">
           <Button
@@ -608,7 +611,7 @@ const TenderForm = () => {
             <Chip label="✅ Project Created" color="success" sx={{ mr: 1 }} />
           )}
 
-          {!isReadOnly && (
+          {!isReadOnly && !isViewMode && (
             <>
               <Button
                 variant="contained"
@@ -634,6 +637,9 @@ const TenderForm = () => {
       </Box>
 
       {message && <Alert severity={message.type} sx={{ mb: 2 }}>{message.text}</Alert>}
+      {isViewMode && (
+        <Alert severity="info" sx={{ mb: 2 }}>You are viewing this tender in read‑only mode.</Alert>
+      )}
       {isReadOnly && form.status === 'submitted' && (
         <Alert severity="info" sx={{ mb: 2 }}>This tender has been submitted. Edits are disabled.</Alert>
       )}
@@ -652,7 +658,7 @@ const TenderForm = () => {
               variant="rounded"
               onClick={handlePhotoClick}
             />
-            {!isReadOnly && canEdit && (
+            {!isReadOnly && canEdit && !isViewMode && (
               <>
                 <Button
                   variant="outlined"
@@ -977,7 +983,7 @@ const TenderForm = () => {
         <Paper sx={{ p: 2, mb: 3 }}>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
             <Typography variant="h6">Sections & Items</Typography>
-            {!isReadOnly && (
+            {!isReadOnly && !isViewMode && (
               <Button variant="outlined" startIcon={<AddIcon />} onClick={addSection}>
                 Add Section
               </Button>
@@ -987,7 +993,7 @@ const TenderForm = () => {
             <Paper key={section._id || sectionIndex} sx={{ p: 2, mb: 2, border: '1px solid #e0e0e0' }}>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <Typography variant="subtitle1"><strong>{section.name}</strong></Typography>
-                {!isReadOnly && (
+                {!isReadOnly && !isViewMode && (
                   <IconButton size="small" color="error" onClick={() => deleteSection(sectionIndex)}>
                     <DeleteIcon />
                   </IconButton>
@@ -1048,7 +1054,7 @@ const TenderForm = () => {
                       </TableCell>
                       <TableCell>{item.total?.toFixed(2)}</TableCell>
                       <TableCell>
-                        {!isReadOnly && (
+                        {!isReadOnly && !isViewMode && (
                           <IconButton size="small" color="error" onClick={() => removeItemFromSection(sectionIndex, itemIndex)}>
                             <DeleteIcon fontSize="small" />
                           </IconButton>
@@ -1058,7 +1064,7 @@ const TenderForm = () => {
                   ))}
                 </TableBody>
               </Table>
-              {!isReadOnly && (
+              {!isReadOnly && !isViewMode && (
                 <Button variant="outlined" size="small" startIcon={<AddIcon />} onClick={() => addItemToSection(sectionIndex)} sx={{ mt: 1 }}>
                   Add Item
                 </Button>
@@ -1196,7 +1202,7 @@ const TenderForm = () => {
         <Paper sx={{ p: 2, mb: 3 }}>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
             <Typography variant="h6">Key Personnel</Typography>
-            {!isReadOnly && (
+            {!isReadOnly && !isViewMode && (
               <Button variant="outlined" startIcon={<PersonAddIcon />} onClick={addPersonnel}>
                 Add Personnel
               </Button>
@@ -1212,7 +1218,7 @@ const TenderForm = () => {
                   <Typography variant="caption" display="block">Experience: {person.experience}</Typography>
                   <Typography variant="caption" display="block">Years with Firm: {person.yearsWithFirm}</Typography>
                 </Box>
-                {!isReadOnly && (
+                {!isReadOnly && !isViewMode && (
                   <IconButton size="small" color="error" onClick={() => deletePersonnel(idx)}>
                     <DeleteIcon />
                   </IconButton>
@@ -1308,7 +1314,7 @@ const TenderForm = () => {
         <Paper sx={{ p: 2, mb: 3 }}>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
             <Typography variant="h6">Past Performance</Typography>
-            {!isReadOnly && (
+            {!isReadOnly && !isViewMode && (
               <Button variant="outlined" startIcon={<WorkIcon />} onClick={addPerformance}>
                 Add Performance
               </Button>
@@ -1325,7 +1331,7 @@ const TenderForm = () => {
                   <Typography variant="caption" display="block">Description: {perf.description}</Typography>
                   {perf.isReference && <Chip label="Reference" size="small" color="info" />}
                 </Box>
-                {!isReadOnly && (
+                {!isReadOnly && !isViewMode && (
                   <IconButton size="small" color="error" onClick={() => deletePerformance(idx)}>
                     <DeleteIcon />
                   </IconButton>

@@ -5,7 +5,6 @@ const Project = require('../models/Project');
 const Tender = require('../models/Tender');
 const auth = require('../middleware/auth');
 
-// ─── GET all bids for current user ──────────────────────────
 router.get('/', auth, async (req, res) => {
   try {
     const bids = await Bid.find({ user: req.user.id }).sort({ createdAt: -1 });
@@ -15,7 +14,6 @@ router.get('/', auth, async (req, res) => {
   }
 });
 
-// ─── GET single bid ──────────────────────────────────────────
 router.get('/:id', auth, async (req, res) => {
   try {
     const bid = await Bid.findOne({ _id: req.params.id, user: req.user.id });
@@ -26,7 +24,6 @@ router.get('/:id', auth, async (req, res) => {
   }
 });
 
-// ─── Create a bid from advertised project ──────────────────
 router.post('/', auth, async (req, res) => {
   try {
     const bidData = { ...req.body, user: req.user.id, bidDate: new Date(), status: 'bidded' };
@@ -38,12 +35,10 @@ router.post('/', auth, async (req, res) => {
   }
 });
 
-// ─── Update bid ──────────────────────────────────────────────
 router.put('/:id', auth, async (req, res) => {
   try {
     const bid = await Bid.findOne({ _id: req.params.id, user: req.user.id });
     if (!bid) return res.status(404).json({ error: 'Bid not found' });
-
     const updates = req.body;
     updates.updatedAt = new Date();
     Object.assign(bid, updates);
@@ -54,7 +49,6 @@ router.put('/:id', auth, async (req, res) => {
   }
 });
 
-// ─── Delete bid ──────────────────────────────────────────────
 router.delete('/:id', auth, async (req, res) => {
   try {
     const bid = await Bid.findOneAndDelete({ _id: req.params.id, user: req.user.id });
@@ -113,7 +107,7 @@ router.post('/:id/convert-to-project', auth, async (req, res) => {
   }
 });
 
-// ─── Convert bid to Tender (with date fields) ──────────────
+// ─── Convert bid to Tender ──────────────────────────────
 router.post('/:id/convert-to-tender', auth, async (req, res) => {
   try {
     const bid = await Bid.findOne({ _id: req.params.id, user: req.user.id });
@@ -122,15 +116,11 @@ router.post('/:id/convert-to-tender', auth, async (req, res) => {
       return res.status(400).json({ error: 'This bid has already been forwarded to Tenders' });
     }
 
-    // ─── Parse budget ──────────────────────────────────────────
     const budgetNumber = parseFloat(String(bid.budget).replace(/[^0-9.-]+/g, '')) || 0;
-
-    // ─── Format dates ──────────────────────────────────────────
     const bidDate = bid.bidDate || bid.createdAt || new Date();
     const issueDateStr = new Date(bidDate).toISOString().split('T')[0];
     const deadlineStr = bid.deadline ? new Date(bid.deadline).toISOString().split('T')[0] : '';
 
-    // ─── Build notes ──────────────────────────────────────────
     const notesParts = [
       `Forwarded from bidded project "${bid.projectTitle}" (ID: ${bid.projectId})`,
     ];
@@ -152,8 +142,8 @@ router.post('/:id/convert-to-tender', auth, async (req, res) => {
       projectName: bid.projectTitle || '',
       location: bid.location || '',
       description: bid.description || '',
-      issueDate: issueDateStr,   // ✅ populated
-      dueDate: deadlineStr,       // ✅ populated
+      issueDate: issueDateStr,
+      dueDate: deadlineStr,
       status: 'draft',
       createdBy: req.user.id,
       priceProposal: {
@@ -170,13 +160,11 @@ router.post('/:id/convert-to-tender', auth, async (req, res) => {
 
     await tender.save();
 
-    // ─── Link the bid to the tender ──────────────────────────
     bid.convertedToTender = tender._id;
     bid.isConvertedToTender = true;
     bid.updatedAt = new Date();
     await bid.save();
 
-    // ─── Populate for response ──────────────────────────────
     const populatedTender = await Tender.findById(tender._id)
       .populate('createdBy', 'name role');
 

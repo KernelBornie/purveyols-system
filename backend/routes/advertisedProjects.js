@@ -3,7 +3,6 @@ const router = express.Router();
 const axios = require('axios');
 const AdvertisedProject = require('../models/AdvertisedProject');
 
-// ─── Helper: fetch articles from News API ──────────────────────
 async function fetchNews(query) {
   try {
     const response = await axios.get('https://newsapi.org/v2/everything', {
@@ -29,7 +28,6 @@ async function fetchNews(query) {
   }
 }
 
-// ─── Helper: generate mock project ─────────────────────────────
 function generateMockProject() {
   const clients = ['ZANACO', 'ABSA Bank', 'FNB Zambia', 'Lusaka City Council', 'University of Zambia', 'UTH Hospital', 'ZESCO', 'ZRA', 'Road Development Agency', 'Ministry of Infrastructure'];
   const locations = ['Lusaka', 'Ndola', 'Kitwe', 'Livingstone', 'Chipata', 'Kabwe', 'Mongu', 'Solwezi'];
@@ -67,7 +65,6 @@ function generateMockProject() {
   };
 }
 
-// ─── POST /fetch – get new projects from multiple sources ──────
 router.post('/fetch', async (req, res) => {
   try {
     const queries = [
@@ -87,7 +84,6 @@ router.post('/fetch', async (req, res) => {
       allArticles = allArticles.concat(articles);
     }
 
-    // Deduplicate by sourceUrl
     const seen = new Set();
     const uniqueArticles = allArticles.filter(a => {
       const key = a.sourceUrl || a.title;
@@ -96,14 +92,10 @@ router.post('/fetch', async (req, res) => {
       return true;
     });
 
-    // Build advertised projects from articles
     const projectsFromNews = uniqueArticles.map(article => {
-      // Attempt to extract budget from title/description (simplified)
       const budgetMatch = article.description?.match(/ZMW\s*([\d,]+)/) || article.title?.match(/ZMW\s*([\d,]+)/);
       const budget = budgetMatch ? `ZMW ${budgetMatch[1]}` : 'ZMW 0';
-      // Try to extract client from source
       const client = article.source || 'Various';
-      // Location: fallback to 'Zambia'
       const location = 'Zambia';
       const deadline = new Date(Date.now() + 30*24*60*60*1000 + Math.random()*30*24*60*60*1000).toISOString().split('T')[0];
       const uniqueKey = `${article.title}-${article.sourceUrl}`.replace(/\s/g, '_').toLowerCase();
@@ -126,17 +118,14 @@ router.post('/fetch', async (req, res) => {
       };
     });
 
-    // Combine news + mocks to reach at least 20
     let finalProjects = [...projectsFromNews];
     while (finalProjects.length < 20) {
       const mock = generateMockProject();
-      // Check if mock uniqueKey already exists
       if (!finalProjects.some(p => p.uniqueKey === mock.uniqueKey)) {
         finalProjects.push(mock);
       }
     }
 
-    // Save to DB (skip duplicates)
     let added = 0, skipped = 0;
     for (const proj of finalProjects) {
       const existing = await AdvertisedProject.findOne({ uniqueKey: proj.uniqueKey });

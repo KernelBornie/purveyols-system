@@ -133,7 +133,6 @@ const TenderSchema = new mongoose.Schema({
   submittedAt: { type: Date },
   updatedAt: { type: Date, default: Date.now },
 
-  // ─── NEW ──────────────────────────────────────────────────────
   convertedToProject: { type: mongoose.Schema.Types.ObjectId, ref: 'Project' },
 }, { timestamps: true });
 

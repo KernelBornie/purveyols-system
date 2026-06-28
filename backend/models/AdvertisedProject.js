@@ -18,13 +18,11 @@ const AdvertisedProjectSchema = new mongoose.Schema({
     enum: ['open', 'closed', 'bidded'],
     default: 'open'
   },
-  // ─── UNIQUE KEY to prevent duplicates ──────────────────────
   uniqueKey: { type: String, unique: true, index: true },
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now },
 });
 
-// Auto‑generate uniqueKey before saving
 AdvertisedProjectSchema.pre('save', function(next) {
   if (!this.uniqueKey) {
     const key = `${this.title}-${this.sourceUrl || this.id}`.replace(/\s/g, '_').toLowerCase();

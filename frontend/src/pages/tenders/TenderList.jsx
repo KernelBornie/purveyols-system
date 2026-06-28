@@ -66,13 +66,13 @@ const TenderList = () => {
     }
   };
 
-  // ─── NEW: Convert awarded tender to Project ──────────────────
+  // ─── Convert awarded tender to Project ────────────────────────
   const handleConvertToProject = async (tenderId) => {
     if (!window.confirm('Create a project from this awarded tender?')) return;
     try {
       const res = await api.post(`/api/tenders/${tenderId}/convert-to-project`);
       alert(`✅ Project "${res.data.project.name}" created successfully!`);
-      fetchTenders(); // refresh list
+      fetchTenders();
     } catch (err) {
       alert(getApiErrorMessage(err, 'Failed to create project'));
     }
@@ -170,20 +170,23 @@ const TenderList = () => {
               </TableCell>
               <TableCell>{t.createdBy?.name}</TableCell>
               <TableCell>
+                {/* ─── VIEW (read‑only) ──────────────────────────── */}
                 <Button
                   component={Link}
-                  to={`/tenders/${t._id}`}
+                  to={`/tenders/${t._id}/view`}
                   size="small"
                   variant="outlined"
                   sx={{ mr: 0.5, textTransform: 'none' }}
                 >
                   View
                 </Button>
+
+                {/* ─── EDIT (only if editable) ───────────────────── */}
                 {canEdit && t.status !== 'submitted' && t.status !== 'awarded' && (
                   <Tooltip title="Edit">
                     <IconButton
                       component={Link}
-                      to={`/tenders/${t._id}`}
+                      to={`/tenders/${t._id}/edit`}
                       size="small"
                       color="primary"
                     >
@@ -191,6 +194,7 @@ const TenderList = () => {
                     </IconButton>
                   </Tooltip>
                 )}
+
                 {canDelete && t.status !== 'awarded' && (
                   <Tooltip title="Delete">
                     <IconButton

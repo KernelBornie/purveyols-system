@@ -42,12 +42,9 @@ import SafetyReportForm from './pages/safety/SafetyReportForm';
 import PaymentNotifications from './pages/PaymentNotifications';
 import PaymentDetails from './pages/PaymentDetails';
 import PaymentList from './pages/payments/PaymentList';
-// 👇 Visitor imports
 import VisitorList from './pages/visitors/VisitorList';
 import VisitorForm from './pages/visitors/VisitorForm';
-// 👇 Logbook import
 import LogbookList from './pages/logbooks/LogbookList';
-// 👇 Tenders import
 import TenderList from './pages/tenders/TenderList';
 import TenderForm from './pages/tenders/TenderForm';
 
@@ -173,11 +170,12 @@ function App() {
                 <Route path="/visitors/:id" element={<VisitorForm />} />
                 <Route path="/visitors/:id/edit" element={<VisitorForm />} />
 
-                {/* 👇 Tenders & RFQs */}
+                {/* ─── Tenders & RFQs ─────────────────────────────── */}
                 <Route path="/tenders" element={<TenderList />} />
                 <Route path="/tenders/new" element={<TenderForm />} />
-                <Route path="/tenders/:id" element={<TenderForm />} />
+                <Route path="/tenders/:id/view" element={<TenderForm />} />   {/* 👈 NEW: read-only view */}
                 <Route path="/tenders/:id/edit" element={<TenderForm />} />
+                <Route path="/tenders/:id" element={<TenderForm />} />       {/* fallback (optional) */}
               </Route>
             </Routes>
           </BrowserRouter>
