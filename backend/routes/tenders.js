@@ -135,10 +135,10 @@ router.put('/:id/approve', auth, authorize('admin', 'director', 'procurement-off
   }
 });
 
-// ─── ASSIGN (multi) ─────────────────────────────────────────────────
+// ─── ASSIGN (accepts array) ─────────────────────────────────────────
 router.put('/:id/assign', auth, authorize('admin', 'director', 'project-manager', 'engineer', 'accountant'), async (req, res) => {
   try {
-    const { assigneeIds } = req.body;
+    const { assigneeIds } = req.body;   // array
     if (!assigneeIds || !Array.isArray(assigneeIds) || assigneeIds.length === 0) {
       return res.status(400).json({ error: 'assigneeIds array is required' });
     }
