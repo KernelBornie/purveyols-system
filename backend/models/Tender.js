@@ -40,34 +40,29 @@ const DocumentSchema = new mongoose.Schema({
 });
 
 const TenderSchema = new mongoose.Schema({
-  // ─── Basic Info ──────────────────────────────────────────────
   title: { type: String, required: true },
   referenceNumber: { type: String, required: true, unique: true },
   solicitationNumber: { type: String },
   projectName: { type: String },
   location: { type: String },
 
-  // ─── Client Info ─────────────────────────────────────────────
   client: { type: String, required: true },
   clientAddress: { type: String },
   clientEmail: { type: String },
   clientPhone: { type: String },
   clientContact: { type: String },
 
-  // ─── Type ────────────────────────────────────────────────────
   type: {
     type: String,
     enum: ['solicitation', 'rfq', 'tender', 'proposal', 'bid'],
     default: 'tender'
   },
 
-  // ─── Dates ──────────────────────────────────────────────────
   issueDate: { type: Date },
   dueDate: { type: Date },
   siteVisitDate: { type: Date },
   awardDate: { type: Date },
 
-  // ─── US Embassy / SF 1442 Specific ──────────────────────────
   isSF1442: { type: Boolean, default: false },
   contractingOffice: { type: String },
   facilityCode: { type: String },
@@ -75,7 +70,6 @@ const TenderSchema = new mongoose.Schema({
   bondDays: { type: Number, default: 10 },
   acceptanceDays: { type: Number, default: 30 },
 
-  // ─── Sections / Scope of Work ──────────────────────────────
   sections: [{
     name: { type: String, required: true },
     description: { type: String },
@@ -85,7 +79,6 @@ const TenderSchema = new mongoose.Schema({
 
   description: { type: String },
 
-  // ─── Price Proposal ─────────────────────────────────────────
   priceProposal: {
     subtotal: { type: Number, default: 0 },
     percentageAdjustment: { type: Number, default: 0 },
@@ -97,13 +90,11 @@ const TenderSchema = new mongoose.Schema({
     amounts: { type: Map, of: Number },
   },
 
-  // ─── Volume I: Price Proposal ──────────────────────────────
   volumeI: {
     sf1442Received: { type: Boolean, default: false },
     priceBreakdown: { type: String },
   },
 
-  // ─── Volume II: Business Management / Technical ────────────
   volumeII: {
     performanceSchedule: { type: String },
     keyPersonnel: [KeyPersonnelSchema],
@@ -123,32 +114,29 @@ const TenderSchema = new mongoose.Schema({
     preliminarySafetyPlan: { type: String },
   },
 
-  // ─── Documents ──────────────────────────────────────────────
   documents: [DocumentSchema],
 
-  // ─── Image ────────────────────────────────────────────────────
-  image: { type: String, default: '' }, // base64 data URL
+  image: { type: String, default: '' },
 
-  // ─── Status ──────────────────────────────────────────────────
   status: {
     type: String,
     enum: ['draft', 'submitted', 'under_review', 'awarded', 'rejected', 'not_awarded'],
     default: 'draft'
   },
 
-  // ─── Tracking ───────────────────────────────────────────────
   notes: { type: String },
   awardAmount: { type: Number },
   awardee: { type: String },
 
-  // ─── Audit ────────────────────────────────────────────────────
   createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   submittedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   submittedAt: { type: Date },
   updatedAt: { type: Date, default: Date.now },
+
+  // ─── NEW ──────────────────────────────────────────────────────
+  convertedToProject: { type: mongoose.Schema.Types.ObjectId, ref: 'Project' },
 }, { timestamps: true });
 
-// Auto-generate reference number
 TenderSchema.pre('save', function(next) {
   if (!this.referenceNumber) {
     const prefix = this.type === 'solicitation' ? 'SOL' : this.type === 'rfq' ? 'RFQ' : 'TND';

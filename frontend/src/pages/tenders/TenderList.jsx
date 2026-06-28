@@ -66,6 +66,18 @@ const TenderList = () => {
     }
   };
 
+  // ─── NEW: Convert awarded tender to Project ──────────────────
+  const handleConvertToProject = async (tenderId) => {
+    if (!window.confirm('Create a project from this awarded tender?')) return;
+    try {
+      const res = await api.post(`/api/tenders/${tenderId}/convert-to-project`);
+      alert(`✅ Project "${res.data.project.name}" created successfully!`);
+      fetchTenders(); // refresh list
+    } catch (err) {
+      alert(getApiErrorMessage(err, 'Failed to create project'));
+    }
+  };
+
   const getStatusColor = (status) => {
     switch (status) {
       case 'draft': return 'default';
@@ -93,7 +105,6 @@ const TenderList = () => {
     return new Intl.NumberFormat('en-ZM', { style: 'currency', currency: 'ZMW' }).format(amount || 0);
   };
 
-  // ─── Handle photo click to expand ────────────────────────────
   const handlePhotoClick = (image) => {
     if (image) {
       setPreviewImage(image);
@@ -189,6 +200,22 @@ const TenderList = () => {
                     >
                       <DeleteIcon fontSize="small" />
                     </IconButton>
+                  </Tooltip>
+                )}
+                {t.status === 'awarded' && !t.convertedToProject && (
+                  <Tooltip title="Create Project">
+                    <IconButton
+                      size="small"
+                      color="success"
+                      onClick={() => handleConvertToProject(t._id)}
+                    >
+                      <AddIcon fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
+                )}
+                {t.convertedToProject && (
+                  <Tooltip title="Project Created">
+                    <Chip label="✅ Project" size="small" color="success" />
                   </Tooltip>
                 )}
               </TableCell>
