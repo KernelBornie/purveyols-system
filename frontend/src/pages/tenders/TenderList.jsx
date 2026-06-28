@@ -3,7 +3,8 @@ import { Link } from 'react-router-dom';
 import {
   Paper, Typography, Box, Table, TableHead, TableRow, TableCell, TableBody,
   Button, Chip, CircularProgress, Alert, IconButton, Tooltip, Avatar,
-  Dialog, DialogTitle, DialogContent, DialogActions
+  Dialog, DialogTitle, DialogContent, DialogActions,
+  TextField, MenuItem
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
@@ -41,6 +42,13 @@ const TenderList = () => {
   const [photoPreviewOpen, setPhotoPreviewOpen] = useState(false);
   const [previewImage, setPreviewImage] = useState('');
 
+  // ─── Assign Dialog state ──────────────────────────────────────
+  const [assignDialogOpen, setAssignDialogOpen] = useState(false);
+  const [assigningTenderId, setAssigningTenderId] = useState(null);
+  const [users, setUsers] = useState([]);
+  const [selectedUserId, setSelectedUserId] = useState('');
+  const [usersLoading, setUsersLoading] = useState(false);
+
   useEffect(() => {
     fetchTenders();
   }, []);
@@ -56,6 +64,18 @@ const TenderList = () => {
       setTenders([]);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchUsers = async () => {
+    setUsersLoading(true);
+    try {
+      const res = await api.get('/api/users');
+      setUsers(res.data || []);
+    } catch (err) {
+      alert('Failed to load users: ' + getApiErrorMessage(err));
+    } finally {
+      setUsersLoading(false);
     }
   };
 
@@ -93,16 +113,26 @@ const TenderList = () => {
     }
   };
 
-  // ─── Assign handler ────────────────────────────────────────────
-  const handleAssign = async (id) => {
-    const assigneeId = prompt('Enter the User ID to assign this tender:');
-    if (!assigneeId) return;
+  // ─── Assign handler (opens dialog) ────────────────────────────
+  const handleAssignOpen = async (tenderId) => {
+    setAssigningTenderId(tenderId);
+    setSelectedUserId('');
+    await fetchUsers();
+    setAssignDialogOpen(true);
+  };
+
+  const handleAssignSubmit = async () => {
+    if (!selectedUserId) {
+      alert('Please select a user to assign.');
+      return;
+    }
     try {
-      await api.put(`/api/tenders/${id}/assign`, { assigneeId });
+      await api.put(`/api/tenders/${assigningTenderId}/assign`, { assigneeId: selectedUserId });
+      alert('Tender assigned successfully!');
+      setAssignDialogOpen(false);
       fetchTenders();
-      alert('Tender assigned!');
     } catch (err) {
-      alert(getApiErrorMessage(err));
+      alert(getApiErrorMessage(err, 'Failed to assign'));
     }
   };
 
@@ -249,9 +279,13 @@ const TenderList = () => {
                   </Tooltip>
                 )}
 
-                {/* ─── Approve (procurement-officer, director, admin) ─ */}
+                {/* ─── Approve: procurement-officer, director, admin, engineer, accountant ── */}
                 {t.status === 'submitted' && 
-                 (user?.role === 'procurement-officer' || user?.role === 'director' || user?.role === 'admin') && (
+                 (user?.role === 'procurement-officer' || 
+                  user?.role === 'director' || 
+                  user?.role === 'admin' || 
+                  user?.role === 'engineer' || 
+                  user?.role === 'accountant') && (
                   <Tooltip title="Approve">
                     <IconButton
                       size="small"
@@ -263,23 +297,29 @@ const TenderList = () => {
                   </Tooltip>
                 )}
 
-                {/* ─── Assign (admin, director, project-manager) ─── */}
+                {/* ─── Assign: admin, director, project-manager, engineer, accountant ── */}
                 {(t.status === 'approved' || t.status === 'awarded') && 
-                 (user?.role === 'admin' || user?.role === 'director' || user?.role === 'project-manager') && (
+                 (user?.role === 'admin' || 
+                  user?.role === 'director' || 
+                  user?.role === 'project-manager' || 
+                  user?.role === 'engineer' || 
+                  user?.role === 'accountant') && (
                   <Tooltip title="Assign">
                     <IconButton
                       size="small"
                       color="primary"
-                      onClick={() => handleAssign(t._id)}
+                      onClick={() => handleAssignOpen(t._id)}
                     >
                       <PersonAddIcon fontSize="small" />
                     </IconButton>
                   </Tooltip>
                 )}
 
-                {/* ─── Verify (accountant, admin, director) ──────── */}
+                {/* ─── Verify: accountant, admin, director ── */}
                 {t.status === 'awarded' && 
-                 (user?.role === 'accountant' || user?.role === 'admin' || user?.role === 'director') && !t.verifiedBy && (
+                 (user?.role === 'accountant' || 
+                  user?.role === 'admin' || 
+                  user?.role === 'director') && !t.verifiedBy && (
                   <Tooltip title="Verify">
                     <IconButton
                       size="small"
@@ -340,6 +380,43 @@ const TenderList = () => {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setPhotoPreviewOpen(false)}>Close</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* ─── Assign Dialog ───────────────────────────────────────── */}
+      <Dialog open={assignDialogOpen} onClose={() => setAssignDialogOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Assign Tender</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" sx={{ mt: 1, mb: 2 }}>
+            Select a user to assign this tender to.
+          </Typography>
+          {usersLoading ? (
+            <CircularProgress size={24} />
+          ) : (
+            <TextField
+              select
+              fullWidth
+              label="Select User"
+              value={selectedUserId}
+              onChange={(e) => setSelectedUserId(e.target.value)}
+              margin="dense"
+            >
+              <MenuItem value="">
+                <em>None</em>
+              </MenuItem>
+              {users.map((u) => (
+                <MenuItem key={u._id} value={u._id}>
+                  {u.name} ({u.role})
+                </MenuItem>
+              ))}
+            </TextField>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setAssignDialogOpen(false)}>Cancel</Button>
+          <Button variant="contained" onClick={handleAssignSubmit} disabled={!selectedUserId || usersLoading}>
+            Assign
+          </Button>
         </DialogActions>
       </Dialog>
     </Paper>
