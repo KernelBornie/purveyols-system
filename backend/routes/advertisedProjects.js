@@ -3,6 +3,7 @@ const router = express.Router();
 const axios = require('axios');
 const AdvertisedProject = require('../models/AdvertisedProject');
 
+// ─── Helper: fetch articles from News API ──────────────────────
 async function fetchNews(query) {
   try {
     const response = await axios.get('https://newsapi.org/v2/everything', {
@@ -28,6 +29,7 @@ async function fetchNews(query) {
   }
 }
 
+// ─── Helper: generate mock project ─────────────────────────────
 function generateMockProject() {
   const clients = ['ZANACO', 'ABSA Bank', 'FNB Zambia', 'Lusaka City Council', 'University of Zambia', 'UTH Hospital', 'ZESCO', 'ZRA', 'Road Development Agency', 'Ministry of Infrastructure'];
   const locations = ['Lusaka', 'Ndola', 'Kitwe', 'Livingstone', 'Chipata', 'Kabwe', 'Mongu', 'Solwezi'];
@@ -65,6 +67,7 @@ function generateMockProject() {
   };
 }
 
+// ─── POST /fetch – get new projects from multiple sources ──────
 router.post('/fetch', async (req, res) => {
   try {
     const queries = [
@@ -84,6 +87,7 @@ router.post('/fetch', async (req, res) => {
       allArticles = allArticles.concat(articles);
     }
 
+    // Deduplicate by sourceUrl
     const seen = new Set();
     const uniqueArticles = allArticles.filter(a => {
       const key = a.sourceUrl || a.title;
@@ -92,6 +96,7 @@ router.post('/fetch', async (req, res) => {
       return true;
     });
 
+    // Build advertised projects from articles
     const projectsFromNews = uniqueArticles.map(article => {
       const budgetMatch = article.description?.match(/ZMW\s*([\d,]+)/) || article.title?.match(/ZMW\s*([\d,]+)/);
       const budget = budgetMatch ? `ZMW ${budgetMatch[1]}` : 'ZMW 0';
@@ -118,6 +123,7 @@ router.post('/fetch', async (req, res) => {
       };
     });
 
+    // Combine news + mocks to reach at least 20
     let finalProjects = [...projectsFromNews];
     while (finalProjects.length < 20) {
       const mock = generateMockProject();
@@ -126,6 +132,7 @@ router.post('/fetch', async (req, res) => {
       }
     }
 
+    // Save to DB (skip duplicates)
     let added = 0, skipped = 0;
     for (const proj of finalProjects) {
       const existing = await AdvertisedProject.findOne({ uniqueKey: proj.uniqueKey });
@@ -144,6 +151,43 @@ router.post('/fetch', async (req, res) => {
   } catch (err) {
     console.error('Fetch error:', err);
     res.status(500).json({ error: err.message || 'Server error' });
+  }
+});
+
+// ─── GET / – list open projects with filters ──────────────────
+router.get('/', async (req, res) => {
+  try {
+    const { search, status } = req.query;
+    const query = { status: 'open' };
+    if (status && status !== 'all') query.status = status;
+    if (search) {
+      query.$or = [
+        { title: { $regex: search, $options: 'i' } },
+        { client: { $regex: search, $options: 'i' } },
+        { location: { $regex: search, $options: 'i' } },
+      ];
+    }
+    const projects = await AdvertisedProject.find(query).sort({ createdAt: -1 }).limit(50);
+    res.json({ projects });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── POST /:projectId/bid – mark as bidded ────────────────────
+router.post('/:projectId/bid', async (req, res) => {
+  try {
+    const project = await AdvertisedProject.findOne({ id: req.params.projectId });
+    if (!project) return res.status(404).json({ error: 'Project not found' });
+    if (project.status === 'bidded') return res.status(400).json({ error: 'Already bidded' });
+
+    project.status = 'bidded';
+    project.updatedAt = new Date();
+    await project.save();
+
+    res.json({ message: 'Project marked as bidded', project });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 });
 
