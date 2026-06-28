@@ -31,6 +31,7 @@ const Layout = () => {
   const location = useLocation();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const isTablet = useMediaQuery(theme.breakpoints.between('sm', 'md'));
   const [mobileOpen, setMobileOpen] = useState(false);
   const [anchorEl, setAnchorEl] = useState(null);
   const [msgOpen, setMsgOpen] = useState(false);
@@ -53,7 +54,6 @@ const Layout = () => {
 
   const handleLogout = () => {
     logout();
-    // Use replace to prevent going back to the protected page
     navigate('/login', { replace: true });
     handleClose();
   };
@@ -146,9 +146,9 @@ const Layout = () => {
   const showBack = location.pathname !== '/dashboard' && location.pathname !== '/login' && location.pathname !== '/';
 
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
+    <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', overflowX: 'hidden' }}>
       <AppBar position="static" sx={{ zIndex: (theme) => theme.zIndex.drawer + 1 }}>
-        <Toolbar>
+        <Toolbar sx={{ flexWrap: 'nowrap', overflowX: 'auto' }}>
           {isMobile && (
             <IconButton color="inherit" edge="start" onClick={handleDrawerToggle} sx={{ mr: 1 }}>
               <MenuIcon />
@@ -159,26 +159,28 @@ const Layout = () => {
               <ArrowBackIcon />
             </IconButton>
           )}
-          <Box sx={{ display: 'flex', alignItems: 'center', flexGrow: 1 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}>
             <img
               src="/logo-branding.jpg"
               alt="PURVEYOLS"
-              height={isMobile ? 30 : 40}
-              style={{ marginRight: 12, borderRadius: 4 }}
+              height={isMobile ? 28 : 40}
+              style={{ marginRight: 8, borderRadius: 4 }}
             />
             <Typography
-              variant={isMobile ? 'subtitle1' : 'h6'}
-              sx={{ cursor: 'pointer', fontWeight: 600 }}
+              variant={isMobile ? 'body1' : 'h6'}
+              sx={{ cursor: 'pointer', fontWeight: 600, whiteSpace: 'nowrap' }}
               onClick={() => navigate('/dashboard')}
             >
               {isMobile ? 'PURVEYOLS' : 'PURVEYOLS CMS'}
             </Typography>
           </Box>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: isMobile ? 0.5 : 1 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', ml: 'auto', gap: isMobile ? 0.5 : 1, flexShrink: 0 }}>
             <NetworkStatus />
             <NotificationBell />
             {!isMobile && (
-              <Button color="inherit" onClick={() => navigate('/dashboard')}>Dashboard</Button>
+              <Button color="inherit" onClick={() => navigate('/dashboard')} sx={{ fontSize: isMobile ? '0.7rem' : 'inherit' }}>
+                Dashboard
+              </Button>
             )}
             <Tooltip title="Advertised Projects & Tenders">
               <IconButton color="inherit" onClick={() => navigate('/advertised-projects')} size={isMobile ? 'small' : 'medium'}>
@@ -233,13 +235,24 @@ const Layout = () => {
         </Toolbar>
       </AppBar>
 
-      <Box sx={{ display: 'flex', flex: 1 }}>
+      <Box sx={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
         <Sidebar
           mobileOpen={mobileOpen}
           handleDrawerToggle={handleDrawerToggle}
           isMobile={isMobile}
         />
-        <Box component="main" sx={{ flexGrow: 1, p: isMobile ? 1 : 3, width: { sm: `calc(100% - ${drawerWidth}px)` } }}>
+        <Box
+          component="main"
+          className="dashboard-content"   // ← Applied here
+          sx={{
+            flexGrow: 1,
+            p: isMobile ? 1 : 3,
+            width: { sm: `calc(100% - ${drawerWidth}px)` },
+            overflowX: 'auto',
+            overflowY: 'auto',
+            maxHeight: 'calc(100vh - 64px)',
+          }}
+        >
           <Container maxWidth="xl" sx={{ px: { xs: 0, sm: 2 } }}>
             <Outlet />
           </Container>

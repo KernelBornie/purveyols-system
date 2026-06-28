@@ -29,7 +29,7 @@ import SafetyIcon from '@mui/icons-material/SafetyCheck';
 import PaymentsIcon from '@mui/icons-material/Payments';
 import HandymanIcon from '@mui/icons-material/Handyman';
 import PeopleAltIcon from '@mui/icons-material/PeopleAlt';
-import RequestQuoteIcon from '@mui/icons-material/RequestQuote'; // 👈 NEW for Tenders
+import RequestQuoteIcon from '@mui/icons-material/RequestQuote';
 import { useAuth } from '../context/AuthContext';
 
 const drawerWidth = 240;
@@ -45,7 +45,7 @@ const Sidebar = ({ mobileOpen, handleDrawerToggle, isMobile }) => {
     { text: 'Projects', icon: <BusinessIcon />, path: '/projects' },
     { text: 'Workers', icon: <PeopleIcon />, path: '/workers' },
     { text: 'Visitors', icon: <PeopleAltIcon />, path: '/visitors' },
-    { text: 'Tenders & RFQs', icon: <RequestQuoteIcon />, path: '/tenders' }, // 👈 NEW
+    { text: 'Tenders & RFQs', icon: <RequestQuoteIcon />, path: '/tenders' },
     { text: 'Funding Requests', icon: <AttachMoneyIcon />, path: '/funding' },
     { text: 'Procurement', icon: <ReceiptIcon />, path: '/procurement' },
     { text: 'Spare Parts', icon: <HandymanIcon />, path: '/spare-parts' },
@@ -66,7 +66,6 @@ const Sidebar = ({ mobileOpen, handleDrawerToggle, isMobile }) => {
   const restrictedRoles = ['receptionist', 'safety', 'driver'];
   const hiddenItems = ['BOQs', 'Subcontracts', 'Site Plans', 'Drawings', 'Surveys'];
 
-  // ─── Always show these items (regardless of role) ─────────
   const alwaysVisible = [
     'Dashboard',
     'Safety Reports',
@@ -75,19 +74,14 @@ const Sidebar = ({ mobileOpen, handleDrawerToggle, isMobile }) => {
     'Settings',
     'Spare Parts',
     'Visitors',
-    'Tenders & RFQs', // 👈 Always visible
+    'Tenders & RFQs',
   ];
 
   const visibleMenuItems = allMenuItems.filter(item => {
-    // Always show essential items
     if (alwaysVisible.includes(item.text)) return true;
-
-    // ─── Payment Notifications – only for accountants, admins, directors ───
     if (item.text === 'Payment Notifications') {
       return ['accountant', 'admin', 'director'].includes(role);
     }
-
-    // Hide restricted items for certain roles
     if (restrictedRoles.includes(role) && hiddenItems.includes(item.text)) {
       return false;
     }
@@ -106,7 +100,7 @@ const Sidebar = ({ mobileOpen, handleDrawerToggle, isMobile }) => {
       </Toolbar>
       <Divider />
       <Box sx={{ overflow: 'auto' }}>
-        <List>
+        <List dense={isMobile}>
           {visibleMenuItems.map((item) => (
             <ListItem key={item.text} disablePadding>
               <ListItemButton
@@ -120,10 +114,13 @@ const Sidebar = ({ mobileOpen, handleDrawerToggle, isMobile }) => {
                     color: 'white',
                     '& .MuiListItemIcon-root': { color: 'white' },
                   },
+                  py: isMobile ? 0.5 : 1,
                 }}
               >
-                <ListItemIcon>{item.icon}</ListItemIcon>
-                <ListItemText primary={item.text} />
+                <ListItemIcon sx={{ minWidth: isMobile ? 30 : 40 }}>
+                  {React.cloneElement(item.icon, { fontSize: isMobile ? 'small' : 'medium' })}
+                </ListItemIcon>
+                <ListItemText primary={item.text} primaryTypographyProps={{ fontSize: isMobile ? '0.8rem' : 'inherit' }} />
               </ListItemButton>
             </ListItem>
           ))}
