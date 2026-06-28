@@ -17,7 +17,7 @@ import SkipNextIcon from '@mui/icons-material/SkipNext';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip,
   Legend, PieChart, Pie, Cell, ResponsiveContainer
-} from 'recharts';
+} from 'recharts'; // ✅ Only BarChart and PieChart – no LineChart
 import api from '../../api/axios';
 import WorkerSearch from '../../components/WorkerSearch';
 import PaymentModal from '../../components/PaymentModal';
@@ -71,7 +71,6 @@ const setCached = (key, data) => {
 };
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042'];
-const TENDER_COLORS = ['#e0e0e0', '#ff9800', '#4caf50', '#2196f3', '#9c27b0'];
 
 const AccountantDashboard = () => {
   const { user, updateUser } = useAuth();
@@ -90,13 +89,6 @@ const AccountantDashboard = () => {
     pendingSubcontracts: 0,
     visitors: 0,
     todayVisitors: 0,
-    advertisedProjects: 0,
-    biddedProjects: 0,
-    tendersDraft: 0,
-    tendersSubmitted: 0,
-    tendersApproved: 0,
-    tendersVerified: 0,
-    tendersAwarded: 0,
   });
   const [workers, setWorkers] = useState([]);
   const [projects, setProjects] = useState([]);
@@ -111,22 +103,13 @@ const AccountantDashboard = () => {
   const [approvalRatio, setApprovalRatio] = useState([]);
   const [reportData, setReportData] = useState(null);
   const [showCharts, setShowCharts] = useState(true);
-  const [showTenderCharts, setShowTenderCharts] = useState(true);
   const [message, setMessage] = useState(null);
-
-  // ─── Tender-specific chart data ──────────────────────────────────
-  const [tenderStatusData, setTenderStatusData] = useState([]);
-  const [tenderTimelineData, setTenderTimelineData] = useState([]);
-  const [advertisedVsBiddedData, setAdvertisedVsBiddedData] = useState([]);
-
-  const [tenders, setTenders] = useState([]);
-  const [advertisedProjects, setAdvertisedProjects] = useState([]);
-  const [bids, setBids] = useState([]);
 
   const [searchOpen, setSearchOpen] = useState(false);
   const [paymentOpen, setPaymentOpen] = useState(false);
   const [selectedWorker, setSelectedWorker] = useState(null);
 
+  // ─── Pay All Modal ──────────────────────────────────────────────
   const [payAllOpen, setPayAllOpen] = useState(false);
   const [payAllFilters, setPayAllFilters] = useState({
     workers: true,
@@ -139,6 +122,7 @@ const AccountantDashboard = () => {
   const [payAllProcessing, setPayAllProcessing] = useState(false);
   const [payAllStatus, setPayAllStatus] = useState(null);
 
+  // ─── Funding Request Modal ──────────────────────────────────────
   const [fundModalOpen, setFundModalOpen] = useState(false);
   const [fundRequestId, setFundRequestId] = useState(null);
   const [recipientPhone, setRecipientPhone] = useState('');
@@ -146,9 +130,11 @@ const AccountantDashboard = () => {
   const [fundRequesterName, setFundRequesterName] = useState('');
   const [fundType, setFundType] = useState('funding');
 
+  // ─── Procurement Funding Modal ──────────────────────────────────
   const [procurementFundOpen, setProcurementFundOpen] = useState(false);
   const [procurementToFund, setProcurementToFund] = useState(null);
 
+  // ─── Subcontract Funding Modal ──────────────────────────────────
   const [subcontractFundOpen, setSubcontractFundOpen] = useState(false);
   const [subcontractToFund, setSubcontractToFund] = useState(null);
 
@@ -172,66 +158,215 @@ const AccountantDashboard = () => {
     return null;
   }, [updateUser]);
 
-  // ─── Tender action handlers ──────────────────────────────────────
-  const handleApproveTender = async (id) => {
-    if (!window.confirm('Approve this tender?')) return;
-    try {
-      await api.put(`/api/tenders/${id}/approve`);
-      setMessage({ type: 'success', text: 'Tender approved!' });
-      refreshAll();
-    } catch (err) {
-      setMessage({ type: 'error', text: err.response?.data?.error || 'Approval failed' });
+  const fetchDashboardData = useCallback(async (force = false) => {
+    const cacheKey = 'accountant_dashboard';
+    if (!force) {
+      const cached = getCached(cacheKey);
+      if (cached) {
+        setStats(cached.stats);
+        setWorkers(cached.workers);
+        setProjects(cached.projects);
+        setFundingRequests(cached.fundingRequests);
+        setProcurementOrders(cached.procurementOrders || []);
+        setSubcontracts(cached.subcontracts || []);
+        setPayments(cached.payments);
+        setAttendance(cached.attendance);
+        setTopWorkers(cached.topWorkers);
+        setPaymentTrends(cached.paymentTrends);
+        setProjectSpending(cached.projectSpending);
+        setApprovalRatio(cached.approvalRatio);
+        setReportData(cached.reportData);
+        setLoading(false);
+        return;
+      }
     }
-  };
 
-  const handleVerifyTender = async (id) => {
-    if (!window.confirm('Verify this approved tender?')) return;
+    setLoading(true);
+    setMessage(null);
     try {
-      await api.put(`/api/tenders/${id}/verify`);
-      setMessage({ type: 'success', text: 'Tender verified!' });
-      refreshAll();
-    } catch (err) {
-      setMessage({ type: 'error', text: err.response?.data?.error || 'Verification failed' });
-    }
-  };
+      const [workersRes, attendanceRes, paymentsRes, projectsRes, fundingRes, procurementRes, subcontractsRes, visitorsRes] = await Promise.all([
+        api.get('/api/workers'),
+        api.get('/api/attendance'),
+        api.get('/api/payments'),
+        api.get('/api/projects'),
+        api.get('/api/funding-requests').catch(() => api.get('/api/funding')),
+        api.get('/api/procurement'),
+        api.get('/api/subcontracts'),
+        api.get('/api/visitors')
+      ]);
 
-  const handleAwardTender = async (id) => {
-    const awardAmount = prompt('Enter award amount (or leave blank to use tender total):');
-    const awardee = prompt('Enter awardee (or leave blank to use client name):');
-    try {
-      await api.put(`/api/tenders/${id}/award`, {
-        awardAmount: awardAmount ? parseFloat(awardAmount) : undefined,
-        awardee: awardee || undefined,
+      const workersData = Array.isArray(workersRes.data) ? workersRes.data : (workersRes.data?.data || []);
+      const attendanceData = Array.isArray(attendanceRes.data) ? attendanceRes.data : (attendanceRes.data?.data || []);
+      const paymentsData = Array.isArray(paymentsRes.data) ? paymentsRes.data : (paymentsRes.data?.data || []);
+      const completedPayments = paymentsData.filter(p => p.status === 'completed');
+      const projectsData = Array.isArray(projectsRes.data) ? projectsRes.data : (projectsRes.data?.data || []);
+      const fundingData = Array.isArray(fundingRes.data) ? fundingRes.data : (fundingRes.data?.data || []);
+      const procurementData = Array.isArray(procurementRes.data) ? procurementRes.data : (procurementRes.data?.data || []);
+      const subcontractsData = Array.isArray(subcontractsRes.data) ? subcontractsRes.data : (subcontractsRes.data?.data || []);
+      const visitorsData = Array.isArray(visitorsRes.data) ? visitorsRes.data : [];
+      const totalVisitors = visitorsData.length;
+      const todayVisitors = visitorsData.filter(v => new Date(v.checkIn).toDateString() === new Date().toDateString()).length;
+
+      const workersWithBalance = workersData.map(w => {
+        const workerAttendance = attendanceData.filter(a => a.worker === w._id || a.worker?._id === w._id);
+        const totalEarned = workerAttendance.reduce((sum, a) => sum + (a.days * a.rate || a.rate), 0);
+        const workerPayments = completedPayments.filter(p => p.worker === w._id || p.worker?._id === w._id);
+        const totalPaid = workerPayments.reduce((sum, p) => sum + (p.amount || 0), 0);
+        return { ...w, balance: totalEarned - totalPaid };
       });
-      setMessage({ type: 'success', text: 'Tender awarded!' });
-      refreshAll();
-    } catch (err) {
-      setMessage({ type: 'error', text: err.response?.data?.error || 'Award failed' });
-    }
-  };
 
-  const handleCreateProjectFromTender = async (id) => {
-    if (!window.confirm('Create a project from this awarded tender?')) return;
+      const totalWorkers = workersWithBalance.length;
+      const totalProjects = projectsData.length;
+      const totalReleased = completedPayments.reduce((sum, p) => sum + (p.amount || 0), 0);
+      const totalFunding = fundingData.length;
+      const pendingFunding = fundingData.filter(f => f.status === 'pending' || f.status === 'approved').length;
+      const approvedFunding = fundingData.filter(f => f.status === 'approved').length;
+      const pendingWorkers = workersWithBalance.filter(w => w.balance > 0).length;
+      const totalPendingAmount = workersWithBalance.reduce((sum, w) => sum + (w.balance || 0), 0) +
+        fundingData.filter(f => f.status === 'approved').reduce((sum, f) => sum + f.amount, 0) +
+        procurementData.filter(o => o.status === 'approved').reduce((sum, o) => sum + (o.grandTotal || o.total || 0), 0) +
+        subcontractsData.filter(s => s.status === 'approved').reduce((sum, s) => sum + (s.amount || 0), 0);
+
+      const pendingProcurement = procurementData.filter(o => o.status === 'approved').length;
+      const pendingSubcontracts = subcontractsData.filter(s => s.status === 'approved').length;
+
+      const workerEarnings = {};
+      completedPayments.forEach(p => {
+        const workerId = p.worker?._id || p.worker;
+        if (workerId) {
+          workerEarnings[workerId] = (workerEarnings[workerId] || 0) + p.amount;
+        }
+      });
+      const top = Object.entries(workerEarnings)
+        .map(([id, amount]) => {
+          const worker = workersWithBalance.find(w => w._id === id);
+          return { name: worker?.name || 'Unknown', amount };
+        })
+        .sort((a, b) => b.amount - a.amount)
+        .slice(0, 5);
+
+      // ─── Payment Trends (last 14 days) ──────────────────────────
+      const trends = {};
+      const now = new Date();
+      for (let i = 13; i >= 0; i--) {
+        const d = new Date(now);
+        d.setDate(d.getDate() - i);
+        const key = d.toISOString().split('T')[0];
+        trends[key] = 0;
+      }
+      completedPayments.forEach(p => {
+        if (p.createdAt) {
+          const date = new Date(p.createdAt).toISOString().split('T')[0];
+          if (trends[date] !== undefined) trends[date] += p.amount;
+        }
+      });
+      const trendData = Object.entries(trends).map(([date, amount]) => ({ 
+        date: date.slice(5), // show MM-DD
+        amount 
+      }));
+
+      const projectSpendingMap = {};
+      completedPayments.forEach(p => {
+        const projectId = p.project?._id || p.project;
+        if (projectId) {
+          const project = projectsData.find(pr => pr._id === projectId);
+          const name = project?.name || 'Unknown Project';
+          projectSpendingMap[name] = (projectSpendingMap[name] || 0) + p.amount;
+        }
+      });
+      const spendingData = Object.entries(projectSpendingMap).map(([name, amount]) => ({ name, amount }));
+
+      const pending = fundingData.filter(f => f.status === 'pending').length;
+      const approved = fundingData.filter(f => f.status === 'approved').length;
+      const rejected = fundingData.filter(f => f.status === 'rejected').length;
+      const funded = fundingData.filter(f => f.status === 'funded').length;
+      const ratio = [
+        { name: 'Pending', value: pending },
+        { name: 'Approved', value: approved },
+        { name: 'Rejected', value: rejected },
+        { name: 'Funded', value: funded },
+      ].filter(item => item.value > 0);
+
+      const report = {
+        workersEnrolled: totalWorkers,
+        projectsCreated: totalProjects,
+        payments: completedPayments.length,
+        totalAmountReleased: totalReleased,
+      };
+
+      const newStats = { 
+        workers: totalWorkers, 
+        projects: totalProjects, 
+        totalReleased, 
+        fundingRequests: totalFunding,
+        pendingFunding: pendingFunding,
+        approvedFunding: approvedFunding,
+        pendingWorkers: pendingWorkers,
+        totalPendingAmount: totalPendingAmount,
+        pendingProcurement: pendingProcurement,
+        pendingSubcontracts: pendingSubcontracts,
+        visitors: totalVisitors,
+        todayVisitors: todayVisitors,
+      };
+      setStats(newStats);
+      setWorkers(workersWithBalance);
+      setProjects(projectsData);
+      setFundingRequests(fundingData);
+      setProcurementOrders(procurementData);
+      setSubcontracts(subcontractsData);
+      setPayments(completedPayments);
+      setAttendance(attendanceData);
+      setTopWorkers(top);
+      setPaymentTrends(trendData);
+      setProjectSpending(spendingData);
+      setApprovalRatio(ratio);
+      setReportData(report);
+
+      setCached(cacheKey, {
+        stats: newStats,
+        workers: workersWithBalance,
+        projects: projectsData,
+        fundingRequests: fundingData,
+        procurementOrders: procurementData,
+        subcontracts: subcontractsData,
+        payments: completedPayments,
+        attendance: attendanceData,
+        topWorkers: top,
+        paymentTrends: trendData,
+        projectSpending: spendingData,
+        approvalRatio: ratio,
+        reportData: report,
+      });
+    } catch (err) {
+      console.error('Dashboard fetch error:', err);
+      setMessage({ type: 'error', text: 'Failed to load data. Check console.' });
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const refreshAll = useCallback(async () => {
+    setRefreshing(true);
     try {
-      await api.post(`/api/tenders/${id}/convert-to-project`);
-      setMessage({ type: 'success', text: 'Project created successfully!' });
-      refreshAll();
+      await refreshUser();
+      await fetchDashboardData(true);
+      setMessage({ type: 'success', text: 'Data refreshed successfully' });
+      setTimeout(() => setMessage(null), 3000);
     } catch (err) {
-      setMessage({ type: 'error', text: err.response?.data?.error || 'Project creation failed' });
+      setMessage({ type: 'error', text: 'Refresh failed' });
+    } finally {
+      setRefreshing(false);
     }
-  };
+  }, [refreshUser, fetchDashboardData]);
 
-  // ─── Funding Request handlers ────────────────────────────────────
-  const handleForwardFunding = async (id) => {
-    try {
-      await api.put(`/api/funding-requests/${id}/forward`);
-      setMessage({ type: 'success', text: 'Funding request forwarded to Director!' });
+  useEffect(() => {
+    if (!initialLoadDone.current) {
+      initialLoadDone.current = true;
       refreshAll();
-    } catch (err) {
-      setMessage({ type: 'error', text: err.response?.data?.error || 'Forward failed' });
     }
-  };
+  }, [refreshAll]);
 
+  // ─── Funding request handlers ────────────────────────────────────
   const handleApproveFunding = async (id) => {
     try {
       await api.put(`/api/funding-requests/${id}/approve`);
@@ -254,6 +389,16 @@ const AccountantDashboard = () => {
     }
   };
 
+  const handleForwardFunding = async (id) => {
+    try {
+      await api.put(`/api/funding-requests/${id}/forward`);
+      setMessage({ type: 'success', text: 'Funding request forwarded to Director!' });
+      refreshAll();
+    } catch (err) {
+      setMessage({ type: 'error', text: err.response?.data?.error || 'Forward failed' });
+    }
+  };
+
   // ─── Procurement handlers ──────────────────────────────────────
   const handleFinalApproveProcurement = async (id) => {
     try {
@@ -265,6 +410,7 @@ const AccountantDashboard = () => {
     }
   };
 
+  // ─── Funding handlers ──────────────────────────────────────────
   const handleFundProcurement = async (id, recipientPhone) => {
     try {
       await api.put(`/api/procurement/${id}/fund`, { recipientPhone });
@@ -275,9 +421,9 @@ const AccountantDashboard = () => {
     }
   };
 
-  const handleFundSubcontract = async (id, vendorPhone) => {
+  const handleFundSubcontract = async (id, recipientPhone) => {
     try {
-      await api.put(`/api/subcontracts/${id}/fund`, { vendorPhone });
+      await api.put(`/api/subcontracts/${id}/fund`, { recipientPhone });
       setMessage({ type: 'success', text: 'Subcontract funded!' });
       refreshAll();
     } catch (err) {
@@ -285,7 +431,7 @@ const AccountantDashboard = () => {
     }
   };
 
-  // ─── Funding request modal handlers ────────────────────────────
+  // ─── Existing handlers ──────────────────────────────────────────
   const handleFundClick = (request) => {
     const requester = request.requestedBy;
     setFundRequestId(request._id);
@@ -310,11 +456,24 @@ const AccountantDashboard = () => {
     }
   };
 
-  // ─── Pay All handlers ──────────────────────────────────────────
+  const handleWorkerSelect = useCallback((worker) => {
+    setSelectedWorker(worker);
+    setSearchOpen(false);
+    setPaymentOpen(true);
+  }, []);
+
+  const handlePaymentClose = useCallback(() => {
+    setPaymentOpen(false);
+    setSelectedWorker(null);
+    refreshAll();
+  }, [refreshAll]);
+
+  // ─── Pay All ──────────────────────────────────────────────────────
   const buildPayAllItems = useCallback(() => {
     const items = [];
     let total = 0;
 
+    // Workers with pending balance
     if (payAllFilters.workers) {
       const pendingWorkers = workers.filter(w => (w.balance || 0) > 0);
       pendingWorkers.forEach(w => {
@@ -332,6 +491,7 @@ const AccountantDashboard = () => {
       });
     }
 
+    // Funding Requests (approved)
     if (payAllFilters.funding) {
       const approvedFunding = fundingRequests.filter(f => f.status === 'approved');
       approvedFunding.forEach(f => {
@@ -349,6 +509,7 @@ const AccountantDashboard = () => {
       });
     }
 
+    // Procurement Orders (approved)
     if (payAllFilters.procurement) {
       const approvedProc = procurementOrders.filter(o => o.status === 'approved');
       approvedProc.forEach(o => {
@@ -366,6 +527,7 @@ const AccountantDashboard = () => {
       });
     }
 
+    // Subcontracts (approved)
     if (payAllFilters.subcontracts) {
       const approvedSub = subcontracts.filter(s => s.status === 'approved');
       approvedSub.forEach(s => {
@@ -401,12 +563,14 @@ const AccountantDashboard = () => {
     }
   }, [payAllOpen, payAllFilters, buildPayAllItems]);
 
+  // ─── Update phone number for an item ─────────────────────────────
   const updatePhoneNumber = (index, newPhone) => {
     const updated = [...payAllItems];
     updated[index].phone = newPhone;
     setPayAllItems(updated);
   };
 
+  // ─── Skip an item ──────────────────────────────────────────────
   const skipItem = (index) => {
     const updated = payAllItems.filter((_, i) => i !== index);
     setPayAllItems(updated);
@@ -474,344 +638,12 @@ const AccountantDashboard = () => {
     }
   };
 
-  // ─── Worker select handlers ──────────────────────────────────────
-  const handleWorkerSelect = useCallback((worker) => {
-    setSelectedWorker(worker);
-    setSearchOpen(false);
-    setPaymentOpen(true);
-  }, []);
-
-  const handlePaymentClose = useCallback(() => {
-    setPaymentOpen(false);
-    setSelectedWorker(null);
-    refreshAll();
-  }, [refreshAll]);
-
-  // ─── Main fetch ──────────────────────────────────────────────────
-  const fetchDashboardData = useCallback(async (force = false) => {
-    const cacheKey = 'accountant_dashboard';
-    if (!force) {
-      const cached = getCached(cacheKey);
-      if (cached) {
-        console.log('✅ Loading from cache');
-        setStats(cached.stats);
-        setWorkers(cached.workers);
-        setProjects(cached.projects);
-        setFundingRequests(cached.fundingRequests);
-        setProcurementOrders(cached.procurementOrders || []);
-        setSubcontracts(cached.subcontracts || []);
-        setPayments(cached.payments);
-        setAttendance(cached.attendance);
-        setTopWorkers(cached.topWorkers);
-        setPaymentTrends(cached.paymentTrends);
-        setProjectSpending(cached.projectSpending);
-        setApprovalRatio(cached.approvalRatio);
-        setReportData(cached.reportData);
-        setTenders(cached.tenders || []);
-        setAdvertisedProjects(cached.advertisedProjects || []);
-        setBids(cached.bids || []);
-        setTenderStatusData(cached.tenderStatusData || []);
-        setTenderTimelineData(cached.tenderTimelineData || []);
-        setAdvertisedVsBiddedData(cached.advertisedVsBiddedData || []);
-        setLoading(false);
-        return;
-      }
-    }
-
-    console.log('🔄 Fetching fresh dashboard data...');
-    setLoading(true);
-    setMessage(null);
-
-    // ─── Safe fetch wrapper ──────────────────────────────────────
-    const safeFetch = async (url, fallback = []) => {
-      try {
-        const res = await api.get(url);
-        console.log(`✅ ${url} fetched successfully`);
-        return Array.isArray(res.data) ? res.data : (res.data?.data || res.data || fallback);
-      } catch (err) {
-        console.error(`❌ Failed to fetch ${url}:`, err.message);
-        return fallback;
-      }
-    };
-
-    try {
-      const [
-        workersData,
-        attendanceData,
-        paymentsData,
-        projectsData,
-        fundingData,
-        procurementData,
-        subcontractsData,
-        visitorsData,
-        tendersData,
-        advertisedData,
-        bidsData,
-      ] = await Promise.all([
-        safeFetch('/api/workers', []),
-        safeFetch('/api/attendance', []),
-        safeFetch('/api/payments', []),
-        safeFetch('/api/projects', []),
-        safeFetch('/api/funding-requests', []),
-        safeFetch('/api/procurement', []),
-        safeFetch('/api/subcontracts', []),
-        safeFetch('/api/visitors', []),
-        safeFetch('/api/tenders', []),
-        safeFetch('/api/advertised-projects', []).then(data => data.projects || data || []),
-        safeFetch('/api/bids', []),
-      ]);
-
-      console.log('✅ All data fetched');
-
-      // ─── Process data ────────────────────────────────────────────
-      const completedPayments = paymentsData.filter(p => p.status === 'completed');
-      const totalVisitors = visitorsData.length;
-      const todayVisitors = visitorsData.filter(v => new Date(v.checkIn).toDateString() === new Date().toDateString()).length;
-
-      const workersWithBalance = workersData.map(w => {
-        const workerAttendance = attendanceData.filter(a => a.worker === w._id || a.worker?._id === w._id);
-        const totalEarned = workerAttendance.reduce((sum, a) => sum + (a.days * a.rate || a.rate), 0);
-        const workerPayments = completedPayments.filter(p => p.worker === w._id || p.worker?._id === w._id);
-        const totalPaid = workerPayments.reduce((sum, p) => sum + (p.amount || 0), 0);
-        return { ...w, balance: totalEarned - totalPaid };
-      });
-
-      const totalWorkers = workersWithBalance.length;
-      const totalProjects = projectsData.length;
-      const totalReleased = completedPayments.reduce((sum, p) => sum + (p.amount || 0), 0);
-      const totalFunding = fundingData.length;
-      const pendingFunding = fundingData.filter(f => f.status === 'pending' || f.status === 'approved').length;
-      const approvedFunding = fundingData.filter(f => f.status === 'approved').length;
-      const pendingWorkers = workersWithBalance.filter(w => w.balance > 0).length;
-      const totalPendingAmount = workersWithBalance.reduce((sum, w) => sum + (w.balance || 0), 0) +
-        fundingData.filter(f => f.status === 'approved').reduce((sum, f) => sum + f.amount, 0) +
-        procurementData.filter(o => o.status === 'approved').reduce((sum, o) => sum + (o.grandTotal || o.total || 0), 0) +
-        subcontractsData.filter(s => s.status === 'approved').reduce((sum, s) => sum + (s.amount || 0), 0);
-
-      const pendingProcurement = procurementData.filter(o => o.status === 'approved').length;
-      const pendingSubcontracts = subcontractsData.filter(s => s.status === 'approved').length;
-
-      const tendersDraft = tendersData.filter(t => t.status === 'draft').length;
-      const tendersSubmitted = tendersData.filter(t => t.status === 'submitted').length;
-      const tendersApproved = tendersData.filter(t => t.status === 'approved').length;
-      const tendersVerified = tendersData.filter(t => t.status === 'verified').length;
-      const tendersAwarded = tendersData.filter(t => t.status === 'awarded').length;
-
-      const advertisedProjectsCount = advertisedData.filter(p => p.status === 'open').length;
-      const biddedProjectsCount = bidsData.length;
-
-      // ─── Top workers ──────────────────────────────────────────────
-      const workerEarnings = {};
-      completedPayments.forEach(p => {
-        const workerId = p.worker?._id || p.worker;
-        if (workerId) {
-          workerEarnings[workerId] = (workerEarnings[workerId] || 0) + p.amount;
-        }
-      });
-      const top = Object.entries(workerEarnings)
-        .map(([id, amount]) => {
-          const worker = workersWithBalance.find(w => w._id === id);
-          return { name: worker?.name || 'Unknown', amount };
-        })
-        .sort((a, b) => b.amount - a.amount)
-        .slice(0, 5);
-
-      // ─── Charts ──────────────────────────────────────────────────
-      const trends = {};
-      const now = new Date();
-      for (let i = 13; i >= 0; i--) {
-        const d = new Date(now);
-        d.setDate(d.getDate() - i);
-        const key = d.toISOString().split('T')[0];
-        trends[key] = 0;
-      }
-      completedPayments.forEach(p => {
-        if (p.createdAt) {
-          const date = new Date(p.createdAt).toISOString().split('T')[0];
-          if (trends[date] !== undefined) trends[date] += p.amount;
-        }
-      });
-      const trendData = Object.entries(trends).map(([date, amount]) => ({ 
-        date: date.slice(5),
-        amount 
-      }));
-
-      const projectSpendingMap = {};
-      completedPayments.forEach(p => {
-        const projectId = p.project?._id || p.project;
-        if (projectId) {
-          const project = projectsData.find(pr => pr._id === projectId);
-          const name = project?.name || 'Unknown Project';
-          projectSpendingMap[name] = (projectSpendingMap[name] || 0) + p.amount;
-        }
-      });
-      const spendingData = Object.entries(projectSpendingMap).map(([name, amount]) => ({ name, amount }));
-
-      const pending = fundingData.filter(f => f.status === 'pending').length;
-      const approved = fundingData.filter(f => f.status === 'approved').length;
-      const rejected = fundingData.filter(f => f.status === 'rejected').length;
-      const funded = fundingData.filter(f => f.status === 'funded').length;
-      const ratio = [
-        { name: 'Pending', value: pending },
-        { name: 'Approved', value: approved },
-        { name: 'Rejected', value: rejected },
-        { name: 'Funded', value: funded },
-      ].filter(item => item.value > 0);
-
-      const report = {
-        workersEnrolled: totalWorkers,
-        projectsCreated: totalProjects,
-        payments: completedPayments.length,
-        totalAmountReleased: totalReleased,
-      };
-
-      const newStats = { 
-        workers: totalWorkers, 
-        projects: totalProjects, 
-        totalReleased, 
-        fundingRequests: totalFunding,
-        pendingFunding: pendingFunding,
-        approvedFunding: approvedFunding,
-        pendingWorkers: pendingWorkers,
-        totalPendingAmount: totalPendingAmount,
-        pendingProcurement: pendingProcurement,
-        pendingSubcontracts: pendingSubcontracts,
-        visitors: totalVisitors,
-        todayVisitors: todayVisitors,
-        advertisedProjects: advertisedProjectsCount,
-        biddedProjects: biddedProjectsCount,
-        tendersDraft,
-        tendersSubmitted,
-        tendersApproved,
-        tendersVerified,
-        tendersAwarded,
-      };
-
-      // ─── Tender chart data ──────────────────────────────────────
-      const statusCounts = {
-        draft: tendersData.filter(t => t.status === 'draft').length,
-        submitted: tendersData.filter(t => t.status === 'submitted').length,
-        approved: tendersData.filter(t => t.status === 'approved').length,
-        verified: tendersData.filter(t => t.status === 'verified').length,
-        awarded: tendersData.filter(t => t.status === 'awarded').length,
-      };
-      const statusData = Object.entries(statusCounts)
-        .filter(([_, v]) => v > 0)
-        .map(([name, value]) => ({ name: name.charAt(0).toUpperCase() + name.slice(1), value }));
-
-      // ─── Tender timeline (last 7 days) – using BarChart ────────
-      const timelineMap = {};
-      for (let i = 6; i >= 0; i--) {
-        const d = new Date(now);
-        d.setDate(d.getDate() - i);
-        const key = d.toISOString().split('T')[0];
-        timelineMap[key] = { date: key.slice(5), submitted: 0, approved: 0, awarded: 0 };
-      }
-      tendersData.forEach(t => {
-        if (t.createdAt) {
-          const date = new Date(t.createdAt).toISOString().split('T')[0];
-          if (timelineMap[date]) {
-            if (t.status === 'submitted' || t.status === 'approved' || t.status === 'verified' || t.status === 'awarded') {
-              timelineMap[date].submitted += 1;
-            }
-            if (t.status === 'approved' || t.status === 'verified' || t.status === 'awarded') {
-              timelineMap[date].approved += 1;
-            }
-            if (t.status === 'awarded') {
-              timelineMap[date].awarded += 1;
-            }
-          }
-        }
-      });
-      const timelineData = Object.values(timelineMap);
-
-      // ─── Advertised vs Bidded ─────────────────────────────────────
-      const advBidData = [
-        { name: 'Advertised', value: advertisedProjectsCount },
-        { name: 'Bidded', value: biddedProjectsCount },
-      ];
-
-      setStats(newStats);
-      setWorkers(workersWithBalance);
-      setProjects(projectsData);
-      setFundingRequests(fundingData);
-      setProcurementOrders(procurementData);
-      setSubcontracts(subcontractsData);
-      setPayments(completedPayments);
-      setAttendance(attendanceData);
-      setTopWorkers(top);
-      setPaymentTrends(trendData);
-      setProjectSpending(spendingData);
-      setApprovalRatio(ratio);
-      setReportData(report);
-      setTenders(tendersData);
-      setAdvertisedProjects(advertisedData);
-      setBids(bidsData);
-      setTenderStatusData(statusData);
-      setTenderTimelineData(timelineData);
-      setAdvertisedVsBiddedData(advBidData);
-
-      setCached(cacheKey, {
-        stats: newStats,
-        workers: workersWithBalance,
-        projects: projectsData,
-        fundingRequests: fundingData,
-        procurementOrders: procurementData,
-        subcontracts: subcontractsData,
-        payments: completedPayments,
-        attendance: attendanceData,
-        topWorkers: top,
-        paymentTrends: trendData,
-        projectSpending: spendingData,
-        approvalRatio: ratio,
-        reportData: report,
-        tenders: tendersData,
-        advertisedProjects: advertisedData,
-        bids: bidsData,
-        tenderStatusData: statusData,
-        tenderTimelineData: timelineData,
-        advertisedVsBiddedData: advBidData,
-      });
-
-    } catch (err) {
-      console.error('❌ Dashboard processing error:', err);
-      setMessage({ type: 'error', text: 'Failed to process dashboard data. Check console.' });
-    } finally {
-      setLoading(false);
-      console.log('✅ Dashboard loading finished');
-    }
-  }, []);
-
-  const refreshAll = useCallback(async () => {
-    setRefreshing(true);
-    try {
-      await refreshUser();
-      await fetchDashboardData(true);
-      setMessage({ type: 'success', text: 'Data refreshed successfully' });
-      setTimeout(() => setMessage(null), 3000);
-    } catch (err) {
-      setMessage({ type: 'error', text: 'Refresh failed' });
-    } finally {
-      setRefreshing(false);
-    }
-  }, [refreshUser, fetchDashboardData]);
-
-  useEffect(() => {
-    if (!initialLoadDone.current) {
-      initialLoadDone.current = true;
-      console.log('🚀 Initial load: calling refreshAll');
-      refreshAll();
-    }
-  }, [refreshAll]);
-
-  // ─── Format currency ──────────────────────────────────────────────
   const formatCurrency = useCallback((amount) => {
-    if (amount === null || amount === undefined) return 'K 0.00';
     return new Intl.NumberFormat('en-ZM', { style: 'currency', currency: 'ZMW' }).format(amount || 0);
   }, []);
 
-  // ─── Computed values for pay all and stats ──────────────────────
   const pendingWorkers = useMemo(() => workers.filter(w => (w.balance || 0) > 0), [workers]);
+  const totalPending = useMemo(() => pendingWorkers.reduce((sum, w) => sum + (w.balance || 0), 0), [pendingWorkers]);
   const pendingFundingCount = useMemo(() => fundingRequests.filter(f => f.status === 'pending' || f.status === 'approved').length, [fundingRequests]);
   const approvedFundingCount = useMemo(() => fundingRequests.filter(f => f.status === 'approved').length, [fundingRequests]);
 
@@ -836,12 +668,12 @@ const AccountantDashboard = () => {
     return groups;
   }, [workers, projects]);
 
+  // ─── Pending counts by category ──────────────────────────────────
   const pendingWorkersCount = pendingWorkers.length;
   const pendingFunding = fundingRequests.filter(f => f.status === 'approved').length;
   const pendingProcurement = procurementOrders.filter(o => o.status === 'approved').length;
   const pendingSubcontracts = subcontracts.filter(s => s.status === 'approved').length;
 
-  // ─── Loading skeleton ────────────────────────────────────────────
   if (loading) {
     return (
       <Box>
@@ -859,20 +691,15 @@ const AccountantDashboard = () => {
     );
   }
 
-  // ─── Render ──────────────────────────────────────────────────────
   return (
     <ErrorBoundary>
       <Box>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
           <Typography variant="h4">Accountant Dashboard</Typography>
-          <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
+          <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
             <FormControlLabel
               control={<Switch checked={showCharts} onChange={(e) => setShowCharts(e.target.checked)} />}
               label="Show Charts"
-            />
-            <FormControlLabel
-              control={<Switch checked={showTenderCharts} onChange={(e) => setShowTenderCharts(e.target.checked)} />}
-              label="Tender Charts"
             />
             <Button
               variant="contained"
@@ -909,16 +736,6 @@ const AccountantDashboard = () => {
                 Procurement Orders
               </Button>
             </Grid>
-            <Grid item xs={12} sm={6} md={3}>
-              <Button component={Link} to="/tenders" variant="contained" fullWidth>
-                Tenders & RFQs
-              </Button>
-            </Grid>
-            <Grid item xs={12} sm={6} md={3}>
-              <Button component={Link} to="/advertised-projects" variant="contained" fullWidth>
-                Advertised Projects
-              </Button>
-            </Grid>
           </Grid>
         </Paper>
 
@@ -947,9 +764,8 @@ const AccountantDashboard = () => {
           Total pending: {formatCurrency(stats.totalPendingAmount)} ({pendingWorkersCount} workers, {pendingFunding} funding requests awaiting funding, {pendingProcurement} procurement orders, {pendingSubcontracts} subcontracts)
         </Typography>
 
-        {/* ─── Stats Cards ───────────────────────────────────────────── */}
+        {/* ─── Professional Stats Cards (5 cards) ───────────────────────── */}
         <Grid container spacing={3} sx={{ mb: 3 }}>
-          {/* Existing cards */}
           <Grid item xs={12} sm={6} md={2.4}>
             <Card sx={{ height: '100%', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', color: 'white' }}>
               <CardContent>
@@ -995,66 +811,8 @@ const AccountantDashboard = () => {
               </CardContent>
             </Card>
           </Grid>
-          {/* ─── New Tender Stats ──────────────────────────────────── */}
-          <Grid item xs={12} sm={6} md={2.4}>
-            <Card sx={{ height: '100%', borderLeft: '4px solid #e91e63' }}>
-              <CardContent>
-                <Typography variant="body2" color="textSecondary">Advertised Projects</Typography>
-                <Typography variant="h4" color="#e91e63">{stats.advertisedProjects}</Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-          <Grid item xs={12} sm={6} md={2.4}>
-            <Card sx={{ height: '100%', borderLeft: '4px solid #00bcd4' }}>
-              <CardContent>
-                <Typography variant="body2" color="textSecondary">Bidded Projects</Typography>
-                <Typography variant="h4" color="#00bcd4">{stats.biddedProjects}</Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-          <Grid item xs={12} sm={6} md={2.4}>
-            <Card sx={{ height: '100%', borderLeft: '4px solid #ff5722' }}>
-              <CardContent>
-                <Typography variant="body2" color="textSecondary">Tenders (Draft)</Typography>
-                <Typography variant="h4" color="#ff5722">{stats.tendersDraft}</Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-          <Grid item xs={12} sm={6} md={2.4}>
-            <Card sx={{ height: '100%', borderLeft: '4px solid #ff9800' }}>
-              <CardContent>
-                <Typography variant="body2" color="textSecondary">Tenders (Submitted)</Typography>
-                <Typography variant="h4" color="#ff9800">{stats.tendersSubmitted}</Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-          <Grid item xs={12} sm={6} md={2.4}>
-            <Card sx={{ height: '100%', borderLeft: '4px solid #4caf50' }}>
-              <CardContent>
-                <Typography variant="body2" color="textSecondary">Tenders (Approved)</Typography>
-                <Typography variant="h4" color="#4caf50">{stats.tendersApproved}</Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-          <Grid item xs={12} sm={6} md={2.4}>
-            <Card sx={{ height: '100%', borderLeft: '4px solid #2196f3' }}>
-              <CardContent>
-                <Typography variant="body2" color="textSecondary">Tenders (Verified)</Typography>
-                <Typography variant="h4" color="#2196f3">{stats.tendersVerified}</Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-          <Grid item xs={12} sm={6} md={2.4}>
-            <Card sx={{ height: '100%', borderLeft: '4px solid #9c27b0' }}>
-              <CardContent>
-                <Typography variant="body2" color="textSecondary">Tenders (Awarded)</Typography>
-                <Typography variant="h4" color="#9c27b0">{stats.tendersAwarded}</Typography>
-              </CardContent>
-            </Card>
-          </Grid>
         </Grid>
 
-        {/* ─── Charts ────────────────────────────────────────────────── */}
         {showCharts && (
           <Grid container spacing={3} sx={{ mb: 3 }}>
             {paymentTrends.length > 0 && (
@@ -1139,76 +897,7 @@ const AccountantDashboard = () => {
           </Grid>
         )}
 
-        {/* ─── Tender Charts ────────────────────────────────────────── */}
-        {showTenderCharts && (
-          <Grid container spacing={3} sx={{ mb: 3 }}>
-            {tenderStatusData.length > 0 && (
-              <Grid item xs={12} md={4}>
-                <Paper sx={{ p: 2 }}>
-                  <Typography variant="h6" gutterBottom>Tenders by Status</Typography>
-                  <ResponsiveContainer width="100%" height={200}>
-                    <PieChart>
-                      <Pie
-                        data={tenderStatusData}
-                        dataKey="value"
-                        nameKey="name"
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={40}
-                        outerRadius={80}
-                        label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                      >
-                        {tenderStatusData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={TENDER_COLORS[index % TENDER_COLORS.length]} />
-                        ))}
-                      </Pie>
-                      <RechartsTooltip formatter={(value) => `${value} tenders`} />
-                      <Legend />
-                    </PieChart>
-                  </ResponsiveContainer>
-                </Paper>
-              </Grid>
-            )}
-            {tenderTimelineData.length > 0 && (
-              <Grid item xs={12} md={8}>
-                <Paper sx={{ p: 2 }}>
-                  <Typography variant="h6" gutterBottom>Tender Status Timeline (Last 7 Days)</Typography>
-                  <ResponsiveContainer width="100%" height={200}>
-                    <BarChart data={tenderTimelineData}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="date" />
-                      <YAxis />
-                      <RechartsTooltip />
-                      <Legend />
-                      <Bar dataKey="submitted" fill="#ff9800" name="Submitted" />
-                      <Bar dataKey="approved" fill="#4caf50" name="Approved" />
-                      <Bar dataKey="awarded" fill="#9c27b0" name="Awarded" />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </Paper>
-              </Grid>
-            )}
-            {advertisedVsBiddedData.length > 0 && (
-              <Grid item xs={12} md={4}>
-                <Paper sx={{ p: 2 }}>
-                  <Typography variant="h6" gutterBottom>Advertised vs Bidded</Typography>
-                  <ResponsiveContainer width="100%" height={200}>
-                    <BarChart data={advertisedVsBiddedData}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="name" />
-                      <YAxis />
-                      <RechartsTooltip formatter={(value) => `${value} projects`} />
-                      <Legend />
-                      <Bar dataKey="value" fill="#e91e63" />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </Paper>
-              </Grid>
-            )}
-          </Grid>
-        )}
-
-        {/* ─── Projects Table ────────────────────────────────────────── */}
+        {/* Projects Table */}
         <Paper sx={{ p: 2, mb: 3 }}>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <Typography variant="h6">Projects by Creator</Typography>
@@ -1244,7 +933,7 @@ const AccountantDashboard = () => {
           </Table>
         </Paper>
 
-        {/* ─── Workers by Project ────────────────────────────────────── */}
+        {/* Workers by Project */}
         <Paper sx={{ p: 2, mb: 3 }}>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
             <Typography variant="h6">Workers by Project</Typography>
@@ -1293,107 +982,7 @@ const AccountantDashboard = () => {
           )}
         </Paper>
 
-        {/* ─── Tenders Table ────────────────────────────────────────── */}
-        <Paper sx={{ p: 2, mb: 3 }}>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <Typography variant="h6">Recent Tenders</Typography>
-            <Button component={Link} to="/tenders" size="small">View All</Button>
-          </Box>
-          <Table size="small">
-            <TableHead>
-              <TableRow>
-                <TableCell>Reference</TableCell>
-                <TableCell>Title</TableCell>
-                <TableCell>Client</TableCell>
-                <TableCell>Status</TableCell>
-                <TableCell>Actions</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {tenders.slice(0, 5).map(t => (
-                <TableRow key={t._id}>
-                  <TableCell>{t.referenceNumber}</TableCell>
-                  <TableCell>{t.title}</TableCell>
-                  <TableCell>{t.client}</TableCell>
-                  <TableCell>
-                    <Chip 
-                      label={t.status} 
-                      size="small" 
-                      color={
-                        t.status === 'draft' ? 'default' :
-                        t.status === 'submitted' ? 'warning' :
-                        t.status === 'approved' ? 'success' :
-                        t.status === 'verified' ? 'info' :
-                        t.status === 'awarded' ? 'success' : 'default'
-                      } 
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <Button component={Link} to={`/tenders/${t._id}/view`} size="small" variant="outlined" sx={{ mr: 1 }}>
-                      View
-                    </Button>
-                    {t.status === 'submitted' && (
-                      <Button
-                        size="small"
-                        variant="contained"
-                        color="success"
-                        onClick={() => handleApproveTender(t._id)}
-                        sx={{ mr: 1 }}
-                      >
-                        Approve
-                      </Button>
-                    )}
-                    {t.status === 'approved' && (
-                      <Button
-                        size="small"
-                        variant="contained"
-                        color="info"
-                        onClick={() => handleVerifyTender(t._id)}
-                        sx={{ mr: 1 }}
-                      >
-                        Verify
-                      </Button>
-                    )}
-                    {t.status === 'verified' && (
-                      <Button
-                        size="small"
-                        variant="contained"
-                        color="warning"
-                        onClick={() => handleAwardTender(t._id)}
-                        sx={{ mr: 1 }}
-                      >
-                        Award
-                      </Button>
-                    )}
-                    {t.status === 'awarded' && !t.convertedToProject && (
-                      <Button
-                        size="small"
-                        variant="contained"
-                        color="success"
-                        onClick={() => handleCreateProjectFromTender(t._id)}
-                        sx={{ mr: 1 }}
-                      >
-                        Create Project
-                      </Button>
-                    )}
-                    {t.convertedToProject && (
-                      <Chip label="✅ Project" size="small" color="success" />
-                    )}
-                  </TableCell>
-                </TableRow>
-              ))}
-              {tenders.length === 0 && (
-                <TableRow>
-                  <TableCell colSpan={5} align="center">
-                    <Typography variant="body2" color="textSecondary">No tenders found.</Typography>
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </Paper>
-
-        {/* ─── Funding Requests Table ────────────────────────────────── */}
+        {/* ─── Funding Requests Table ─────────────────────────────────── */}
         <Paper sx={{ p: 2, mb: 3 }}>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <Typography variant="h6">Funding Requests</Typography>
@@ -1480,7 +1069,7 @@ const AccountantDashboard = () => {
           </Table>
         </Paper>
 
-        {/* ─── Procurement Orders Table ───────────────────────────────── */}
+        {/* Procurement Orders Table */}
         <Paper sx={{ p: 2, mb: 3 }}>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <Typography variant="h6">Procurement Orders (Pending Funding)</Typography>
@@ -1539,7 +1128,7 @@ const AccountantDashboard = () => {
           </Table>
         </Paper>
 
-        {/* ─── Subcontracts Table ────────────────────────────────────── */}
+        {/* Subcontracts Table */}
         <Paper sx={{ p: 2, mb: 3 }}>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <Typography variant="h6">Subcontracts</Typography>
@@ -1602,7 +1191,7 @@ const AccountantDashboard = () => {
           </Table>
         </Paper>
 
-        {/* ─── Weekly Report ─────────────────────────────────────────── */}
+        {/* Weekly Report */}
         <Paper sx={{ p: 2, mb: 3 }}>
           <Typography variant="h6" gutterBottom>Weekly Report</Typography>
           {reportData ? (
