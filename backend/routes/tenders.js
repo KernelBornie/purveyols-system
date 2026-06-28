@@ -20,16 +20,12 @@ const storage = multer.diskStorage({
   }
 });
 
-const fileFilter = (req, file, cb) => {
-  const allowed = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf'];
-  if (allowed.includes(file.mimetype)) {
-    cb(null, true);
-  } else {
-    cb(new Error('Only images and PDFs are allowed'), false);
-  }
-};
-
-const upload = multer({ storage, fileFilter, limits: { fileSize: 10 * 1024 * 1024 } });
+// ✅ Accept any file type – remove fileFilter
+// ✅ Increase file size limit to 100MB
+const upload = multer({ 
+  storage, 
+  limits: { fileSize: 100 * 1024 * 1024 }   // 100MB
+});
 
 // ─── Upload hard copy tender ───────────────────────────────────────
 router.post('/upload-hardcopy', auth, upload.single('file'), async (req, res) => {
