@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import {
   Paper, Typography, Box, Grid, TextField, Button, MenuItem,
@@ -19,10 +19,12 @@ import DescriptionIcon from '@mui/icons-material/Description';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import CameraAltIcon from '@mui/icons-material/CameraAlt';
 import ZoomInIcon from '@mui/icons-material/ZoomIn';
+import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 import api from '../../api/axios';
 import { useAuth } from '../../context/AuthContext';
 import BackButton from '../../components/BackButton';
 import getApiErrorMessage from '../../utils/getApiErrorMessage';
+import html2pdf from 'html2pdf.js';
 
 // ─── Expanded roles that can edit ───────────────────────────────
 const EDITABLE_ROLES = [
@@ -46,6 +48,7 @@ const TenderForm = () => {
   const [imagePreview, setImagePreview] = useState('');
   const [photoPreviewOpen, setPhotoPreviewOpen] = useState(false);
   const [docExpanded, setDocExpanded] = useState(true);
+  const contentRef = useRef(null);
 
   // ─── Form state with all fields ─────────────────────────────
   const [form, setForm] = useState({
@@ -473,23 +476,18 @@ const TenderForm = () => {
     }
   };
 
-  // ─── Custom Print ────────────────────────────────────────────────
-  const handlePrint = () => {
-    if (!form.title) {
-      alert('No data to print.');
-      return;
-    }
-    const printWindow = window.open('', '_blank');
-    const photoHtml = imagePreview ? `<img src="${imagePreview}" style="max-width:200px; border:1px solid #ccc; margin:5px 0;" />` : '';
+  // ─── Build HTML content for print / PDF ──────────────────────
+  const buildHTMLContent = () => {
     const formatCurrency = (amount) => {
       return new Intl.NumberFormat('en-ZM', { style: 'currency', currency: 'ZMW' }).format(amount || 0);
     };
-
+    const photoHtml = imagePreview ? `<img src="${imagePreview}" style="max-width:200px; border:1px solid #ccc; margin:5px 0;" />` : '';
     const assignedNames = form.assignedStaff && form.assignedStaff.length > 0
       ? form.assignedStaff.map(s => `${s.name} (${s.role})`).join(', ')
       : '—';
+    const { subtotal, grandTotal } = calculateGrandTotal();
 
-    printWindow.document.write(`
+    return `
       <html>
         <head>
           <title>Tender / RFQ</title>
@@ -568,8 +566,8 @@ const TenderForm = () => {
                   </tbody>
                 </table>
               `).join('')}
-              <p><strong>Subtotal:</strong> ${formatCurrency(calculateGrandTotal().subtotal)}</p>
-              <p><strong>Grand Total:</strong> ${formatCurrency(calculateGrandTotal().grandTotal)}</p>
+              <p><strong>Subtotal:</strong> ${formatCurrency(subtotal)}</p>
+              <p><strong>Grand Total:</strong> ${formatCurrency(grandTotal)}</p>
             ` : ''}
             <div class="approval">
               <div class="row">
@@ -583,12 +581,59 @@ const TenderForm = () => {
             </div>
             <div class="footer">PURVEYOLS CMS - Construction Management System</div>
           </div>
-          <script>window.onload = function() { window.print(); }</script>
         </body>
       </html>
-    `);
-    printWindow.document.close();
+    `;
   };
+
+  // ─── Print handler ─────────────────────────────────────────────
+  const handlePrint = () => {
+    if (!form.title) {
+      alert('No data to print.');
+      return;
+    }
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(buildHTMLContent());
+    printWindow.document.close();
+    printWindow.onload = function() {
+      printWindow.print();
+    };
+  };
+
+  // ─── PDF Download handler ──────────────────────────────────────
+  const handleDownloadPDF = () => {
+    if (!form.title) {
+      alert('No data to download.');
+      return;
+    }
+    // Build the HTML
+    const htmlContent = buildHTMLContent();
+    // Create a temporary container
+    const container = document.createElement('div');
+    container.innerHTML = htmlContent;
+    container.style.position = 'fixed';
+    container.style.left = '-9999px';
+    container.style.top = '0';
+    container.style.width = '1000px';
+    container.style.backgroundColor = '#fff';
+    document.body.appendChild(container);
+    // Use html2pdf to convert to PDF
+    html2pdf()
+      .set({ margin: 0.5, filename: `Tender-${form.referenceNumber || 'document'}.pdf`, html2canvas: { scale: 2 } })
+      .from(container)
+      .save()
+      .then(() => {
+        document.body.removeChild(container);
+      })
+      .catch((err) => {
+        console.error('PDF generation error:', err);
+        document.body.removeChild(container);
+        alert('Failed to generate PDF. Please try again.');
+      });
+  };
+
+  // ─── Custom Print (legacy) ──────────────────────────────────────
+  // (kept for compatibility, but we now have handlePrint and handleDownloadPDF)
 
   const { subtotal, grandTotal } = calculateGrandTotal();
 
@@ -609,6 +654,15 @@ const TenderForm = () => {
             sx={{ mr: 1 }}
           >
             Print
+          </Button>
+          <Button
+            variant="contained"
+            color="primary"
+            startIcon={<PictureAsPdfIcon />}
+            onClick={handleDownloadPDF}
+            sx={{ mr: 1 }}
+          >
+            Download PDF
           </Button>
 
           {id && canDelete && !isReadOnly && (
