@@ -16,7 +16,7 @@ import FilterListIcon from '@mui/icons-material/FilterList';
 import SkipNextIcon from '@mui/icons-material/SkipNext';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip,
-  Legend, PieChart, Pie, Cell, ResponsiveContainer, LineChart, Line
+  Legend, PieChart, Pie, Cell, ResponsiveContainer
 } from 'recharts';
 import api from '../../api/axios';
 import WorkerSearch from '../../components/WorkerSearch';
@@ -70,7 +70,7 @@ const setCached = (key, data) => {
   cache[key] = { data, timestamp: Date.now() };
 };
 
-const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#FF5722'];
+const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042'];
 const TENDER_COLORS = ['#e0e0e0', '#ff9800', '#4caf50', '#2196f3', '#9c27b0'];
 
 const AccountantDashboard = () => {
@@ -699,7 +699,7 @@ const AccountantDashboard = () => {
         .filter(([_, v]) => v > 0)
         .map(([name, value]) => ({ name: name.charAt(0).toUpperCase() + name.slice(1), value }));
 
-      // ─── Tender timeline (last 7 days) ────────────────────────────
+      // ─── Tender timeline (last 7 days) – using BarChart ────────
       const timelineMap = {};
       for (let i = 6; i >= 0; i--) {
         const d = new Date(now);
@@ -1174,16 +1174,16 @@ const AccountantDashboard = () => {
                 <Paper sx={{ p: 2 }}>
                   <Typography variant="h6" gutterBottom>Tender Status Timeline (Last 7 Days)</Typography>
                   <ResponsiveContainer width="100%" height={200}>
-                    <LineChart data={tenderTimelineData}>
+                    <BarChart data={tenderTimelineData}>
                       <CartesianGrid strokeDasharray="3 3" />
                       <XAxis dataKey="date" />
                       <YAxis />
                       <RechartsTooltip />
                       <Legend />
-                      <Line type="monotone" dataKey="submitted" stroke="#ff9800" name="Submitted" />
-                      <Line type="monotone" dataKey="approved" stroke="#4caf50" name="Approved" />
-                      <Line type="monotone" dataKey="awarded" stroke="#9c27b0" name="Awarded" />
-                    </LineChart>
+                      <Bar dataKey="submitted" fill="#ff9800" name="Submitted" />
+                      <Bar dataKey="approved" fill="#4caf50" name="Approved" />
+                      <Bar dataKey="awarded" fill="#9c27b0" name="Awarded" />
+                    </BarChart>
                   </ResponsiveContainer>
                 </Paper>
               </Grid>
