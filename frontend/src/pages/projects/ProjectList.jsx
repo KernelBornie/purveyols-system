@@ -1,113 +1,233 @@
-import React, { createContext, useState, useContext, useEffect } from 'react';
-import api from '../api/axios';
-import { getAuth, saveAuth, clearAuth } from '../services/persistentStore';
+import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
+import {
+  Paper, Typography, Box, Table, TableHead, TableRow, TableCell, TableBody,
+  Button, Chip, CircularProgress, Alert, IconButton, Tooltip, Avatar,
+  Dialog, DialogTitle, DialogContent, DialogActions
+} from '@mui/material';
+import AddIcon from '@mui/icons-material/Add';
+import EditIcon from '@mui/icons-material/Edit';
+import DeleteIcon from '@mui/icons-material/Delete';
+import TimelineIcon from '@mui/icons-material/Timeline';
+import ZoomInIcon from '@mui/icons-material/ZoomIn';
+import api from '../../api/axios';               // ✅ fixed path
+import { useAuth } from '../../context/AuthContext'; // ✅ fixed path
+import BackButton from '../../components/BackButton'; // ✅ fixed path
+import getApiErrorMessage from '../../utils/getApiErrorMessage';
 
-const AuthContext = createContext();
+// ─── Roles (matches Tenders) ──────────────────────────────────────
+const EDITABLE_ROLES = [
+  'admin', 'director', 'procurement-officer', 'accountant',
+  'civil-engineer', 'quantity-surveyor', 'foreman', 'safety-officer',
+  'engineer', 'manager', 'supervisor', 'planner', 'estimator',
+  'surveyor', 'architect', 'project-manager', 'site-engineer',
+  'construction-manager', 'quality-control', 'store-keeper'
+];
 
-export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
+const DELETABLE_ROLES = ['admin', 'director', 'accountant'];
+
+const ProjectList = () => {
+  const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const { user } = useAuth();
 
-  // ─── Restore session from IndexedDB and localStorage ──────────
+  const canEdit = user && EDITABLE_ROLES.includes(user.role);
+  const canDelete = user && DELETABLE_ROLES.includes(user.role);
+
+  // ─── Photo preview state ──────────────────────────────────────
+  const [photoPreviewOpen, setPhotoPreviewOpen] = useState(false);
+  const [previewImage, setPreviewImage] = useState('');
+
   useEffect(() => {
-    const restoreSession = async () => {
-      try {
-        // First try IndexedDB
-        let token = await getAuth('token');
-        let storedUser = await getAuth('user');
-
-        // If not in IndexedDB, try localStorage
-        if (!token) {
-          token = localStorage.getItem('token');
-        }
-        if (!storedUser) {
-          const userStr = localStorage.getItem('user');
-          if (userStr) {
-            try { storedUser = JSON.parse(userStr); } catch (e) {}
-          }
-        }
-
-        if (token && storedUser) {
-          api.defaults.headers.common.Authorization = `Bearer ${token}`;
-          setUser(storedUser);
-        }
-      } catch (err) {
-        console.error('Failed to restore session:', err);
-      } finally {
-        setLoading(false);
-      }
-    };
-    restoreSession();
+    fetchProjects();
   }, []);
 
-  // ─── Login ──────────────────────────────────────────────────────────
-  const login = async (email, password) => {
+  const fetchProjects = async () => {
+    setLoading(true);
+    setError(null);
     try {
-      const res = await api.post('/api/auth/login', { email, password });
-      console.log('🔑 Login response:', res.data);
-
-      const token = res.data.token || res.data.accessToken || res.data.access_token || res.data.data?.token;
-      const userData = res.data.user || res.data.data?.user;
-
-      if (!token) {
-        throw new Error('No token received from server.');
-      }
-
-      // ─── Store in BOTH IndexedDB and localStorage ──────────────
-      await saveAuth('token', token);
-      await saveAuth('user', userData);
-
-      localStorage.setItem('token', token);
-      localStorage.setItem('user', JSON.stringify(userData));
-      sessionStorage.setItem('user', JSON.stringify(userData));
-
-      // Set default header
-      api.defaults.headers.common.Authorization = `Bearer ${token}`;
-      setUser(userData);
-
-      return { success: true, user: userData };
+      const res = await api.get('/api/projects');
+      setProjects(res.data || []);
     } catch (err) {
-      console.error('Login error:', err);
-
-      // Offline fallback
-      if (!navigator.onLine || err.message === 'Network Error') {
-        const token = await getAuth('token');
-        const storedUser = await getAuth('user');
-        if (token && storedUser) {
-          api.defaults.headers.common.Authorization = `Bearer ${token}`;
-          setUser(storedUser);
-          return { success: true, user: storedUser, offline: true };
-        }
-      }
-
-      return { success: false, error: err.response?.data?.error || err.message };
+      console.error('Fetch projects error:', err);
+      setError(getApiErrorMessage(err, 'Failed to load projects. Please try again.'));
+      setProjects([]);
+    } finally {
+      setLoading(false);
     }
   };
 
-  // ─── Logout ──────────────────────────────────────────────────────────
-  const logout = async () => {
-    await clearAuth();
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    delete api.defaults.headers.common.Authorization;
-    setUser(null);
+  const handleDelete = async (id) => {
+    if (!window.confirm('Delete this project?')) return;
+    try {
+      await api.delete(`/api/projects/${id}`);
+      fetchProjects();
+    } catch (err) {
+      alert(getApiErrorMessage(err, 'Delete failed'));
+    }
   };
 
-  // ─── Update user ────────────────────────────────────────────────────
-  const updateUser = (updatedData) => {
-    if (!user) return;
-    const newUser = { ...user, ...updatedData };
-    setUser(newUser);
-    saveAuth('user', newUser);
-    localStorage.setItem('user', JSON.stringify(newUser));
-    sessionStorage.setItem('user', JSON.stringify(newUser));
+  const getStatusColor = (status) => {
+    switch (status) {
+      case 'active': return 'success';
+      case 'planning': return 'info';
+      case 'paused': return 'warning';
+      case 'completed': return 'default';
+      default: return 'default';
+    }
   };
+
+  const formatCurrency = (amount) => {
+    return new Intl.NumberFormat('en-ZM', { style: 'currency', currency: 'ZMW' }).format(amount || 0);
+  };
+
+  // ─── Handle photo click to expand ────────────────────────────
+  const handlePhotoClick = (image) => {
+    if (image) {
+      setPreviewImage(image);
+      setPhotoPreviewOpen(true);
+    }
+  };
+
+  if (loading) return <CircularProgress sx={{ display: 'block', margin: '40px auto' }} />;
+  if (error) return <Alert severity="error">{error}</Alert>;
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout, setUser, updateUser }}>
-      {children}
-    </AuthContext.Provider>
+    <Paper sx={{ p: 2 }}>
+      <BackButton />
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+        <Typography variant="h5" sx={{ fontWeight: 'bold' }}>Projects</Typography>
+        {canEdit && (
+          <Button component={Link} to="/projects/new" variant="contained" startIcon={<AddIcon />}>
+            New Project
+          </Button>
+        )}
+      </Box>
+
+      <Table size="small">
+        <TableHead>
+          <TableRow sx={{ bgcolor: '#f5f5f5' }}>
+            <TableCell>Image</TableCell>
+            <TableCell>Name</TableCell>
+            <TableCell>Location</TableCell>
+            <TableCell>Status</TableCell>
+            <TableCell>Progress</TableCell>
+            <TableCell>Budget</TableCell>
+            <TableCell>Deadline</TableCell>
+            <TableCell>Manager</TableCell>
+            <TableCell>Actions</TableCell>
+          </TableRow>
+        </TableHead>
+        <TableBody>
+          {projects.map((project) => (
+            <TableRow key={project._id}>
+              <TableCell>
+                <Box
+                  sx={{ cursor: project.image ? 'pointer' : 'default' }}
+                  onClick={() => handlePhotoClick(project.image)}
+                >
+                  <Avatar
+                    src={project.image || '/project-placeholder.jpg'}
+                    variant="rounded"
+                    sx={{ width: 40, height: 40 }}
+                  >
+                    {!project.image && project.name?.charAt(0).toUpperCase()}
+                  </Avatar>
+                </Box>
+              </TableCell>
+              <TableCell>{project.name}</TableCell>
+              <TableCell>{project.location || '—'}</TableCell>
+              <TableCell>
+                <Chip label={project.status} color={getStatusColor(project.status)} size="small" />
+              </TableCell>
+              <TableCell>{project.progress || 0}%</TableCell>
+              <TableCell>{formatCurrency(project.budget || 0)}</TableCell>
+              <TableCell>{project.endDate ? new Date(project.endDate).toLocaleDateString() : '—'}</TableCell>
+              <TableCell>{project.manager?.name || 'N/A'}</TableCell>
+              <TableCell>
+                {/* ─── View ────────────────────────────────────── */}
+                <Button
+                  component={Link}
+                  to={`/projects/${project._id}/view`}
+                  size="small"
+                  variant="outlined"
+                  sx={{ mr: 0.5, minWidth: '40px', textTransform: 'none' }}
+                >
+                  View
+                </Button>
+
+                {canEdit && (
+                  <>
+                    <Tooltip title="Edit">
+                      <IconButton
+                        component={Link}
+                        to={`/projects/${project._id}/edit`}
+                        size="small"
+                        color="primary"
+                      >
+                        <EditIcon fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
+                    <Tooltip title="Planning">
+                      <IconButton
+                        component={Link}
+                        to={`/projects/${project._id}/planning`}
+                        size="small"
+                        color="secondary"
+                      >
+                        <TimelineIcon fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
+                    {canDelete && (
+                      <Tooltip title="Delete">
+                        <IconButton
+                          size="small"
+                          color="error"
+                          onClick={() => handleDelete(project._id)}
+                        >
+                          <DeleteIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                    )}
+                  </>
+                )}
+              </TableCell>
+            </TableRow>
+          ))}
+          {projects.length === 0 && (
+            <TableRow>
+              <TableCell colSpan={9} align="center" sx={{ py: 3 }}>
+                <Typography variant="body2" color="textSecondary">No projects yet.</Typography>
+              </TableCell>
+            </TableRow>
+          )}
+        </TableBody>
+      </Table>
+
+      {/* ─── Photo Preview Dialog ────────────────────────────────── */}
+      <Dialog open={photoPreviewOpen} onClose={() => setPhotoPreviewOpen(false)} maxWidth="md" fullWidth>
+        <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span>Project Image</span>
+          <IconButton onClick={() => setPhotoPreviewOpen(false)}>
+            <ZoomInIcon />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent sx={{ textAlign: 'center' }}>
+          {previewImage && (
+            <img
+              src={previewImage}
+              alt="Project"
+              style={{ maxWidth: '100%', maxHeight: '70vh', objectFit: 'contain' }}
+            />
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setPhotoPreviewOpen(false)}>Close</Button>
+        </DialogActions>
+      </Dialog>
+    </Paper>
   );
 };
 
-export const useAuth = () => useContext(AuthContext);
+export default ProjectList;
