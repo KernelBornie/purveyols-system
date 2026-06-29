@@ -4,11 +4,8 @@ import App from './App.jsx';
 import './index.css';
 import { AuthProvider } from './context/AuthContext';
 import { CssBaseline } from '@mui/material';
-import { initSync, syncAllData } from './services/dataSyncService';
-import { initOfflineSync, processQueue } from './utils/offlineSync';
-import api from './api/axios';
 
-// ─── Register service worker ──────────────────────────────────
+// ─── Register service worker (optional) ──────────────────────
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     try {
@@ -26,20 +23,8 @@ if ('serviceWorker' in navigator) {
   });
 }
 
-// ─── Initialize offline sync (legacy queue) ──────────────────
-const cleanup = initOfflineSync(api);
-
-// ─── Initialize new sync (IndexedDB endpoints) ──────────────
-initSync();
-
-// ─── Preload data from API into persistent storage ──────────
-setTimeout(() => {
-  syncAllData().then(results => {
-    console.log('📦 Data preloaded:', Object.keys(results).filter(k => results[k].success));
-  }).catch(err => {
-    console.log('Data preload failed:', err);
-  });
-}, 5000);
+// ─── No offline sync initialisation ──────────────────────────
+// All sync logic has been disabled to eliminate console spam and retry loops.
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
