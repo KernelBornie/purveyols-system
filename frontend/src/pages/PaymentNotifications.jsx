@@ -40,8 +40,8 @@ const PaymentNotifications = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // ─── Role check ──────────────────────────────────────────
-  const isAuthorized = user?.role === 'accountant' || user?.role === 'admin' || user?.role === 'director';
+  // ─── Role check: only accountant and admin (director excluded) ──
+  const isAuthorized = ['accountant', 'admin'].includes(user?.role);
   if (!isAuthorized) {
     return (
       <Box sx={{ p: 3 }}>
@@ -50,7 +50,7 @@ const PaymentNotifications = () => {
     );
   }
 
-  // ─── Fetch payment notifications ────────────────────────
+  // ─── Fetch payment notifications ──────────────────────────────
   const fetchPaymentNotifications = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -73,7 +73,7 @@ const PaymentNotifications = () => {
     fetchPaymentNotifications();
   }, [fetchPaymentNotifications]);
 
-  // ─── Filter handler ──────────────────────────────────────
+  // ─── Filter handler ────────────────────────────────────────────
   useEffect(() => {
     if (filter === 'all') {
       setFiltered(notifications);
@@ -84,7 +84,7 @@ const PaymentNotifications = () => {
     }
   }, [filter, notifications]);
 
-  // ─── Mark as read ──────────────────────────────────────
+  // ─── Mark as read ──────────────────────────────────────────────
   const markAsRead = async (id) => {
     try {
       await api.put(`/api/notifications/${id}/read`);
@@ -96,13 +96,13 @@ const PaymentNotifications = () => {
     }
   };
 
-  // ─── Format date ──────────────────────────────────────────
+  // ─── Format date ──────────────────────────────────────────────
   const formatDate = (dateStr) => {
     const d = new Date(dateStr);
     return d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
-  // ─── Get status chip ─────────────────────────────────────
+  // ─── Get status chip ──────────────────────────────────────────
   const getStatusChip = (type) => {
     if (type === 'payment_made' || type === 'payment_confirmed') {
       return <Chip label="Success" color="success" size="small" icon={<CheckCircleIcon />} />;
@@ -112,13 +112,13 @@ const PaymentNotifications = () => {
     return <Chip label="Unknown" size="small" />;
   };
 
-  // ─── Extract amount from message ─────────────────────────
+  // ─── Extract amount from message ──────────────────────────────
   const extractAmount = (message) => {
     const match = message.match(/ZMW\s*([\d,.]+)/);
     return match ? `ZMW ${match[1]}` : 'N/A';
   };
 
-  // ─── Extract recipient from message ──────────────────────
+  // ─── Extract recipient from message ────────────────────────────
   const extractRecipient = (message) => {
     const match = message.match(/paid\s+(.+?)\s+ZMW/);
     return match ? match[1] : 'Unknown';

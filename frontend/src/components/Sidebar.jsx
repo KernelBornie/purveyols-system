@@ -79,8 +79,9 @@ const Sidebar = ({ mobileOpen, handleDrawerToggle, isMobile }) => {
 
   const visibleMenuItems = allMenuItems.filter(item => {
     if (alwaysVisible.includes(item.text)) return true;
+    // Payment Notifications: only accountant and admin (director excluded)
     if (item.text === 'Payment Notifications') {
-      return ['accountant', 'admin', 'director'].includes(role);
+      return ['accountant', 'admin'].includes(role);
     }
     if (restrictedRoles.includes(role) && hiddenItems.includes(item.text)) {
       return false;
