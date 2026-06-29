@@ -29,10 +29,10 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ message: 'Invalid credentials' });
     }
 
-    // Update last login
-    user.lastLogin = new Date();
-    user.lastLoginIP = req.ip || req.connection.remoteAddress || '';
-    await user.save();
+    // ─── COMMENTED OUT – these fields may not exist ────────────────
+    // user.lastLogin = new Date();
+    // user.lastLoginIP = req.ip || req.connection.remoteAddress || '';
+    // await user.save();
 
     const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '7d' });
     res.json({
