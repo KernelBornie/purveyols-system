@@ -1,5 +1,5 @@
 // ─── CHANGE THIS VERSION ON EVERY DEPLOYMENT ──────────────
-const CACHE_VERSION = 'v2026-06-30-03'; // increment each deployment
+const CACHE_VERSION = 'v2026-06-30-05'; // ✅ INCREMENT this each deployment
 const CACHE_NAME = `purveyols-${CACHE_VERSION}`;
 const RUNTIME_CACHE = `purveyols-runtime-${CACHE_VERSION}`;
 
@@ -15,7 +15,7 @@ const STATIC_ASSETS = [
   '/app-icon.jpeg',
 ];
 
-// ─── Install – cache static assets ──────────────────────────
+// ─── Install – cache static assets & force activation ────────
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME)
@@ -23,24 +23,35 @@ self.addEventListener('install', (event) => {
         console.log(`📦 Caching static assets (${CACHE_VERSION})...`);
         return cache.addAll(STATIC_ASSETS);
       })
-      .then(() => self.skipWaiting()) // force activation
+      .then(() => {
+        // ✅ Force the waiting service worker to become active
+        self.skipWaiting();
+      })
   );
 });
 
-// ─── Activate – clean old caches ─────────────────────────────
+// ─── Activate – clean old caches & take control ──────────────
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then((keys) => {
-      return Promise.all(
-        keys
-          .filter((key) => key !== CACHE_NAME && key !== RUNTIME_CACHE)
-          .map((key) => {
-            console.log(`🗑️ Deleting old cache: ${key}`);
-            return caches.delete(key);
-          })
-      );
+    Promise.all([
+      // 1️⃣ Delete old caches
+      caches.keys().then((keys) => {
+        return Promise.all(
+          keys
+            .filter((key) => key !== CACHE_NAME && key !== RUNTIME_CACHE)
+            .map((key) => {
+              console.log(`🗑️ Deleting old cache: ${key}`);
+              return caches.delete(key);
+            })
+        );
+      }),
+      // 2️⃣ Unregister any old service workers (self cleanup)
+      self.registration.unregister().catch(() => {}),
+    ])
+    .then(() => {
+      // ✅ Take control of all clients immediately
+      return self.clients.claim();
     })
-    .then(() => self.clients.claim()) // take control immediately
   );
 });
 
