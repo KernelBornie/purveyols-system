@@ -1,17 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  IconButton,
-  Badge,
-  Menu,
-  MenuItem,
-  Typography,
-  Box,
-  Divider,
-  Button,
-  Chip,
-  Tooltip,
-  Alert, // 👈 ADDED
+  IconButton, Badge, Menu, MenuItem, Typography, Box,
+  Divider, Button, Chip, Tooltip, Alert
 } from '@mui/material';
 import NotificationsIcon from '@mui/icons-material/Notifications';
 import CircleIcon from '@mui/icons-material/Circle';
@@ -41,9 +32,7 @@ const NotificationBell = () => {
     try {
       audioRef.current = new Audio(NOTIFICATION_SOUND);
       audioRef.current.load();
-    } catch (e) {
-      // silent fail
-    }
+    } catch (e) { /* silent fail */ }
   }, []);
 
   const fetchNotifications = async () => {
@@ -62,7 +51,6 @@ const NotificationBell = () => {
       setUnreadCount(newUnread);
     } catch (err) {
       setError('Could not load notifications');
-      // Try to load from cache
       try {
         const cached = await getStore('notifications');
         if (cached && cached.length > 0) {

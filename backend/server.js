@@ -7,7 +7,7 @@ const http = require('http');
 const { Server } = require('socket.io');
 const multer = require('multer');
 const path = require('path');
-const fs = require('fs'); // ← added
+const fs = require('fs');
 dotenv.config();
 
 const app = express();
@@ -19,27 +19,13 @@ const io = new Server(server, {
   },
 });
 
-// ─── CORS (unchanged) ─────────────────────────────────────────────
+// ─── CORS (explicitly allow Vercel frontend) ──────────────
 const corsOptions = {
-  origin: (origin, callback) => {
-    if (!origin) return callback(null, true);
-    if (origin.match(/^https?:\/\/localhost(:\d+)?$/)) return callback(null, true);
-    if (origin.endsWith('.vercel.app')) return callback(null, true);
-    if (origin.endsWith('.onrender.com')) return callback(null, true);
-    console.warn(`❌ CORS blocked origin: ${origin}`);
-    callback(new Error('Not allowed by CORS'));
-  },
+  origin: 'https://purveyols-system.vercel.app',  // your frontend
   credentials: true,
-  optionsSuccessStatus: 200,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: [
-    'Content-Type',
-    'Authorization',
-    'X-Requested-With',
-    'cache-control',
-    'Accept',
-    'Origin',
-  ],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  optionsSuccessStatus: 200,
 };
 
 app.use(cors(corsOptions));
@@ -65,7 +51,6 @@ const storage = multer.diskStorage({
   }
 });
 
-// ─── Ensure upload directory exists ──────────────────────────────
 const uploadDir = 'uploads/tenders';
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
@@ -80,10 +65,9 @@ const fileFilter = (req, file, cb) => {
 
 const upload = multer({ storage, fileFilter, limits: { fileSize: 10 * 1024 * 1024 } });
 
-// ─── Serve uploaded files statically ─────────────────────────────
 app.use('/uploads', express.static('uploads'));
 
-// ─── Auto‑seed (unchanged) ──────────────────────────────────────
+// ─── Auto‑seed ──────────────────────────────────────────────────
 const User = require('./models/User');
 const { exec } = require('child_process');
 
@@ -109,7 +93,7 @@ const seedIfEmpty = async () => {
   }
 };
 
-// ─── Routes (unchanged) ───────────────────────────────────────────
+// ─── Routes ──────────────────────────────────────────────────────
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/chat-history', require('./routes/chatHistory'));
 app.use('/api/ai', require('./routes/ai'));
@@ -150,7 +134,7 @@ app.use('/api/site-diary', siteDiaryRoutes);
 // ─── Health check ────────────────────────────────────────────────
 app.get('/api/health', (req, res) => res.json({ status: 'OK', timestamp: new Date().toISOString() }));
 
-// ─── Socket.io (unchanged) ──────────────────────────────────────
+// ─── Socket.io ──────────────────────────────────────────────────
 const activeUsers = new Map();
 app.get('/api/users/online', async (req, res) => {
   try {
