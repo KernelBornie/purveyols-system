@@ -17,14 +17,17 @@ const Notifications = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [tab, setTab] = useState(0);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
   const navigate = useNavigate();
 
-  const fetchNotifications = async (useCache = true) => {
+  const fetchNotifications = async (useCache = true, pageNum = 1, limit = 50) => {
     setLoading(true);
     setError(null);
     try {
-      const res = await api.get('/api/notifications');
-      setNotifications(res.data || []);
+      const res = await api.get(`/api/notifications?page=${pageNum}&limit=${limit}`);
+      setNotifications(res.data.notifications || []);
+      setTotalPages(res.data.pagination?.pages || 1);
       setError(null);
     } catch (err) {
       if (useCache) {
@@ -45,17 +48,17 @@ const Notifications = () => {
   };
 
   useEffect(() => {
-    fetchNotifications(true);
+    fetchNotifications(true, 1);
   }, []);
 
   const handleRetry = () => {
-    fetchNotifications(false);
+    fetchNotifications(false, page);
   };
 
   const handleMarkRead = async (id) => {
     try {
       await api.put(`/api/notifications/${id}/read`);
-      fetchNotifications(false);
+      fetchNotifications(false, page);
     } catch (err) {
       alert('Failed to mark as read');
     }
@@ -64,7 +67,7 @@ const Notifications = () => {
   const handleMarkAllRead = async () => {
     try {
       await api.put('/api/notifications/read-all');
-      fetchNotifications(false);
+      fetchNotifications(false, page);
     } catch (err) {
       alert('Failed to mark all as read');
     }
@@ -74,7 +77,7 @@ const Notifications = () => {
     if (!window.confirm('Delete this notification?')) return;
     try {
       await api.delete(`/api/notifications/${id}`);
-      fetchNotifications(false);
+      fetchNotifications(false, page);
     } catch (err) {
       alert('Failed to delete');
     }
@@ -84,7 +87,7 @@ const Notifications = () => {
     if (!window.confirm('Delete ALL notifications? This cannot be undone.')) return;
     try {
       await api.delete('/api/notifications');
-      fetchNotifications(false);
+      fetchNotifications(false, page);
     } catch (err) {
       alert('Failed to delete all notifications');
     }
@@ -166,6 +169,13 @@ const Notifications = () => {
 
   const filteredNotifications = tab === 0 ? notifications : tab === 1 ? notifications.filter(n => n.read) : notifications.filter(n => !n.read);
 
+  const handlePageChange = (newPage) => {
+    if (newPage >= 1 && newPage <= totalPages) {
+      setPage(newPage);
+      fetchNotifications(false, newPage);
+    }
+  };
+
   return (
     <Paper sx={{ p: 2 }}>
       <BackButton />
@@ -213,60 +223,84 @@ const Notifications = () => {
           {error ? 'No notifications available.' : 'No notifications.'}
         </Typography>
       ) : (
-        <Table size="small">
-          <TableHead>
-            <TableRow>
-              <TableCell>Type</TableCell>
-              <TableCell>Message</TableCell>
-              <TableCell>Date</TableCell>
-              <TableCell>Status</TableCell>
-              <TableCell>Actions</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {filteredNotifications.map((n) => (
-              <TableRow
-                key={n._id}
-                sx={{
-                  cursor: n.link ? 'pointer' : 'default',
-                  bgcolor: n.read ? 'transparent' : 'action.hover',
-                  borderLeft: `4px solid ${n.read ? '#e0e0e0' : getTypeColor(n.type)}`,
-                }}
-                onClick={() => handleNotificationClick(n)}
-              >
-                <TableCell>
-                  <Chip label={getTypeLabel(n.type)} size="small" variant="outlined" />
-                </TableCell>
-                <TableCell>
-                  <Typography variant="body2">
-                    <strong>{n.title}</strong><br />
-                    {n.message}
-                  </Typography>
-                </TableCell>
-                <TableCell>
-                  {new Date(n.createdAt).toLocaleDateString()} {new Date(n.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                </TableCell>
-                <TableCell>
-                  {n.read ? <Chip label="Read" size="small" color="success" /> : <Chip label="Unread" size="small" color="warning" />}
-                </TableCell>
-                <TableCell>
-                  {!n.read && (
-                    <Tooltip title="Mark as read">
-                      <IconButton size="small" onClick={(e) => { e.stopPropagation(); handleMarkRead(n._id); }}>
-                        <CheckCircleIcon fontSize="small" />
+        <>
+          <Table size="small">
+            <TableHead>
+              <TableRow>
+                <TableCell>Type</TableCell>
+                <TableCell>Message</TableCell>
+                <TableCell>Date</TableCell>
+                <TableCell>Status</TableCell>
+                <TableCell>Actions</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {filteredNotifications.map((n) => (
+                <TableRow
+                  key={n._id}
+                  sx={{
+                    cursor: n.link ? 'pointer' : 'default',
+                    bgcolor: n.read ? 'transparent' : 'action.hover',
+                    borderLeft: `4px solid ${n.read ? '#e0e0e0' : getTypeColor(n.type)}`,
+                  }}
+                  onClick={() => handleNotificationClick(n)}
+                >
+                  <TableCell>
+                    <Chip label={getTypeLabel(n.type)} size="small" variant="outlined" />
+                  </TableCell>
+                  <TableCell>
+                    <Typography variant="body2">
+                      <strong>{n.title}</strong><br />
+                      {n.message}
+                    </Typography>
+                  </TableCell>
+                  <TableCell>
+                    {new Date(n.createdAt).toLocaleDateString()} {new Date(n.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  </TableCell>
+                  <TableCell>
+                    {n.read ? <Chip label="Read" size="small" color="success" /> : <Chip label="Unread" size="small" color="warning" />}
+                  </TableCell>
+                  <TableCell>
+                    {!n.read && (
+                      <Tooltip title="Mark as read">
+                        <IconButton size="small" onClick={(e) => { e.stopPropagation(); handleMarkRead(n._id); }}>
+                          <CheckCircleIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                    )}
+                    <Tooltip title="Delete">
+                      <IconButton size="small" onClick={(e) => { e.stopPropagation(); handleDelete(n._id); }} color="error">
+                        <DeleteIcon fontSize="small" />
                       </IconButton>
                     </Tooltip>
-                  )}
-                  <Tooltip title="Delete">
-                    <IconButton size="small" onClick={(e) => { e.stopPropagation(); handleDelete(n._id); }} color="error">
-                      <DeleteIcon fontSize="small" />
-                    </IconButton>
-                  </Tooltip>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+          {/* Pagination controls */}
+          {totalPages > 1 && (
+            <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2, gap: 1 }}>
+              <Button
+                variant="outlined"
+                disabled={page <= 1}
+                onClick={() => handlePageChange(page - 1)}
+              >
+                Previous
+              </Button>
+              <Typography variant="body2" sx={{ alignSelf: 'center' }}>
+                Page {page} of {totalPages}
+              </Typography>
+              <Button
+                variant="outlined"
+                disabled={page >= totalPages}
+                onClick={() => handlePageChange(page + 1)}
+              >
+                Next
+              </Button>
+            </Box>
+          )}
+        </>
       )}
     </Paper>
   );

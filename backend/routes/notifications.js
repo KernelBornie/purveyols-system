@@ -3,12 +3,43 @@ const router = express.Router();
 const Notification = require('../models/Notification');
 const auth = require('../middleware/auth');
 
-// ─── GET all notifications for current user ──────────────
+// ─── GET notifications with pagination ──────────────────────
 router.get('/', auth, async (req, res) => {
   try {
+    // Default: page=1, limit=50
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 50;
+    const skip = (page - 1) * limit;
+
     const notifications = await Notification.find({ user: req.user.id })
-      .sort({ read: 1, createdAt: -1 });
-    res.json(notifications);
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit)
+      .lean();
+
+    const total = await Notification.countDocuments({ user: req.user.id });
+    const unreadCount = await Notification.countDocuments({ user: req.user.id, read: false });
+
+    res.json({
+      notifications,
+      pagination: {
+        page,
+        limit,
+        total,
+        pages: Math.ceil(total / limit),
+        unreadCount, // for the bell badge
+      },
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── Get unread count (lightweight) ─────────────────────────
+router.get('/unread-count', auth, async (req, res) => {
+  try {
+    const count = await Notification.countDocuments({ user: req.user.id, read: false });
+    res.json({ count });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -53,16 +84,6 @@ router.delete('/', auth, async (req, res) => {
   try {
     await Notification.deleteMany({ user: req.user.id });
     res.json({ message: 'All notifications deleted' });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// ─── Get unread count ─────────────────────────────────────
-router.get('/unread-count', auth, async (req, res) => {
-  try {
-    const count = await Notification.countDocuments({ user: req.user.id, read: false });
-    res.json({ count });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

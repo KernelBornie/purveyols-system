@@ -39,16 +39,20 @@ const NotificationBell = () => {
     if (!user) return;
     try {
       setError(null);
-      const res = await api.get('/api/notifications');
-      const data = res.data || [];
+      // Fetch latest 10 for the bell, plus unread count separately
+      const [notifRes, unreadRes] = await Promise.all([
+        api.get('/api/notifications?limit=10&page=1'),
+        api.get('/api/notifications/unread-count'),
+      ]);
+      const data = notifRes.data.notifications || [];
+      const unread = unreadRes.data.count || 0;
       setNotifications(data);
-      const newUnread = data.filter(n => !n.read).length;
-      if (newUnread > prevUnreadCount.current && soundEnabled && audioRef.current) {
+      if (unread > prevUnreadCount.current && soundEnabled && audioRef.current) {
         audioRef.current.currentTime = 0;
         audioRef.current.play().catch(() => {});
       }
-      prevUnreadCount.current = newUnread;
-      setUnreadCount(newUnread);
+      prevUnreadCount.current = unread;
+      setUnreadCount(unread);
     } catch (err) {
       setError('Could not load notifications');
       try {

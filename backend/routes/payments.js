@@ -47,26 +47,16 @@ router.post('/', auth, authorize('admin', 'director', 'accountant'), async (req,
 
     // ─── Check for missing Airtel credentials ──────────────────────
     if (!process.env.AIRTEL_CLIENT_ID || !process.env.AIRTEL_CLIENT_SECRET) {
-      // ─── Create notification for the user ────────────────────────
-      await createNotification(
-        req.user.id,
-        'payment_failed',
-        'Payment Failed',
-        `❌ Payment of ${formatCurrency(amount)} to ${recipientName} failed because Airtel credentials are missing. Please contact system administrator.`,
-        `/payments`
-      );
-      // ─── Also notify admins ──────────────────────────────────────
-      const admins = await User.find({ role: 'admin' });
-      for (let admin of admins) {
-        if (admin._id.toString() !== req.user.id) {
-          await createNotification(
-            admin._id,
-            'payment_failed',
-            'Payment Failed',
-            `Payment of ${formatCurrency(amount)} to ${recipientName} failed due to missing Airtel credentials.`,
-            `/payments`
-          );
-        }
+      // Notify ONLY admins and accountants (NOT the requester)
+      const adminsAndAccountants = await User.find({ role: { $in: ['admin', 'accountant'] } });
+      for (let user of adminsAndAccountants) {
+        await createNotification(
+          user._id,
+          'payment_failed',
+          'Payment Failed',
+          `Payment of ${formatCurrency(amount)} to ${recipientName} failed because Airtel credentials are missing. Please contact system administrator.`,
+          `/payments`
+        );
       }
       return res.status(500).json({
         error: 'Airtel credentials missing. Please set AIRTEL_CLIENT_ID and AIRTEL_CLIENT_SECRET in environment variables.'
@@ -113,19 +103,24 @@ router.post('/', auth, authorize('admin', 'director', 'accountant'), async (req,
     await payment.save();
 
     if (status === 'failed') {
-      await createNotification(
-        req.user.id,
-        'payment_failed',
-        'Payment Failed',
-        `❌ Payment of ${formatCurrency(amount)} to ${recipientName} failed. Please check Airtel logs.`,
-        `/payments/${payment._id}`
-      );
+      // Notify ONLY admins and accountants (NOT the requester)
+      const adminsAndAccountants = await User.find({ role: { $in: ['admin', 'accountant'] } });
+      for (let user of adminsAndAccountants) {
+        await createNotification(
+          user._id,
+          'payment_failed',
+          'Payment Failed',
+          `Payment of ${formatCurrency(amount)} to ${recipientName} failed. Please review.`,
+          `/payments/${payment._id}`
+        );
+      }
       return res.status(500).json({ error: 'Airtel payment failed.', payment });
     }
 
+    // ─── Successful payment ──────────────────────────────────────────
     const senderName = await getSenderName(req.user.id);
 
-    // ─── Notify accountants ──────────────────────────────────────────
+    // Notify all accountants
     const accountants = await User.find({ role: 'accountant' });
     for (let accountant of accountants) {
       await createNotification(
@@ -137,7 +132,7 @@ router.post('/', auth, authorize('admin', 'director', 'accountant'), async (req,
       );
     }
 
-    // Notify worker if they have a user account
+    // Notify the recipient (worker) if they have a user account
     if (worker) {
       const workerUser = await User.findOne({ email: recipientPhone });
       if (workerUser) {
@@ -150,6 +145,7 @@ router.post('/', auth, authorize('admin', 'director', 'accountant'), async (req,
         );
       }
     }
+
     res.status(201).json(payment);
   } catch (err) {
     res.status(400).json({ error: err.message });
@@ -164,26 +160,16 @@ router.post('/bulk', auth, authorize('admin', 'director', 'accountant'), async (
 
     // ─── Check Airtel credentials ────────────────────────────────────
     if (!process.env.AIRTEL_CLIENT_ID || !process.env.AIRTEL_CLIENT_SECRET) {
-      // ─── Create notification for the user ────────────────────────
-      await createNotification(
-        req.user.id,
-        'payment_failed',
-        'Bulk Payment Failed',
-        `❌ Bulk payment failed because Airtel credentials are missing. Please contact system administrator.`,
-        `/payments`
-      );
-      // ─── Also notify admins ──────────────────────────────────────
-      const admins = await User.find({ role: 'admin' });
-      for (let admin of admins) {
-        if (admin._id.toString() !== req.user.id) {
-          await createNotification(
-            admin._id,
-            'payment_failed',
-            'Bulk Payment Failed',
-            `Bulk payment failed due to missing Airtel credentials.`,
-            `/payments`
-          );
-        }
+      // Notify ONLY admins and accountants
+      const adminsAndAccountants = await User.find({ role: { $in: ['admin', 'accountant'] } });
+      for (let user of adminsAndAccountants) {
+        await createNotification(
+          user._id,
+          'payment_failed',
+          'Bulk Payment Failed',
+          `Bulk payment failed because Airtel credentials are missing.`,
+          `/payments`
+        );
       }
       return res.status(500).json({
         error: 'Airtel credentials missing. Please set AIRTEL_CLIENT_ID and AIRTEL_CLIENT_SECRET in environment variables.'
@@ -247,7 +233,7 @@ router.post('/bulk', auth, authorize('admin', 'director', 'accountant'), async (
 
       if (status === 'completed') {
         created.push(payment);
-        // Notify worker if user account exists
+        // Notify the worker if they have a user account
         const workerUser = await User.findOne({ email: phone });
         if (workerUser) {
           await createNotification(
@@ -260,13 +246,17 @@ router.post('/bulk', auth, authorize('admin', 'director', 'accountant'), async (
         }
       } else {
         failed.push({ workerId: p.workerId, name: worker.name, amount: p.amount, error: 'Airtel payment failed' });
-        await createNotification(
-          req.user.id,
-          'payment_failed',
-          'Bulk Payment Failed',
-          `❌ Payment of ${formatCurrency(p.amount)} to ${worker.name} failed.`,
-          `/payments`
-        );
+        // Notify ONLY admins and accountants about each failure (not the requester)
+        const adminsAndAccountants = await User.find({ role: { $in: ['admin', 'accountant'] } });
+        for (let user of adminsAndAccountants) {
+          await createNotification(
+            user._id,
+            'payment_failed',
+            'Bulk Payment Failed',
+            `Payment of ${formatCurrency(p.amount)} to ${worker.name} failed.`,
+            `/payments`
+          );
+        }
       }
     }
 
@@ -334,17 +324,16 @@ router.put('/:id/fail', auth, authorize('admin', 'director', 'accountant'), asyn
     payment.notes = payment.notes ? `${payment.notes} (Failed)` : 'Failed';
     await payment.save();
 
-    const senderName = await getSenderName(req.user.id);
-    const users = await User.find({ role: { $in: ['admin', 'accountant'] } });
-    for (let user of users) {
-      await Notification.create({
-        user: user._id,
-        type: 'payment_failed',
-        title: 'Payment Failed',
-        message: `Payment of ${formatCurrency(payment.amount)} to ${payment.recipientName} failed. Please review.`,
-        link: `/payments/${payment._id}`,
-        read: false,
-      });
+    // Notify ONLY admins and accountants (not the requester)
+    const adminsAndAccountants = await User.find({ role: { $in: ['admin', 'accountant'] } });
+    for (let user of adminsAndAccountants) {
+      await createNotification(
+        user._id,
+        'payment_failed',
+        'Payment Failed',
+        `Payment of ${formatCurrency(payment.amount)} to ${payment.recipientName} failed. Please review.`,
+        `/payments/${payment._id}`
+      );
     }
 
     res.json({ message: 'Payment marked as failed', payment });
