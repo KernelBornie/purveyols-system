@@ -68,6 +68,10 @@ const ProjectForm = () => {
   const handleDocUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
+    if (!id) {
+      setMessage({ type: 'warning', text: 'Please save the project first before uploading documents.' });
+      return;
+    }
     const formData = new FormData();
     formData.append('file', file);
     formData.append('name', file.name);
@@ -219,8 +223,10 @@ const ProjectForm = () => {
         await api.put(`/api/projects/${id}`, payload);
         setMessage({ type: 'success', text: 'Project updated successfully!' });
       } else {
-        await api.post('/api/projects', payload);
-        setMessage({ type: 'success', text: 'Project created successfully!' });
+        const res = await api.post('/api/projects', payload);
+        // After creation, redirect to edit mode so documents can be uploaded
+        navigate(`/projects/${res.data._id}/edit`);
+        return;
       }
       setTimeout(() => navigate('/projects'), 1500);
     } catch (err) {
@@ -348,7 +354,7 @@ const ProjectForm = () => {
           </Box>
         )}
 
-        {/* ─── Documents Section (EXACTLY LIKE TENDERS) ───────────── */}
+        {/* ─── Documents Section ──────────────────────────────────── */}
         <Paper sx={{ p: 2, mb: 3, border: '2px solid #1976d2', backgroundColor: '#f5f9ff' }}>
           <Accordion expanded={docExpanded} onChange={() => setDocExpanded(!docExpanded)}>
             <AccordionSummary expandIcon={<ExpandMoreIcon />}>
@@ -359,10 +365,16 @@ const ProjectForm = () => {
             <AccordionDetails>
               {!isReadOnly && (
                 <Box sx={{ mb: 2 }}>
-                  <Button variant="contained" component="label" startIcon={<CloudUploadIcon />}>
-                    Upload Document
-                    <input type="file" hidden onChange={handleDocUpload} />
-                  </Button>
+                  {id ? (
+                    <Button variant="contained" component="label" startIcon={<CloudUploadIcon />}>
+                      Upload Document
+                      <input type="file" hidden onChange={handleDocUpload} />
+                    </Button>
+                  ) : (
+                    <Alert severity="info" sx={{ mb: 1 }}>
+                      Please save the project first before uploading documents.
+                    </Alert>
+                  )}
                   <Typography variant="caption" display="block" color="textSecondary" sx={{ mt: 1 }}>
                     Supported: images, PDF, Word, Excel (max 50MB)
                   </Typography>
@@ -383,7 +395,7 @@ const ProjectForm = () => {
                           </Typography>
                         </Box>
                         <Box sx={{ display: 'flex', gap: 1 }}>
-                          {!isReadOnly && (
+                          {!isReadOnly && id && (
                             <>
                               <Tooltip title="Edit name">
                                 <IconButton size="small" onClick={() => handleDocEdit(doc, idx)}>

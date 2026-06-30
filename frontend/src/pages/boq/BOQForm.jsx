@@ -110,6 +110,10 @@ const BOQForm = () => {
   const handleDocUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
+    if (!id) {
+      setMessage({ type: 'warning', text: 'Please save the BOQ first before uploading documents.' });
+      return;
+    }
     const formData = new FormData();
     formData.append('file', file);
     formData.append('name', file.name);
@@ -160,7 +164,7 @@ const BOQForm = () => {
     }
   };
 
-  // ─── Rest of the component (sections, items, calculations, etc.) ──
+  // ─── Rest of the component ──────────────────────────────────────────
   const ensurePreliminaries = (sections) => {
     const hasPrelim = sections.some(s => 
       s.title?.toLowerCase().includes('preliminary') || 
@@ -444,8 +448,10 @@ const BOQForm = () => {
         await api.put(`/api/boq/${id}`, payload);
         setMessage({ type: 'success', text: 'BOQ updated!' });
       } else {
-        await api.post('/api/boq', payload);
-        setMessage({ type: 'success', text: 'BOQ created!' });
+        const res = await api.post('/api/boq', payload);
+        // After creation, redirect to edit mode so documents can be uploaded
+        navigate(`/boq/${res.data._id}/edit`);
+        return;
       }
       setTimeout(() => navigate('/boq'), 1500);
     } catch (err) {
@@ -737,7 +743,7 @@ const BOQForm = () => {
           </Grid>
         </Paper>
 
-        {/* ─── Documents Section (EXACTLY LIKE TENDERS) ───────────── */}
+        {/* ─── Documents Section (with guard) ───────────────────────── */}
         <Paper sx={{ p: 2, mb: 2, border: '2px solid #1976d2', backgroundColor: '#f5f9ff' }}>
           <Accordion expanded={docExpanded} onChange={() => setDocExpanded(!docExpanded)}>
             <AccordionSummary expandIcon={<ExpandMoreIcon />}>
@@ -748,10 +754,16 @@ const BOQForm = () => {
             <AccordionDetails>
               {!isReadOnly && (
                 <Box sx={{ mb: 2 }}>
-                  <Button variant="contained" component="label" startIcon={<CloudUploadIcon />}>
-                    Upload Document
-                    <input type="file" hidden onChange={handleDocUpload} />
-                  </Button>
+                  {id ? (
+                    <Button variant="contained" component="label" startIcon={<CloudUploadIcon />}>
+                      Upload Document
+                      <input type="file" hidden onChange={handleDocUpload} />
+                    </Button>
+                  ) : (
+                    <Alert severity="info" sx={{ mb: 1 }}>
+                      Please save the BOQ first before uploading documents.
+                    </Alert>
+                  )}
                   <Typography variant="caption" display="block" color="textSecondary" sx={{ mt: 1 }}>
                     Supported: images, PDF, Word, Excel (max 50MB)
                   </Typography>
@@ -772,7 +784,7 @@ const BOQForm = () => {
                           </Typography>
                         </Box>
                         <Box sx={{ display: 'flex', gap: 1 }}>
-                          {!isReadOnly && (
+                          {!isReadOnly && id && (
                             <>
                               <Tooltip title="Edit name">
                                 <IconButton size="small" onClick={() => handleDocEdit(doc, idx)}>
