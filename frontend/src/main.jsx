@@ -5,21 +5,32 @@ import './index.css';
 import { AuthProvider } from './context/AuthContext';
 import { CssBaseline } from '@mui/material';
 
-// ─── Register service worker (optional) ──────────────────────
+// ─── Service Worker registration with update check ──────────
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    try {
-      navigator.serviceWorker.register('/sw.js')
-        .then((registration) => {
-          console.log('📡 Service Worker registered successfully');
+    navigator.serviceWorker.register('/sw.js')
+      .then((registration) => {
+        console.log('📡 Service Worker registered');
+
+        // ─── Check for updates every 60 seconds ─────────────
+        setInterval(() => {
           registration.update();
-        })
-        .catch((err) => {
-          console.log('📡 Service Worker registration failed:', err);
+        }, 60 * 1000);
+
+        // ─── Reload when a new SW is waiting ────────────────
+        registration.addEventListener('updatefound', () => {
+          const newWorker = registration.installing;
+          newWorker.addEventListener('statechange', () => {
+            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+              console.log('🔄 New version available – reloading...');
+              window.location.reload();
+            }
+          });
         });
-    } catch (e) {
-      console.log('📡 Service Worker not supported');
-    }
+      })
+      .catch((err) => {
+        console.log('📡 Service Worker registration failed:', err);
+      });
   });
 }
 

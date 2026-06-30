@@ -1,5 +1,7 @@
-const CACHE_NAME = 'purveyols-v2';
-const RUNTIME_CACHE = 'purveyols-runtime-v2';
+// ─── CHANGE THIS VERSION ON EVERY DEPLOYMENT ──────────────
+const CACHE_VERSION = 'v2026-06-30-03'; // increment each deployment
+const CACHE_NAME = `purveyols-${CACHE_VERSION}`;
+const RUNTIME_CACHE = `purveyols-runtime-${CACHE_VERSION}`;
 
 // ─── Static assets to cache immediately ──────────────────────
 const STATIC_ASSETS = [
@@ -10,7 +12,7 @@ const STATIC_ASSETS = [
   '/project-placeholder.jpg',
   '/notification.mp3',
   '/offline.html',
-  '/app-icon.jpeg', // 👈 ADDED
+  '/app-icon.jpeg',
 ];
 
 // ─── Install – cache static assets ──────────────────────────
@@ -18,10 +20,10 @@ self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then((cache) => {
-        console.log('📦 Caching static assets...');
+        console.log(`📦 Caching static assets (${CACHE_VERSION})...`);
         return cache.addAll(STATIC_ASSETS);
       })
-      .then(() => self.skipWaiting())
+      .then(() => self.skipWaiting()) // force activation
   );
 });
 
@@ -30,11 +32,15 @@ self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keys) => {
       return Promise.all(
-        keys.filter((key) => key !== CACHE_NAME && key !== RUNTIME_CACHE)
-          .map((key) => caches.delete(key))
+        keys
+          .filter((key) => key !== CACHE_NAME && key !== RUNTIME_CACHE)
+          .map((key) => {
+            console.log(`🗑️ Deleting old cache: ${key}`);
+            return caches.delete(key);
+          })
       );
     })
-    .then(() => self.clients.claim())
+    .then(() => self.clients.claim()) // take control immediately
   );
 });
 
@@ -102,7 +108,7 @@ self.addEventListener('fetch', (event) => {
             return response;
           })
           .catch(() => {
-            if (request.headers.get('Accept').includes('text/html')) {
+            if (request.headers.get('Accept')?.includes('text/html')) {
               return caches.match('/offline.html');
             }
             return new Response('Offline', { status: 503 });

@@ -10,7 +10,7 @@ export default defineConfig({
       protocolImports: true,
     }),
     VitePWA({
-      registerType: 'autoUpdate',
+      registerType: 'autoUpdate', // 👈 auto‑update on new SW
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'maskable-icon.png'],
       manifest: {
         name: 'PURVEYOLS CMS',
