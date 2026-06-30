@@ -10,6 +10,7 @@ import DeleteSweepIcon from '@mui/icons-material/DeleteSweep';
 import api from '../../api/axios';
 import BackButton from '../../components/BackButton';
 import { useNavigate } from 'react-router-dom';
+import { getStore } from '../../services/persistentStore'; // for cache fallback
 
 const Notifications = () => {
   const [notifications, setNotifications] = useState([]);
@@ -18,27 +19,44 @@ const Notifications = () => {
   const [tab, setTab] = useState(0);
   const navigate = useNavigate();
 
-  const fetchNotifications = async () => {
+  const fetchNotifications = async (useCache = true) => {
     setLoading(true);
+    setError(null);
     try {
       const res = await api.get('/api/notifications');
       setNotifications(res.data || []);
       setError(null);
     } catch (err) {
-      setError('Failed to load notifications');
+      // Try to load from cache if available
+      if (useCache) {
+        try {
+          const cached = await getStore('notifications');
+          if (cached && cached.length > 0) {
+            setNotifications(cached);
+            setError('Showing cached notifications – server unavailable. Tap Retry to refresh.');
+            return;
+          }
+        } catch (_) { /* ignore */ }
+      }
+      setError('Failed to load notifications. Please try again.');
+      console.error('Notifications fetch error:', err);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchNotifications();
+    fetchNotifications(true);
   }, []);
+
+  const handleRetry = () => {
+    fetchNotifications(false);
+  };
 
   const handleMarkRead = async (id) => {
     try {
       await api.put(`/api/notifications/${id}/read`);
-      fetchNotifications();
+      fetchNotifications(false);
     } catch (err) {
       alert('Failed to mark as read');
     }
@@ -47,7 +65,7 @@ const Notifications = () => {
   const handleMarkAllRead = async () => {
     try {
       await api.put('/api/notifications/read-all');
-      fetchNotifications();
+      fetchNotifications(false);
     } catch (err) {
       alert('Failed to mark all as read');
     }
@@ -57,18 +75,17 @@ const Notifications = () => {
     if (!window.confirm('Delete this notification?')) return;
     try {
       await api.delete(`/api/notifications/${id}`);
-      fetchNotifications();
+      fetchNotifications(false);
     } catch (err) {
       alert('Failed to delete');
     }
   };
 
-  // ─── DELETE ALL ────────────────────────────────────────────
   const handleDeleteAll = async () => {
     if (!window.confirm('Delete ALL notifications? This cannot be undone.')) return;
     try {
       await api.delete('/api/notifications');
-      fetchNotifications();
+      fetchNotifications(false);
     } catch (err) {
       alert('Failed to delete all notifications');
     }
@@ -153,10 +170,10 @@ const Notifications = () => {
   return (
     <Paper sx={{ p: 2 }}>
       <BackButton />
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2, flexWrap: 'wrap' }}>
         <Typography variant="h5">Notifications</Typography>
         <Box>
-          <Button variant="outlined" startIcon={<RefreshIcon />} onClick={fetchNotifications} sx={{ mr: 1 }}>
+          <Button variant="outlined" startIcon={<RefreshIcon />} onClick={handleRetry} sx={{ mr: 1 }}>
             Refresh
           </Button>
           <Button variant="outlined" onClick={handleMarkAllRead} sx={{ mr: 1 }}>
@@ -174,6 +191,16 @@ const Notifications = () => {
         </Box>
       </Box>
 
+      {error && (
+        <Alert severity="error" sx={{ mb: 2 }} action={
+          <Button color="inherit" size="small" onClick={handleRetry}>
+            Retry
+          </Button>
+        }>
+          {error}
+        </Alert>
+      )}
+
       <Tabs value={tab} onChange={(e, val) => setTab(val)} sx={{ mb: 2 }}>
         <Tab label={`All (${notifications.length})`} />
         <Tab label={`Read (${notifications.filter(n => n.read).length})`} />
@@ -182,10 +209,10 @@ const Notifications = () => {
 
       {loading ? (
         <CircularProgress />
-      ) : error ? (
-        <Alert severity="error">{error}</Alert>
       ) : filteredNotifications.length === 0 ? (
-        <Typography align="center" color="textSecondary" sx={{ py: 3 }}>No notifications</Typography>
+        <Typography align="center" color="textSecondary" sx={{ py: 3 }}>
+          {error ? 'No notifications available.' : 'No notifications.'}
+        </Typography>
       ) : (
         <Table size="small">
           <TableHead>

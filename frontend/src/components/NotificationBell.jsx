@@ -18,6 +18,7 @@ import VolumeUpIcon from '@mui/icons-material/VolumeUp';
 import VolumeOffIcon from '@mui/icons-material/VolumeOff';
 import api from '../api/axios';
 import { useAuth } from '../context/AuthContext';
+import { getStore } from '../services/persistentStore';
 
 const NOTIFICATION_SOUND = '/notification.mp3';
 
@@ -31,41 +32,45 @@ const NotificationBell = () => {
     const saved = localStorage.getItem('notificationSoundEnabled');
     return saved !== null ? saved === 'true' : true;
   });
+  const [error, setError] = useState(null);
   const audioRef = useRef(null);
   const prevUnreadCount = useRef(0);
 
-  // ─── Load sound on mount ──────────────────────────────────
   useEffect(() => {
     try {
       audioRef.current = new Audio(NOTIFICATION_SOUND);
       audioRef.current.load();
-      console.log('🔊 Notification sound loaded');
     } catch (e) {
-      console.warn('⚠️ Could not load notification sound:', e);
+      // silent fail
     }
   }, []);
 
   const fetchNotifications = async () => {
     if (!user) return;
     try {
+      setError(null);
       const res = await api.get('/api/notifications');
       const data = res.data || [];
       setNotifications(data);
       const newUnread = data.filter(n => !n.read).length;
-      
-      // ─── Play sound only if new unread count increased and sound is enabled ───
-      if (newUnread > prevUnreadCount.current && soundEnabled) {
-        if (audioRef.current) {
-          audioRef.current.currentTime = 0;
-          audioRef.current.play().catch((err) => {
-            console.warn('🔇 Sound play failed:', err);
-          });
-        }
+      if (newUnread > prevUnreadCount.current && soundEnabled && audioRef.current) {
+        audioRef.current.currentTime = 0;
+        audioRef.current.play().catch(() => {});
       }
       prevUnreadCount.current = newUnread;
       setUnreadCount(newUnread);
     } catch (err) {
-      console.error('Failed to fetch notifications:', err);
+      setError('Could not load notifications');
+      // Try to load from cache
+      try {
+        const cached = await getStore('notifications');
+        if (cached && cached.length > 0) {
+          setNotifications(cached);
+          const cachedUnread = cached.filter(n => !n.read).length;
+          setUnreadCount(cachedUnread);
+        }
+      } catch (_) { /* ignore */ }
+      console.error('NotificationBell fetch error:', err);
     }
   };
 
@@ -206,6 +211,16 @@ const NotificationBell = () => {
           )}
         </Box>
         <Divider />
+
+        {error && (
+          <Box sx={{ p: 2 }}>
+            <Alert severity="error" action={
+              <Button color="inherit" size="small" onClick={fetchNotifications}>Retry</Button>
+            }>
+              {error}
+            </Alert>
+          </Box>
+        )}
 
         {notifications.length === 0 ? (
           <MenuItem disabled>
