@@ -5,7 +5,7 @@ const crypto = require('crypto');
 const Payment = require('../models/Payment');
 const Worker = require('../models/Worker');
 const User = require('../models/User');
-const { createNotification } = require('../utils/notificationHelper');
+const { createNotification, getSenderName } = require('../utils/notificationHelper');
 const { sendMoney, checkTransactionStatus } = require('../services/airtelMoneyService');
 
 // Initiate payment – send real Airtel Money API request
@@ -20,6 +20,45 @@ router.post('/initiate', auth, async (req, res) => {
     if (!accountant.mobileMoneyNumber) {
       return res.status(400).json({ 
         error: 'Accountant mobile money number not set. Please update your profile.' 
+      });
+    }
+
+    // ─── Check Airtel credentials ──────────────────────────────────
+    const clientId = process.env.AIRTEL_CLIENT_ID;
+    const clientSecret = process.env.AIRTEL_CLIENT_SECRET;
+
+    if (!clientId || !clientSecret) {
+      const errorMessage = 'Airtel credentials missing. Please set AIRTEL_CLIENT_ID and AIRTEL_CLIENT_SECRET in environment variables.';
+      const recipients = await User.find({ role: { $in: ['accountant', 'admin'] } });
+      const senderName = await getSenderName(req.user.id);
+
+      for (const recipient of recipients) {
+        await createNotification(
+          recipient._id,
+          'payment_failed',
+          'Payment Failed – Airtel Credentials Missing',
+          `${senderName} attempted a payment of ZMW ${amount} but Airtel credentials are not configured. Please set AIRTEL_CLIENT_ID and AIRTEL_CLIENT_SECRET.`,
+          `/payments`
+        );
+      }
+
+      const payment = new Payment({
+        type: workerId ? 'worker' : 'bulk',
+        recipientName: note || 'Unknown',
+        recipientPhone,
+        amount: parseFloat(amount),
+        status: 'failed',
+        reference: `AIRTEL_ERR_${Date.now()}`,
+        paidBy: req.user.id,
+        paidAt: new Date(),
+        worker: workerId || null,
+        errorMessage: errorMessage,
+      });
+      await payment.save();
+
+      return res.status(500).json({
+        error: errorMessage,
+        payment: { reference: payment.reference, status: 'failed' }
       });
     }
 
@@ -60,12 +99,10 @@ router.post('/initiate', auth, async (req, res) => {
         note || `Payment to ${worker?.name || 'Worker'}`
       );
       
-      // Update payment with Airtel response
       payment.airtelResponse = airtelResponse;
       payment.airtelTransactionId = airtelResponse?.data?.transactionId || airtelResponse?.transactionId;
       await payment.save();
       
-      // Notify accountant
       await createNotification(
         req.user.id,
         'payment_initiated',
@@ -74,12 +111,10 @@ router.post('/initiate', auth, async (req, res) => {
         `/payments/${payment._id}`
       );
       
-      // If Airtel returns immediate success, mark as completed
       if (airtelResponse?.status === 'success' || airtelResponse?.data?.status === 'SUCCESS') {
         payment.status = 'completed';
         await payment.save();
         
-        // Notify worker (if they have a user account)
         if (worker) {
           const workerUser = await User.findOne({ phone: recipientPhone });
           if (workerUser) {
@@ -108,12 +143,11 @@ router.post('/initiate', auth, async (req, res) => {
       payment.errorMessage = airtelError.message;
       await payment.save();
       
-      // Notify accountant of failure
       await createNotification(
         req.user.id,
         'payment_failed',
         'Payment Failed',
-        `Payment of ZMW ${amount} to ${worker?.name || recipientPhone} failed. Please try again.`,
+        `Payment of ZMW ${amount} to ${worker?.name || recipientPhone} failed: ${airtelError.message}`,
         `/payments/${payment._id}`
       );
       
@@ -140,14 +174,12 @@ router.post('/confirm', auth, async (req, res) => {
       return res.json({ message: 'Payment already completed', payment });
     }
     
-    // Check status with Airtel
     const status = await checkTransactionStatus(reference);
     
     if (status?.status === 'SUCCESS' || status?.data?.status === 'SUCCESS') {
       payment.status = 'completed';
       await payment.save();
       
-      // Notify accountant
       await createNotification(
         req.user.id,
         'payment_confirmed',
@@ -180,7 +212,6 @@ router.get('/status/:reference', auth, async (req, res) => {
     const payment = await Payment.findOne({ reference: req.params.reference });
     if (!payment) return res.status(404).json({ error: 'Transaction not found' });
     
-    // Check with Airtel
     const status = await checkTransactionStatus(req.params.reference);
     
     res.json({

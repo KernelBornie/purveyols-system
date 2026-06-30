@@ -10,7 +10,7 @@ import DeleteSweepIcon from '@mui/icons-material/DeleteSweep';
 import api from '../../api/axios';
 import BackButton from '../../components/BackButton';
 import { useNavigate } from 'react-router-dom';
-import { getStore } from '../../services/persistentStore'; // for cache fallback
+import { getStore } from '../../services/persistentStore';
 
 const Notifications = () => {
   const [notifications, setNotifications] = useState([]);
@@ -27,7 +27,6 @@ const Notifications = () => {
       setNotifications(res.data || []);
       setError(null);
     } catch (err) {
-      // Try to load from cache if available
       if (useCache) {
         try {
           const cached = await getStore('notifications');
