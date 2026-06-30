@@ -19,9 +19,29 @@ const io = new Server(server, {
   },
 });
 
-// ─── CORS (explicitly allow Vercel frontend) ──────────────
+// ─── Dynamic CORS: allow Vercel previews and production ──────
+const allowedOrigins = [
+  'https://purveyols-system.vercel.app',                // production
+  /^https:\/\/purveyols-system-.*\.vercel\.app$/,      // preview deployments
+  /^http:\/\/localhost(:\d+)?$/,                       // local dev
+];
+
 const corsOptions = {
-  origin: 'https://purveyols-system.vercel.app',  // your frontend
+  origin: (origin, callback) => {
+    if (!origin) return callback(null, true);
+    // Check if origin matches any allowed pattern
+    const allowed = allowedOrigins.some((pattern) => {
+      if (typeof pattern === 'string') return origin === pattern;
+      if (pattern instanceof RegExp) return pattern.test(origin);
+      return false;
+    });
+    if (allowed) {
+      callback(null, true);
+    } else {
+      console.warn(`❌ CORS blocked origin: ${origin}`);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
@@ -36,10 +56,11 @@ app.use((req, res, next) => {
   next();
 });
 
+// ─── Rest of your server code (unchanged) ──────────────────
 app.use(express.json({ limit: '50mb' }));
 app.use(morgan('dev'));
 
-// ─── File upload configuration ────────────────────────────────────
+// File upload config
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     cb(null, 'uploads/tenders/');
@@ -67,7 +88,7 @@ const upload = multer({ storage, fileFilter, limits: { fileSize: 10 * 1024 * 102
 
 app.use('/uploads', express.static('uploads'));
 
-// ─── Auto‑seed ──────────────────────────────────────────────────
+// Auto‑seed
 const User = require('./models/User');
 const { exec } = require('child_process');
 
@@ -93,7 +114,7 @@ const seedIfEmpty = async () => {
   }
 };
 
-// ─── Routes ──────────────────────────────────────────────────────
+// Routes
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/chat-history', require('./routes/chatHistory'));
 app.use('/api/ai', require('./routes/ai'));
@@ -124,17 +145,15 @@ app.use('/api/surveys', require('./routes/surveys'));
 app.use('/api/spare-parts', require('./routes/spareParts'));
 app.use('/api/tenders', require('./routes/tenders'));
 
-// ─── Project Planning ────────────────────────────────────────────
 const projectPlanRoutes = require('./routes/projectPlans');
 app.use('/api/project-plans', projectPlanRoutes);
 
 const siteDiaryRoutes = require('./routes/siteDiary');
 app.use('/api/site-diary', siteDiaryRoutes);
 
-// ─── Health check ────────────────────────────────────────────────
 app.get('/api/health', (req, res) => res.json({ status: 'OK', timestamp: new Date().toISOString() }));
 
-// ─── Socket.io ──────────────────────────────────────────────────
+// Socket.io
 const activeUsers = new Map();
 app.get('/api/users/online', async (req, res) => {
   try {
@@ -157,10 +176,7 @@ io.on('connection', (socket) => {
   socket.on('call-user', ({ to, offer }) => {
     const targetSocketId = activeUsers.get(to);
     if (targetSocketId) {
-      io.to(targetSocketId).emit('incoming-call', {
-        from: socket.userId,
-        offer,
-      });
+      io.to(targetSocketId).emit('incoming-call', { from: socket.userId, offer });
       console.log(`📞 Call from ${socket.userId} to ${to}`);
     } else {
       socket.emit('call-error', { message: 'User is offline' });
@@ -187,11 +203,7 @@ io.on('connection', (socket) => {
   socket.on('invite-to-meeting', ({ to, meetingLink, from, meetingName }) => {
     const targetSocketId = activeUsers.get(to);
     if (targetSocketId) {
-      io.to(targetSocketId).emit('meeting-invite', {
-        from,
-        meetingLink,
-        meetingName: meetingName || 'Video Meeting',
-      });
+      io.to(targetSocketId).emit('meeting-invite', { from, meetingLink, meetingName: meetingName || 'Video Meeting' });
       console.log(`📨 Meeting invite from ${from} to ${to}`);
     } else {
       socket.emit('invite-error', { message: 'User is offline' });
@@ -206,9 +218,7 @@ io.on('connection', (socket) => {
   });
 });
 
-// ─── Database Connection ─────────────────────────────────────────
 const PORT = process.env.PORT || 5000;
-
 mongoose.connect(process.env.MONGO_URI)
   .then(() => {
     console.log('✅ MongoDB connected');
