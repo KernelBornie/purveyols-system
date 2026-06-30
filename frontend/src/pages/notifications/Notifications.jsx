@@ -278,7 +278,6 @@ const Notifications = () => {
               ))}
             </TableBody>
           </Table>
-          {/* Pagination controls */}
           {totalPages > 1 && (
             <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2, gap: 1 }}>
               <Button

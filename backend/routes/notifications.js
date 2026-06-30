@@ -6,7 +6,6 @@ const auth = require('../middleware/auth');
 // ─── GET notifications with pagination ──────────────────────
 router.get('/', auth, async (req, res) => {
   try {
-    // Default: page=1, limit=50
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 50;
     const skip = (page - 1) * limit;
@@ -27,7 +26,7 @@ router.get('/', auth, async (req, res) => {
         limit,
         total,
         pages: Math.ceil(total / limit),
-        unreadCount, // for the bell badge
+        unreadCount,
       },
     });
   } catch (err) {
@@ -35,7 +34,7 @@ router.get('/', auth, async (req, res) => {
   }
 });
 
-// ─── Get unread count (lightweight) ─────────────────────────
+// ─── Get unread count ─────────────────────────────────────
 router.get('/unread-count', auth, async (req, res) => {
   try {
     const count = await Notification.countDocuments({ user: req.user.id, read: false });

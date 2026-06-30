@@ -39,7 +39,6 @@ const NotificationBell = () => {
     if (!user) return;
     try {
       setError(null);
-      // Fetch latest 10 for the bell, plus unread count separately
       const [notifRes, unreadRes] = await Promise.all([
         api.get('/api/notifications?limit=10&page=1'),
         api.get('/api/notifications/unread-count'),
