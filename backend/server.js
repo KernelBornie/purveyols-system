@@ -19,7 +19,7 @@ const io = new Server(server, {
   },
 });
 
-// ─── Dynamic CORS: allow Vercel previews and production ──────
+// ─── Dynamic CORS (allows Vercel previews + production) ──────
 const allowedOrigins = [
   'https://purveyols-system.vercel.app',                // production
   /^https:\/\/purveyols-system-.*\.vercel\.app$/,      // preview deployments
@@ -29,7 +29,6 @@ const allowedOrigins = [
 const corsOptions = {
   origin: (origin, callback) => {
     if (!origin) return callback(null, true);
-    // Check if origin matches any allowed pattern
     const allowed = allowedOrigins.some((pattern) => {
       if (typeof pattern === 'string') return origin === pattern;
       if (pattern instanceof RegExp) return pattern.test(origin);
@@ -44,7 +43,14 @@ const corsOptions = {
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  allowedHeaders: [
+    'Content-Type',
+    'Authorization',
+    'X-Requested-With',
+    'Cache-Control',      // ✅ ADDED
+    'Accept',
+    'Origin'
+  ],
   optionsSuccessStatus: 200,
 };
 
@@ -56,7 +62,7 @@ app.use((req, res, next) => {
   next();
 });
 
-// ─── Rest of your server code (unchanged) ──────────────────
+// ─── Rest of your server (unchanged) ──────────────────────────
 app.use(express.json({ limit: '50mb' }));
 app.use(morgan('dev'));
 
