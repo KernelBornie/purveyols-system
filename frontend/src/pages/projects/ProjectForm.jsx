@@ -348,7 +348,7 @@ const ProjectForm = () => {
           </Box>
         )}
 
-        {/* ─── Documents Section ──────────────────────────────────── */}
+        {/* ─── Documents Section (EXACTLY LIKE TENDERS) ───────────── */}
         <Paper sx={{ p: 2, mb: 3, border: '2px solid #1976d2', backgroundColor: '#f5f9ff' }}>
           <Accordion expanded={docExpanded} onChange={() => setDocExpanded(!docExpanded)}>
             <AccordionSummary expandIcon={<ExpandMoreIcon />}>

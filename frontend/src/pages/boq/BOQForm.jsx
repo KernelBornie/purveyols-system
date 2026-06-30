@@ -17,8 +17,6 @@ import FileDownloadIcon from '@mui/icons-material/FileDownload';
 import CalculateIcon from '@mui/icons-material/Calculate';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
-import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
-import ZoomInIcon from '@mui/icons-material/ZoomIn';
 import api from '../../api/axios';
 import { useAuth } from '../../context/AuthContext';
 import BackButton from '../../components/BackButton';
@@ -162,6 +160,7 @@ const BOQForm = () => {
     }
   };
 
+  // ─── Rest of the component (sections, items, calculations, etc.) ──
   const ensurePreliminaries = (sections) => {
     const hasPrelim = sections.some(s => 
       s.title?.toLowerCase().includes('preliminary') || 
@@ -738,7 +737,7 @@ const BOQForm = () => {
           </Grid>
         </Paper>
 
-        {/* ─── Documents Section ──────────────────────────────────── */}
+        {/* ─── Documents Section (EXACTLY LIKE TENDERS) ───────────── */}
         <Paper sx={{ p: 2, mb: 2, border: '2px solid #1976d2', backgroundColor: '#f5f9ff' }}>
           <Accordion expanded={docExpanded} onChange={() => setDocExpanded(!docExpanded)}>
             <AccordionSummary expandIcon={<ExpandMoreIcon />}>
