@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import {
   Paper, Typography, Box, Grid, TextField, Button, MenuItem, Alert, Chip, Slider, Avatar,
-  IconButton, Dialog, DialogTitle, DialogContent, DialogActions, CircularProgress
+  IconButton, Dialog, DialogTitle, DialogContent, DialogActions, CircularProgress,
+  Accordion, AccordionSummary, AccordionDetails, Tooltip, Backdrop
 } from '@mui/material';
 import SaveIcon from '@mui/icons-material/Save';
 import PrintIcon from '@mui/icons-material/Print';
@@ -10,6 +11,9 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import CameraAltIcon from '@mui/icons-material/CameraAlt';
 import ZoomInIcon from '@mui/icons-material/ZoomIn';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import FileDownloadIcon from '@mui/icons-material/FileDownload';
+import EditIcon from '@mui/icons-material/Edit';
 import api from '../../api/axios';
 import { useAuth } from '../../context/AuthContext';
 import BackButton from '../../components/BackButton';
@@ -28,6 +32,7 @@ const ProjectForm = () => {
     description: '',
     image: '',
     progress: 0,
+    documents: [],
   });
   const [creator, setCreator] = useState(null);
   const [createdAt, setCreatedAt] = useState(null);
@@ -35,6 +40,10 @@ const ProjectForm = () => {
   const [approvedAt, setApprovedAt] = useState(null);
   const [message, setMessage] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
+  const [docExpanded, setDocExpanded] = useState(true);
+  const [docEditDialog, setDocEditDialog] = useState(false);
+  const [editingDoc, setEditingDoc] = useState(null);
+  const [docForm, setDocForm] = useState({ name: '' });
 
   const isView = location.pathname.includes('/view');
   const isEdit = location.pathname.includes('/edit') || (id && !isView);
@@ -42,8 +51,72 @@ const ProjectForm = () => {
 
   const canEdit = !isView && !['driver', 'receptionist', 'safety-officer'].includes(user?.role);
   const canDelete = !isView && ['admin', 'director', 'accountant'].includes(user?.role);
+  const isReadOnly = isView || !canEdit;
 
   const [photoPreviewOpen, setPhotoPreviewOpen] = useState(false);
+
+  // ─── Helper: get file URL ──────────────────────────────────────────
+  const getFileUrl = (path) => {
+    if (!path) return '';
+    if (path.startsWith('http')) return path;
+    if (api.defaults.baseURL) return `${api.defaults.baseURL}${path}`;
+    if (process.env.REACT_APP_API_URL) return `${process.env.REACT_APP_API_URL}${path}`;
+    return `${window.location.origin}${path}`;
+  };
+
+  // ─── Document handlers ─────────────────────────────────────────────
+  const handleDocUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('name', file.name);
+    try {
+      const res = await api.post(`/api/projects/${id}/documents`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      setForm(prev => ({
+        ...prev,
+        documents: [...prev.documents, res.data.document],
+      }));
+      setMessage({ type: 'success', text: 'Document uploaded successfully!' });
+    } catch (err) {
+      setMessage({ type: 'error', text: err.response?.data?.error || 'Upload failed' });
+    }
+    e.target.value = '';
+  };
+
+  const handleDocDelete = async (index) => {
+    if (!window.confirm('Remove this document?')) return;
+    try {
+      await api.delete(`/api/projects/${id}/documents/${index}`);
+      const docs = [...form.documents];
+      docs.splice(index, 1);
+      setForm(prev => ({ ...prev, documents: docs }));
+      setMessage({ type: 'success', text: 'Document removed' });
+    } catch (err) {
+      setMessage({ type: 'error', text: err.response?.data?.error || 'Delete failed' });
+    }
+  };
+
+  const handleDocEdit = (doc, index) => {
+    setEditingDoc(index);
+    setDocForm({ name: doc.name || '' });
+    setDocEditDialog(true);
+  };
+
+  const handleDocSave = async () => {
+    try {
+      await api.put(`/api/projects/${id}/documents/${editingDoc}`, { name: docForm.name });
+      const docs = [...form.documents];
+      docs[editingDoc].name = docForm.name;
+      setForm(prev => ({ ...prev, documents: docs }));
+      setDocEditDialog(false);
+      setMessage({ type: 'success', text: 'Document updated' });
+    } catch (err) {
+      setMessage({ type: 'error', text: err.response?.data?.error || 'Update failed' });
+    }
+  };
 
   const handlePhotoClick = () => {
     if (imagePreview) setPhotoPreviewOpen(true);
@@ -62,6 +135,7 @@ const ProjectForm = () => {
             description: data.description || '',
             image: data.image || '',
             progress: data.progress || 0,
+            documents: data.documents || [],
           });
           if (data.image) setImagePreview(data.image);
           setCreator(data.createdBy);
@@ -127,7 +201,7 @@ const ProjectForm = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!canEdit || isView) return;
+    if (isReadOnly) return;
     setLoading(true);
     setMessage(null);
     try {
@@ -139,6 +213,7 @@ const ProjectForm = () => {
         description: form.description || '',
         image: form.image,
         progress: Number(form.progress) || 0,
+        documents: form.documents,
       };
       if (id) {
         await api.put(`/api/projects/${id}`, payload);
@@ -245,7 +320,7 @@ const ProjectForm = () => {
       <BackButton />
       {message && <Alert severity={message.type} sx={{ mb: 2 }}>{message.text}</Alert>}
       {isView && <Alert severity="info" sx={{ mb: 2 }}>You are viewing this project in read‑only mode.</Alert>}
-      {!canEdit && !isView && <Alert severity="info" sx={{ mb: 2 }}>You have view‑only access. Edits are disabled.</Alert>}
+      {isReadOnly && !isView && <Alert severity="info" sx={{ mb: 2 }}>You have view‑only access. Edits are disabled.</Alert>}
 
       <form onSubmit={handleSubmit}>
         <Box sx={{ textAlign: 'center', borderBottom: '2px solid #000', pb: 2, mb: 2 }}>
@@ -273,6 +348,89 @@ const ProjectForm = () => {
           </Box>
         )}
 
+        {/* ─── Documents Section ──────────────────────────────────── */}
+        <Paper sx={{ p: 2, mb: 3, border: '2px solid #1976d2', backgroundColor: '#f5f9ff' }}>
+          <Accordion expanded={docExpanded} onChange={() => setDocExpanded(!docExpanded)}>
+            <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+              <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#1976d2' }}>
+                📄 Documents ({form.documents?.length || 0})
+              </Typography>
+            </AccordionSummary>
+            <AccordionDetails>
+              {!isReadOnly && (
+                <Box sx={{ mb: 2 }}>
+                  <Button variant="contained" component="label" startIcon={<CloudUploadIcon />}>
+                    Upload Document
+                    <input type="file" hidden onChange={handleDocUpload} />
+                  </Button>
+                  <Typography variant="caption" display="block" color="textSecondary" sx={{ mt: 1 }}>
+                    Supported: images, PDF, Word, Excel (max 50MB)
+                  </Typography>
+                </Box>
+              )}
+              {form.documents && form.documents.length > 0 ? (
+                form.documents.map((doc, idx) => {
+                  const fullUrl = getFileUrl(doc.path);
+                  const isImage = doc.mimeType?.startsWith('image/');
+                  const isPdf = doc.mimeType === 'application/pdf';
+                  return (
+                    <Box key={idx} sx={{ mb: 2, border: '1px solid #e0e0e0', p: 2, borderRadius: 1 }}>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 1 }}>
+                        <Box sx={{ flex: 1 }}>
+                          <Typography variant="subtitle2" sx={{ fontWeight: 'bold' }}>{doc.name}</Typography>
+                          <Typography variant="caption" display="block" color="textSecondary">
+                            {doc.mimeType || 'Unknown'} • {doc.uploadedAt ? new Date(doc.uploadedAt).toLocaleString() : ''}
+                          </Typography>
+                        </Box>
+                        <Box sx={{ display: 'flex', gap: 1 }}>
+                          {!isReadOnly && (
+                            <>
+                              <Tooltip title="Edit name">
+                                <IconButton size="small" onClick={() => handleDocEdit(doc, idx)}>
+                                  <EditIcon fontSize="small" />
+                                </IconButton>
+                              </Tooltip>
+                              <Tooltip title="Delete">
+                                <IconButton size="small" color="error" onClick={() => handleDocDelete(idx)}>
+                                  <DeleteIcon fontSize="small" />
+                                </IconButton>
+                              </Tooltip>
+                            </>
+                          )}
+                          <Tooltip title="Download">
+                            <IconButton size="small" component="a" href={fullUrl} target="_blank" download>
+                              <FileDownloadIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                        </Box>
+                      </Box>
+                      <Box sx={{ mt: 1, bgcolor: '#fff', p: 1, border: '1px solid #ddd', borderRadius: 1 }}>
+                        {isImage ? (
+                          <Box sx={{ textAlign: 'center', maxHeight: '300px', overflow: 'auto' }}>
+                            <img src={fullUrl} alt={doc.name} style={{ maxWidth: '100%', maxHeight: '300px', objectFit: 'contain' }} />
+                          </Box>
+                        ) : isPdf ? (
+                          <Box sx={{ height: '400px' }}>
+                            <iframe src={fullUrl} style={{ width: '100%', height: '100%', border: 'none' }} title={doc.name} />
+                          </Box>
+                        ) : (
+                          <Box sx={{ textAlign: 'center', p: 2 }}>
+                            <Typography variant="body2" color="textSecondary">Preview not available for this file type.</Typography>
+                            <Button component="a" href={fullUrl} target="_blank" variant="contained" sx={{ mt: 1 }}>Download</Button>
+                          </Box>
+                        )}
+                      </Box>
+                    </Box>
+                  );
+                })
+              ) : (
+                <Typography variant="body2" color="textSecondary">No documents uploaded.</Typography>
+              )}
+            </AccordionDetails>
+          </Accordion>
+        </Paper>
+
+        {/* ─── Photo Upload ────────────────────────────────────────── */}
         <Box sx={{ mb: 3 }}>
           <Typography variant="subtitle1" gutterBottom>Project Photo</Typography>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
@@ -282,7 +440,7 @@ const ProjectForm = () => {
               variant="rounded"
               onClick={handlePhotoClick}
             />
-            {!isView && canEdit && (
+            {!isReadOnly && (
               <>
                 <Button
                   variant="outlined"
@@ -321,7 +479,7 @@ const ProjectForm = () => {
               onChange={e => setForm({ ...form, name: e.target.value })}
               required
               placeholder="Enter project name..."
-              disabled={isView || !canEdit}
+              disabled={isReadOnly}
             />
           </Grid>
         </Grid>
@@ -335,7 +493,7 @@ const ProjectForm = () => {
               value={form.location || ''}
               onChange={e => setForm({ ...form, location: e.target.value })}
               placeholder="City, Area, Site..."
-              disabled={isView || !canEdit}
+              disabled={isReadOnly}
             />
           </Grid>
           <Grid item xs={12} md={6}>
@@ -348,7 +506,7 @@ const ProjectForm = () => {
               onChange={e => setForm({ ...form, budget: e.target.value })}
               inputProps={{ min: 0, step: 0.01 }}
               placeholder="0.00"
-              disabled={isView || !canEdit}
+              disabled={isReadOnly}
             />
           </Grid>
         </Grid>
@@ -362,7 +520,7 @@ const ProjectForm = () => {
               size="small"
               value={form.status || 'planning'}
               onChange={e => setForm({ ...form, status: e.target.value })}
-              disabled={isView || !canEdit}
+              disabled={isReadOnly}
             >
               <MenuItem value="planning">Planning</MenuItem>
               <MenuItem value="active">Active</MenuItem>
@@ -379,7 +537,7 @@ const ProjectForm = () => {
               max={100}
               step={1}
               valueLabelDisplay="auto"
-              disabled={isView || !canEdit}
+              disabled={isReadOnly}
             />
           </Grid>
         </Grid>
@@ -395,7 +553,7 @@ const ProjectForm = () => {
               value={form.description || ''}
               onChange={e => setForm({ ...form, description: e.target.value })}
               placeholder="Provide details about the project..."
-              disabled={isView || !canEdit}
+              disabled={isReadOnly}
             />
           </Grid>
         </Grid>
@@ -444,12 +602,12 @@ const ProjectForm = () => {
         </Box>
 
         <Box sx={{ mt: 4, display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-          {!isView && canEdit && (
+          {!isReadOnly && (
             <Button type="submit" variant="contained" startIcon={<SaveIcon />} disabled={loading}>
               {loading ? 'Saving...' : isNew ? 'Create Project' : 'Update Project'}
             </Button>
           )}
-          {id && !isView && canDelete && (
+          {id && !isReadOnly && canDelete && (
             <Button variant="contained" color="error" startIcon={<DeleteIcon />} onClick={handleDelete} disabled={loading}>
               Delete
             </Button>
@@ -459,6 +617,7 @@ const ProjectForm = () => {
         </Box>
       </form>
 
+      {/* ─── Photo Preview Dialog ────────────────────────────────── */}
       <Dialog open={photoPreviewOpen} onClose={() => setPhotoPreviewOpen(false)} maxWidth="md" fullWidth>
         <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <span>Project Image</span>
@@ -477,6 +636,24 @@ const ProjectForm = () => {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setPhotoPreviewOpen(false)}>Close</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* ─── Document Edit Dialog ────────────────────────────────── */}
+      <Dialog open={docEditDialog} onClose={() => setDocEditDialog(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Edit Document Name</DialogTitle>
+        <DialogContent>
+          <TextField
+            label="Document Name"
+            fullWidth
+            margin="dense"
+            value={docForm.name}
+            onChange={(e) => setDocForm({ ...docForm, name: e.target.value })}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDocEditDialog(false)}>Cancel</Button>
+          <Button variant="contained" onClick={handleDocSave}>Save</Button>
         </DialogActions>
       </Dialog>
     </Paper>

@@ -4,7 +4,9 @@ import {
   Paper, Typography, Box, Grid, TextField, Button, IconButton,
   Table, TableHead, TableRow, TableCell, TableBody,
   MenuItem, Divider, Alert, Chip, Card, CircularProgress,
-  Dialog, DialogTitle, DialogContent, DialogActions
+  Dialog, DialogTitle, DialogContent, DialogActions,
+  Accordion, AccordionSummary, AccordionDetails,
+  Avatar, Tooltip, Backdrop
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -13,6 +15,10 @@ import SaveIcon from '@mui/icons-material/Save';
 import PrintIcon from '@mui/icons-material/Print';
 import FileDownloadIcon from '@mui/icons-material/FileDownload';
 import CalculateIcon from '@mui/icons-material/Calculate';
+import CloudUploadIcon from '@mui/icons-material/CloudUpload';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
+import ZoomInIcon from '@mui/icons-material/ZoomIn';
 import api from '../../api/axios';
 import { useAuth } from '../../context/AuthContext';
 import BackButton from '../../components/BackButton';
@@ -70,7 +76,12 @@ const BOQForm = () => {
     grandTotal: 0,
     status: 'draft',
     templateName: '',
+    documents: [],
   });
+  const [creator, setCreator] = useState(null);
+  const [createdAt, setCreatedAt] = useState(null);
+  const [approver, setApprover] = useState(null);
+  const [approvedAt, setApprovedAt] = useState(null);
   const [message, setMessage] = useState(null);
   const [selectedTemplate, setSelectedTemplate] = useState('');
   const [sectionDialog, setSectionDialog] = useState(false);
@@ -80,14 +91,76 @@ const BOQForm = () => {
   const [editingItem, setEditingItem] = useState(null);
   const [currentSectionIndex, setCurrentSectionIndex] = useState(null);
   const [itemForm, setItemForm] = useState({ description: '', unit: '', quantity: 1, rate: 0, notes: '' });
-
-  // ─── Creator & Approver state ──────────────────────────────────
-  const [creator, setCreator] = useState(null);
-  const [createdAt, setCreatedAt] = useState(null);
-  const [approver, setApprover] = useState(null);
-  const [approvedAt, setApprovedAt] = useState(null);
+  const [docExpanded, setDocExpanded] = useState(true);
+  const [docEditDialog, setDocEditDialog] = useState(false);
+  const [editingDoc, setEditingDoc] = useState(null);
+  const [docForm, setDocForm] = useState({ name: '' });
 
   const canEdit = ['admin', 'director', 'quantity-surveyor', 'civil-engineer', 'procurement-officer', 'accountant', 'foreman'].includes(user?.role);
+  const isReadOnly = !canEdit || form.status === 'approved';
+
+  // ─── Helper: get file URL ──────────────────────────────────────────
+  const getFileUrl = (path) => {
+    if (!path) return '';
+    if (path.startsWith('http')) return path;
+    if (api.defaults.baseURL) return `${api.defaults.baseURL}${path}`;
+    if (process.env.REACT_APP_API_URL) return `${process.env.REACT_APP_API_URL}${path}`;
+    return `${window.location.origin}${path}`;
+  };
+
+  // ─── Document handlers ─────────────────────────────────────────────
+  const handleDocUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('name', file.name);
+    try {
+      const res = await api.post(`/api/boq/${id}/documents`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      setForm(prev => ({
+        ...prev,
+        documents: [...prev.documents, res.data.document],
+      }));
+      setMessage({ type: 'success', text: 'Document uploaded successfully!' });
+    } catch (err) {
+      setMessage({ type: 'error', text: err.response?.data?.error || 'Upload failed' });
+    }
+    e.target.value = '';
+  };
+
+  const handleDocDelete = async (index) => {
+    if (!window.confirm('Remove this document?')) return;
+    try {
+      await api.delete(`/api/boq/${id}/documents/${index}`);
+      const docs = [...form.documents];
+      docs.splice(index, 1);
+      setForm(prev => ({ ...prev, documents: docs }));
+      setMessage({ type: 'success', text: 'Document removed' });
+    } catch (err) {
+      setMessage({ type: 'error', text: err.response?.data?.error || 'Delete failed' });
+    }
+  };
+
+  const handleDocEdit = (doc, index) => {
+    setEditingDoc(index);
+    setDocForm({ name: doc.name || '' });
+    setDocEditDialog(true);
+  };
+
+  const handleDocSave = async () => {
+    try {
+      await api.put(`/api/boq/${id}/documents/${editingDoc}`, { name: docForm.name });
+      const docs = [...form.documents];
+      docs[editingDoc].name = docForm.name;
+      setForm(prev => ({ ...prev, documents: docs }));
+      setDocEditDialog(false);
+      setMessage({ type: 'success', text: 'Document updated' });
+    } catch (err) {
+      setMessage({ type: 'error', text: err.response?.data?.error || 'Update failed' });
+    }
+  };
 
   const ensurePreliminaries = (sections) => {
     const hasPrelim = sections.some(s => 
@@ -139,6 +212,7 @@ const BOQForm = () => {
             grandTotal: data.grandTotal || 0,
             status: data.status || 'draft',
             templateName: data.templateName || '',
+            documents: data.documents || [],
           });
           setSelectedTemplate(data.templateName || '');
           setCreator(data.createdBy);
@@ -351,6 +425,7 @@ const BOQForm = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (isReadOnly) return;
     setLoading(true);
     try {
       const payload = { ...form };
@@ -401,7 +476,6 @@ const BOQForm = () => {
     URL.revokeObjectURL(url);
   };
 
-  // ─── Custom print function ──────────────────────────────────────
   const handlePrint = () => {
     const filledSections = form.sections
       .map(section => ({
@@ -564,23 +638,14 @@ const BOQForm = () => {
     <Paper sx={{ p: 3, maxWidth: 1400, mx: 'auto' }}>
       <BackButton />
       {message && <Alert severity={message.type} sx={{ mb: 2 }}>{message.text}</Alert>}
-      {!canEdit && <Alert severity="info" sx={{ mb: 2 }}>You have view‑only access.</Alert>}
+      {isReadOnly && <Alert severity="info" sx={{ mb: 2 }}>This BOQ is read‑only.</Alert>}
 
       <form onSubmit={handleSubmit}>
         {/* ─── Company Header ───────────────────────────────────── */}
         <Box sx={{ textAlign: 'center', borderBottom: '2px solid #000', pb: 2, mb: 2 }}>
-          <img
-            src="/top-log.PNG?t=3"
-            alt="PURVEYOLS Logo"
-            style={{ height: '60px', maxWidth: '100%' }}
-            onError={(e) => e.target.style.display = 'none'}
-          />
-          <Typography variant="h4" sx={{ fontWeight: 'bold', letterSpacing: 2, color: '#b71c1c' }}>
-            PURVEYOLS
-          </Typography>
-          <Typography variant="subtitle1" sx={{ fontWeight: 'bold', color: '#b71c1c' }}>
-            Building and Civil contractors
-          </Typography>
+          <img src="/top-log.PNG?t=3" alt="PURVEYOLS Logo" style={{ height: '60px', maxWidth: '100%' }} onError={(e) => e.target.style.display = 'none'} />
+          <Typography variant="h4" sx={{ fontWeight: 'bold', letterSpacing: 2, color: '#b71c1c' }}>PURVEYOLS</Typography>
+          <Typography variant="subtitle1" sx={{ fontWeight: 'bold', color: '#b71c1c' }}>Building and Civil contractors</Typography>
           <Typography variant="body2">Plot No. 8, Buchi Road - Northmead, P.O. Box NH 87 Lusaka, Zambia</Typography>
           <Typography variant="body2">Tel: +260 211 235354 | Mobile: +260 977 393879 / +260 965 393879</Typography>
           <Typography variant="body2">Email: purveyols@gmail.com</Typography>
@@ -599,16 +664,16 @@ const BOQForm = () => {
 
         <Grid container spacing={2} sx={{ mb: 2 }}>
           <Grid item xs={12} md={6}>
-            <TextField select label="Project *" fullWidth size="small" value={form.project || ''} onChange={e => setForm({ ...form, project: e.target.value })} required disabled={!canEdit}>
+            <TextField select label="Project *" fullWidth size="small" value={form.project || ''} onChange={e => setForm({ ...form, project: e.target.value })} required disabled={isReadOnly}>
               <MenuItem value="">Select Project</MenuItem>
               {projects.map(p => <MenuItem key={p._id} value={p._id}>{p.name}</MenuItem>)}
             </TextField>
           </Grid>
           <Grid item xs={12} md={6}>
-            <TextField label="BOQ Name *" fullWidth size="small" value={form.name || ''} onChange={e => setForm({ ...form, name: e.target.value })} required disabled={!canEdit} />
+            <TextField label="BOQ Name *" fullWidth size="small" value={form.name || ''} onChange={e => setForm({ ...form, name: e.target.value })} required disabled={isReadOnly} />
           </Grid>
           <Grid item xs={12}>
-            <TextField label="Description" fullWidth multiline rows={2} size="small" value={form.description || ''} onChange={e => setForm({ ...form, description: e.target.value })} disabled={!canEdit} />
+            <TextField label="Description" fullWidth multiline rows={2} size="small" value={form.description || ''} onChange={e => setForm({ ...form, description: e.target.value })} disabled={isReadOnly} />
           </Grid>
         </Grid>
 
@@ -630,7 +695,7 @@ const BOQForm = () => {
                     loadTemplate(val);
                   }
                 }}
-                disabled={!canEdit}
+                disabled={isReadOnly}
               >
                 <MenuItem value="Custom">⚙️ Custom</MenuItem>
                 {TEMPLATES.map(t => (
@@ -645,7 +710,7 @@ const BOQForm = () => {
               </TextField>
             </Grid>
             <Grid item xs={12} md={6} sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-              {canEdit && (
+              {!isReadOnly && (
                 <>
                   <Button variant="outlined" onClick={saveAsTemplate} size="small">
                     💾 Save as Template
@@ -659,25 +724,107 @@ const BOQForm = () => {
               )}
             </Grid>
             <Grid item xs={12}>
-              <TextField label="Client Name" fullWidth size="small" value={form.clientName || ''} onChange={e => setForm({ ...form, clientName: e.target.value })} disabled={!canEdit} />
+              <TextField label="Client Name" fullWidth size="small" value={form.clientName || ''} onChange={e => setForm({ ...form, clientName: e.target.value })} disabled={isReadOnly} />
             </Grid>
             <Grid item xs={12}>
-              <TextField label="Client Address" fullWidth size="small" value={form.clientAddress || ''} onChange={e => setForm({ ...form, clientAddress: e.target.value })} disabled={!canEdit} />
+              <TextField label="Client Address" fullWidth size="small" value={form.clientAddress || ''} onChange={e => setForm({ ...form, clientAddress: e.target.value })} disabled={isReadOnly} />
             </Grid>
             <Grid item xs={12} md={6}>
-              <TextField label="Project Location" fullWidth size="small" value={form.projectLocation || ''} onChange={e => setForm({ ...form, projectLocation: e.target.value })} disabled={!canEdit} />
+              <TextField label="Project Location" fullWidth size="small" value={form.projectLocation || ''} onChange={e => setForm({ ...form, projectLocation: e.target.value })} disabled={isReadOnly} />
             </Grid>
             <Grid item xs={12} md={6}>
-              <TextField label="Tender Date" type="date" fullWidth size="small" value={form.tenderDate} onChange={e => setForm({ ...form, tenderDate: e.target.value })} InputLabelProps={{ shrink: true }} disabled={!canEdit} />
+              <TextField label="Tender Date" type="date" fullWidth size="small" value={form.tenderDate} onChange={e => setForm({ ...form, tenderDate: e.target.value })} InputLabelProps={{ shrink: true }} disabled={isReadOnly} />
             </Grid>
           </Grid>
+        </Paper>
+
+        {/* ─── Documents Section ──────────────────────────────────── */}
+        <Paper sx={{ p: 2, mb: 2, border: '2px solid #1976d2', backgroundColor: '#f5f9ff' }}>
+          <Accordion expanded={docExpanded} onChange={() => setDocExpanded(!docExpanded)}>
+            <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+              <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#1976d2' }}>
+                📄 Documents ({form.documents?.length || 0})
+              </Typography>
+            </AccordionSummary>
+            <AccordionDetails>
+              {!isReadOnly && (
+                <Box sx={{ mb: 2 }}>
+                  <Button variant="contained" component="label" startIcon={<CloudUploadIcon />}>
+                    Upload Document
+                    <input type="file" hidden onChange={handleDocUpload} />
+                  </Button>
+                  <Typography variant="caption" display="block" color="textSecondary" sx={{ mt: 1 }}>
+                    Supported: images, PDF, Word, Excel (max 50MB)
+                  </Typography>
+                </Box>
+              )}
+              {form.documents && form.documents.length > 0 ? (
+                form.documents.map((doc, idx) => {
+                  const fullUrl = getFileUrl(doc.path);
+                  const isImage = doc.mimeType?.startsWith('image/');
+                  const isPdf = doc.mimeType === 'application/pdf';
+                  return (
+                    <Box key={idx} sx={{ mb: 2, border: '1px solid #e0e0e0', p: 2, borderRadius: 1 }}>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 1 }}>
+                        <Box sx={{ flex: 1 }}>
+                          <Typography variant="subtitle2" sx={{ fontWeight: 'bold' }}>{doc.name}</Typography>
+                          <Typography variant="caption" display="block" color="textSecondary">
+                            {doc.mimeType || 'Unknown'} • {doc.uploadedAt ? new Date(doc.uploadedAt).toLocaleString() : ''}
+                          </Typography>
+                        </Box>
+                        <Box sx={{ display: 'flex', gap: 1 }}>
+                          {!isReadOnly && (
+                            <>
+                              <Tooltip title="Edit name">
+                                <IconButton size="small" onClick={() => handleDocEdit(doc, idx)}>
+                                  <EditIcon fontSize="small" />
+                                </IconButton>
+                              </Tooltip>
+                              <Tooltip title="Delete">
+                                <IconButton size="small" color="error" onClick={() => handleDocDelete(idx)}>
+                                  <DeleteIcon fontSize="small" />
+                                </IconButton>
+                              </Tooltip>
+                            </>
+                          )}
+                          <Tooltip title="Download">
+                            <IconButton size="small" component="a" href={fullUrl} target="_blank" download>
+                              <FileDownloadIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                        </Box>
+                      </Box>
+                      <Box sx={{ mt: 1, bgcolor: '#fff', p: 1, border: '1px solid #ddd', borderRadius: 1 }}>
+                        {isImage ? (
+                          <Box sx={{ textAlign: 'center', maxHeight: '300px', overflow: 'auto' }}>
+                            <img src={fullUrl} alt={doc.name} style={{ maxWidth: '100%', maxHeight: '300px', objectFit: 'contain' }} />
+                          </Box>
+                        ) : isPdf ? (
+                          <Box sx={{ height: '400px' }}>
+                            <iframe src={fullUrl} style={{ width: '100%', height: '100%', border: 'none' }} title={doc.name} />
+                          </Box>
+                        ) : (
+                          <Box sx={{ textAlign: 'center', p: 2 }}>
+                            <Typography variant="body2" color="textSecondary">Preview not available for this file type.</Typography>
+                            <Button component="a" href={fullUrl} target="_blank" variant="contained" sx={{ mt: 1 }}>Download</Button>
+                          </Box>
+                        )}
+                      </Box>
+                    </Box>
+                  );
+                })
+              ) : (
+                <Typography variant="body2" color="textSecondary">No documents uploaded.</Typography>
+              )}
+            </AccordionDetails>
+          </Accordion>
         </Paper>
 
         {/* ─── Sections ────────────────────────────────────────────── */}
         <Paper sx={{ p: 2, mb: 2 }}>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
             <Typography variant="h6">Sections</Typography>
-            {canEdit && (
+            {!isReadOnly && (
               <Button startIcon={<AddIcon />} onClick={handleAddSection} variant="outlined" size="small">
                 Add Section
               </Button>
@@ -691,7 +838,7 @@ const BOQForm = () => {
                   <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>{section.title}</Typography>
                   {section.description && <Typography variant="caption" display="block" color="textSecondary">{section.description}</Typography>}
                 </Box>
-                {canEdit && (
+                {!isReadOnly && (
                   <Box>
                     <IconButton size="small" onClick={() => handleEditSection(idx)}><EditIcon fontSize="small" /></IconButton>
                     <IconButton size="small" color="error" onClick={() => handleDeleteSection(idx)}><DeleteIcon fontSize="small" /></IconButton>
@@ -709,7 +856,7 @@ const BOQForm = () => {
                     <TableCell align="right">Rate (ZMW)</TableCell>
                     <TableCell align="right">Amount (ZMW)</TableCell>
                     <TableCell>Notes</TableCell>
-                    {canEdit && <TableCell>Actions</TableCell>}
+                    {!isReadOnly && <TableCell>Actions</TableCell>}
                   </TableRow>
                 </TableHead>
                 <TableBody>
@@ -721,7 +868,7 @@ const BOQForm = () => {
                       <TableCell align="right">{formatCurrency(item.rate)}</TableCell>
                       <TableCell align="right">{formatCurrency(item.amount)}</TableCell>
                       <TableCell>{item.notes}</TableCell>
-                      {canEdit && (
+                      {!isReadOnly && (
                         <TableCell>
                           <IconButton size="small" onClick={() => handleEditItem(idx, i)}><EditIcon fontSize="small" /></IconButton>
                           <IconButton size="small" color="error" onClick={() => handleDeleteItem(idx, i)}><DeleteIcon fontSize="small" /></IconButton>
@@ -749,19 +896,19 @@ const BOQForm = () => {
               <TextField label="Sub Total" type="number" fullWidth size="small" value={form.subTotal} InputProps={{ readOnly: true }} disabled />
             </Grid>
             <Grid item xs={12} md={4}>
-              <TextField label="Percentage Adjustment (%)" type="number" fullWidth size="small" value={form.percentageAdjustment} onChange={e => setForm({ ...form, percentageAdjustment: parseFloat(e.target.value) || 0 })} disabled={!canEdit} />
+              <TextField label="Percentage Adjustment (%)" type="number" fullWidth size="small" value={form.percentageAdjustment} onChange={e => setForm({ ...form, percentageAdjustment: parseFloat(e.target.value) || 0 })} disabled={isReadOnly} />
             </Grid>
             <Grid item xs={12} md={4}>
-              <TextField label="Contingencies (%)" type="number" fullWidth size="small" value={form.contingencies} onChange={e => setForm({ ...form, contingencies: parseFloat(e.target.value) || 0 })} disabled={!canEdit} />
+              <TextField label="Contingencies (%)" type="number" fullWidth size="small" value={form.contingencies} onChange={e => setForm({ ...form, contingencies: parseFloat(e.target.value) || 0 })} disabled={isReadOnly} />
             </Grid>
             <Grid item xs={12} md={4}>
-              <TextField label="VAT (%)" type="number" fullWidth size="small" value={form.vat} onChange={e => setForm({ ...form, vat: parseFloat(e.target.value) || 0 })} disabled={!canEdit} />
+              <TextField label="VAT (%)" type="number" fullWidth size="small" value={form.vat} onChange={e => setForm({ ...form, vat: parseFloat(e.target.value) || 0 })} disabled={isReadOnly} />
             </Grid>
             <Grid item xs={12} md={4}>
               <TextField label="Grand Total" type="number" fullWidth size="small" value={form.grandTotal} InputProps={{ readOnly: true }} disabled />
             </Grid>
             <Grid item xs={12} md={4}>
-              <TextField label="Exchange Rate" type="number" fullWidth size="small" value={form.exchangeRate} onChange={e => setForm({ ...form, exchangeRate: parseFloat(e.target.value) || 1 })} disabled={!canEdit} />
+              <TextField label="Exchange Rate" type="number" fullWidth size="small" value={form.exchangeRate} onChange={e => setForm({ ...form, exchangeRate: parseFloat(e.target.value) || 1 })} disabled={isReadOnly} />
             </Grid>
           </Grid>
         </Paper>
@@ -808,7 +955,7 @@ const BOQForm = () => {
 
         {/* ─── Buttons ────────────────────────────────────────────────── */}
         <Box sx={{ mt: 2, display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-          {canEdit && (
+          {!isReadOnly && (
             <Button type="submit" variant="contained" startIcon={<SaveIcon />} disabled={loading}>
               {loading ? 'Saving...' : 'Save BOQ'}
             </Button>
@@ -849,6 +996,23 @@ const BOQForm = () => {
         <DialogActions>
           <Button onClick={() => setItemDialog(false)}>Cancel</Button>
           <Button variant="contained" onClick={handleSaveItem}>Save</Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={docEditDialog} onClose={() => setDocEditDialog(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Edit Document Name</DialogTitle>
+        <DialogContent>
+          <TextField
+            label="Document Name"
+            fullWidth
+            margin="dense"
+            value={docForm.name}
+            onChange={(e) => setDocForm({ ...docForm, name: e.target.value })}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDocEditDialog(false)}>Cancel</Button>
+          <Button variant="contained" onClick={handleDocSave}>Save</Button>
         </DialogActions>
       </Dialog>
 

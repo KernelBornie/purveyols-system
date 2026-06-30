@@ -1,5 +1,14 @@
 const mongoose = require('mongoose');
 
+// ─── Document schema ──────────────────────────────────────────────
+const DocumentSchema = new mongoose.Schema({
+  name: { type: String, required: true },
+  path: { type: String },
+  url: { type: String },
+  mimeType: { type: String },
+  uploadedAt: { type: Date, default: Date.now },
+});
+
 const ProjectSchema = new mongoose.Schema({
   name: { type: String, required: true },
   location: String,
@@ -24,11 +33,11 @@ const ProjectSchema = new mongoose.Schema({
   timeFrame: { type: String, default: '' },
   isFromBid: { type: Boolean, default: false },
   sourceUrl: { type: String, default: '' },
-  // ✅ New fields
   approvedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   approvedAt: Date,
   isFromTender: { type: Boolean, default: false },
   tenderSource: { type: mongoose.Schema.Types.ObjectId, ref: 'Tender' },
+  documents: [DocumentSchema],   // ✅ New field
 });
 
 module.exports = mongoose.model('Project', ProjectSchema);

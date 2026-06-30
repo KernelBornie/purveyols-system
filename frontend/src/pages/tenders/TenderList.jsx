@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   Paper, Typography, Box, Table, TableHead, TableRow, TableCell, TableBody,
-  Button, Chip, CircularProgress, Alert, IconButton, Tooltip, Avatar,
+  Button, Chip, CircularProgress, Alert, IconButton, Tooltip, Avatar,   // ✅ Tooltip added
   Dialog, DialogTitle, DialogContent, DialogActions,
   TextField, MenuItem, FormControl, InputLabel, Select, OutlinedInput
 } from '@mui/material';
@@ -263,8 +263,8 @@ const TenderList = () => {
             <TableCell>Assigned Staff</TableCell>
             <TableCell>Project</TableCell>
             <TableCell>Created By</TableCell>
-            <TableCell>Approved By</TableCell>   {/* ✅ Added */}
-            <TableCell>Verified By</TableCell>   {/* ✅ Added */}
+            <TableCell>Approved By</TableCell>
+            <TableCell>Verified By</TableCell>
             <TableCell>Actions</TableCell>
           </TableRow>
         </TableHead>

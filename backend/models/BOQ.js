@@ -16,6 +16,15 @@ const BOQSectionSchema = new mongoose.Schema({
   order: { type: Number, default: 0 },
 });
 
+// ─── Document schema ──────────────────────────────────────────────
+const DocumentSchema = new mongoose.Schema({
+  name: { type: String, required: true },
+  path: { type: String },
+  url: { type: String },
+  mimeType: { type: String },
+  uploadedAt: { type: Date, default: Date.now },
+});
+
 const BOQSchema = new mongoose.Schema({
   project: { type: mongoose.Schema.Types.ObjectId, ref: 'Project', required: true },
   name: { type: String, required: true },
@@ -42,9 +51,9 @@ const BOQSchema = new mongoose.Schema({
   createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now },
-  // ✅ New fields
   approvedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   approvedAt: { type: Date },
+  documents: [DocumentSchema],   // ✅ New field
 });
 
 module.exports = mongoose.model('BOQ', BOQSchema);
