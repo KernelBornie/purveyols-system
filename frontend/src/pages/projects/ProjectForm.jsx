@@ -36,7 +36,6 @@ const ProjectForm = () => {
   const [message, setMessage] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
 
-  // ─── Detect mode ──────────────────────────────────────────────
   const isView = location.pathname.includes('/view');
   const isEdit = location.pathname.includes('/edit') || (id && !isView);
   const isNew = !id;
@@ -44,7 +43,6 @@ const ProjectForm = () => {
   const canEdit = !isView && !['driver', 'receptionist', 'safety-officer'].includes(user?.role);
   const canDelete = !isView && ['admin', 'director', 'accountant'].includes(user?.role);
 
-  // ─── Photo preview dialog ──────────────────────────────────────
   const [photoPreviewOpen, setPhotoPreviewOpen] = useState(false);
 
   const handlePhotoClick = () => {
@@ -81,7 +79,6 @@ const ProjectForm = () => {
     }
   }, [id, user]);
 
-  // ─── Image handlers ──────────────────────────────────────────
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -128,7 +125,6 @@ const ProjectForm = () => {
     setImagePreview(null);
   };
 
-  // ─── Submit ──────────────────────────────────────────────────
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!canEdit || isView) return;
@@ -160,7 +156,6 @@ const ProjectForm = () => {
     }
   };
 
-  // ─── Delete ──────────────────────────────────────────────────
   const handleDelete = async () => {
     if (!window.confirm('Delete this project permanently?')) return;
     setLoading(true);
@@ -175,7 +170,6 @@ const ProjectForm = () => {
     }
   };
 
-  // ─── Custom print ────────────────────────────────────────────────
   const handlePrint = () => {
     if (!form.name) {
       alert('No data to print.');
@@ -279,7 +273,6 @@ const ProjectForm = () => {
           </Box>
         )}
 
-        {/* ─── Photo Upload ────────────────────────────────────────── */}
         <Box sx={{ mb: 3 }}>
           <Typography variant="subtitle1" gutterBottom>Project Photo</Typography>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
@@ -412,19 +405,30 @@ const ProjectForm = () => {
           <Grid container spacing={2}>
             <Grid item xs={12} md={6}>
               <Typography variant="body2">Prepared by:</Typography>
-              <Typography variant="body1" sx={{ fontWeight: 'bold' }}>{creator?.name || 'N/A'}</Typography>
-              <Typography variant="caption" color="textSecondary">{creator?.role || ''} • {formatDate(createdAt)}</Typography>
+              <Typography variant="body1" sx={{ fontWeight: 'bold' }}>
+                {creator ? `${creator.name} (${creator.role})` : '—'}
+              </Typography>
+              <Typography variant="caption" color="textSecondary">
+                {createdAt ? `Date: ${formatDate(createdAt)}` : ''}
+              </Typography>
             </Grid>
             <Grid item xs={12} md={6}>
               <Typography variant="body2">Date:</Typography>
-              <Typography variant="body1" sx={{ fontWeight: 'bold' }}>{formatDate(createdAt)}</Typography>
+              <Typography variant="body1" sx={{ fontWeight: 'bold' }}>
+                {createdAt ? formatDate(createdAt) : '—'}
+              </Typography>
             </Grid>
           </Grid>
+
           <Box sx={{ mt: 2, display: 'flex', flexDirection: 'column', gap: 1 }}>
-            {approver && form.status === 'active' ? (
+            {approver ? (
               <>
-                <Typography variant="body2">Approved by: <strong>{approver.name}</strong> ({approver.role})</Typography>
-                <Typography variant="body2">Approved on: <strong>{formatDate(approvedAt)}</strong></Typography>
+                <Typography variant="body2">
+                  Approved by: <strong>{approver.name}</strong> ({approver.role})
+                </Typography>
+                <Typography variant="body2">
+                  Approved on: <strong>{formatDate(approvedAt)}</strong>
+                </Typography>
               </>
             ) : (
               <>
@@ -455,7 +459,6 @@ const ProjectForm = () => {
         </Box>
       </form>
 
-      {/* ─── Photo Preview Dialog ────────────────────────────────── */}
       <Dialog open={photoPreviewOpen} onClose={() => setPhotoPreviewOpen(false)} maxWidth="md" fullWidth>
         <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <span>Project Image</span>

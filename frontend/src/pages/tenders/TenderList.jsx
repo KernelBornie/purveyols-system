@@ -16,7 +16,6 @@ import { useAuth } from '../../context/AuthContext';
 import BackButton from '../../components/BackButton';
 import getApiErrorMessage from '../../utils/getApiErrorMessage';
 
-// ─── Updated role constants ──────────────────────────────────────
 const EDITABLE_ROLES = ['admin', 'director', 'accountant', 'engineer', 'quantity-surveyor'];
 const DELETABLE_ROLES = ['admin', 'director'];
 
@@ -44,11 +43,9 @@ const TenderList = () => {
   const canEdit = user && EDITABLE_ROLES.includes(user.role);
   const canDelete = user && DELETABLE_ROLES.includes(user.role);
 
-  // ─── Photo preview ──────────────────────────────────────────────
   const [photoPreviewOpen, setPhotoPreviewOpen] = useState(false);
   const [previewImage, setPreviewImage] = useState('');
 
-  // ─── Assign Dialog (multi-select) ──────────────────────────────
   const [assignDialogOpen, setAssignDialogOpen] = useState(false);
   const [assigningTenderId, setAssigningTenderId] = useState(null);
   const [users, setUsers] = useState([]);
@@ -165,7 +162,6 @@ const TenderList = () => {
     }
   };
 
-  // ─── Upload hard copy tender ──────────────────────────────────────
   const handleUploadHardCopy = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -183,7 +179,7 @@ const TenderList = () => {
     } catch (err) {
       alert(getApiErrorMessage(err, 'Upload failed'));
     }
-    e.target.value = ''; // reset input
+    e.target.value = '';
   };
 
   const getStatusColor = (status) => {
@@ -267,17 +263,16 @@ const TenderList = () => {
             <TableCell>Assigned Staff</TableCell>
             <TableCell>Project</TableCell>
             <TableCell>Created By</TableCell>
+            <TableCell>Approved By</TableCell>   {/* ✅ Added */}
+            <TableCell>Verified By</TableCell>   {/* ✅ Added */}
             <TableCell>Actions</TableCell>
           </TableRow>
         </TableHead>
         <TableBody>
           {tenders.map((t) => {
             const isCreator = user && t.createdBy && t.createdBy._id === user.id;
-            // Can edit if draft and (creator OR allowed role) – but we restrict to only allowed roles.
-            // We'll allow editing if status is draft and user has EDITABLE_ROLES or is creator.
             const canEditThis = (canEdit || isCreator) && t.status !== 'submitted' && t.status !== 'verified' && t.status !== 'awarded';
 
-            // Action buttons visibility
             const canApprove = t.status === 'submitted' && user && APPROVE_ROLES.includes(user.role);
             const canAssign = (t.status === 'approved' || t.status === 'verified') && user && ASSIGN_ROLES.includes(user.role);
             const canVerify = t.status === 'approved' && user && VERIFY_ROLES.includes(user.role);
@@ -285,7 +280,7 @@ const TenderList = () => {
             const canCreateProject = t.status === 'awarded' && !t.convertedToProject && user && CREATE_PROJECT_ROLES.includes(user.role);
 
             const assignedNames = t.assignedStaff && t.assignedStaff.length > 0
-              ? t.assignedStaff.map(s => s.name).join(', ')
+              ? t.assignedStaff.map(s => `${s.name} (${s.role})`).join(', ')
               : '—';
 
             return (
@@ -327,7 +322,15 @@ const TenderList = () => {
                     </Button>
                   ) : '—'}
                 </TableCell>
-                <TableCell>{t.createdBy?.name}</TableCell>
+                <TableCell>
+                  {t.createdBy ? `${t.createdBy.name} (${t.createdBy.role})` : '—'}
+                </TableCell>
+                <TableCell>
+                  {t.approvedBy ? `${t.approvedBy.name} (${t.approvedBy.role})` : '—'}
+                </TableCell>
+                <TableCell>
+                  {t.verifiedBy ? `${t.verifiedBy.name} (${t.verifiedBy.role})` : '—'}
+                </TableCell>
                 <TableCell>
                   <Button
                     component={Link}
@@ -433,7 +436,7 @@ const TenderList = () => {
           })}
           {tenders.length === 0 && (
             <TableRow>
-              <TableCell colSpan={12} align="center" sx={{ py: 3 }}>
+              <TableCell colSpan={14} align="center" sx={{ py: 3 }}>
                 <Typography variant="body2" color="textSecondary">No tenders or RFQs yet.</Typography>
               </TableCell>
             </TableRow>
@@ -441,7 +444,6 @@ const TenderList = () => {
         </TableBody>
       </Table>
 
-      {/* ─── Photo Preview Dialog ────────────────────────────────── */}
       <Dialog open={photoPreviewOpen} onClose={() => setPhotoPreviewOpen(false)} maxWidth="md" fullWidth>
         <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <span>Tender Image</span>
@@ -463,7 +465,6 @@ const TenderList = () => {
         </DialogActions>
       </Dialog>
 
-      {/* ─── Assign Dialog (multi-select) ───────────────────────── */}
       <Dialog open={assignDialogOpen} onClose={() => setAssignDialogOpen(false)} maxWidth="sm" fullWidth>
         <DialogTitle>Assign Staff</DialogTitle>
         <DialogContent>
@@ -484,7 +485,7 @@ const TenderList = () => {
                 renderValue={(selected) => {
                   const names = selected.map(id => {
                     const user = users.find(u => u._id === id);
-                    return user ? user.name : id;
+                    return user ? `${user.name} (${user.role})` : id;
                   });
                   return names.join(', ');
                 }}

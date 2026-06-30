@@ -25,7 +25,8 @@ router.get('/', auth, async (req, res) => {
       .populate('manager', 'name role')
       .populate('createdBy', 'name role')
       .populate('bidder', 'name role')
-      .populate('assignedStaff', 'name role');
+      .populate('assignedStaff', 'name role')
+      .populate('approvedBy', 'name role');   // ✅ added
     res.json(projects);
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
@@ -36,7 +37,8 @@ router.get('/:id', auth, async (req, res) => {
       .populate('manager', 'name role')
       .populate('createdBy', 'name role')
       .populate('bidder', 'name role')
-      .populate('assignedStaff', 'name role');
+      .populate('assignedStaff', 'name role')
+      .populate('approvedBy', 'name role');   // ✅ added
     if (!project) return res.status(404).json({ error: 'Project not found' });
     res.json(project);
   } catch (err) { res.status(500).json({ error: err.message }); }
@@ -50,7 +52,8 @@ router.post('/', auth, authorize('admin', 'director', 'civil-engineer', 'foreman
       .populate('manager', 'name role')
       .populate('createdBy', 'name role')
       .populate('bidder', 'name role')
-      .populate('assignedStaff', 'name role');
+      .populate('assignedStaff', 'name role')
+      .populate('approvedBy', 'name role');
 
     const senderName = await getSenderName(req.user.id);
     const recipients = await User.find({ role: { $in: ['director', 'admin'] } });
@@ -73,7 +76,8 @@ router.put('/:id', auth, authorize('admin', 'director', 'civil-engineer', 'forem
       .populate('manager', 'name role')
       .populate('createdBy', 'name role')
       .populate('bidder', 'name role')
-      .populate('assignedStaff', 'name role');
+      .populate('assignedStaff', 'name role')
+      .populate('approvedBy', 'name role');
     if (!updated) return res.status(404).json({ error: 'Project not found' });
     res.json(updated);
   } catch (err) { res.status(400).json({ error: err.message }); }
@@ -92,12 +96,15 @@ router.put('/:id/approve', auth, authorize('admin', 'director'), async (req, res
     const project = await Project.findById(req.params.id);
     if (!project) return res.status(404).json({ error: 'Project not found' });
     project.status = 'active';
+    project.approvedBy = req.user.id;    // ✅ set approver
+    project.approvedAt = new Date();     // ✅ set approval date
     await project.save();
     const populated = await Project.findById(project._id)
       .populate('manager', 'name role')
       .populate('createdBy', 'name role')
       .populate('bidder', 'name role')
-      .populate('assignedStaff', 'name role');
+      .populate('assignedStaff', 'name role')
+      .populate('approvedBy', 'name role');
 
     const senderName = await getSenderName(req.user.id);
     await createNotification(
@@ -121,7 +128,8 @@ router.put('/:id/reject', auth, authorize('admin', 'director'), async (req, res)
       .populate('manager', 'name role')
       .populate('createdBy', 'name role')
       .populate('bidder', 'name role')
-      .populate('assignedStaff', 'name role');
+      .populate('assignedStaff', 'name role')
+      .populate('approvedBy', 'name role');
 
     const senderName = await getSenderName(req.user.id);
     await createNotification(

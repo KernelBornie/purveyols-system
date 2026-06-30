@@ -21,13 +21,13 @@ import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import CameraAltIcon from '@mui/icons-material/CameraAlt';
 import ZoomInIcon from '@mui/icons-material/ZoomIn';
 import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
+import FileDownloadIcon from '@mui/icons-material/FileDownload';
 import api from '../../api/axios';
 import { useAuth } from '../../context/AuthContext';
 import BackButton from '../../components/BackButton';
 import getApiErrorMessage from '../../utils/getApiErrorMessage';
 import html2pdf from 'html2pdf.js';
 
-// ─── Role constants (narrowed) ────────────────────────────────────
 const EDITABLE_ROLES = ['admin', 'director', 'accountant', 'engineer', 'quantity-surveyor'];
 const DELETABLE_ROLES = ['admin', 'director'];
 
@@ -44,7 +44,6 @@ const TenderForm = () => {
   const [docExpanded, setDocExpanded] = useState(true);
   const [pdfGenerating, setPdfGenerating] = useState(false);
 
-  // ─── Form state ──────────────────────────────────────────────────
   const [form, setForm] = useState({
     title: '',
     referenceNumber: '',
@@ -119,13 +118,15 @@ const TenderForm = () => {
   const isViewMode = location.pathname.includes('/view');
   const isEditMode = location.pathname.includes('/edit') || (!isViewMode && id);
 
-  // ─── Dialogs ──────────────────────────────────────────────
   const [personnelDialog, setPersonnelDialog] = useState(false);
   const [editingPersonnel, setEditingPersonnel] = useState(null);
   const [performanceDialog, setPerformanceDialog] = useState(false);
   const [editingPerformance, setEditingPerformance] = useState(null);
   const [sectionDialog, setSectionDialog] = useState(false);
   const [editingSection, setEditingSection] = useState(null);
+  const [docEditDialog, setDocEditDialog] = useState(false);
+  const [editingDoc, setEditingDoc] = useState(null);
+  const [docForm, setDocForm] = useState({ name: '', description: '' });
 
   const canEdit = EDITABLE_ROLES.includes(user?.role);
   const canDelete = DELETABLE_ROLES.includes(user?.role);
@@ -180,6 +181,33 @@ const TenderForm = () => {
 
   const handlePhotoClick = () => {
     if (imagePreview) setPhotoPreviewOpen(true);
+  };
+
+  // ─── Document management ──────────────────────────────────
+  const handleEditDoc = (doc, index) => {
+    setEditingDoc(index);
+    setDocForm({ name: doc.name || '', description: doc.description || '' });
+    setDocEditDialog(true);
+  };
+
+  const handleSaveDoc = () => {
+    const docs = [...form.documents];
+    docs[editingDoc] = { ...docs[editingDoc], name: docForm.name, description: docForm.description };
+    setForm({ ...form, documents: docs });
+    setDocEditDialog(false);
+  };
+
+  const handleDeleteDoc = (index) => {
+    if (!window.confirm('Remove this document?')) return;
+    const docs = form.documents.filter((_, i) => i !== index);
+    setForm({ ...form, documents: docs });
+  };
+
+  const getFileUrl = (path) => {
+    if (path.startsWith('http')) return path;
+    if (api.defaults.baseURL) return `${api.defaults.baseURL}${path}`;
+    if (process.env.REACT_APP_API_URL) return `${process.env.REACT_APP_API_URL}${path}`;
+    return `${window.location.origin}${path}`;
   };
 
   // ─── Convert to Project ──────────────────────────────────────
@@ -578,10 +606,8 @@ const TenderForm = () => {
 
     setPdfGenerating(true);
 
-    // Build the HTML content
     const htmlContent = buildHTMLContent();
 
-    // Create a temporary container that is visible but hidden behind the UI
     const container = document.createElement('div');
     container.innerHTML = htmlContent;
     container.style.position = 'fixed';
@@ -596,7 +622,6 @@ const TenderForm = () => {
     container.style.pointerEvents = 'none';
     document.body.appendChild(container);
 
-    // Generate PDF after a small delay to ensure rendering
     setTimeout(() => {
       const opt = {
         margin:       0.5,
@@ -735,13 +760,13 @@ const TenderForm = () => {
       )}
 
       <form>
-        {/* ─── Uploaded Documents – PROMINENT DISPLAY ─────────────── */}
+        {/* ─── Uploaded Documents – Enhanced Display ─────────────── */}
         {form.documents && form.documents.length > 0 && (
           <Paper sx={{ p: 2, mb: 3, border: '2px solid #1976d2', backgroundColor: '#f5f9ff' }}>
             <Accordion expanded={docExpanded} onChange={() => setDocExpanded(!docExpanded)}>
               <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                 <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#1976d2' }}>
-                  📄 Uploaded Document (Original Form)
+                  📄 Uploaded Documents ({form.documents.length})
                 </Typography>
               </AccordionSummary>
               <AccordionDetails>
@@ -759,32 +784,62 @@ const TenderForm = () => {
                   mimeType = mimeType || '';
                   const isImage = mimeType.startsWith('image/');
                   const isPdf = mimeType === 'application/pdf';
-                  const getFileUrl = (path) => {
-                    if (path.startsWith('http')) return path;
-                    if (api.defaults.baseURL) return `${api.defaults.baseURL}${path}`;
-                    if (process.env.REACT_APP_API_URL) return `${process.env.REACT_APP_API_URL}${path}`;
-                    return `${window.location.origin}${path}`;
-                  };
                   const fullUrl = getFileUrl(doc.path);
                   return (
-                    <Box key={idx} sx={{ mb: 2 }}>
-                      <Typography variant="body2" sx={{ mb: 1 }}>
-                        <strong>{doc.name || 'Untitled'}</strong> ({mimeType || 'Unknown type'})
-                      </Typography>
-                      {isImage ? (
-                        <Box sx={{ textAlign: 'center', bgcolor: '#fff', p: 1, border: '1px solid #ddd' }}>
-                          <img src={fullUrl} alt={doc.name || 'Document'} style={{ maxWidth: '100%', maxHeight: '70vh', objectFit: 'contain' }} onError={() => alert('Failed to load image.')} />
+                    <Box key={idx} sx={{ mb: 3, border: '1px solid #e0e0e0', p: 2, borderRadius: 1 }}>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 1 }}>
+                        <Box sx={{ flex: 1 }}>
+                          <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>
+                            {doc.name || 'Untitled'}
+                          </Typography>
+                          {doc.description && (
+                            <Typography variant="body2" color="textSecondary">
+                              {doc.description}
+                            </Typography>
+                          )}
+                          <Typography variant="caption" display="block" color="textSecondary">
+                            Type: {mimeType || 'Unknown'} • Uploaded: {doc.uploadedAt ? new Date(doc.uploadedAt).toLocaleString() : 'N/A'}
+                          </Typography>
                         </Box>
-                      ) : isPdf ? (
-                        <Box sx={{ bgcolor: '#fff', p: 1, border: '1px solid #ddd' }}>
-                          <iframe src={fullUrl} style={{ width: '100%', height: '80vh', minHeight: '500px' }} title={doc.name || 'PDF Document'} />
+                        <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                          {!isReadOnly && !isViewMode && (
+                            <>
+                              <Tooltip title="Edit document name/description">
+                                <IconButton size="small" onClick={() => handleEditDoc(doc, idx)}>
+                                  <EditIcon fontSize="small" />
+                                </IconButton>
+                              </Tooltip>
+                              <Tooltip title="Remove document">
+                                <IconButton size="small" color="error" onClick={() => handleDeleteDoc(idx)}>
+                                  <DeleteIcon fontSize="small" />
+                                </IconButton>
+                              </Tooltip>
+                            </>
+                          )}
+                          <Tooltip title="Download file">
+                            <IconButton size="small" component="a" href={fullUrl} target="_blank" download>
+                              <FileDownloadIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
                         </Box>
-                      ) : (
-                        <Box sx={{ textAlign: 'center', p: 4, bgcolor: '#fff', border: '1px solid #ddd' }}>
-                          <Typography variant="body1" color="textSecondary">Preview not available for this file type.</Typography>
-                          <Button component="a" href={fullUrl} target="_blank" variant="contained" sx={{ mt: 2 }}>Download / View</Button>
-                        </Box>
-                      )}
+                      </Box>
+                      {/* Document preview */}
+                      <Box sx={{ mt: 2, bgcolor: '#fff', p: 1, border: '1px solid #ddd', borderRadius: 1 }}>
+                        {isImage ? (
+                          <Box sx={{ textAlign: 'center', maxHeight: '300px', overflow: 'auto' }}>
+                            <img src={fullUrl} alt={doc.name || 'Document'} style={{ maxWidth: '100%', maxHeight: '300px', objectFit: 'contain' }} onError={(e) => { e.target.style.display = 'none'; alert('Failed to load image.'); }} />
+                          </Box>
+                        ) : isPdf ? (
+                          <Box sx={{ height: '400px' }}>
+                            <iframe src={fullUrl} style={{ width: '100%', height: '100%', border: 'none' }} title={doc.name || 'PDF Document'} />
+                          </Box>
+                        ) : (
+                          <Box sx={{ textAlign: 'center', p: 2 }}>
+                            <Typography variant="body1" color="textSecondary">Preview not available for this file type.</Typography>
+                            <Button component="a" href={fullUrl} target="_blank" variant="contained" sx={{ mt: 2 }}>Download / View</Button>
+                          </Box>
+                        )}
+                      </Box>
                     </Box>
                   );
                 })}
@@ -1153,6 +1208,33 @@ const TenderForm = () => {
           <TextField label="Page Number" type="number" fullWidth margin="dense" value={editingSection?.pageNumber || ''} onChange={(e) => setEditingSection({ ...editingSection, pageNumber: parseInt(e.target.value) || 0 })} />
         </DialogContent>
         <DialogActions><Button onClick={() => setSectionDialog(false)}>Cancel</Button><Button variant="contained" onClick={saveSection}>Save</Button></DialogActions>
+      </Dialog>
+
+      {/* ─── Document Edit Dialog ────────────────────────────────── */}
+      <Dialog open={docEditDialog} onClose={() => setDocEditDialog(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Edit Document</DialogTitle>
+        <DialogContent>
+          <TextField
+            label="Document Name"
+            fullWidth
+            margin="dense"
+            value={docForm.name}
+            onChange={(e) => setDocForm({ ...docForm, name: e.target.value })}
+          />
+          <TextField
+            label="Description"
+            fullWidth
+            multiline
+            rows={2}
+            margin="dense"
+            value={docForm.description}
+            onChange={(e) => setDocForm({ ...docForm, description: e.target.value })}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDocEditDialog(false)}>Cancel</Button>
+          <Button variant="contained" onClick={handleSaveDoc}>Save</Button>
+        </DialogActions>
       </Dialog>
     </Paper>
   );

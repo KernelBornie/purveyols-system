@@ -12,6 +12,7 @@ router.get('/', auth, async (req, res) => {
     const boqs = await BOQ.find()
       .populate('project', 'name')
       .populate('createdBy', 'name role')
+      .populate('approvedBy', 'name role')   // ✅ added
       .sort({ createdAt: -1 });
     res.json(boqs);
   } catch (err) {
@@ -24,7 +25,8 @@ router.get('/:id', auth, async (req, res) => {
   try {
     const boq = await BOQ.findById(req.params.id)
       .populate('project', 'name location')
-      .populate('createdBy', 'name role');
+      .populate('createdBy', 'name role')
+      .populate('approvedBy', 'name role');   // ✅ added
     if (!boq) return res.status(404).json({ error: 'BOQ not found' });
     res.json(boq);
   } catch (err) {
@@ -33,7 +35,6 @@ router.get('/:id', auth, async (req, res) => {
 });
 
 // ─── GET template ──────────────────────────────────────────────────
-// 👇 THIS MUST COME AFTER `const router = express.Router();`
 router.get('/templates/:name', auth, async (req, res) => {
   try {
     const templates = require('../data/boqTemplates');
@@ -71,7 +72,8 @@ router.post('/', auth, authorize('admin', 'director', 'quantity-surveyor', 'civi
     await boq.save();
     const populated = await BOQ.findById(boq._id)
       .populate('project', 'name')
-      .populate('createdBy', 'name role');
+      .populate('createdBy', 'name role')
+      .populate('approvedBy', 'name role');
 
     const senderName = await getSenderName(req.user.id);
     const senderRole = await getSenderRole(req.user.id);
@@ -129,7 +131,8 @@ router.put('/:id', auth, authorize('admin', 'director', 'quantity-surveyor', 'ci
     };
     const boq = await BOQ.findByIdAndUpdate(req.params.id, updateData, { new: true })
       .populate('project', 'name')
-      .populate('createdBy', 'name role');
+      .populate('createdBy', 'name role')
+      .populate('approvedBy', 'name role');
     if (!boq) return res.status(404).json({ error: 'BOQ not found' });
     res.json(boq);
   } catch (err) {
@@ -147,7 +150,8 @@ router.put('/:id/submit', auth, authorize('admin', 'director', 'quantity-surveyo
     await boq.save();
     const populated = await BOQ.findById(boq._id)
       .populate('project', 'name')
-      .populate('createdBy', 'name role');
+      .populate('createdBy', 'name role')
+      .populate('approvedBy', 'name role');
 
     const senderName = await getSenderName(req.user.id);
     const projectName = populated.project?.name || 'Unknown Project';

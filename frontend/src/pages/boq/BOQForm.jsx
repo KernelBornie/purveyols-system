@@ -81,6 +81,12 @@ const BOQForm = () => {
   const [currentSectionIndex, setCurrentSectionIndex] = useState(null);
   const [itemForm, setItemForm] = useState({ description: '', unit: '', quantity: 1, rate: 0, notes: '' });
 
+  // ─── Creator & Approver state ──────────────────────────────────
+  const [creator, setCreator] = useState(null);
+  const [createdAt, setCreatedAt] = useState(null);
+  const [approver, setApprover] = useState(null);
+  const [approvedAt, setApprovedAt] = useState(null);
+
   const canEdit = ['admin', 'director', 'quantity-surveyor', 'civil-engineer', 'procurement-officer', 'accountant', 'foreman'].includes(user?.role);
 
   const ensurePreliminaries = (sections) => {
@@ -135,6 +141,10 @@ const BOQForm = () => {
             templateName: data.templateName || '',
           });
           setSelectedTemplate(data.templateName || '');
+          setCreator(data.createdBy);
+          setCreatedAt(data.createdAt);
+          setApprover(data.approvedBy);
+          setApprovedAt(data.approvedAt);
         } else {
           setSelectedTemplate('Custom');
           setForm(prev => ({
@@ -143,6 +153,8 @@ const BOQForm = () => {
             templateName: 'Custom',
           }));
           setMessage({ type: 'info', text: 'Default preliminaries added. Load a template or edit as needed.' });
+          setCreator(user);
+          setCreatedAt(new Date().toISOString());
         }
         setMessage(null);
       } catch (err) {
@@ -152,7 +164,7 @@ const BOQForm = () => {
       }
     };
     fetchData();
-  }, [id]);
+  }, [id, user]);
 
   const loadTemplate = async (templateName) => {
     if (!templateName || templateName === 'Custom') {
@@ -391,7 +403,6 @@ const BOQForm = () => {
 
   // ─── Custom print function ──────────────────────────────────────
   const handlePrint = () => {
-    // Filter sections: keep only sections that have at least one item with a description
     const filledSections = form.sections
       .map(section => ({
         ...section,
@@ -404,7 +415,6 @@ const BOQForm = () => {
       return;
     }
 
-    // Recalculate totals based on filtered items
     let subTotal = 0;
     filledSections.forEach(section => {
       section.items.forEach(item => {
@@ -420,7 +430,6 @@ const BOQForm = () => {
 
     const formatCurrency = (amount) => new Intl.NumberFormat('en-ZM', { style: 'currency', currency: 'ZMW' }).format(amount || 0);
 
-    // Build HTML for print
     const printWindow = window.open('', '_blank');
     printWindow.document.write(`
       <html>
@@ -463,7 +472,6 @@ const BOQForm = () => {
         </head>
         <body>
           <div class="print-container">
-            <!-- Header -->
             <div class="header">
               <h1>PURVEYOLS</h1>
               <div class="subtitle">Building and Civil contractors</div>
@@ -471,13 +479,9 @@ const BOQForm = () => {
               <div class="details">Tel: +260 211 235354 | Mobile: +260 977 393879 / +260 965 393879</div>
               <div class="details">Email: purveyols@gmail.com</div>
             </div>
-
-            <!-- Title -->
             <div class="title-row">
               <span class="left">BILL OF QUANTITIES</span>
             </div>
-
-            <!-- Client & Project Info -->
             <div class="client-info">
               ${form.project ? `<div class="block"><div class="label">Project:</div> <div>${projects.find(p => p._id === form.project)?.name || 'N/A'}</div></div>` : ''}
               ${form.clientName ? `<div class="block"><div class="label">Client Name:</div> <div>${form.clientName}</div></div>` : ''}
@@ -485,21 +489,12 @@ const BOQForm = () => {
               ${form.projectLocation ? `<div class="block"><div class="label">Project Location:</div> <div>${form.projectLocation}</div></div>` : ''}
               ${form.tenderDate ? `<div class="block"><div class="label">Tender Date:</div> <div>${new Date(form.tenderDate).toLocaleDateString()}</div></div>` : ''}
             </div>
-
-            <!-- Sections & Items -->
             ${filledSections.map(section => `
               <div class="section-title">${section.title}</div>
               ${section.description ? `<div class="section-desc">${section.description}</div>` : ''}
               <table>
                 <thead>
-                  <tr>
-                    <th style="width:40%">Description</th>
-                    <th style="width:10%">Qty</th>
-                    <th style="width:10%">Unit</th>
-                    <th style="width:15%">Rate (ZMW)</th>
-                    <th style="width:15%">Amount (ZMW)</th>
-                    <th style="width:10%">Notes</th>
-                  </tr>
+                  <tr><th style="width:40%">Description</th><th style="width:10%">Qty</th><th style="width:10%">Unit</th><th style="width:15%">Rate (ZMW)</th><th style="width:15%">Amount (ZMW)</th><th style="width:10%">Notes</th></tr>
                 </thead>
                 <tbody>
                   ${section.items.map(item => `
@@ -515,8 +510,6 @@ const BOQForm = () => {
                 </tbody>
               </table>
             `).join('')}
-
-            <!-- Financial Summary -->
             <div class="summary">
               <div class="row"><span class="label">Sub Total</span><span class="value">${formatCurrency(subTotal)}</span></div>
               ${form.percentageAdjustment ? `<div class="row"><span class="label">Percentage Adjustment (${form.percentageAdjustment}%)</span><span class="value">${formatCurrency(subTotal * adj)}</span></div>` : ''}
@@ -524,39 +517,31 @@ const BOQForm = () => {
               ${form.vat ? `<div class="row"><span class="label">VAT (${form.vat}%)</span><span class="value">${formatCurrency(vat)}</span></div>` : ''}
               <div class="row grand-total"><span class="label">GRAND TOTAL</span><span class="value">${formatCurrency(grandTotal)}</span></div>
             </div>
-
-            <!-- Approval -->
             <div class="approval">
               <div class="row">
                 <div class="block">
                   <strong>Prepared by:</strong>
-                  <div class="line">${user?.name || '_________________'}</div>
+                  <div class="line">${creator?.name || '_________________'}</div>
                 </div>
                 <div class="block">
                   <strong>Date:</strong>
-                  <div class="line">${new Date().toLocaleString()}</div>
+                  <div class="line">${createdAt ? new Date(createdAt).toLocaleString() : '_________________'}</div>
                 </div>
               </div>
               <div style="margin-top: 20px; display: flex; justify-content: space-between;">
                 <div class="block">
                   <strong>Approved by:</strong>
-                  <div class="line">_________________</div>
+                  <div class="line">${approver ? `${approver.name} (${approver.role})` : '_________________'}</div>
                 </div>
                 <div class="block">
                   <strong>Date:</strong>
-                  <div class="line">_________________</div>
+                  <div class="line">${approvedAt ? new Date(approvedAt).toLocaleString() : '_________________'}</div>
                 </div>
               </div>
             </div>
-
-            <!-- Footer -->
-            <div class="footer">
-              PURVEYOLS CMS - Construction Management System
-            </div>
+            <div class="footer">PURVEYOLS CMS - Construction Management System</div>
           </div>
-          <script>
-            window.onload = function() { window.print(); }
-          <\/script>
+          <script>window.onload = function() { window.print(); }</script>
         </body>
       </html>
     `);
@@ -582,7 +567,7 @@ const BOQForm = () => {
       {!canEdit && <Alert severity="info" sx={{ mb: 2 }}>You have view‑only access.</Alert>}
 
       <form onSubmit={handleSubmit}>
-        {/* ─── Company Header – both lines red ───────────────────── */}
+        {/* ─── Company Header ───────────────────────────────────── */}
         <Box sx={{ textAlign: 'center', borderBottom: '2px solid #000', pb: 2, mb: 2 }}>
           <img
             src="/top-log.PNG?t=3"
@@ -787,16 +772,37 @@ const BOQForm = () => {
           <Grid container spacing={2}>
             <Grid item xs={12} md={6}>
               <Typography variant="body2">Prepared by:</Typography>
-              <Typography variant="body1" sx={{ fontWeight: 'bold' }}>{user?.name || 'N/A'}</Typography>
+              <Typography variant="body1" sx={{ fontWeight: 'bold' }}>
+                {creator ? `${creator.name} (${creator.role})` : '—'}
+              </Typography>
+              <Typography variant="caption" color="textSecondary">
+                {createdAt ? `Date: ${formatDate(createdAt)}` : ''}
+              </Typography>
             </Grid>
             <Grid item xs={12} md={6}>
               <Typography variant="body2">Date:</Typography>
-              <Typography variant="body1" sx={{ fontWeight: 'bold' }}>{formatDate(new Date())}</Typography>
+              <Typography variant="body1" sx={{ fontWeight: 'bold' }}>
+                {createdAt ? formatDate(createdAt) : '—'}
+              </Typography>
             </Grid>
           </Grid>
+
           <Box sx={{ mt: 2, display: 'flex', flexDirection: 'column', gap: 1 }}>
-            <Typography variant="body2">Approved by: _________________</Typography>
-            <Typography variant="body2">Date: _________________</Typography>
+            {approver ? (
+              <>
+                <Typography variant="body2">
+                  Approved by: <strong>{approver.name}</strong> ({approver.role})
+                </Typography>
+                <Typography variant="body2">
+                  Approved on: <strong>{formatDate(approvedAt)}</strong>
+                </Typography>
+              </>
+            ) : (
+              <>
+                <Typography variant="body2">Approved by: _________________</Typography>
+                <Typography variant="body2">Date: _________________</Typography>
+              </>
+            )}
           </Box>
         </Box>
 
@@ -812,6 +818,7 @@ const BOQForm = () => {
         </Box>
       </form>
 
+      {/* ─── Dialogs ────────────────────────────────────────────────── */}
       <Dialog open={sectionDialog} onClose={() => setSectionDialog(false)} maxWidth="sm" fullWidth>
         <DialogTitle>{editingSection !== null ? 'Edit Section' : 'Add Section'}</DialogTitle>
         <DialogContent>

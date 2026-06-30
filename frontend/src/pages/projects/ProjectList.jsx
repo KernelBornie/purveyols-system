@@ -10,12 +10,11 @@ import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import TimelineIcon from '@mui/icons-material/Timeline';
 import ZoomInIcon from '@mui/icons-material/ZoomIn';
-import api from '../../api/axios';               // ✅ fixed path
-import { useAuth } from '../../context/AuthContext'; // ✅ fixed path
-import BackButton from '../../components/BackButton'; // ✅ fixed path
+import api from '../../api/axios';
+import { useAuth } from '../../context/AuthContext';
+import BackButton from '../../components/BackButton';
 import getApiErrorMessage from '../../utils/getApiErrorMessage';
 
-// ─── Roles (matches Tenders) ──────────────────────────────────────
 const EDITABLE_ROLES = [
   'admin', 'director', 'procurement-officer', 'accountant',
   'civil-engineer', 'quantity-surveyor', 'foreman', 'safety-officer',
@@ -35,7 +34,6 @@ const ProjectList = () => {
   const canEdit = user && EDITABLE_ROLES.includes(user.role);
   const canDelete = user && DELETABLE_ROLES.includes(user.role);
 
-  // ─── Photo preview state ──────────────────────────────────────
   const [photoPreviewOpen, setPhotoPreviewOpen] = useState(false);
   const [previewImage, setPreviewImage] = useState('');
 
@@ -82,7 +80,6 @@ const ProjectList = () => {
     return new Intl.NumberFormat('en-ZM', { style: 'currency', currency: 'ZMW' }).format(amount || 0);
   };
 
-  // ─── Handle photo click to expand ────────────────────────────
   const handlePhotoClick = (image) => {
     if (image) {
       setPreviewImage(image);
@@ -116,6 +113,8 @@ const ProjectList = () => {
             <TableCell>Budget</TableCell>
             <TableCell>Deadline</TableCell>
             <TableCell>Manager</TableCell>
+            <TableCell>Created By</TableCell>   {/* ✅ New Column */}
+            <TableCell>Approved By</TableCell>   {/* ✅ New Column */}
             <TableCell>Actions</TableCell>
           </TableRow>
         </TableHead>
@@ -146,7 +145,12 @@ const ProjectList = () => {
               <TableCell>{project.endDate ? new Date(project.endDate).toLocaleDateString() : '—'}</TableCell>
               <TableCell>{project.manager?.name || 'N/A'}</TableCell>
               <TableCell>
-                {/* ─── View ────────────────────────────────────── */}
+                {project.createdBy ? `${project.createdBy.name} (${project.createdBy.role})` : '—'}
+              </TableCell>
+              <TableCell>
+                {project.approvedBy ? `${project.approvedBy.name} (${project.approvedBy.role})` : '—'}
+              </TableCell>
+              <TableCell>
                 <Button
                   component={Link}
                   to={`/projects/${project._id}/view`}
@@ -197,7 +201,7 @@ const ProjectList = () => {
           ))}
           {projects.length === 0 && (
             <TableRow>
-              <TableCell colSpan={9} align="center" sx={{ py: 3 }}>
+              <TableCell colSpan={11} align="center" sx={{ py: 3 }}>
                 <Typography variant="body2" color="textSecondary">No projects yet.</Typography>
               </TableCell>
             </TableRow>
@@ -205,7 +209,7 @@ const ProjectList = () => {
         </TableBody>
       </Table>
 
-      {/* ─── Photo Preview Dialog ────────────────────────────────── */}
+      {/* Photo Preview Dialog */}
       <Dialog open={photoPreviewOpen} onClose={() => setPhotoPreviewOpen(false)} maxWidth="md" fullWidth>
         <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <span>Project Image</span>

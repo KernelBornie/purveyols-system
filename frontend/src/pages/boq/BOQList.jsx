@@ -93,6 +93,7 @@ const BOQList = () => {
             <TableCell>Grand Total</TableCell>
             <TableCell>Status</TableCell>
             <TableCell>Created By</TableCell>
+            <TableCell>Approved By</TableCell>
             <TableCell>Actions</TableCell>
           </TableRow>
         </TableHead>
@@ -110,9 +111,13 @@ const BOQList = () => {
                   size="small"
                 />
               </TableCell>
-              <TableCell>{boq.createdBy?.name || '—'}</TableCell>
               <TableCell>
-                {/* ─── View button (text) ──────────────────────────── */}
+                {boq.createdBy ? `${boq.createdBy.name} (${boq.createdBy.role})` : '—'}
+              </TableCell>
+              <TableCell>
+                {boq.approvedBy ? `${boq.approvedBy.name} (${boq.approvedBy.role})` : '—'}
+              </TableCell>
+              <TableCell>
                 <Button
                   component={Link}
                   to={`/boq/${boq._id}`}
@@ -123,7 +128,6 @@ const BOQList = () => {
                   View
                 </Button>
 
-                {/* ─── Edit ────────────────────────────────────────── */}
                 {canEdit && boq.status !== 'approved' && (
                   <Tooltip title="Edit">
                     <IconButton
@@ -137,7 +141,6 @@ const BOQList = () => {
                   </Tooltip>
                 )}
 
-                {/* ─── Delete ───────────────────────────────────────── */}
                 {canEdit && boq.status !== 'approved' && (
                   <Tooltip title="Delete">
                     <IconButton
@@ -150,7 +153,6 @@ const BOQList = () => {
                   </Tooltip>
                 )}
 
-                {/* ─── Approve/Reject ──────────────────────────────── */}
                 {canApprove && boq.status === 'submitted' && (
                   <>
                     <Tooltip title="Approve">
@@ -178,7 +180,7 @@ const BOQList = () => {
           ))}
           {boqs.length === 0 && (
             <TableRow>
-              <TableCell colSpan={7} align="center">No BOQs yet.</TableCell>
+              <TableCell colSpan={8} align="center">No BOQs yet.</TableCell>
             </TableRow>
           )}
         </TableBody>
