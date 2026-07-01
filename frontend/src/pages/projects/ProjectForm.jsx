@@ -55,7 +55,6 @@ const ProjectForm = () => {
 
   const [photoPreviewOpen, setPhotoPreviewOpen] = useState(false);
 
-  // ─── Helper: get file URL ──────────────────────────────────────────
   const getFileUrl = (path) => {
     if (!path) return '';
     if (path.startsWith('http')) return path;
@@ -64,7 +63,6 @@ const ProjectForm = () => {
     return `${window.location.origin}${path}`;
   };
 
-  // ─── Document handlers ─────────────────────────────────────────────
   const handleDocUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -363,19 +361,13 @@ const ProjectForm = () => {
           </Typography>
         </Box>
 
-        {/* ─── Creator info with safe checks ────────────────────── */}
-        <Box sx={{ mb: 2 }}>
-          {creator ? (
-            <>
-              <Typography variant="body2">Created by: <strong>{creator.name}</strong> ({creator.role})</Typography>
-              <Typography variant="body2" color="textSecondary">Created on: {formatDate(createdAt)}</Typography>
-            </>
-          ) : (
-            <Typography variant="body2" color="textSecondary">Created by: Unknown</Typography>
-          )}
-        </Box>
+        {creator && (
+          <Box sx={{ mb: 2 }}>
+            <Typography variant="body2">Created by: <strong>{creator.name}</strong> ({creator.role})</Typography>
+            <Typography variant="body2" color="textSecondary">Created on: {formatDate(createdAt)}</Typography>
+          </Box>
+        )}
 
-        {/* ─── Documents Section ──────────────────────────────────── */}
         <Paper sx={{ p: 2, mb: 3, border: '2px solid #1976d2', backgroundColor: '#f5f9ff' }}>
           <Accordion expanded={docExpanded} onChange={() => setDocExpanded(!docExpanded)}>
             <AccordionSummary expandIcon={<ExpandMoreIcon />}>
@@ -468,7 +460,6 @@ const ProjectForm = () => {
           </Accordion>
         </Paper>
 
-        {/* ─── Photo Upload ────────────────────────────────────────── */}
         <Box sx={{ mb: 3 }}>
           <Typography variant="subtitle1" gutterBottom>Project Photo</Typography>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
@@ -596,7 +587,6 @@ const ProjectForm = () => {
           </Grid>
         </Grid>
 
-        {/* ─── Approval block with safe checks ────────────────────── */}
         <Box sx={{ mt: 4, borderTop: '1px solid #000', pt: 3 }}>
           <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 2 }}>Approval</Typography>
           <Grid container spacing={2}>
@@ -656,7 +646,6 @@ const ProjectForm = () => {
         </Box>
       </form>
 
-      {/* ─── Photo Preview Dialog ────────────────────────────────── */}
       <Dialog open={photoPreviewOpen} onClose={() => setPhotoPreviewOpen(false)} maxWidth="md" fullWidth>
         <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <span>Project Image</span>
@@ -678,7 +667,6 @@ const ProjectForm = () => {
         </DialogActions>
       </Dialog>
 
-      {/* ─── Document Edit Dialog ────────────────────────────────── */}
       <Dialog open={docEditDialog} onClose={() => setDocEditDialog(false)} maxWidth="sm" fullWidth>
         <DialogTitle>Edit Document</DialogTitle>
         <DialogContent>
