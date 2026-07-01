@@ -83,12 +83,13 @@ function App() {
                 <Route path="/workers/:id" element={<WorkerForm />} />
                 <Route path="/workers/:id/edit" element={<WorkerForm />} />
 
-                {/* Projects */}
+                {/* Projects – ORDER MATTERS: specific before generic */}
                 <Route path="/projects" element={<ProjectList />} />
                 <Route path="/projects/new" element={<ProjectForm />} />
-                <Route path="/projects/:id" element={<ProjectForm />} />
+                <Route path="/projects/:id/view" element={<ProjectForm />} />   {/* ✅ VIEW ROUTE */}
                 <Route path="/projects/:id/edit" element={<ProjectForm />} />
                 <Route path="/projects/:projectId/planning" element={<ProjectPlanning />} />
+                <Route path="/projects/:id" element={<ProjectForm />} />        {/* fallback (matches after the others) */}
 
                 {/* Procurement */}
                 <Route path="/procurement" element={<ProcurementList />} />
@@ -170,12 +171,12 @@ function App() {
                 <Route path="/visitors/:id" element={<VisitorForm />} />
                 <Route path="/visitors/:id/edit" element={<VisitorForm />} />
 
-                {/* ─── Tenders & RFQs ─────────────────────────────── */}
+                {/* Tenders & RFQs */}
                 <Route path="/tenders" element={<TenderList />} />
                 <Route path="/tenders/new" element={<TenderForm />} />
-                <Route path="/tenders/:id/view" element={<TenderForm />} />   {/* 👈 NEW: read-only view */}
+                <Route path="/tenders/:id/view" element={<TenderForm />} />
                 <Route path="/tenders/:id/edit" element={<TenderForm />} />
-                <Route path="/tenders/:id" element={<TenderForm />} />       {/* fallback (optional) */}
+                <Route path="/tenders/:id" element={<TenderForm />} />
               </Route>
             </Routes>
           </BrowserRouter>
