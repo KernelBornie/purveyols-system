@@ -10,36 +10,65 @@ const Bid = require('../models/Bid');
 const auth = require('../middleware/auth');
 
 // ─── Configuration ──────────────────────────────────────────────
-// Keywords to identify construction/infrastructure projects in Zambia
-const CONSTRUCTION_KEYWORDS = [
-  'construction', 'tender', 'infrastructure', 'building', 'road', 'bridge',
-  'school', 'hospital', 'water', 'solar', 'power', 'energy', 'housing',
-  'renovation', 'upgrade', 'maintenance', 'works', 'project', 'development',
-  'contract', 'procurement', 'bid', 'rfp', 'rfq', 'tenders', 'contractor'
+// Keywords that strongly indicate a real construction/tender opportunity
+const INCLUSION_PHRASES = [
+  'tender', 'rfp', 'rfq', 'bids', 'procurement', 'invitation to bid',
+  'construction of', 'build', 'contract', 'project', 'infrastructure',
+  'road', 'bridge', 'school', 'hospital', 'solar', 'power', 'water',
+  'housing', 'renovation', 'upgrade', 'maintenance'
 ];
 
+// Exclusion phrases to filter out news/political content
+const EXCLUSION_PHRASES = [
+  'corruption', 'scandal', 'protest', 'arrest', 'court', 'lawsuit',
+  'political', 'election', 'president', 'minister', 'allAfrica',
+  'Mollusc', 'faunal', 'blockchain', 'crypto', 'payment', 'fintech',
+  'KuCoin', 'scientists', 'logs', 'fossil', 'fuels', 'electricity future',
+  'global care campaign', 'breast cancer', 'HIV', 'health campaign',
+  'desert lake', 'crocs', 'Koryx Copper', 'IPO', 'Laxyo', 'solar grant'
+];
+
+// Zambia keywords
 const ZAMBIA_KEYWORDS = ['zambia', 'lusaka', 'copperbelt', 'ndola', 'kitwe', 'livingstone'];
 
-// Sources – we keep NewsAPI as primary, but add stricter filtering
+// ─── Helper: check if article is a genuine construction opportunity ──
+function isRelevant(article) {
+  const text = (article.title + ' ' + (article.description || '')).toLowerCase();
+  // Must contain a Zambia keyword
+  const hasZambia = ZAMBIA_KEYWORDS.some(kw => text.includes(kw));
+  if (!hasZambia) return false;
+
+  // Must contain at least one inclusion phrase
+  const hasInclusion = INCLUSION_PHRASES.some(phrase => text.includes(phrase));
+  if (!hasInclusion) return false;
+
+  // Must NOT contain any exclusion phrase (to filter out news, political, etc.)
+  const hasExclusion = EXCLUSION_PHRASES.some(phrase => text.includes(phrase));
+  if (hasExclusion) return false;
+
+  return true;
+}
+
+// ─── Sources (only NewsAPI for now, but keep RSS/Web as fallback) ──
 const SOURCES = [
   {
-    name: 'NewsAPI - Construction Zambia',
+    name: 'NewsAPI - Construction Tenders Zambia',
     type: 'newsapi',
-    query: 'construction Zambia OR infrastructure Zambia OR building Zambia OR tender Zambia',
+    query: 'construction tender Zambia OR infrastructure tender Zambia OR building tender Zambia',
     apiKey: process.env.NEWS_API_KEY,
     pageSize: 100,
   },
   {
-    name: 'NewsAPI - Tenders Zambia',
+    name: 'NewsAPI - Procurement Zambia',
     type: 'newsapi',
-    query: 'tenders Zambia OR procurement Zambia',
+    query: 'procurement Zambia OR bids Zambia',
     apiKey: process.env.NEWS_API_KEY,
     pageSize: 100,
   },
   {
-    name: 'NewsAPI - Infrastructure',
+    name: 'NewsAPI - Project Zambia',
     type: 'newsapi',
-    query: 'infrastructure Zambia OR road Zambia OR bridge Zambia OR solar Zambia',
+    query: '"construction of" Zambia OR "road" Zambia OR "bridge" Zambia',
     apiKey: process.env.NEWS_API_KEY,
     pageSize: 100,
   },
@@ -57,15 +86,6 @@ const SOURCES = [
     baseUrl: 'https://www.lusakatimes.com',
   },
 ];
-
-// ─── Helper: check if an article is construction-related and mentions Zambia ──
-function isRelevant(article) {
-  const text = (article.title + ' ' + (article.description || '')).toLowerCase();
-  // Must contain at least one construction keyword and a Zambia keyword
-  const hasConstruction = CONSTRUCTION_KEYWORDS.some(kw => text.includes(kw));
-  const hasZambia = ZAMBIA_KEYWORDS.some(kw => text.includes(kw));
-  return hasConstruction && hasZambia;
-}
 
 // ─── Fetch from News API ──────────────────────────────────────
 async function fetchFromNewsAPI(source) {
@@ -86,7 +106,6 @@ async function fetchFromNewsAPI(source) {
       timeout: 15000,
     });
     const articles = response.data.articles || [];
-    // Filter for relevance
     const relevant = articles.filter(a => isRelevant(a));
     return relevant.map(a => ({
       title: a.title || 'Untitled',
@@ -172,7 +191,7 @@ function normalizeProject(article) {
     if (!isNaN(d)) deadline = d.toISOString().split('T')[0];
   }
 
-  const uniqueKey = `${article.title}-${article.sourceUrl}`.replace(/\s/g, '_').toLowerCase();
+  const uniqueKey = `${article.title}-${article.sourceUrl}`.replace(/\s/g, '_').toLowerCase().substring(0, 100);
 
   return {
     id: uniqueKey,
@@ -269,17 +288,16 @@ router.post('/fetch', async (req, res) => {
   }
 });
 
-// ─── GET / – list open projects (construction-related only) ──
+// ─── GET / – list open projects with strict filtering ────────
 router.get('/', async (req, res) => {
   try {
     const { search, status } = req.query;
     const query = {
       status: 'open',
-      // Ensure we only show construction-related projects (they should already be filtered)
-      // but we can add extra safety:
+      // Additional safety filter: use regex to check inclusion phrases in title/description
       $or: [
-        { title: { $regex: /construction|infrastructure|building|road|bridge|school|hospital|water|solar|tender|project|development/i } },
-        { description: { $regex: /construction|infrastructure|building|road|bridge|school|hospital|water|solar|tender|project|development/i } }
+        { title: { $regex: /construction|infrastructure|building|road|bridge|school|hospital|water|solar|tender|project|development|procurement|bids|contract/i } },
+        { description: { $regex: /construction|infrastructure|building|road|bridge|school|hospital|water|solar|tender|project|development|procurement|bids|contract/i } }
       ],
       location: { $regex: /zambia/i },
     };
@@ -307,6 +325,7 @@ router.get('/', async (req, res) => {
 // ─── POST /:projectId/bid – mark as bidded ────────────────────
 router.post('/:projectId/bid', auth, async (req, res) => {
   try {
+    // The projectId is the custom 'id' string, not the MongoDB _id
     const project = await AdvertisedProject.findOne({ id: req.params.projectId });
     if (!project) return res.status(404).json({ error: 'Project not found' });
     if (project.status === 'bidded') return res.status(400).json({ error: 'Already bidded' });
@@ -314,8 +333,9 @@ router.post('/:projectId/bid', auth, async (req, res) => {
     project.status = 'bidded';
     await project.save();
 
+    // Create a Bid record with proper fields
     const bidData = {
-      projectId: project.id,
+      projectId: project.id, // store the custom string
       projectTitle: project.title,
       client: project.client,
       location: project.location,
@@ -327,10 +347,15 @@ router.post('/:projectId/bid', auth, async (req, res) => {
       skills: project.skills || [],
       contactEmail: project.contactEmail,
       biddingFee: project.biddingFee,
-      status: 'bidded',
+      status: 'bidded', // must be in enum
       bidDate: new Date(),
       user: req.user.id,
       notes: `Bidded from advertised project ${project.id}`,
+      // Provide required fields for the Bid model (adjust as per your model)
+      amount: 0, // or parse from budget?
+      timeline: 'Not specified',
+      bidderId: req.user.id,
+      // If your model has other required fields, add them here.
     };
     const bid = new Bid(bidData);
     await bid.save();
