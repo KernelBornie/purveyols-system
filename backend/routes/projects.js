@@ -9,6 +9,7 @@ const User = require('../models/User');
 const auth = require('../middleware/auth');
 const authorize = require('../middleware/rbac');
 const { createNotification, getSenderName } = require('../utils/notificationHelper');
+const { broadcastNotification } = require('../services/notificationService');
 
 let XLSX;
 try {
@@ -66,12 +67,27 @@ router.post('/', auth, authorize('admin', 'director', 'civil-engineer', 'foreman
         `/projects/${project._id}`
       );
     }
+    // Broadcast to all users
+    await broadcastNotification(
+      'project_created',
+      'New Project Created',
+      `${senderName} created a new project: ${project.name}`,
+      `/projects/${project._id}`
+    );
     res.status(201).json(populated);
   } catch (err) { res.status(400).json({ error: err.message }); }
 });
 
 router.put('/:id', auth, authorize('admin', 'director', 'civil-engineer', 'foreman', 'accountant', 'qs', 'quantity-surveyor'), async (req, res) => {
   try {
+    
+    const senderName = await getSenderName(req.user.id);
+    await broadcastNotification(
+      'project_updated',
+      'Project Updated',
+      `${senderName} updated project: ${updated.name}`,
+      `/projects/${updated._id}`
+    );
     const updated = await Project.findByIdAndUpdate(req.params.id, req.body, { new: true })
       .populate('manager', 'name role')
       .populate('createdBy', 'name role')

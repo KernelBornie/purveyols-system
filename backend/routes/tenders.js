@@ -6,6 +6,8 @@ const auth = require('../middleware/auth');
 const authorize = require('../middleware/rbac');
 const multer = require('multer');
 const path = require('path');
+const { broadcastNotification } = require('../services/notificationService');
+const { getSenderName } = require('../utils/notificationHelper');
 
 console.log('✅ Tenders router loaded');
 
@@ -111,6 +113,14 @@ router.post('/', auth, authorize('admin', 'director', 'procurement-officer', 'ci
       .populate('assignedStaff', 'name role')
       .populate('verifiedBy', 'name role')
       .populate('convertedToProject', 'name');
+    
+    const senderName = await getSenderName(req.user.id);
+    await broadcastNotification(
+      'tender_created',
+      'New Tender Created',
+      `${senderName} created a new tender: ${tender.title}`,
+      `/tenders/${tender._id}`
+    );
     res.status(201).json(populated);
   } catch (err) {
     res.status(400).json({ error: err.message });
@@ -137,6 +147,14 @@ router.put('/:id', auth, authorize('admin', 'director', 'accountant', 'engineer'
       .populate('assignedStaff', 'name role')
       .populate('verifiedBy', 'name role')
       .populate('convertedToProject', 'name');
+    
+    const senderName = await getSenderName(req.user.id);
+    await broadcastNotification(
+      'tender_updated',
+      'Tender Updated',
+      `${senderName} updated tender: ${updated.title}`,
+      `/tenders/${updated._id}`
+    );
     res.json(updated);
   } catch (err) {
     res.status(400).json({ error: err.message });

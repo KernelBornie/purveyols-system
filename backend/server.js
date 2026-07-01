@@ -157,6 +157,10 @@ app.use('/api/project-plans', projectPlanRoutes);
 const siteDiaryRoutes = require('./routes/siteDiary');
 app.use('/api/site-diary', siteDiaryRoutes);
 
+// Initialize notification service with Socket.IO
+const { setIo } = require('./services/notificationService');
+setIo(io);
+
 app.get('/api/health', (req, res) => res.json({ status: 'OK', timestamp: new Date().toISOString() }));
 
 // Socket.io

@@ -8,6 +8,7 @@ const User = require('../models/User');
 const auth = require('../middleware/auth');
 const authorize = require('../middleware/rbac');
 const { createNotification, getSenderName, getSenderRole, formatCurrency } = require('../utils/notificationHelper');
+const { broadcastNotification } = require('../services/notificationService');
 
 // ─── Multer config for BOQ documents ──────────────────────────────
 const storage = multer.diskStorage({
@@ -125,6 +126,14 @@ router.post('/', auth, authorize('admin', 'director', 'quantity-surveyor', 'civi
       );
     }
 
+    // Broadcast to all users
+    await broadcastNotification(
+      'boq_created',
+      'New BOQ Created',
+      `${senderName} created a BOQ for "${projectName}" with total ${total}`,
+      `/boq/${boq._id}`
+    );
+
     res.status(201).json(populated);
   } catch (err) {
     res.status(400).json({ error: err.message });
@@ -159,6 +168,16 @@ router.put('/:id', auth, authorize('admin', 'director', 'quantity-surveyor', 'ci
       .populate('createdBy', 'name role')
       .populate('approvedBy', 'name role');
     if (!boq) return res.status(404).json({ error: 'BOQ not found' });
+    
+    const senderName = await getSenderName(req.user.id);
+    const projectName = boq.project?.name || 'Unknown Project';
+    const total = formatCurrency(grandTotal);
+    await broadcastNotification(
+      'boq_updated',
+      'BOQ Updated',
+      `${senderName} updated BOQ for "${projectName}" with total ${total}`,
+      `/boq/${boq._id}`
+    );
     res.json(boq);
   } catch (err) {
     res.status(400).json({ error: err.message });
