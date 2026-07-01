@@ -113,8 +113,8 @@ const ProjectList = () => {
             <TableCell>Budget</TableCell>
             <TableCell>Deadline</TableCell>
             <TableCell>Manager</TableCell>
-            <TableCell>Created By</TableCell>   {/* ✅ New Column */}
-            <TableCell>Approved By</TableCell>   {/* ✅ New Column */}
+            <TableCell>Created By</TableCell>
+            <TableCell>Approved By</TableCell>
             <TableCell>Actions</TableCell>
           </TableRow>
         </TableHead>

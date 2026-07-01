@@ -142,10 +142,10 @@ const ProjectForm = () => {
             documents: data.documents || [],
           });
           if (data.image) setImagePreview(data.image);
-          setCreator(data.createdBy);
-          setCreatedAt(data.createdAt);
-          setApprover(data.approvedBy);
-          setApprovedAt(data.approvedAt);
+          setCreator(data.createdBy || null);
+          setCreatedAt(data.createdAt || null);
+          setApprover(data.approvedBy || null);
+          setApprovedAt(data.approvedAt || null);
         })
         .catch(err => {
           console.error('Error fetching project:', err);
@@ -363,12 +363,17 @@ const ProjectForm = () => {
           </Typography>
         </Box>
 
-        {creator && (
-          <Box sx={{ mb: 2 }}>
-            <Typography variant="body2">Created by: <strong>{creator.name}</strong> ({creator.role})</Typography>
-            <Typography variant="body2" color="textSecondary">Created on: {formatDate(createdAt)}</Typography>
-          </Box>
-        )}
+        {/* ─── Creator info with safe checks ────────────────────── */}
+        <Box sx={{ mb: 2 }}>
+          {creator ? (
+            <>
+              <Typography variant="body2">Created by: <strong>{creator.name}</strong> ({creator.role})</Typography>
+              <Typography variant="body2" color="textSecondary">Created on: {formatDate(createdAt)}</Typography>
+            </>
+          ) : (
+            <Typography variant="body2" color="textSecondary">Created by: Unknown</Typography>
+          )}
+        </Box>
 
         {/* ─── Documents Section ──────────────────────────────────── */}
         <Paper sx={{ p: 2, mb: 3, border: '2px solid #1976d2', backgroundColor: '#f5f9ff' }}>
@@ -591,6 +596,7 @@ const ProjectForm = () => {
           </Grid>
         </Grid>
 
+        {/* ─── Approval block with safe checks ────────────────────── */}
         <Box sx={{ mt: 4, borderTop: '1px solid #000', pt: 3 }}>
           <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 2 }}>Approval</Typography>
           <Grid container spacing={2}>
