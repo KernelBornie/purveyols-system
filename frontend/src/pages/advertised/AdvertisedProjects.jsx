@@ -22,11 +22,11 @@ const AdvertisedProjects = () => {
   const navigate = useNavigate();
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const [selectedProject, setSelectedProject] = useState(null);
   const [detailOpen, setDetailOpen] = useState(false);
-  const [error, setError] = useState(null);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
   const [lastRefresh, setLastRefresh] = useState(null);
   const [fetching, setFetching] = useState(false);
@@ -40,11 +40,16 @@ const AdvertisedProjects = () => {
       if (searchTerm) params.append('search', searchTerm);
       if (filterStatus !== 'all') params.append('status', filterStatus);
       const res = await api.get(`/api/advertised-projects?${params.toString()}`);
-      setProjects(res.data.projects || []);
+      const data = res.data.projects || [];
+      setProjects(data);
       setLastRefresh(new Date());
+      if (data.length === 0) {
+        setError('No construction projects found. Click "Fetch New Projects" to load from live sources.');
+      }
     } catch (err) {
-      console.error(err);
-      setError('Failed to fetch advertised projects. Please try again.');
+      console.error('Fetch projects error:', err);
+      setError('Failed to load projects. Please try again or fetch new projects.');
+      setProjects([]);
     } finally {
       setLoading(false);
     }
@@ -53,40 +58,58 @@ const AdvertisedProjects = () => {
   // ─── Fetch fresh projects from sources ────────────────────────
   const handleFetchProjects = async () => {
     setFetching(true);
+    setError(null);
     try {
       const res = await api.post('/api/advertised-projects/fetch');
+      const { added, skipped } = res.data.results || { added: 0, skipped: 0 };
       setSnackbar({
         open: true,
-        message: `✅ ${res.data.results.added} new projects added, ${res.data.results.skipped} skipped.`,
+        message: `✅ ${added} new projects added, ${skipped} updated.`,
         severity: 'success',
       });
-      fetchProjects();
+      // Refresh the list after fetching
+      await fetchProjects();
     } catch (err) {
       console.error('Fetch error:', err);
       setSnackbar({
         open: true,
-        message: '❌ Failed to fetch projects. Please try again.',
+        message: '❌ Failed to fetch projects. Please try again later.',
         severity: 'error',
       });
+      setError('Could not fetch new projects. Check your internet connection and try again.');
     } finally {
       setFetching(false);
     }
   };
 
-  // ─── Load on mount (no auto‑refresh) ──────────────────────
+  // ─── Load on mount ──────────────────────────────────────────
   useEffect(() => {
     fetchProjects();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // runs once on mount
+  }, []);
 
   // ─── Handlers ──────────────────────────────────────────────
-  const handleSearch = (e) => { e.preventDefault(); fetchProjects(); };
-  const handleRefresh = () => { fetchProjects(); setSnackbar({ open: true, message: 'Projects refreshed!', severity: 'success' }); };
+  const handleSearch = (e) => {
+    e.preventDefault();
+    fetchProjects();
+  };
 
-  const handleOpenDetail = (project) => { setSelectedProject(project); setDetailOpen(true); };
-  const handleCloseDetail = () => { setDetailOpen(false); setSelectedProject(null); };
+  const handleRefresh = () => {
+    fetchProjects();
+    setSnackbar({ open: true, message: 'Projects refreshed!', severity: 'success' });
+  };
 
-  // ─── 🔧 FIX: encode the project ID to avoid slashes breaking the URL ──
+  const handleOpenDetail = (project) => {
+    setSelectedProject(project);
+    setDetailOpen(true);
+  };
+
+  const handleCloseDetail = () => {
+    setDetailOpen(false);
+    setSelectedProject(null);
+  };
+
+  // ─── Bid handler with proper encoding ──────────────────────
   const handleBid = async (projectId) => {
     try {
       const encodedId = encodeURIComponent(projectId);
@@ -96,6 +119,7 @@ const AdvertisedProjects = () => {
         message: res.data.message || '✅ Project marked as bidded! Check the Bidded Projects page.',
         severity: 'success'
       });
+      // Remove the project from the list (or update status)
       setProjects(prev => prev.filter(p => p.id !== projectId));
       setDetailOpen(false);
     } catch (err) {
@@ -113,6 +137,7 @@ const AdvertisedProjects = () => {
 
   const handleCloseSnackbar = () => setSnackbar({ ...snackbar, open: false });
 
+  // ─── Render ──────────────────────────────────────────────────
   return (
     <Box>
       <BackButton />
@@ -181,14 +206,28 @@ const AdvertisedProjects = () => {
         <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}><CircularProgress /></Box>
       ) : error ? (
         <Paper sx={{ p: 3, textAlign: 'center' }}>
-          <Typography color="error">{error}</Typography>
-          <Button variant="contained" onClick={fetchProjects} sx={{ mt: 2 }}>Retry</Button>
+          <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>
+          <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center' }}>
+            <Button variant="contained" onClick={fetchProjects}>Retry</Button>
+            <Button variant="contained" color="secondary" startIcon={<CloudDownloadIcon />} onClick={handleFetchProjects} disabled={fetching}>
+              {fetching ? 'Fetching...' : 'Fetch New Projects'}
+            </Button>
+          </Box>
         </Paper>
       ) : projects.length === 0 ? (
-        <Paper sx={{ p: 3, textAlign: 'center' }}>
-          <Typography variant="h6">No open projects available</Typography>
-          <Typography variant="body2" color="textSecondary">Click "Fetch New Projects" to discover fresh opportunities from Google News.</Typography>
-          <Button variant="contained" color="secondary" startIcon={<CloudDownloadIcon />} onClick={handleFetchProjects} disabled={fetching} sx={{ mt: 2 }}>
+        <Paper sx={{ p: 4, textAlign: 'center' }}>
+          <Typography variant="h6" gutterBottom>No open construction projects at the moment</Typography>
+          <Typography variant="body2" color="textSecondary" sx={{ mb: 2 }}>
+            Click the button below to discover fresh opportunities from live sources.
+          </Typography>
+          <Button 
+            variant="contained" 
+            color="secondary" 
+            startIcon={<CloudDownloadIcon />} 
+            onClick={handleFetchProjects} 
+            disabled={fetching}
+            size="large"
+          >
             {fetching ? 'Fetching...' : 'Fetch New Projects'}
           </Button>
         </Paper>
@@ -229,6 +268,7 @@ const AdvertisedProjects = () => {
         </Grid>
       )}
 
+      {/* ─── Detail Dialog ──────────────────────────────────────── */}
       <Dialog open={detailOpen} onClose={handleCloseDetail} maxWidth="md" fullWidth>
         {selectedProject && (
           <>
@@ -258,6 +298,7 @@ const AdvertisedProjects = () => {
         )}
       </Dialog>
 
+      {/* ─── Snackbar ────────────────────────────────────────────── */}
       <Snackbar
         open={snackbar.open}
         autoHideDuration={6000}
