@@ -9,6 +9,7 @@ const authorize = require('../middleware/rbac');
 const crypto = require('crypto');
 const { createNotification, getSenderName, formatCurrency } = require('../utils/notificationHelper');
 const { sendMoney } = require('../services/airtelMoneyService');
+const PaymentEngine = require('../services/paymentService'); // ← UNIFIED PAYMENT ENGINE
 
 // ─── GET all payments ──────────────────────────────────────────────────
 router.get('/', auth, async (req, res) => {
@@ -47,7 +48,6 @@ router.post('/', auth, authorize('admin', 'director', 'accountant'), async (req,
 
     // ─── Check for missing Airtel credentials ──────────────────────
     if (!process.env.AIRTEL_CLIENT_ID || !process.env.AIRTEL_CLIENT_SECRET) {
-      // Notify ONLY admins and accountants (NOT the requester)
       const adminsAndAccountants = await User.find({ role: { $in: ['admin', 'accountant'] } });
       for (let user of adminsAndAccountants) {
         await createNotification(
@@ -103,7 +103,7 @@ router.post('/', auth, authorize('admin', 'director', 'accountant'), async (req,
     await payment.save();
 
     if (status === 'failed') {
-      // Notify ONLY admins and accountants (NOT the requester)
+      // Notify admins and accountants about failure
       const adminsAndAccountants = await User.find({ role: { $in: ['admin', 'accountant'] } });
       for (let user of adminsAndAccountants) {
         await createNotification(
@@ -118,16 +118,49 @@ router.post('/', auth, authorize('admin', 'director', 'accountant'), async (req,
     }
 
     // ─── Successful payment ──────────────────────────────────────────
+    // ─── RECORD IN UNIFIED PAYMENT ENGINE ──────────────────────────
+    let transactionId = null;
+    try {
+      transactionId = await PaymentEngine.processPayment({
+        amount: payment.amount,
+        currency: 'ZMW',
+        sourceModule: 'Payment',          // model name
+        sourceId: payment._id,
+        description: `Payment to ${payment.recipientName} (ref: ${payment.reference})`,
+        recipient: payment.worker,        // worker ID if exists; if not, maybe paidBy?
+        approvedBy: req.user.id,
+        metadata: { reference: payment.reference }
+      }, req.user.id);
+      // store transactionId back to payment
+      payment.transactionId = transactionId;
+      await payment.save();
+    } catch (engineErr) {
+      console.error('PaymentEngine error:', engineErr);
+      // Even if engine fails, we already sent Airtel money, so we must notify admins
+      const adminsAndAccountants = await User.find({ role: { $in: ['admin', 'accountant'] } });
+      for (let user of adminsAndAccountants) {
+        await createNotification(
+          user._id,
+          'payment_engine_error',
+          'Payment Engine Error',
+          `Payment to ${recipientName} succeeded in Airtel but failed to record in ledger. Please check.`,
+          `/payments/${payment._id}`
+        );
+      }
+      // We still return success because money was sent, but with a warning
+      return res.status(201).json({ ...payment.toObject(), warning: 'Ledger recording failed. Manual intervention required.' });
+    }
+
     const senderName = await getSenderName(req.user.id);
 
-    // Notify ONLY admins and accountants
+    // Notify admins and accountants
     const adminsAndAccountants = await User.find({ role: { $in: ['admin', 'accountant'] } });
     for (let user of adminsAndAccountants) {
       await createNotification(
         user._id,
         'payment_made',
         'Payment Made',
-        `${senderName} paid ${recipientName} ${formatCurrency(amount)}`,
+        `${senderName} paid ${recipientName} ${formatCurrency(amount)} (Txn: ${transactionId})`,
         `/payments/${payment._id}`
       );
     }
@@ -160,7 +193,6 @@ router.post('/bulk', auth, authorize('admin', 'director', 'accountant'), async (
 
     // ─── Check Airtel credentials ────────────────────────────────────
     if (!process.env.AIRTEL_CLIENT_ID || !process.env.AIRTEL_CLIENT_SECRET) {
-      // Notify ONLY admins and accountants
       const adminsAndAccountants = await User.find({ role: { $in: ['admin', 'accountant'] } });
       for (let user of adminsAndAccountants) {
         await createNotification(
@@ -232,6 +264,29 @@ router.post('/bulk', auth, authorize('admin', 'director', 'accountant'), async (
       await payment.save();
 
       if (status === 'completed') {
+        // ——— RECORD IN UNIFIED PAYMENT ENGINE ———
+        let txId = null;
+        try {
+          txId = await PaymentEngine.processPayment({
+            amount: payment.amount,
+            currency: 'ZMW',
+            sourceModule: 'Payment',
+            sourceId: payment._id,
+            description: `Bulk payment to ${worker.name}`,
+            recipient: payment.worker,
+            approvedBy: req.user.id,
+            metadata: { bulk: true }
+          }, req.user.id);
+          payment.transactionId = txId;
+          await payment.save();
+        } catch (engineErr) {
+          console.error('PaymentEngine error for bulk:', engineErr);
+          // still push to created but with warning
+          payment.transactionId = 'ENGINE_ERROR';
+          await payment.save();
+          // we'll notify later
+        }
+
         created.push(payment);
         // Notify the worker if they have a user account
         const workerUser = await User.findOne({ email: phone });
@@ -246,7 +301,6 @@ router.post('/bulk', auth, authorize('admin', 'director', 'accountant'), async (
         }
       } else {
         failed.push({ workerId: p.workerId, name: worker.name, amount: p.amount, error: 'Airtel payment failed' });
-        // Notify ONLY admins and accountants about each failure (not the requester)
         const adminsAndAccountants = await User.find({ role: { $in: ['admin', 'accountant'] } });
         for (let user of adminsAndAccountants) {
           await createNotification(
@@ -262,7 +316,6 @@ router.post('/bulk', auth, authorize('admin', 'director', 'accountant'), async (
 
     const totalAmount = created.reduce((sum, p) => sum + p.amount, 0);
     if (created.length > 0) {
-      // Notify ONLY admins and accountants about successful bulk payments
       const adminsAndAccountants = await User.find({ role: { $in: ['admin', 'accountant'] } });
       for (let user of adminsAndAccountants) {
         await createNotification(
@@ -324,7 +377,7 @@ router.put('/:id/fail', auth, authorize('admin', 'director', 'accountant'), asyn
     payment.notes = payment.notes ? `${payment.notes} (Failed)` : 'Failed';
     await payment.save();
 
-    // Notify ONLY admins and accountants (not the requester)
+    // Notify ONLY admins and accountants
     const adminsAndAccountants = await User.find({ role: { $in: ['admin', 'accountant'] } });
     for (let user of adminsAndAccountants) {
       await createNotification(

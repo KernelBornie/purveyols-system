@@ -20,6 +20,7 @@ try {
 
 const upload = multer({ dest: 'uploads/' });
 
+// ─── GET all projects ──────────────────────────────────────────────
 router.get('/', auth, async (req, res) => {
   try {
     const projects = await Project.find()
@@ -27,11 +28,12 @@ router.get('/', auth, async (req, res) => {
       .populate('createdBy', 'name role')
       .populate('bidder', 'name role')
       .populate('assignedStaff', 'name role')
-      .populate('approvedBy', 'name role');   // ✅ added
+      .populate('approvedBy', 'name role');
     res.json(projects);
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// ─── GET single project ────────────────────────────────────────────
 router.get('/:id', auth, async (req, res) => {
   try {
     const project = await Project.findById(req.params.id)
@@ -39,16 +41,25 @@ router.get('/:id', auth, async (req, res) => {
       .populate('createdBy', 'name role')
       .populate('bidder', 'name role')
       .populate('assignedStaff', 'name role')
-      .populate('approvedBy', 'name role');   // ✅ added
+      .populate('approvedBy', 'name role');
     if (!project) return res.status(404).json({ error: 'Project not found' });
     res.json(project);
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// ─── CREATE project ────────────────────────────────────────────────
 router.post('/', auth, authorize('admin', 'director', 'civil-engineer', 'foreman', 'accountant', 'qs', 'quantity-surveyor'), async (req, res) => {
   try {
     const project = new Project({ ...req.body, createdBy: req.user.id });
+    // ——— AUDIT: created ———
+    project.audit.push({
+      action: 'created',
+      user: req.user.id,
+      timestamp: new Date(),
+      role: req.user.role
+    });
     await project.save();
+
     const populated = await Project.findById(project._id)
       .populate('manager', 'name role')
       .populate('createdBy', 'name role')
@@ -67,7 +78,6 @@ router.post('/', auth, authorize('admin', 'director', 'civil-engineer', 'foreman
         `/projects/${project._id}`
       );
     }
-    // Broadcast to all users
     await broadcastNotification(
       'project_created',
       'New Project Created',
@@ -78,16 +88,9 @@ router.post('/', auth, authorize('admin', 'director', 'civil-engineer', 'foreman
   } catch (err) { res.status(400).json({ error: err.message }); }
 });
 
+// ─── UPDATE project ────────────────────────────────────────────────
 router.put('/:id', auth, authorize('admin', 'director', 'civil-engineer', 'foreman', 'accountant', 'qs', 'quantity-surveyor'), async (req, res) => {
   try {
-    
-    const senderName = await getSenderName(req.user.id);
-    await broadcastNotification(
-      'project_updated',
-      'Project Updated',
-      `${senderName} updated project: ${updated.name}`,
-      `/projects/${updated._id}`
-    );
     const updated = await Project.findByIdAndUpdate(req.params.id, req.body, { new: true })
       .populate('manager', 'name role')
       .populate('createdBy', 'name role')
@@ -95,10 +98,19 @@ router.put('/:id', auth, authorize('admin', 'director', 'civil-engineer', 'forem
       .populate('assignedStaff', 'name role')
       .populate('approvedBy', 'name role');
     if (!updated) return res.status(404).json({ error: 'Project not found' });
+
+    const senderName = await getSenderName(req.user.id);
+    await broadcastNotification(
+      'project_updated',
+      'Project Updated',
+      `${senderName} updated project: ${updated.name}`,
+      `/projects/${updated._id}`
+    );
     res.json(updated);
   } catch (err) { res.status(400).json({ error: err.message }); }
 });
 
+// ─── DELETE project ────────────────────────────────────────────────
 router.delete('/:id', auth, authorize('admin', 'director', 'accountant'), async (req, res) => {
   try {
     const deleted = await Project.findByIdAndDelete(req.params.id);
@@ -107,14 +119,23 @@ router.delete('/:id', auth, authorize('admin', 'director', 'accountant'), async 
   } catch (err) { res.status(400).json({ error: err.message }); }
 });
 
+// ─── APPROVE project ───────────────────────────────────────────────
 router.put('/:id/approve', auth, authorize('admin', 'director'), async (req, res) => {
   try {
     const project = await Project.findById(req.params.id);
     if (!project) return res.status(404).json({ error: 'Project not found' });
     project.status = 'active';
-    project.approvedBy = req.user.id;    // ✅ set approver
-    project.approvedAt = new Date();     // ✅ set approval date
+    project.approvedBy = req.user.id;
+    project.approvedAt = new Date();
+    // ——— AUDIT: approved ———
+    project.audit.push({
+      action: 'approved',
+      user: req.user.id,
+      timestamp: new Date(),
+      role: req.user.role
+    });
     await project.save();
+
     const populated = await Project.findById(project._id)
       .populate('manager', 'name role')
       .populate('createdBy', 'name role')
@@ -134,12 +155,21 @@ router.put('/:id/approve', auth, authorize('admin', 'director'), async (req, res
   } catch (err) { res.status(400).json({ error: err.message }); }
 });
 
+// ─── REJECT project ────────────────────────────────────────────────
 router.put('/:id/reject', auth, authorize('admin', 'director'), async (req, res) => {
   try {
     const project = await Project.findById(req.params.id);
     if (!project) return res.status(404).json({ error: 'Project not found' });
     project.status = 'rejected';
+    // ——— AUDIT: rejected ———
+    project.audit.push({
+      action: 'rejected',
+      user: req.user.id,
+      timestamp: new Date(),
+      role: req.user.role
+    });
     await project.save();
+
     const populated = await Project.findById(project._id)
       .populate('manager', 'name role')
       .populate('createdBy', 'name role')
@@ -159,7 +189,7 @@ router.put('/:id/reject', auth, authorize('admin', 'director'), async (req, res)
   } catch (err) { res.status(400).json({ error: err.message }); }
 });
 
-// ─── UPLOAD routes (preview + import) ──────────────────────────────
+// ─── UPLOAD preview ────────────────────────────────────────────────
 router.post('/upload/preview', auth, authorize('admin', 'director', 'accountant'), upload.single('file'), async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
@@ -213,6 +243,7 @@ router.post('/upload/preview', auth, authorize('admin', 'director', 'accountant'
   }
 });
 
+// ─── UPLOAD import ─────────────────────────────────────────────────
 router.post('/upload', auth, authorize('admin', 'director', 'accountant'), upload.single('file'), async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
@@ -259,6 +290,13 @@ router.post('/upload', auth, authorize('admin', 'director', 'accountant'), uploa
         createdBy: req.user.id,
       };
       const project = new Project(projectData);
+      // ——— AUDIT for imported project (created) ———
+      project.audit.push({
+        action: 'created',
+        user: req.user.id,
+        timestamp: new Date(),
+        role: req.user.role
+      });
       await project.save();
       created.push(project);
     }

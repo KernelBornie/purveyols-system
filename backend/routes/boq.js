@@ -95,7 +95,15 @@ router.post('/', auth, authorize('admin', 'director', 'quantity-surveyor', 'civi
       grandTotal,
       createdBy: req.user.id
     });
+    // ——— AUDIT: created ———
+    boq.audit.push({
+      action: 'created',
+      user: req.user.id,
+      timestamp: new Date(),
+      role: req.user.role
+    });
     await boq.save();
+
     const populated = await BOQ.findById(boq._id)
       .populate('project', 'name')
       .populate('createdBy', 'name role')
@@ -191,7 +199,15 @@ router.put('/:id/submit', auth, authorize('admin', 'director', 'quantity-surveyo
     if (!boq) return res.status(404).json({ error: 'BOQ not found' });
     if (boq.status === 'submitted') return res.status(400).json({ error: 'Already submitted' });
     boq.status = 'submitted';
+    // ——— AUDIT: submitted ———
+    boq.audit.push({
+      action: 'submitted',
+      user: req.user.id,
+      timestamp: new Date(),
+      role: req.user.role
+    });
     await boq.save();
+
     const populated = await BOQ.findById(boq._id)
       .populate('project', 'name')
       .populate('createdBy', 'name role')
@@ -235,7 +251,15 @@ router.put('/:id/approve', auth, authorize('admin', 'director'), async (req, res
     boq.status = 'approved';
     boq.approvedBy = req.user.id;
     boq.approvedAt = new Date();
+    // ——— AUDIT: approved ———
+    boq.audit.push({
+      action: 'approved',
+      user: req.user.id,
+      timestamp: new Date(),
+      role: req.user.role
+    });
     await boq.save();
+
     const populated = await BOQ.findById(boq._id)
       .populate('project', 'name')
       .populate('createdBy', 'name role')
