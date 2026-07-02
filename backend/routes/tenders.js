@@ -6,12 +6,14 @@ const auth = require('../middleware/auth');
 const authorize = require('../middleware/rbac');
 const multer = require('multer');
 const path = require('path');
+const fs = require('fs');                    // ← added
+const { v4: uuidv4 } = require('uuid');      // ← added
 const { broadcastNotification } = require('../services/notificationService');
 const { getSenderName } = require('../utils/notificationHelper');
 
 console.log('✅ Tenders router loaded');
 
-// ─── Multer config ──────────────────────────────────────────────────
+// ─── Multer config (disk storage for hard‑copy uploads) ──────────
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, 'uploads/tenders/'),
   filename: (req, file, cb) => {
@@ -128,7 +130,6 @@ router.post('/', auth, authorize('admin', 'director', 'procurement-officer', 'ci
 });
 
 // ─── UPDATE (Edit) ──────────────────────────────────────────────
-// Allowed: admin, director, accountant, engineer, quantity-surveyor
 router.put('/:id', auth, authorize('admin', 'director', 'accountant', 'engineer', 'quantity-surveyor'), async (req, res) => {
   try {
     const tender = await Tender.findById(req.params.id);
@@ -162,7 +163,6 @@ router.put('/:id', auth, authorize('admin', 'director', 'accountant', 'engineer'
 });
 
 // ─── SUBMIT ──────────────────────────────────────────────────────
-// Any authenticated user can submit their own tender (no role restriction)
 router.put('/:id/submit', auth, async (req, res) => {
   try {
     const tender = await Tender.findById(req.params.id);
@@ -192,7 +192,6 @@ router.put('/:id/submit', auth, async (req, res) => {
 });
 
 // ─── APPROVE ─────────────────────────────────────────────────────
-// Allowed: admin, director, accountant
 router.put('/:id/approve', auth, authorize('admin', 'director', 'accountant'), async (req, res) => {
   try {
     const tender = await Tender.findById(req.params.id);
@@ -245,7 +244,7 @@ router.put('/:id/assign', auth, authorize('admin', 'director', 'accountant', 'en
   }
 });
 
-// ─── ASSIGN ADD (add a single user) ─────────────────────────────
+// ─── ASSIGN ADD ─────────────────────────────────────────────
 router.post('/:id/assign/add', auth, authorize('admin', 'director', 'accountant', 'engineer', 'quantity-surveyor'), async (req, res) => {
   try {
     const { userId } = req.body;
@@ -276,7 +275,7 @@ router.post('/:id/assign/add', auth, authorize('admin', 'director', 'accountant'
   }
 });
 
-// ─── ASSIGN REMOVE (remove a single user) ──────────────────────
+// ─── ASSIGN REMOVE ─────────────────────────────────────────────
 router.post('/:id/assign/remove', auth, authorize('admin', 'director', 'accountant', 'engineer', 'quantity-surveyor'), async (req, res) => {
   try {
     const { userId } = req.body;
@@ -332,8 +331,6 @@ router.put('/:id/verify', auth, authorize('admin', 'director', 'accountant'), as
 });
 
 // ─── AWARD ──────────────────────────────────────────────────────
-// Allowed: only director
-// Automatically creates a project on award
 router.put('/:id/award', auth, authorize('director'), async (req, res) => {
   try {
     const { awardAmount, awardee } = req.body;
@@ -347,7 +344,7 @@ router.put('/:id/award', auth, authorize('director'), async (req, res) => {
     }
 
     tender.status = 'awarded';
-    tender.awardAmount = awardAmount || tender.priceProposal.grandTotal;
+    tender.awardAmount = awardAmount || tender.priceProposal?.grandTotal;
     tender.awardee = awardee || tender.client;
     tender.awardDate = new Date();
 
@@ -464,17 +461,16 @@ router.post('/:id/convert-to-project', auth, authorize('admin', 'director', 'acc
   }
 });
 
-module.exports = router;
+// ─── DOCUMENT UPLOAD (memory) ──────────────────────────────────
+// Uses memoryStorage to store original file metadata and binary data
 // ------------------------------------------------
-// Upload a document for a tender
-// ------------------------------------------------
-const storage = multer.memoryStorage();
-const upload = multer({
-  storage,
+const memoryStorage = multer.memoryStorage();
+const memoryUpload = multer({
+  storage: memoryStorage,
   limits: { fileSize: 50 * 1024 * 1024 }, // 50MB
 });
 
-router.post('/upload/:tenderId', auth, upload.single('file'), async (req, res) => {
+router.post('/upload/:tenderId', auth, memoryUpload.single('file'), async (req, res) => {
   try {
     const tender = await Tender.findById(req.params.tenderId);
     if (!tender) return res.status(404).json({ error: 'Tender not found' });
@@ -505,9 +501,7 @@ router.post('/upload/:tenderId', auth, upload.single('file'), async (req, res) =
   }
 });
 
-// ------------------------------------------------
-// Download a document from a tender
-// ------------------------------------------------
+// ─── DOCUMENT DOWNLOAD ──────────────────────────────────────────
 router.get('/download/:fileId', auth, async (req, res) => {
   try {
     const tender = await Tender.findOne({ 'documents.storedName': req.params.fileId });
@@ -529,3 +523,5 @@ router.get('/download/:fileId', auth, async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+
+module.exports = router;
