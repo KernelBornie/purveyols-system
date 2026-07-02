@@ -38,6 +38,7 @@ const ProjectSchema = new mongoose.Schema({
   isFromTender: { type: Boolean, default: false },
   tenderSource: { type: mongoose.Schema.Types.ObjectId, ref: 'Tender' },
   documents: [DocumentSchema],   // ✅ New field
+  awardedBidId: { type: mongoose.Schema.Types.ObjectId, ref: 'Bid' },
 });
 
 module.exports = mongoose.model('Project', ProjectSchema);

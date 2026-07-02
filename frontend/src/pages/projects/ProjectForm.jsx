@@ -43,7 +43,7 @@ const ProjectForm = () => {
   const [docExpanded, setDocExpanded] = useState(true);
   const [docEditDialog, setDocEditDialog] = useState(false);
   const [editingDoc, setEditingDoc] = useState(null);
-  const [docForm, setDocForm] = useState({ name: '' });
+  const [docForm, setDocForm] = useState({ name: '', description: '' });
 
   const isView = location.pathname.includes('/view');
   const isEdit = location.pathname.includes('/edit') || (id && !isView);
@@ -105,15 +105,15 @@ const ProjectForm = () => {
 
   const handleDocEdit = (doc, index) => {
     setEditingDoc(index);
-    setDocForm({ name: doc.name || '' });
+    setDocForm({ name: doc.name || '', description: doc.description || '' });
     setDocEditDialog(true);
   };
 
   const handleDocSave = async () => {
     try {
-      await api.put(`/api/projects/${id}/documents/${editingDoc}`, { name: docForm.name });
+      await api.put(`/api/projects/${id}/documents/${editingDoc}`, { name: docForm.name, description: docForm.description });
       const docs = [...form.documents];
-      docs[editingDoc].name = docForm.name;
+      docs[editingDoc] = { ...docs[editingDoc], name: docForm.name, description: docForm.description };
       setForm(prev => ({ ...prev, documents: docs }));
       setDocEditDialog(false);
       setMessage({ type: 'success', text: 'Document updated' });
@@ -224,7 +224,6 @@ const ProjectForm = () => {
         setMessage({ type: 'success', text: 'Project updated successfully!' });
       } else {
         const res = await api.post('/api/projects', payload);
-        // After creation, redirect to edit mode so documents can be uploaded
         navigate(`/projects/${res.data._id}/edit`);
         return;
       }
@@ -258,6 +257,22 @@ const ProjectForm = () => {
     }
     const printWindow = window.open('', '_blank');
     const photoHtml = imagePreview ? `<img src="${imagePreview}" style="max-width:200px; border:1px solid #ccc; margin:5px 0;" />` : '';
+
+    let docsHtml = '';
+    if (form.documents && form.documents.length > 0) {
+      docsHtml = `
+        <h3>Attached Documents</h3>
+        <ul>
+          ${form.documents.map(doc => `
+            <li>
+              <strong>${doc.name || 'Untitled'}</strong>
+              ${doc.description ? ` – ${doc.description}` : ''}
+              ${doc.uploadedAt ? ` (Uploaded: ${new Date(doc.uploadedAt).toLocaleString()})` : ''}
+            </li>
+          `).join('')}
+        </ul>
+      `;
+    }
 
     printWindow.document.write(`
       <html>
@@ -302,6 +317,7 @@ const ProjectForm = () => {
               ${creator ? `<p><strong>Created by:</strong> ${creator.name} (${creator.role})</p>` : ''}
               ${createdAt ? `<p><strong>Created on:</strong> ${new Date(createdAt).toLocaleString()}</p>` : ''}
             </div>
+            ${docsHtml}
             <div class="approval">
               <div class="row">
                 <div><strong>Approved by:</strong> ${approver ? `${approver.name} (${approver.role})` : '_________________'}</div>
@@ -322,7 +338,7 @@ const ProjectForm = () => {
   if (loading && id && !isNew) return <CircularProgress sx={{ display: 'block', margin: '40px auto' }} />;
 
   return (
-    <Paper sx={{ p: 3, maxWidth: '800px', mx: 'auto' }}>
+    <Paper sx={{ p: 3, maxWidth: '1200px', mx: 'auto' }}>
       <BackButton />
       {message && <Alert severity={message.type} sx={{ mb: 2 }}>{message.text}</Alert>}
       {isView && <Alert severity="info" sx={{ mb: 2 }}>You are viewing this project in read‑only mode.</Alert>}
@@ -393,11 +409,16 @@ const ProjectForm = () => {
                           <Typography variant="caption" display="block" color="textSecondary">
                             {doc.mimeType || 'Unknown'} • {doc.uploadedAt ? new Date(doc.uploadedAt).toLocaleString() : ''}
                           </Typography>
+                          {doc.description && (
+                            <Typography variant="body2" color="textSecondary">
+                              {doc.description}
+                            </Typography>
+                          )}
                         </Box>
                         <Box sx={{ display: 'flex', gap: 1 }}>
                           {!isReadOnly && id && (
                             <>
-                              <Tooltip title="Edit name">
+                              <Tooltip title="Edit name/description">
                                 <IconButton size="small" onClick={() => handleDocEdit(doc, idx)}>
                                   <EditIcon fontSize="small" />
                                 </IconButton>
@@ -653,7 +674,7 @@ const ProjectForm = () => {
 
       {/* ─── Document Edit Dialog ────────────────────────────────── */}
       <Dialog open={docEditDialog} onClose={() => setDocEditDialog(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Edit Document Name</DialogTitle>
+        <DialogTitle>Edit Document</DialogTitle>
         <DialogContent>
           <TextField
             label="Document Name"
@@ -661,6 +682,13 @@ const ProjectForm = () => {
             margin="dense"
             value={docForm.name}
             onChange={(e) => setDocForm({ ...docForm, name: e.target.value })}
+          />
+          <TextField
+            label="Description"
+            fullWidth
+            margin="dense"
+            value={docForm.description}
+            onChange={(e) => setDocForm({ ...docForm, description: e.target.value })}
           />
         </DialogContent>
         <DialogActions>

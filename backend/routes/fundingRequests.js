@@ -131,6 +131,19 @@ router.put('/:id/approve', auth, authorize('admin', 'director', 'accountant'), a
     const projectName = populated.project?.name || 'Unknown Project';
     const amount = formatCurrency(request.amount);
 
+    // Notify ONLY admins and accountants about funding approval
+    const adminsAndAccountants = await User.find({ role: { $in: ['admin', 'accountant'] } });
+    for (let user of adminsAndAccountants) {
+      await createNotification(
+        user._id,
+        'funding_approved',
+        'Funding Approved',
+        `✅ Request for ${amount} for "${projectName}" was approved by ${senderName}`,
+        `/funding/${request._id}`
+      );
+    }
+
+    // Also notify the requester
     await createNotification(
       request.requestedBy,
       'funding_approved',
@@ -162,6 +175,19 @@ router.put('/:id/reject', auth, authorize('admin', 'director', 'accountant'), as
     const projectName = populated.project?.name || 'Unknown Project';
     const amount = formatCurrency(request.amount);
 
+    // Notify ONLY admins and accountants about funding rejection
+    const adminsAndAccountants = await User.find({ role: { $in: ['admin', 'accountant'] } });
+    for (let user of adminsAndAccountants) {
+      await createNotification(
+        user._id,
+        'funding_rejected',
+        'Funding Rejected',
+        `❌ Request for ${amount} for "${projectName}" was rejected by ${senderName}`,
+        `/funding/${request._id}`
+      );
+    }
+
+    // Also notify the requester
     await createNotification(
       request.requestedBy,
       'funding_rejected',

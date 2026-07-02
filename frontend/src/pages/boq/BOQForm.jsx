@@ -92,7 +92,7 @@ const BOQForm = () => {
   const [docExpanded, setDocExpanded] = useState(true);
   const [docEditDialog, setDocEditDialog] = useState(false);
   const [editingDoc, setEditingDoc] = useState(null);
-  const [docForm, setDocForm] = useState({ name: '' });
+  const [docForm, setDocForm] = useState({ name: '', description: '' });
 
   const canEdit = ['admin', 'director', 'quantity-surveyor', 'civil-engineer', 'procurement-officer', 'accountant', 'foreman'].includes(user?.role);
   const isReadOnly = !canEdit || form.status === 'approved';
@@ -147,15 +147,15 @@ const BOQForm = () => {
 
   const handleDocEdit = (doc, index) => {
     setEditingDoc(index);
-    setDocForm({ name: doc.name || '' });
+    setDocForm({ name: doc.name || '', description: doc.description || '' });
     setDocEditDialog(true);
   };
 
   const handleDocSave = async () => {
     try {
-      await api.put(`/api/boq/${id}/documents/${editingDoc}`, { name: docForm.name });
+      await api.put(`/api/boq/${id}/documents/${editingDoc}`, { name: docForm.name, description: docForm.description });
       const docs = [...form.documents];
-      docs[editingDoc].name = docForm.name;
+      docs[editingDoc] = { ...docs[editingDoc], name: docForm.name, description: docForm.description };
       setForm(prev => ({ ...prev, documents: docs }));
       setDocEditDialog(false);
       setMessage({ type: 'success', text: 'Document updated' });
@@ -449,7 +449,6 @@ const BOQForm = () => {
         setMessage({ type: 'success', text: 'BOQ updated!' });
       } else {
         const res = await api.post('/api/boq', payload);
-        // After creation, redirect to edit mode so documents can be uploaded
         navigate(`/boq/${res.data._id}/edit`);
         return;
       }
@@ -508,6 +507,23 @@ const BOQForm = () => {
     const grandTotal = subTotalAdj + contingencies + vat;
 
     const formatCurrency = (amount) => new Intl.NumberFormat('en-ZM', { style: 'currency', currency: 'ZMW' }).format(amount || 0);
+
+    // Build documents HTML
+    let docsHtml = '';
+    if (form.documents && form.documents.length > 0) {
+      docsHtml = `
+        <h3>Attached Documents</h3>
+        <ul>
+          ${form.documents.map(doc => `
+            <li>
+              <strong>${doc.name || 'Untitled'}</strong>
+              ${doc.description ? ` – ${doc.description}` : ''}
+              ${doc.uploadedAt ? ` (Uploaded: ${new Date(doc.uploadedAt).toLocaleString()})` : ''}
+            </li>
+          `).join('')}
+        </ul>
+      `;
+    }
 
     const printWindow = window.open('', '_blank');
     printWindow.document.write(`
@@ -589,6 +605,7 @@ const BOQForm = () => {
                 </tbody>
               </table>
             `).join('')}
+            ${docsHtml}
             <div class="summary">
               <div class="row"><span class="label">Sub Total</span><span class="value">${formatCurrency(subTotal)}</span></div>
               ${form.percentageAdjustment ? `<div class="row"><span class="label">Percentage Adjustment (${form.percentageAdjustment}%)</span><span class="value">${formatCurrency(subTotal * adj)}</span></div>` : ''}
@@ -640,7 +657,7 @@ const BOQForm = () => {
   }
 
   return (
-    <Paper sx={{ p: 3, maxWidth: 1400, mx: 'auto' }}>
+    <Paper sx={{ p: 3, maxWidth: '1200px', mx: 'auto' }}>
       <BackButton />
       {message && <Alert severity={message.type} sx={{ mb: 2 }}>{message.text}</Alert>}
       {isReadOnly && <Alert severity="info" sx={{ mb: 2 }}>This BOQ is read‑only.</Alert>}
@@ -743,7 +760,7 @@ const BOQForm = () => {
           </Grid>
         </Paper>
 
-        {/* ─── Documents Section (with guard) ───────────────────────── */}
+        {/* ─── Documents Section ─────────────────────────────────── */}
         <Paper sx={{ p: 2, mb: 2, border: '2px solid #1976d2', backgroundColor: '#f5f9ff' }}>
           <Accordion expanded={docExpanded} onChange={() => setDocExpanded(!docExpanded)}>
             <AccordionSummary expandIcon={<ExpandMoreIcon />}>
@@ -782,11 +799,16 @@ const BOQForm = () => {
                           <Typography variant="caption" display="block" color="textSecondary">
                             {doc.mimeType || 'Unknown'} • {doc.uploadedAt ? new Date(doc.uploadedAt).toLocaleString() : ''}
                           </Typography>
+                          {doc.description && (
+                            <Typography variant="body2" color="textSecondary">
+                              {doc.description}
+                            </Typography>
+                          )}
                         </Box>
                         <Box sx={{ display: 'flex', gap: 1 }}>
                           {!isReadOnly && id && (
                             <>
-                              <Tooltip title="Edit name">
+                              <Tooltip title="Edit name/description">
                                 <IconButton size="small" onClick={() => handleDocEdit(doc, idx)}>
                                   <EditIcon fontSize="small" />
                                 </IconButton>
@@ -858,40 +880,42 @@ const BOQForm = () => {
                 )}
               </Box>
 
-              <Table size="small">
-                <TableHead>
-                  <TableRow>
-                    <TableCell>Description</TableCell>
-                    <TableCell align="right">Qty</TableCell>
-                    <TableCell>Unit</TableCell>
-                    <TableCell align="right">Rate (ZMW)</TableCell>
-                    <TableCell align="right">Amount (ZMW)</TableCell>
-                    <TableCell>Notes</TableCell>
-                    {!isReadOnly && <TableCell>Actions</TableCell>}
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {(section.items || []).map((item, i) => (
-                    <TableRow key={i}>
-                      <TableCell>{item.description}</TableCell>
-                      <TableCell align="right">{item.quantity}</TableCell>
-                      <TableCell>{item.unit}</TableCell>
-                      <TableCell align="right">{formatCurrency(item.rate)}</TableCell>
-                      <TableCell align="right">{formatCurrency(item.amount)}</TableCell>
-                      <TableCell>{item.notes}</TableCell>
-                      {!isReadOnly && (
-                        <TableCell>
-                          <IconButton size="small" onClick={() => handleEditItem(idx, i)}><EditIcon fontSize="small" /></IconButton>
-                          <IconButton size="small" color="error" onClick={() => handleDeleteItem(idx, i)}><DeleteIcon fontSize="small" /></IconButton>
-                        </TableCell>
-                      )}
+              <Box sx={{ overflowX: 'auto' }}>
+                <Table size="small">
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>Description</TableCell>
+                      <TableCell align="right">Qty</TableCell>
+                      <TableCell>Unit</TableCell>
+                      <TableCell align="right">Rate (ZMW)</TableCell>
+                      <TableCell align="right">Amount (ZMW)</TableCell>
+                      <TableCell>Notes</TableCell>
+                      {!isReadOnly && <TableCell>Actions</TableCell>}
                     </TableRow>
-                  ))}
-                  {(section.items || []).length === 0 && (
-                    <TableRow><TableCell colSpan={7} align="center">No items in this section.</TableCell></TableRow>
-                  )}
-                </TableBody>
-              </Table>
+                  </TableHead>
+                  <TableBody>
+                    {(section.items || []).map((item, i) => (
+                      <TableRow key={i}>
+                        <TableCell>{item.description}</TableCell>
+                        <TableCell align="right">{item.quantity}</TableCell>
+                        <TableCell>{item.unit}</TableCell>
+                        <TableCell align="right">{formatCurrency(item.rate)}</TableCell>
+                        <TableCell align="right">{formatCurrency(item.amount)}</TableCell>
+                        <TableCell>{item.notes}</TableCell>
+                        {!isReadOnly && (
+                          <TableCell>
+                            <IconButton size="small" onClick={() => handleEditItem(idx, i)}><EditIcon fontSize="small" /></IconButton>
+                            <IconButton size="small" color="error" onClick={() => handleDeleteItem(idx, i)}><DeleteIcon fontSize="small" /></IconButton>
+                          </TableCell>
+                        )}
+                      </TableRow>
+                    ))}
+                    {(section.items || []).length === 0 && (
+                      <TableRow><TableCell colSpan={7} align="center">No items in this section.</TableCell></TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </Box>
             </Paper>
           ))}
           {form.sections.length === 0 && (
@@ -1010,8 +1034,9 @@ const BOQForm = () => {
         </DialogActions>
       </Dialog>
 
+      {/* ─── Document Edit Dialog ────────────────────────────────── */}
       <Dialog open={docEditDialog} onClose={() => setDocEditDialog(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Edit Document Name</DialogTitle>
+        <DialogTitle>Edit Document</DialogTitle>
         <DialogContent>
           <TextField
             label="Document Name"
@@ -1019,6 +1044,13 @@ const BOQForm = () => {
             margin="dense"
             value={docForm.name}
             onChange={(e) => setDocForm({ ...docForm, name: e.target.value })}
+          />
+          <TextField
+            label="Description"
+            fullWidth
+            margin="dense"
+            value={docForm.description}
+            onChange={(e) => setDocForm({ ...docForm, description: e.target.value })}
           />
         </DialogContent>
         <DialogActions>

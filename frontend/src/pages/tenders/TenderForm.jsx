@@ -6,7 +6,7 @@ import {
   TableRow, TableCell, TableBody, Dialog, DialogTitle,
   DialogContent, DialogActions, Divider, FormControlLabel, Checkbox,
   InputAdornment, Avatar, Accordion, AccordionSummary, AccordionDetails,
-  Backdrop
+  Backdrop, Tooltip
 } from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import AddIcon from '@mui/icons-material/Add';
@@ -22,6 +22,7 @@ import CameraAltIcon from '@mui/icons-material/CameraAlt';
 import ZoomInIcon from '@mui/icons-material/ZoomIn';
 import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 import FileDownloadIcon from '@mui/icons-material/FileDownload';
+import EditIcon from '@mui/icons-material/Edit';
 import api from '../../api/axios';
 import { useAuth } from '../../context/AuthContext';
 import BackButton from '../../components/BackButton';
@@ -509,6 +510,23 @@ const TenderForm = () => {
       : '—';
     const { subtotal, grandTotal } = calculateGrandTotal();
 
+    // Build documents HTML
+    let docsHtml = '';
+    if (form.documents && form.documents.length > 0) {
+      docsHtml = `
+        <h3>Attached Documents</h3>
+        <ul>
+          ${form.documents.map(doc => `
+            <li>
+              <strong>${doc.name || 'Untitled'}</strong>
+              ${doc.description ? ` – ${doc.description}` : ''}
+              ${doc.uploadedAt ? ` (Uploaded: ${new Date(doc.uploadedAt).toLocaleString()})` : ''}
+            </li>
+          `).join('')}
+        </ul>
+      `;
+    }
+
     return `
       <div id="tender-pdf-content" style="font-family: 'Courier New', monospace; max-width: 1000px; margin: 0 auto; padding: 20px; background: #fff;">
         <div style="text-align: center; border-bottom: 2px solid #000; padding-bottom: 8px; margin-bottom: 15px;">
@@ -568,6 +586,7 @@ const TenderForm = () => {
           <p><strong>Subtotal:</strong> ${formatCurrency(subtotal)}</p>
           <p><strong>Grand Total:</strong> ${formatCurrency(grandTotal)}</p>
         ` : ''}
+        ${docsHtml}
         <div style="margin-top:20px; border-top:1px solid #000; padding-top:10px;">
           <div style="display:flex; justify-content:space-between;">
             <div><strong>Approved by:</strong> ${form.approvedBy ? `${form.approvedBy.name} (${form.approvedBy.role})` : '_________________'}</div>
@@ -656,7 +675,7 @@ const TenderForm = () => {
   if (fetching) return <CircularProgress sx={{ display: 'block', margin: '40px auto' }} />;
 
   return (
-    <Paper sx={{ p: 3, maxWidth: 1400, mx: 'auto' }}>
+    <Paper sx={{ p: 3, maxWidth: '1200px', mx: 'auto' }}>
       <Backdrop open={pdfGenerating} sx={{ zIndex: 9999, color: '#fff' }}>
         <Box sx={{ textAlign: 'center' }}>
           <CircularProgress color="inherit" />
@@ -770,79 +789,91 @@ const TenderForm = () => {
                 </Typography>
               </AccordionSummary>
               <AccordionDetails>
-                {form.documents.map((doc, idx) => {
-                  if (!doc || !doc.path) return null;
-                  let mimeType = doc.mimeType || '';
-                  if (!mimeType && doc.name) {
-                    const ext = doc.name.split('.').pop().toLowerCase();
-                    if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext)) {
-                      mimeType = `image/${ext === 'jpg' ? 'jpeg' : ext}`;
-                    } else if (ext === 'pdf') {
-                      mimeType = 'application/pdf';
+                {form.documents && form.documents.length > 0 ? (
+                  form.documents.map((doc, idx) => {
+                    if (!doc || !doc.path) return null;
+                    let mimeType = doc.mimeType || '';
+                    if (!mimeType && doc.name) {
+                      const ext = doc.name.split('.').pop().toLowerCase();
+                      if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext)) {
+                        mimeType = `image/${ext === 'jpg' ? 'jpeg' : ext}`;
+                      } else if (ext === 'pdf') {
+                        mimeType = 'application/pdf';
+                      }
                     }
-                  }
-                  mimeType = mimeType || '';
-                  const isImage = mimeType.startsWith('image/');
-                  const isPdf = mimeType === 'application/pdf';
-                  const fullUrl = getFileUrl(doc.path);
-                  return (
-                    <Box key={idx} sx={{ mb: 3, border: '1px solid #e0e0e0', p: 2, borderRadius: 1 }}>
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 1 }}>
-                        <Box sx={{ flex: 1 }}>
-                          <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>
-                            {doc.name || 'Untitled'}
-                          </Typography>
-                          {doc.description && (
-                            <Typography variant="body2" color="textSecondary">
-                              {doc.description}
+                    mimeType = mimeType || '';
+                    const isImage = mimeType.startsWith('image/');
+                    const isPdf = mimeType === 'application/pdf';
+                    const fullUrl = getFileUrl(doc.path);
+                    return (
+                      <Box key={idx} sx={{ mb: 3, border: '1px solid #e0e0e0', p: 2, borderRadius: 1 }}>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 1 }}>
+                          <Box sx={{ flex: 1 }}>
+                            <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>
+                              {doc.name || 'Untitled'}
                             </Typography>
-                          )}
-                          <Typography variant="caption" display="block" color="textSecondary">
-                            Type: {mimeType || 'Unknown'} • Uploaded: {doc.uploadedAt ? new Date(doc.uploadedAt).toLocaleString() : 'N/A'}
-                          </Typography>
+                            {doc.description && (
+                              <Typography variant="body2" color="textSecondary">
+                                {doc.description}
+                              </Typography>
+                            )}
+                            <Typography variant="caption" display="block" color="textSecondary">
+                              Type: {mimeType || 'Unknown'} • Uploaded: {doc.uploadedAt ? new Date(doc.uploadedAt).toLocaleString() : 'N/A'}
+                            </Typography>
+                          </Box>
+                          <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                            {!isReadOnly && !isViewMode && (
+                              <>
+                                <Tooltip title="Edit document name/description">
+                                  <IconButton size="small" onClick={() => handleEditDoc(doc, idx)}>
+                                    <EditIcon fontSize="small" />
+                                  </IconButton>
+                                </Tooltip>
+                                <Tooltip title="Remove document">
+                                  <IconButton size="small" color="error" onClick={() => handleDeleteDoc(idx)}>
+                                    <DeleteIcon fontSize="small" />
+                                  </IconButton>
+                                </Tooltip>
+                              </>
+                            )}
+                            <Tooltip title="Download file">
+                              <IconButton size="small" component="a" href={fullUrl} target="_blank" download>
+                                <FileDownloadIcon fontSize="small" />
+                              </IconButton>
+                            </Tooltip>
+                          </Box>
                         </Box>
-                        <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-                          {!isReadOnly && !isViewMode && (
-                            <>
-                              <Tooltip title="Edit document name/description">
-                                <IconButton size="small" onClick={() => handleEditDoc(doc, idx)}>
-                                  <EditIcon fontSize="small" />
-                                </IconButton>
-                              </Tooltip>
-                              <Tooltip title="Remove document">
-                                <IconButton size="small" color="error" onClick={() => handleDeleteDoc(idx)}>
-                                  <DeleteIcon fontSize="small" />
-                                </IconButton>
-                              </Tooltip>
-                            </>
+                        <Box sx={{ mt: 2, bgcolor: '#fff', p: 1, border: '1px solid #ddd', borderRadius: 1 }}>
+                          {isImage ? (
+                            <Box sx={{ textAlign: 'center', maxHeight: '300px', overflow: 'auto' }}>
+                              <img
+                                src={fullUrl}
+                                alt={doc.name || 'Document'}
+                                style={{ maxWidth: '100%', maxHeight: '300px', objectFit: 'contain' }}
+                                onError={(e) => { e.target.style.display = 'none'; alert('Failed to load image.'); }}
+                              />
+                            </Box>
+                          ) : isPdf ? (
+                            <Box sx={{ height: '400px' }}>
+                              <iframe
+                                src={fullUrl}
+                                style={{ width: '100%', height: '100%', border: 'none' }}
+                                title={doc.name || 'PDF Document'}
+                              />
+                            </Box>
+                          ) : (
+                            <Box sx={{ textAlign: 'center', p: 2 }}>
+                              <Typography variant="body1" color="textSecondary">Preview not available for this file type.</Typography>
+                              <Button component="a" href={fullUrl} target="_blank" variant="contained" sx={{ mt: 2 }}>Download / View</Button>
+                            </Box>
                           )}
-                          <Tooltip title="Download file">
-                            <IconButton size="small" component="a" href={fullUrl} target="_blank" download>
-                              <FileDownloadIcon fontSize="small" />
-                            </IconButton>
-                          </Tooltip>
                         </Box>
                       </Box>
-                      {/* Document preview */}
-                      <Box sx={{ mt: 2, bgcolor: '#fff', p: 1, border: '1px solid #ddd', borderRadius: 1 }}>
-                        {isImage ? (
-                          <Box sx={{ textAlign: 'center', maxHeight: '300px', overflow: 'auto' }}>
-                            <img src={fullUrl} alt={doc.name || 'Document'} style={{ maxWidth: '100%', maxHeight: '300px', objectFit: 'contain' }} onError={(e) => { e.target.style.display = 'none'; alert('Failed to load image.'); }} />
-                          </Box>
-                        ) : isPdf ? (
-                          <Box sx={{ height: '400px' }}>
-                            <iframe src={fullUrl} style={{ width: '100%', height: '100%', border: 'none' }} title={doc.name || 'PDF Document'} />
-                          </Box>
-                        ) : (
-                          <Box sx={{ textAlign: 'center', p: 2 }}>
-                            <Typography variant="body1" color="textSecondary">Preview not available for this file type.</Typography>
-                            <Button component="a" href={fullUrl} target="_blank" variant="contained" sx={{ mt: 2 }}>Download / View</Button>
-                          </Box>
-                        )}
-                      </Box>
-                    </Box>
-                  );
-                })}
+                    );
+                  })
+                ) : (
+                  <Typography variant="body2" color="textSecondary">No documents uploaded.</Typography>
+                )}
               </AccordionDetails>
             </Accordion>
           </Paper>
@@ -1003,30 +1034,32 @@ const TenderForm = () => {
                 {!isReadOnly && !isViewMode && <IconButton size="small" color="error" onClick={() => deleteSection(sectionIndex)}><DeleteIcon /></IconButton>}
               </Box>
               {section.description && <Typography variant="body2">{section.description}</Typography>}
-              <Table size="small">
-                <TableHead>
-                  <TableRow>
-                    <TableCell>Description</TableCell>
-                    <TableCell>Qty</TableCell>
-                    <TableCell>Unit</TableCell>
-                    <TableCell>Unit Price</TableCell>
-                    <TableCell>Total</TableCell>
-                    <TableCell></TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {section.items.map((item, itemIndex) => (
-                    <TableRow key={itemIndex}>
-                      <TableCell><TextField size="small" fullWidth value={item.description} onChange={(e) => updateSectionItem(sectionIndex, itemIndex, 'description', e.target.value)} disabled={isReadOnly} /></TableCell>
-                      <TableCell><TextField size="small" type="number" value={item.quantity} onChange={(e) => updateSectionItem(sectionIndex, itemIndex, 'quantity', parseFloat(e.target.value) || 0)} disabled={isReadOnly} sx={{ width: 80 }} /></TableCell>
-                      <TableCell><TextField size="small" value={item.unit} onChange={(e) => updateSectionItem(sectionIndex, itemIndex, 'unit', e.target.value)} disabled={isReadOnly} sx={{ width: 100 }} /></TableCell>
-                      <TableCell><TextField size="small" type="number" value={item.unitPrice} onChange={(e) => updateSectionItem(sectionIndex, itemIndex, 'unitPrice', parseFloat(e.target.value) || 0)} disabled={isReadOnly} sx={{ width: 120 }} /></TableCell>
-                      <TableCell>{item.total?.toFixed(2)}</TableCell>
-                      <TableCell>{!isReadOnly && !isViewMode && <IconButton size="small" color="error" onClick={() => removeItemFromSection(sectionIndex, itemIndex)}><DeleteIcon fontSize="small" /></IconButton>}</TableCell>
+              <Box sx={{ overflowX: 'auto' }}>
+                <Table size="small">
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>Description</TableCell>
+                      <TableCell>Qty</TableCell>
+                      <TableCell>Unit</TableCell>
+                      <TableCell>Unit Price</TableCell>
+                      <TableCell>Total</TableCell>
+                      <TableCell></TableCell>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHead>
+                  <TableBody>
+                    {section.items.map((item, itemIndex) => (
+                      <TableRow key={itemIndex}>
+                        <TableCell><TextField size="small" fullWidth value={item.description} onChange={(e) => updateSectionItem(sectionIndex, itemIndex, 'description', e.target.value)} disabled={isReadOnly} /></TableCell>
+                        <TableCell><TextField size="small" type="number" value={item.quantity} onChange={(e) => updateSectionItem(sectionIndex, itemIndex, 'quantity', parseFloat(e.target.value) || 0)} disabled={isReadOnly} sx={{ width: 80 }} /></TableCell>
+                        <TableCell><TextField size="small" value={item.unit} onChange={(e) => updateSectionItem(sectionIndex, itemIndex, 'unit', e.target.value)} disabled={isReadOnly} sx={{ width: 100 }} /></TableCell>
+                        <TableCell><TextField size="small" type="number" value={item.unitPrice} onChange={(e) => updateSectionItem(sectionIndex, itemIndex, 'unitPrice', parseFloat(e.target.value) || 0)} disabled={isReadOnly} sx={{ width: 120 }} /></TableCell>
+                        <TableCell>{item.total?.toFixed(2)}</TableCell>
+                        <TableCell>{!isReadOnly && !isViewMode && <IconButton size="small" color="error" onClick={() => removeItemFromSection(sectionIndex, itemIndex)}><DeleteIcon fontSize="small" /></IconButton>}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </Box>
               {!isReadOnly && !isViewMode && <Button variant="outlined" size="small" startIcon={<AddIcon />} onClick={() => addItemToSection(sectionIndex)} sx={{ mt: 1 }}>Add Item</Button>}
             </Paper>
           ))}

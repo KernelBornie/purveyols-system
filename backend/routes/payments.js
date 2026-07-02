@@ -120,11 +120,11 @@ router.post('/', auth, authorize('admin', 'director', 'accountant'), async (req,
     // ─── Successful payment ──────────────────────────────────────────
     const senderName = await getSenderName(req.user.id);
 
-    // Notify all accountants
-    const accountants = await User.find({ role: 'accountant' });
-    for (let accountant of accountants) {
+    // Notify ONLY admins and accountants
+    const adminsAndAccountants = await User.find({ role: { $in: ['admin', 'accountant'] } });
+    for (let user of adminsAndAccountants) {
       await createNotification(
-        accountant._id,
+        user._id,
         'payment_made',
         'Payment Made',
         `${senderName} paid ${recipientName} ${formatCurrency(amount)}`,
@@ -262,11 +262,11 @@ router.post('/bulk', auth, authorize('admin', 'director', 'accountant'), async (
 
     const totalAmount = created.reduce((sum, p) => sum + p.amount, 0);
     if (created.length > 0) {
-      // Notify accountants about successful bulk payments
-      const accountants = await User.find({ role: 'accountant' });
-      for (let accountant of accountants) {
+      // Notify ONLY admins and accountants about successful bulk payments
+      const adminsAndAccountants = await User.find({ role: { $in: ['admin', 'accountant'] } });
+      for (let user of adminsAndAccountants) {
         await createNotification(
-          accountant._id,
+          user._id,
           'payment_made',
           'Bulk Payments Made',
           `${senderName} made bulk payments totaling ${formatCurrency(totalAmount)}`,

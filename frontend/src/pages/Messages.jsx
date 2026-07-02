@@ -11,9 +11,12 @@ import DoneAllIcon from '@mui/icons-material/DoneAll';
 import DeleteIcon from '@mui/icons-material/Delete';
 import ReplyIcon from '@mui/icons-material/Reply';
 import SendIcon from '@mui/icons-material/Send';
+import LockIcon from '@mui/icons-material/Lock';
 import api from '../api/axios';
+import { useAuth } from '../context/AuthContext';
 
 const Messages = () => {
+  const { user } = useAuth();
   const [messages, setMessages] = useState([]);
   const [sentMessages, setSentMessages] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -29,7 +32,74 @@ const Messages = () => {
   const [replyError, setReplyError] = useState(null);
   const [replySuccess, setReplySuccess] = useState(false);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'info' });
+  const [decryptedContent, setDecryptedContent] = useState(null);
   const navigate = useNavigate();
+
+  // ─── Web Crypto API for E2E Encryption ─────────────────────────
+  const deriveKey = async (userId1, userId2) => {
+    const encoder = new TextEncoder();
+    const keyMaterial = encoder.encode([userId1, userId2].sort().join('-'));
+    const key = await crypto.subtle.importKey(
+      'raw',
+      keyMaterial,
+      { name: 'PBKDF2' },
+      false,
+      ['deriveKey']
+    );
+    return crypto.subtle.deriveKey(
+      {
+        name: 'PBKDF2',
+        salt: encoder.encode('purveyols-salt'),
+        iterations: 100000,
+        hash: 'SHA-256'
+      },
+      key,
+      { name: 'AES-GCM', length: 256 },
+      false,
+      ['encrypt', 'decrypt']
+    );
+  };
+
+  const encryptMessage = async (content, recipientId) => {
+    if (!user?.id || !recipientId) return content;
+    try {
+      const key = await deriveKey(user.id, recipientId);
+      const encoder = new TextEncoder();
+      const iv = crypto.getRandomValues(new Uint8Array(12));
+      const encrypted = await crypto.subtle.encrypt(
+        { name: 'AES-GCM', iv },
+        key,
+        encoder.encode(content)
+      );
+      const ivArray = Array.from(iv);
+      const encryptedArray = Array.from(new Uint8Array(encrypted));
+      return JSON.stringify({ iv: ivArray, data: encryptedArray });
+    } catch (err) {
+      console.error('Encryption error:', err);
+      return content; // Fallback to plaintext
+    }
+  };
+
+  const decryptMessage = async (encryptedContent, senderId) => {
+    if (!user?.id || !senderId || !encryptedContent) return encryptedContent;
+    try {
+      const parsed = JSON.parse(encryptedContent);
+      if (!parsed.iv || !parsed.data) return encryptedContent;
+      const key = await deriveKey(user.id, senderId);
+      const iv = new Uint8Array(parsed.iv);
+      const data = new Uint8Array(parsed.data);
+      const decrypted = await crypto.subtle.decrypt(
+        { name: 'AES-GCM', iv },
+        key,
+        data
+      );
+      const decoder = new TextDecoder();
+      return decoder.decode(decrypted);
+    } catch (err) {
+      console.error('Decryption error:', err);
+      return encryptedContent; // Fallback to original
+    }
+  };
 
   const fetchMessages = async () => {
     setLoading(true);
@@ -88,8 +158,13 @@ const Messages = () => {
     }
   };
 
-  const handleViewMessage = (msg) => {
+  const handleViewMessage = async (msg) => {
     setSelectedMessage(msg);
+    setDecryptedContent(null);
+    if (msg.encrypted && msg.from?._id) {
+      const decrypted = await decryptMessage(msg.content, msg.from._id);
+      setDecryptedContent(decrypted);
+    }
     setDialogOpen(true);
     if (!msg.read) handleMarkRead(msg._id);
   };
@@ -111,10 +186,12 @@ const Messages = () => {
     setSending(true);
     setReplyError(null);
     try {
+      const encryptedContent = await encryptMessage(replyContent, replyTo.from._id);
       await api.post('/api/messages', {
         to: replyTo.from._id,
         subject: replySubject,
-        content: replyContent
+        content: encryptedContent,
+        encrypted: true
       });
       setReplySuccess(true);
       setTimeout(() => {
@@ -218,14 +295,17 @@ const Messages = () => {
 
       {/* View Message Dialog */}
       <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>{selectedMessage?.subject || 'Message'}</DialogTitle>
+        <DialogTitle>
+          {selectedMessage?.encrypted && <LockIcon sx={{ mr: 1, fontSize: '1rem', color: 'success.main' }} />}
+          {selectedMessage?.subject || 'Message'}
+        </DialogTitle>
         <DialogContent>
           <DialogContentText>
             <strong>From:</strong> {selectedMessage?.from?.name || 'Unknown'} <br />
             <strong>Date:</strong> {selectedMessage?.createdAt && new Date(selectedMessage.createdAt).toLocaleString()}
           </DialogContentText>
           <Box sx={{ mt: 2, p: 2, bgcolor: '#f5f5f5', borderRadius: 1 }}>
-            {selectedMessage?.content}
+            {selectedMessage?.encrypted ? (decryptedContent || 'Decrypting...') : selectedMessage?.content}
           </Box>
           <Box sx={{ mt: 2 }}>
             <Button variant="outlined" startIcon={<ReplyIcon />} onClick={() => { setDialogOpen(false); handleReply(selectedMessage); }}>
