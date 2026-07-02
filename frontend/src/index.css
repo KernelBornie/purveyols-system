@@ -174,3 +174,12 @@ code {
   max-width: 100%;
   overflow-x: auto;
 }
+@media print {
+  .company-header {
+    display: block !important;
+    page-break-after: avoid;
+  }
+  body {
+    padding: 0.5in;
+  }
+}

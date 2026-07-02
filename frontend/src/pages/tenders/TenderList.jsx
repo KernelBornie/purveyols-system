@@ -15,6 +15,7 @@ import api from '../../api/axios';
 import { useAuth } from '../../context/AuthContext';
 import BackButton from '../../components/BackButton';
 import getApiErrorMessage from '../../utils/getApiErrorMessage';
+import CompanyHeader from '../../components/CompanyHeader';
 
 const EDITABLE_ROLES = ['admin', 'director', 'accountant', 'engineer', 'quantity-surveyor'];
 const DELETABLE_ROLES = ['admin', 'director'];
@@ -221,7 +222,8 @@ const TenderList = () => {
   if (loading) return <CircularProgress sx={{ display: 'block', margin: '40px auto' }} />;
   if (error) return <Alert severity="error">{error}</Alert>;
 
-  return (
+  return ( <> <CompanyHeader />
+  </>
     <Paper sx={{ p: 2 }}>
       <BackButton />
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2, flexWrap: 'wrap', gap: 1 }}>

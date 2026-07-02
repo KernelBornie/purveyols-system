@@ -28,6 +28,7 @@ import { useAuth } from '../../context/AuthContext';
 import BackButton from '../../components/BackButton';
 import getApiErrorMessage from '../../utils/getApiErrorMessage';
 import html2pdf from 'html2pdf.js';
+import CompanyHeader from '../../components/CompanyHeader';
 
 const EDITABLE_ROLES = ['admin', 'director', 'accountant', 'engineer', 'quantity-surveyor'];
 const DELETABLE_ROLES = ['admin', 'director'];
@@ -674,7 +675,8 @@ const TenderForm = () => {
 
   if (fetching) return <CircularProgress sx={{ display: 'block', margin: '40px auto' }} />;
 
-  return (
+  return ( <> <CompanyHeader />
+  </>
     <Paper sx={{ p: 3, maxWidth: '1200px', mx: 'auto' }}>
       <Backdrop open={pdfGenerating} sx={{ zIndex: 9999, color: '#fff' }}>
         <Box sx={{ textAlign: 'center' }}>

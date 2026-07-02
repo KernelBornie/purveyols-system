@@ -29,7 +29,7 @@ const CompanyHeader = () => {
         },
       }}
     >
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: '18px', zIndex: 1 }}>
+      <Box className="company-header" sx={{ display: 'flex', alignItems: 'center', gap: '18px', zIndex: 1 }}>
         <Box
           component="img"
           src="/P LOGO.PNG"
