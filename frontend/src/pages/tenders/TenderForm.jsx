@@ -675,603 +675,605 @@ const TenderForm = () => {
 
   if (fetching) return <CircularProgress sx={{ display: 'block', margin: '40px auto' }} />;
 
-  return ( <> <CompanyHeader />
-  </>
-    <Paper sx={{ p: 3, maxWidth: '1200px', mx: 'auto' }}>
-      <Backdrop open={pdfGenerating} sx={{ zIndex: 9999, color: '#fff' }}>
-        <Box sx={{ textAlign: 'center' }}>
-          <CircularProgress color="inherit" />
-          <Typography variant="h6" sx={{ mt: 2 }}>Generating PDF...</Typography>
-        </Box>
-      </Backdrop>
+  return (
+    <>
+      <CompanyHeader />
+      <Paper sx={{ p: 3, maxWidth: '1200px', mx: 'auto' }}>
+        <Backdrop open={pdfGenerating} sx={{ zIndex: 9999, color: '#fff' }}>
+          <Box sx={{ textAlign: 'center' }}>
+            <CircularProgress color="inherit" />
+            <Typography variant="h6" sx={{ mt: 2 }}>Generating PDF...</Typography>
+          </Box>
+        </Backdrop>
 
-      <BackButton />
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-        <Typography variant="h5" sx={{ fontWeight: 'bold' }}>
-          {id ? (isViewMode ? 'View Tender' : 'Edit Tender') : 'New Tender / RFQ'}
-        </Typography>
-        <Box className="no-print">
-          <Button
-            variant="outlined"
-            startIcon={<PrintIcon />}
-            onClick={handlePrint}
-            sx={{ mr: 1 }}
-          >
-            Print
-          </Button>
-          <Button
-            variant="contained"
-            color="primary"
-            startIcon={<PictureAsPdfIcon />}
-            onClick={handleDownloadPDF}
-            sx={{ mr: 1 }}
-            disabled={pdfGenerating}
-          >
-            {pdfGenerating ? 'Generating...' : 'Download PDF'}
-          </Button>
-
-          {id && canDelete && !isReadOnly && (
+        <BackButton />
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+          <Typography variant="h5" sx={{ fontWeight: 'bold' }}>
+            {id ? (isViewMode ? 'View Tender' : 'Edit Tender') : 'New Tender / RFQ'}
+          </Typography>
+          <Box className="no-print">
             <Button
-              variant="contained"
-              color="error"
-              startIcon={<DeleteIcon />}
-              onClick={handleDelete}
+              variant="outlined"
+              startIcon={<PrintIcon />}
+              onClick={handlePrint}
               sx={{ mr: 1 }}
             >
-              Delete
+              Print
             </Button>
-          )}
-
-          {id && (form.status === 'awarded' || form.status === 'verified') && !convertedToProject && (
             <Button
               variant="contained"
-              color="success"
-              startIcon={<AddIcon />}
-              onClick={handleConvertToProject}
+              color="primary"
+              startIcon={<PictureAsPdfIcon />}
+              onClick={handleDownloadPDF}
               sx={{ mr: 1 }}
-              disabled={loading}
+              disabled={pdfGenerating}
             >
-              Create Project
+              {pdfGenerating ? 'Generating...' : 'Download PDF'}
             </Button>
-          )}
-          {convertedToProject && (
-            <Chip label="✅ Project Created" color="success" sx={{ mr: 1 }} />
-          )}
 
-          {!isReadOnly && !isViewMode && (
-            <>
+            {id && canDelete && !isReadOnly && (
               <Button
                 variant="contained"
-                color="primary"
-                startIcon={<SendIcon />}
-                onClick={() => handleSubmit(true)}
-                disabled={loading}
+                color="error"
+                startIcon={<DeleteIcon />}
+                onClick={handleDelete}
                 sx={{ mr: 1 }}
               >
-                Submit
+                Delete
               </Button>
+            )}
+
+            {id && (form.status === 'awarded' || form.status === 'verified') && !convertedToProject && (
               <Button
                 variant="contained"
-                startIcon={<SaveIcon />}
-                onClick={() => handleSubmit(false)}
+                color="success"
+                startIcon={<AddIcon />}
+                onClick={handleConvertToProject}
+                sx={{ mr: 1 }}
                 disabled={loading}
               >
-                Save Draft
+                Create Project
               </Button>
-            </>
-          )}
+            )}
+            {convertedToProject && (
+              <Chip label="✅ Project Created" color="success" sx={{ mr: 1 }} />
+            )}
+
+            {!isReadOnly && !isViewMode && (
+              <>
+                <Button
+                  variant="contained"
+                  color="primary"
+                  startIcon={<SendIcon />}
+                  onClick={() => handleSubmit(true)}
+                  disabled={loading}
+                  sx={{ mr: 1 }}
+                >
+                  Submit
+                </Button>
+                <Button
+                  variant="contained"
+                  startIcon={<SaveIcon />}
+                  onClick={() => handleSubmit(false)}
+                  disabled={loading}
+                >
+                  Save Draft
+                </Button>
+              </>
+            )}
+          </Box>
         </Box>
-      </Box>
 
-      {message && <Alert severity={message.type} sx={{ mb: 2 }}>{message.text}</Alert>}
-      {isViewMode && (
-        <Alert severity="info" sx={{ mb: 2 }}>You are viewing this tender in read‑only mode.</Alert>
-      )}
-      {isReadOnly && form.status === 'submitted' && (
-        <Alert severity="info" sx={{ mb: 2 }}>This tender has been submitted. Edits are disabled.</Alert>
-      )}
-      {form.status === 'approved' && (
-        <Alert severity="success" sx={{ mb: 2 }}>This tender has been approved!</Alert>
-      )}
-      {form.status === 'awarded' && (
-        <Alert severity="success" sx={{ mb: 2 }}>This tender has been awarded!</Alert>
-      )}
-      {form.status === 'verified' && (
-        <Alert severity="success" sx={{ mb: 2 }}>This tender has been verified!</Alert>
-      )}
+        {message && <Alert severity={message.type} sx={{ mb: 2 }}>{message.text}</Alert>}
+        {isViewMode && (
+          <Alert severity="info" sx={{ mb: 2 }}>You are viewing this tender in read‑only mode.</Alert>
+        )}
+        {isReadOnly && form.status === 'submitted' && (
+          <Alert severity="info" sx={{ mb: 2 }}>This tender has been submitted. Edits are disabled.</Alert>
+        )}
+        {form.status === 'approved' && (
+          <Alert severity="success" sx={{ mb: 2 }}>This tender has been approved!</Alert>
+        )}
+        {form.status === 'awarded' && (
+          <Alert severity="success" sx={{ mb: 2 }}>This tender has been awarded!</Alert>
+        )}
+        {form.status === 'verified' && (
+          <Alert severity="success" sx={{ mb: 2 }}>This tender has been verified!</Alert>
+        )}
 
-      <form>
-        {/* ─── Uploaded Documents – Enhanced Display ─────────────── */}
-        {form.documents && form.documents.length > 0 && (
-          <Paper sx={{ p: 2, mb: 3, border: '2px solid #1976d2', backgroundColor: '#f5f9ff' }}>
-            <Accordion expanded={docExpanded} onChange={() => setDocExpanded(!docExpanded)}>
-              <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#1976d2' }}>
-                  📄 Uploaded Documents ({form.documents.length})
-                </Typography>
-              </AccordionSummary>
-              <AccordionDetails>
-                {form.documents && form.documents.length > 0 ? (
-                  form.documents.map((doc, idx) => {
-                    if (!doc || !doc.path) return null;
-                    let mimeType = doc.mimeType || '';
-                    if (!mimeType && doc.name) {
-                      const ext = doc.name.split('.').pop().toLowerCase();
-                      if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext)) {
-                        mimeType = `image/${ext === 'jpg' ? 'jpeg' : ext}`;
-                      } else if (ext === 'pdf') {
-                        mimeType = 'application/pdf';
+        <form>
+          {/* ─── Uploaded Documents – Enhanced Display ─────────────── */}
+          {form.documents && form.documents.length > 0 && (
+            <Paper sx={{ p: 2, mb: 3, border: '2px solid #1976d2', backgroundColor: '#f5f9ff' }}>
+              <Accordion expanded={docExpanded} onChange={() => setDocExpanded(!docExpanded)}>
+                <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                  <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#1976d2' }}>
+                    📄 Uploaded Documents ({form.documents.length})
+                  </Typography>
+                </AccordionSummary>
+                <AccordionDetails>
+                  {form.documents && form.documents.length > 0 ? (
+                    form.documents.map((doc, idx) => {
+                      if (!doc || !doc.path) return null;
+                      let mimeType = doc.mimeType || '';
+                      if (!mimeType && doc.name) {
+                        const ext = doc.name.split('.').pop().toLowerCase();
+                        if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext)) {
+                          mimeType = `image/${ext === 'jpg' ? 'jpeg' : ext}`;
+                        } else if (ext === 'pdf') {
+                          mimeType = 'application/pdf';
+                        }
                       }
-                    }
-                    mimeType = mimeType || '';
-                    const isImage = mimeType.startsWith('image/');
-                    const isPdf = mimeType === 'application/pdf';
-                    const fullUrl = getFileUrl(doc.path);
-                    return (
-                      <Box key={idx} sx={{ mb: 3, border: '1px solid #e0e0e0', p: 2, borderRadius: 1 }}>
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 1 }}>
-                          <Box sx={{ flex: 1 }}>
-                            <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>
-                              {doc.name || 'Untitled'}
-                            </Typography>
-                            {doc.description && (
-                              <Typography variant="body2" color="textSecondary">
-                                {doc.description}
+                      mimeType = mimeType || '';
+                      const isImage = mimeType.startsWith('image/');
+                      const isPdf = mimeType === 'application/pdf';
+                      const fullUrl = getFileUrl(doc.path);
+                      return (
+                        <Box key={idx} sx={{ mb: 3, border: '1px solid #e0e0e0', p: 2, borderRadius: 1 }}>
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 1 }}>
+                            <Box sx={{ flex: 1 }}>
+                              <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>
+                                {doc.name || 'Untitled'}
                               </Typography>
-                            )}
-                            <Typography variant="caption" display="block" color="textSecondary">
-                              Type: {mimeType || 'Unknown'} • Uploaded: {doc.uploadedAt ? new Date(doc.uploadedAt).toLocaleString() : 'N/A'}
-                            </Typography>
+                              {doc.description && (
+                                <Typography variant="body2" color="textSecondary">
+                                  {doc.description}
+                                </Typography>
+                              )}
+                              <Typography variant="caption" display="block" color="textSecondary">
+                                Type: {mimeType || 'Unknown'} • Uploaded: {doc.uploadedAt ? new Date(doc.uploadedAt).toLocaleString() : 'N/A'}
+                              </Typography>
+                            </Box>
+                            <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                              {!isReadOnly && !isViewMode && (
+                                <>
+                                  <Tooltip title="Edit document name/description">
+                                    <IconButton size="small" onClick={() => handleEditDoc(doc, idx)}>
+                                      <EditIcon fontSize="small" />
+                                    </IconButton>
+                                  </Tooltip>
+                                  <Tooltip title="Remove document">
+                                    <IconButton size="small" color="error" onClick={() => handleDeleteDoc(idx)}>
+                                      <DeleteIcon fontSize="small" />
+                                    </IconButton>
+                                  </Tooltip>
+                                </>
+                              )}
+                              <Tooltip title="Download file">
+                                <IconButton size="small" component="a" href={fullUrl} target="_blank" download>
+                                  <FileDownloadIcon fontSize="small" />
+                                </IconButton>
+                              </Tooltip>
+                            </Box>
                           </Box>
-                          <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-                            {!isReadOnly && !isViewMode && (
-                              <>
-                                <Tooltip title="Edit document name/description">
-                                  <IconButton size="small" onClick={() => handleEditDoc(doc, idx)}>
-                                    <EditIcon fontSize="small" />
-                                  </IconButton>
-                                </Tooltip>
-                                <Tooltip title="Remove document">
-                                  <IconButton size="small" color="error" onClick={() => handleDeleteDoc(idx)}>
-                                    <DeleteIcon fontSize="small" />
-                                  </IconButton>
-                                </Tooltip>
-                              </>
+                          <Box sx={{ mt: 2, bgcolor: '#fff', p: 1, border: '1px solid #ddd', borderRadius: 1 }}>
+                            {isImage ? (
+                              <Box sx={{ textAlign: 'center', maxHeight: '300px', overflow: 'auto' }}>
+                                <img
+                                  src={fullUrl}
+                                  alt={doc.name || 'Document'}
+                                  style={{ maxWidth: '100%', maxHeight: '300px', objectFit: 'contain' }}
+                                  onError={(e) => { e.target.style.display = 'none'; alert('Failed to load image.'); }}
+                                />
+                              </Box>
+                            ) : isPdf ? (
+                              <Box sx={{ height: '400px' }}>
+                                <iframe
+                                  src={fullUrl}
+                                  style={{ width: '100%', height: '100%', border: 'none' }}
+                                  title={doc.name || 'PDF Document'}
+                                />
+                              </Box>
+                            ) : (
+                              <Box sx={{ textAlign: 'center', p: 2 }}>
+                                <Typography variant="body1" color="textSecondary">Preview not available for this file type.</Typography>
+                                <Button component="a" href={fullUrl} target="_blank" variant="contained" sx={{ mt: 2 }}>Download / View</Button>
+                              </Box>
                             )}
-                            <Tooltip title="Download file">
-                              <IconButton size="small" component="a" href={fullUrl} target="_blank" download>
-                                <FileDownloadIcon fontSize="small" />
-                              </IconButton>
-                            </Tooltip>
                           </Box>
                         </Box>
-                        <Box sx={{ mt: 2, bgcolor: '#fff', p: 1, border: '1px solid #ddd', borderRadius: 1 }}>
-                          {isImage ? (
-                            <Box sx={{ textAlign: 'center', maxHeight: '300px', overflow: 'auto' }}>
-                              <img
-                                src={fullUrl}
-                                alt={doc.name || 'Document'}
-                                style={{ maxWidth: '100%', maxHeight: '300px', objectFit: 'contain' }}
-                                onError={(e) => { e.target.style.display = 'none'; alert('Failed to load image.'); }}
-                              />
-                            </Box>
-                          ) : isPdf ? (
-                            <Box sx={{ height: '400px' }}>
-                              <iframe
-                                src={fullUrl}
-                                style={{ width: '100%', height: '100%', border: 'none' }}
-                                title={doc.name || 'PDF Document'}
-                              />
-                            </Box>
-                          ) : (
-                            <Box sx={{ textAlign: 'center', p: 2 }}>
-                              <Typography variant="body1" color="textSecondary">Preview not available for this file type.</Typography>
-                              <Button component="a" href={fullUrl} target="_blank" variant="contained" sx={{ mt: 2 }}>Download / View</Button>
-                            </Box>
-                          )}
-                        </Box>
-                      </Box>
-                    );
-                  })
-                ) : (
-                  <Typography variant="body2" color="textSecondary">No documents uploaded.</Typography>
-                )}
-              </AccordionDetails>
-            </Accordion>
-          </Paper>
-        )}
-
-        {/* ─── Image Upload ────────────────────────────────────────── */}
-        <Paper sx={{ p: 2, mb: 3 }}>
-          <Typography variant="h6" gutterBottom>Tender Image</Typography>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
-            <Avatar src={imagePreview || '/tender-placeholder.jpg'} sx={{ width: 100, height: 100, borderRadius: 2, border: '1px solid #ccc', cursor: imagePreview ? 'pointer' : 'default' }} variant="rounded" onClick={handlePhotoClick} />
-            {!isReadOnly && canEdit && !isViewMode && (
-              <>
-                <Button variant="outlined" component="label" startIcon={<CloudUploadIcon />}>
-                  {imagePreview ? 'Change Image' : 'Upload Image'}
-                  <input type="file" accept="image/*" hidden onChange={handleImageChange} />
-                </Button>
-                <Button variant="outlined" component="label" startIcon={<CameraAltIcon />}>
-                  Take Photo
-                  <input type="file" accept="image/*" capture="environment" hidden onChange={handleImageChange} />
-                </Button>
-                {imagePreview && <Button variant="outlined" color="error" startIcon={<DeleteIcon />} onClick={removeImage}>Remove</Button>}
-              </>
-            )}
-          </Box>
-          <Typography variant="caption" color="textSecondary">JPEG, PNG, GIF, WEBP</Typography>
-        </Paper>
-
-        {/* ─── Basic Information ────────────────────────────────────────── */}
-        <Paper sx={{ p: 2, mb: 3 }}>
-          <Typography variant="h6" gutterBottom>Basic Information</Typography>
-          <Grid container spacing={2}>
-            <Grid item xs={12} md={6}>
-              <TextField label="Title *" fullWidth size="small" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} required disabled={isReadOnly} />
-            </Grid>
-            <Grid item xs={12} md={6}>
-              <TextField label="Solicitation Number" fullWidth size="small" value={form.solicitationNumber} onChange={(e) => setForm({ ...form, solicitationNumber: e.target.value })} disabled={isReadOnly} />
-            </Grid>
-            <Grid item xs={12} md={6}>
-              <TextField label="Project Name" fullWidth size="small" value={form.projectName} onChange={(e) => setForm({ ...form, projectName: e.target.value })} disabled={isReadOnly} />
-            </Grid>
-            <Grid item xs={12} md={6}>
-              <TextField label="Location" fullWidth size="small" value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} disabled={isReadOnly} />
-            </Grid>
-            <Grid item xs={12} md={6}>
-              <TextField select label="Type" fullWidth size="small" value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })} disabled={isReadOnly}>
-                <MenuItem value="solicitation">Solicitation</MenuItem>
-                <MenuItem value="rfq">RFQ</MenuItem>
-                <MenuItem value="tender">Tender</MenuItem>
-                <MenuItem value="proposal">Proposal</MenuItem>
-                <MenuItem value="bid">Bid</MenuItem>
-              </TextField>
-            </Grid>
-            <Grid item xs={12} md={6}>
-              <TextField select label="Status" fullWidth size="small" value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })} disabled={isReadOnly}>
-                <MenuItem value="draft">Draft</MenuItem>
-                <MenuItem value="submitted">Submitted</MenuItem>
-                <MenuItem value="under_review">Under Review</MenuItem>
-                <MenuItem value="approved">Approved</MenuItem>
-                <MenuItem value="awarded">Awarded</MenuItem>
-                <MenuItem value="verified">Verified</MenuItem>
-                <MenuItem value="rejected">Rejected</MenuItem>
-                <MenuItem value="not_awarded">Not Awarded</MenuItem>
-              </TextField>
-            </Grid>
-          </Grid>
-        </Paper>
-
-        {/* ─── Client Info ────────────────────────────────────────── */}
-        <Paper sx={{ p: 2, mb: 3 }}>
-          <Typography variant="h6" gutterBottom>Client Information</Typography>
-          <Grid container spacing={2}>
-            <Grid item xs={12} md={6}>
-              <TextField label="Client *" fullWidth size="small" value={form.client} onChange={(e) => setForm({ ...form, client: e.target.value })} required disabled={isReadOnly} />
-            </Grid>
-            <Grid item xs={12} md={6}>
-              <TextField label="Client Address" fullWidth size="small" value={form.clientAddress} onChange={(e) => setForm({ ...form, clientAddress: e.target.value })} disabled={isReadOnly} />
-            </Grid>
-            <Grid item xs={12} md={6}>
-              <TextField label="Client Email" fullWidth size="small" value={form.clientEmail} onChange={(e) => setForm({ ...form, clientEmail: e.target.value })} disabled={isReadOnly} />
-            </Grid>
-            <Grid item xs={12} md={6}>
-              <TextField label="Client Phone" fullWidth size="small" value={form.clientPhone} onChange={(e) => setForm({ ...form, clientPhone: e.target.value })} disabled={isReadOnly} />
-            </Grid>
-            <Grid item xs={12}>
-              <TextField label="Client Contact Person" fullWidth size="small" value={form.clientContact} onChange={(e) => setForm({ ...form, clientContact: e.target.value })} disabled={isReadOnly} />
-            </Grid>
-          </Grid>
-        </Paper>
-
-        {/* ─── Dates ────────────────────────────────────────────────── */}
-        <Paper sx={{ p: 2, mb: 3 }}>
-          <Typography variant="h6" gutterBottom>Important Dates</Typography>
-          <Grid container spacing={2}>
-            <Grid item xs={12} md={3}>
-              <TextField label="Issue Date" type="date" fullWidth size="small" value={form.issueDate} onChange={(e) => setForm({ ...form, issueDate: e.target.value })} InputLabelProps={{ shrink: true }} disabled={isReadOnly} />
-            </Grid>
-            <Grid item xs={12} md={3}>
-              <TextField label="Due Date" type="date" fullWidth size="small" value={form.dueDate} onChange={(e) => setForm({ ...form, dueDate: e.target.value })} InputLabelProps={{ shrink: true }} disabled={isReadOnly} />
-            </Grid>
-            <Grid item xs={12} md={3}>
-              <TextField label="Site Visit Date" type="date" fullWidth size="small" value={form.siteVisitDate} onChange={(e) => setForm({ ...form, siteVisitDate: e.target.value })} InputLabelProps={{ shrink: true }} disabled={isReadOnly} />
-            </Grid>
-            <Grid item xs={12} md={3}>
-              <TextField label="Award Date" type="date" fullWidth size="small" value={form.awardDate} onChange={(e) => setForm({ ...form, awardDate: e.target.value })} InputLabelProps={{ shrink: true }} disabled={isReadOnly} />
-            </Grid>
-          </Grid>
-        </Paper>
-
-        {/* ─── SF1442 / US Embassy Specific ────────────────────────── */}
-        <Paper sx={{ p: 2, mb: 3 }}>
-          <Typography variant="h6" gutterBottom>SF 1442 / US Embassy Specific</Typography>
-          <Grid container spacing={2}>
-            <Grid item xs={12}>
-              <FormControlLabel control={<Checkbox checked={form.isSF1442} onChange={(e) => setForm({ ...form, isSF1442: e.target.checked })} disabled={isReadOnly} />} label="Is this an SF 1442 (US Embassy) tender?" />
-            </Grid>
-            {form.isSF1442 && (
-              <>
-                <Grid item xs={12} md={6}>
-                  <TextField label="Contracting Office" fullWidth size="small" value={form.contractingOffice} onChange={(e) => setForm({ ...form, contractingOffice: e.target.value })} disabled={isReadOnly} />
-                </Grid>
-                <Grid item xs={12} md={6}>
-                  <TextField label="Facility Code" fullWidth size="small" value={form.facilityCode} onChange={(e) => setForm({ ...form, facilityCode: e.target.value })} disabled={isReadOnly} />
-                </Grid>
-                <Grid item xs={12} md={6}>
-                  <FormControlLabel control={<Checkbox checked={form.isBondRequired} onChange={(e) => setForm({ ...form, isBondRequired: e.target.checked })} disabled={isReadOnly} />} label="Bond Required?" />
-                </Grid>
-                {form.isBondRequired && (
-                  <>
-                    <Grid item xs={12} md={6}>
-                      <TextField label="Bond Days" type="number" fullWidth size="small" value={form.bondDays} onChange={(e) => setForm({ ...form, bondDays: parseInt(e.target.value) || 0 })} disabled={isReadOnly} />
-                    </Grid>
-                    <Grid item xs={12} md={6}>
-                      <TextField label="Acceptance Days" type="number" fullWidth size="small" value={form.acceptanceDays} onChange={(e) => setForm({ ...form, acceptanceDays: parseInt(e.target.value) || 0 })} disabled={isReadOnly} />
-                    </Grid>
-                  </>
-                )}
-              </>
-            )}
-          </Grid>
-        </Paper>
-
-        {/* ─── Description ────────────────────────────────────────── */}
-        <Paper sx={{ p: 2, mb: 3 }}>
-          <Typography variant="h6" gutterBottom>Description / Scope of Work</Typography>
-          <TextField label="Description" fullWidth multiline rows={4} size="small" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} disabled={isReadOnly} />
-        </Paper>
-
-        {/* ─── Sections & Items ────────────────────────────────────── */}
-        <Paper sx={{ p: 2, mb: 3 }}>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-            <Typography variant="h6">Sections & Items</Typography>
-            {!isReadOnly && !isViewMode && <Button variant="outlined" startIcon={<AddIcon />} onClick={addSection}>Add Section</Button>}
-          </Box>
-          {form.sections.map((section, sectionIndex) => (
-            <Paper key={section._id || sectionIndex} sx={{ p: 2, mb: 2, border: '1px solid #e0e0e0' }}>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <Typography variant="subtitle1"><strong>{section.name}</strong></Typography>
-                {!isReadOnly && !isViewMode && <IconButton size="small" color="error" onClick={() => deleteSection(sectionIndex)}><DeleteIcon /></IconButton>}
-              </Box>
-              {section.description && <Typography variant="body2">{section.description}</Typography>}
-              <Box sx={{ overflowX: 'auto' }}>
-                <Table size="small">
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>Description</TableCell>
-                      <TableCell>Qty</TableCell>
-                      <TableCell>Unit</TableCell>
-                      <TableCell>Unit Price</TableCell>
-                      <TableCell>Total</TableCell>
-                      <TableCell></TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {section.items.map((item, itemIndex) => (
-                      <TableRow key={itemIndex}>
-                        <TableCell><TextField size="small" fullWidth value={item.description} onChange={(e) => updateSectionItem(sectionIndex, itemIndex, 'description', e.target.value)} disabled={isReadOnly} /></TableCell>
-                        <TableCell><TextField size="small" type="number" value={item.quantity} onChange={(e) => updateSectionItem(sectionIndex, itemIndex, 'quantity', parseFloat(e.target.value) || 0)} disabled={isReadOnly} sx={{ width: 80 }} /></TableCell>
-                        <TableCell><TextField size="small" value={item.unit} onChange={(e) => updateSectionItem(sectionIndex, itemIndex, 'unit', e.target.value)} disabled={isReadOnly} sx={{ width: 100 }} /></TableCell>
-                        <TableCell><TextField size="small" type="number" value={item.unitPrice} onChange={(e) => updateSectionItem(sectionIndex, itemIndex, 'unitPrice', parseFloat(e.target.value) || 0)} disabled={isReadOnly} sx={{ width: 120 }} /></TableCell>
-                        <TableCell>{item.total?.toFixed(2)}</TableCell>
-                        <TableCell>{!isReadOnly && !isViewMode && <IconButton size="small" color="error" onClick={() => removeItemFromSection(sectionIndex, itemIndex)}><DeleteIcon fontSize="small" /></IconButton>}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </Box>
-              {!isReadOnly && !isViewMode && <Button variant="outlined" size="small" startIcon={<AddIcon />} onClick={() => addItemToSection(sectionIndex)} sx={{ mt: 1 }}>Add Item</Button>}
+                      );
+                    })
+                  ) : (
+                    <Typography variant="body2" color="textSecondary">No documents uploaded.</Typography>
+                  )}
+                </AccordionDetails>
+              </Accordion>
             </Paper>
-          ))}
-          {form.sections.length === 0 && <Typography variant="body2" color="textSecondary">No sections added yet.</Typography>}
-        </Paper>
+          )}
 
-        {/* ─── Price Proposal ──────────────────────────────────────── */}
-        <Paper sx={{ p: 2, mb: 3 }}>
-          <Typography variant="h6" gutterBottom>Price Proposal</Typography>
-          <Grid container spacing={2}>
-            <Grid item xs={12} md={3}>
-              <TextField label="Subtotal" type="number" fullWidth size="small" value={subtotal} InputProps={{ readOnly: true }} />
-            </Grid>
-            <Grid item xs={12} md={3}>
-              <TextField label="Percentage Adjustment (%)" type="number" fullWidth size="small" value={form.priceProposal.percentageAdjustment} onChange={(e) => setForm({ ...form, priceProposal: { ...form.priceProposal, percentageAdjustment: parseFloat(e.target.value) || 0 } })} disabled={isReadOnly} />
-            </Grid>
-            <Grid item xs={12} md={3}>
-              <TextField label="Contingencies (%)" type="number" fullWidth size="small" value={form.priceProposal.contingencies} onChange={(e) => setForm({ ...form, priceProposal: { ...form.priceProposal, contingencies: parseFloat(e.target.value) || 0 } })} disabled={isReadOnly} />
-            </Grid>
-            <Grid item xs={12} md={3}>
-              <TextField label="VAT (%)" type="number" fullWidth size="small" value={form.priceProposal.vat} onChange={(e) => setForm({ ...form, priceProposal: { ...form.priceProposal, vat: parseFloat(e.target.value) || 0 } })} disabled={isReadOnly} />
-            </Grid>
-            <Grid item xs={12} md={6}>
-              <TextField label="Grand Total" type="number" fullWidth size="small" value={grandTotal} InputProps={{ readOnly: true }} />
-            </Grid>
-            <Grid item xs={12} md={6}>
-              <TextField select label="Currency" fullWidth size="small" value={form.priceProposal.currency} onChange={(e) => setForm({ ...form, priceProposal: { ...form.priceProposal, currency: e.target.value } })} disabled={isReadOnly}>
-                <MenuItem value="ZMW">ZMW</MenuItem>
-                <MenuItem value="USD">USD</MenuItem>
-                <MenuItem value="EUR">EUR</MenuItem>
-              </TextField>
-            </Grid>
-          </Grid>
-        </Paper>
-
-        {/* ─── Volume I: SF1442 Price Proposal ────────────────────── */}
-        {form.isSF1442 && (
+          {/* ─── Image Upload ────────────────────────────────────────── */}
           <Paper sx={{ p: 2, mb: 3 }}>
-            <Typography variant="h6" gutterBottom>Volume I: Price Proposal (SF 1442)</Typography>
-            <FormControlLabel control={<Checkbox checked={form.volumeI.sf1442Received} onChange={(e) => setForm({ ...form, volumeI: { ...form.volumeI, sf1442Received: e.target.checked } })} disabled={isReadOnly} />} label="SF 1442 Received?" />
-            <TextField label="Price Breakdown (Summary)" fullWidth multiline rows={3} size="small" value={form.volumeI.priceBreakdown} onChange={(e) => setForm({ ...form, volumeI: { ...form.volumeI, priceBreakdown: e.target.value } })} disabled={isReadOnly} sx={{ mt: 2 }} />
+            <Typography variant="h6" gutterBottom>Tender Image</Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
+              <Avatar src={imagePreview || '/tender-placeholder.jpg'} sx={{ width: 100, height: 100, borderRadius: 2, border: '1px solid #ccc', cursor: imagePreview ? 'pointer' : 'default' }} variant="rounded" onClick={handlePhotoClick} />
+              {!isReadOnly && canEdit && !isViewMode && (
+                <>
+                  <Button variant="outlined" component="label" startIcon={<CloudUploadIcon />}>
+                    {imagePreview ? 'Change Image' : 'Upload Image'}
+                    <input type="file" accept="image/*" hidden onChange={handleImageChange} />
+                  </Button>
+                  <Button variant="outlined" component="label" startIcon={<CameraAltIcon />}>
+                    Take Photo
+                    <input type="file" accept="image/*" capture="environment" hidden onChange={handleImageChange} />
+                  </Button>
+                  {imagePreview && <Button variant="outlined" color="error" startIcon={<DeleteIcon />} onClick={removeImage}>Remove</Button>}
+                </>
+              )}
+            </Box>
+            <Typography variant="caption" color="textSecondary">JPEG, PNG, GIF, WEBP</Typography>
           </Paper>
-        )}
 
-        {/* ─── Volume II: Business/Technical ──────────────────────── */}
-        <Paper sx={{ p: 2, mb: 3 }}>
-          <Typography variant="h6" gutterBottom>Volume II: Business & Technical</Typography>
-          <Grid container spacing={2}>
-            <Grid item xs={12}>
-              <TextField label="Performance Schedule" fullWidth multiline rows={2} size="small" value={form.volumeII.performanceSchedule} onChange={(e) => setForm({ ...form, volumeII: { ...form.volumeII, performanceSchedule: e.target.value } })} disabled={isReadOnly} />
+          {/* ─── Basic Information ────────────────────────────────────────── */}
+          <Paper sx={{ p: 2, mb: 3 }}>
+            <Typography variant="h6" gutterBottom>Basic Information</Typography>
+            <Grid container spacing={2}>
+              <Grid item xs={12} md={6}>
+                <TextField label="Title *" fullWidth size="small" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} required disabled={isReadOnly} />
+              </Grid>
+              <Grid item xs={12} md={6}>
+                <TextField label="Solicitation Number" fullWidth size="small" value={form.solicitationNumber} onChange={(e) => setForm({ ...form, solicitationNumber: e.target.value })} disabled={isReadOnly} />
+              </Grid>
+              <Grid item xs={12} md={6}>
+                <TextField label="Project Name" fullWidth size="small" value={form.projectName} onChange={(e) => setForm({ ...form, projectName: e.target.value })} disabled={isReadOnly} />
+              </Grid>
+              <Grid item xs={12} md={6}>
+                <TextField label="Location" fullWidth size="small" value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} disabled={isReadOnly} />
+              </Grid>
+              <Grid item xs={12} md={6}>
+                <TextField select label="Type" fullWidth size="small" value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })} disabled={isReadOnly}>
+                  <MenuItem value="solicitation">Solicitation</MenuItem>
+                  <MenuItem value="rfq">RFQ</MenuItem>
+                  <MenuItem value="tender">Tender</MenuItem>
+                  <MenuItem value="proposal">Proposal</MenuItem>
+                  <MenuItem value="bid">Bid</MenuItem>
+                </TextField>
+              </Grid>
+              <Grid item xs={12} md={6}>
+                <TextField select label="Status" fullWidth size="small" value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })} disabled={isReadOnly}>
+                  <MenuItem value="draft">Draft</MenuItem>
+                  <MenuItem value="submitted">Submitted</MenuItem>
+                  <MenuItem value="under_review">Under Review</MenuItem>
+                  <MenuItem value="approved">Approved</MenuItem>
+                  <MenuItem value="awarded">Awarded</MenuItem>
+                  <MenuItem value="verified">Verified</MenuItem>
+                  <MenuItem value="rejected">Rejected</MenuItem>
+                  <MenuItem value="not_awarded">Not Awarded</MenuItem>
+                </TextField>
+              </Grid>
             </Grid>
-          </Grid>
-        </Paper>
+          </Paper>
 
-        {/* ─── Key Personnel ────────────────────────────────────────── */}
-        <Paper sx={{ p: 2, mb: 3 }}>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-            <Typography variant="h6">Key Personnel</Typography>
-            {!isReadOnly && !isViewMode && <Button variant="outlined" startIcon={<PersonAddIcon />} onClick={addPersonnel}>Add Personnel</Button>}
-          </Box>
-          {form.volumeII.keyPersonnel.map((person, idx) => (
-            <Paper key={person._id || idx} sx={{ p: 2, mb: 1, border: '1px solid #eee' }}>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                <Box>
-                  <Typography variant="subtitle2">{person.name}</Typography>
-                  <Typography variant="caption" display="block">Role: {person.role}</Typography>
-                  <Typography variant="caption" display="block">Qualifications: {person.qualifications}</Typography>
-                  <Typography variant="caption" display="block">Experience: {person.experience}</Typography>
-                  <Typography variant="caption" display="block">Years with Firm: {person.yearsWithFirm}</Typography>
+          {/* ─── Client Info ────────────────────────────────────────── */}
+          <Paper sx={{ p: 2, mb: 3 }}>
+            <Typography variant="h6" gutterBottom>Client Information</Typography>
+            <Grid container spacing={2}>
+              <Grid item xs={12} md={6}>
+                <TextField label="Client *" fullWidth size="small" value={form.client} onChange={(e) => setForm({ ...form, client: e.target.value })} required disabled={isReadOnly} />
+              </Grid>
+              <Grid item xs={12} md={6}>
+                <TextField label="Client Address" fullWidth size="small" value={form.clientAddress} onChange={(e) => setForm({ ...form, clientAddress: e.target.value })} disabled={isReadOnly} />
+              </Grid>
+              <Grid item xs={12} md={6}>
+                <TextField label="Client Email" fullWidth size="small" value={form.clientEmail} onChange={(e) => setForm({ ...form, clientEmail: e.target.value })} disabled={isReadOnly} />
+              </Grid>
+              <Grid item xs={12} md={6}>
+                <TextField label="Client Phone" fullWidth size="small" value={form.clientPhone} onChange={(e) => setForm({ ...form, clientPhone: e.target.value })} disabled={isReadOnly} />
+              </Grid>
+              <Grid item xs={12}>
+                <TextField label="Client Contact Person" fullWidth size="small" value={form.clientContact} onChange={(e) => setForm({ ...form, clientContact: e.target.value })} disabled={isReadOnly} />
+              </Grid>
+            </Grid>
+          </Paper>
+
+          {/* ─── Dates ────────────────────────────────────────────────── */}
+          <Paper sx={{ p: 2, mb: 3 }}>
+            <Typography variant="h6" gutterBottom>Important Dates</Typography>
+            <Grid container spacing={2}>
+              <Grid item xs={12} md={3}>
+                <TextField label="Issue Date" type="date" fullWidth size="small" value={form.issueDate} onChange={(e) => setForm({ ...form, issueDate: e.target.value })} InputLabelProps={{ shrink: true }} disabled={isReadOnly} />
+              </Grid>
+              <Grid item xs={12} md={3}>
+                <TextField label="Due Date" type="date" fullWidth size="small" value={form.dueDate} onChange={(e) => setForm({ ...form, dueDate: e.target.value })} InputLabelProps={{ shrink: true }} disabled={isReadOnly} />
+              </Grid>
+              <Grid item xs={12} md={3}>
+                <TextField label="Site Visit Date" type="date" fullWidth size="small" value={form.siteVisitDate} onChange={(e) => setForm({ ...form, siteVisitDate: e.target.value })} InputLabelProps={{ shrink: true }} disabled={isReadOnly} />
+              </Grid>
+              <Grid item xs={12} md={3}>
+                <TextField label="Award Date" type="date" fullWidth size="small" value={form.awardDate} onChange={(e) => setForm({ ...form, awardDate: e.target.value })} InputLabelProps={{ shrink: true }} disabled={isReadOnly} />
+              </Grid>
+            </Grid>
+          </Paper>
+
+          {/* ─── SF1442 / US Embassy Specific ────────────────────────── */}
+          <Paper sx={{ p: 2, mb: 3 }}>
+            <Typography variant="h6" gutterBottom>SF 1442 / US Embassy Specific</Typography>
+            <Grid container spacing={2}>
+              <Grid item xs={12}>
+                <FormControlLabel control={<Checkbox checked={form.isSF1442} onChange={(e) => setForm({ ...form, isSF1442: e.target.checked })} disabled={isReadOnly} />} label="Is this an SF 1442 (US Embassy) tender?" />
+              </Grid>
+              {form.isSF1442 && (
+                <>
+                  <Grid item xs={12} md={6}>
+                    <TextField label="Contracting Office" fullWidth size="small" value={form.contractingOffice} onChange={(e) => setForm({ ...form, contractingOffice: e.target.value })} disabled={isReadOnly} />
+                  </Grid>
+                  <Grid item xs={12} md={6}>
+                    <TextField label="Facility Code" fullWidth size="small" value={form.facilityCode} onChange={(e) => setForm({ ...form, facilityCode: e.target.value })} disabled={isReadOnly} />
+                  </Grid>
+                  <Grid item xs={12} md={6}>
+                    <FormControlLabel control={<Checkbox checked={form.isBondRequired} onChange={(e) => setForm({ ...form, isBondRequired: e.target.checked })} disabled={isReadOnly} />} label="Bond Required?" />
+                  </Grid>
+                  {form.isBondRequired && (
+                    <>
+                      <Grid item xs={12} md={6}>
+                        <TextField label="Bond Days" type="number" fullWidth size="small" value={form.bondDays} onChange={(e) => setForm({ ...form, bondDays: parseInt(e.target.value) || 0 })} disabled={isReadOnly} />
+                      </Grid>
+                      <Grid item xs={12} md={6}>
+                        <TextField label="Acceptance Days" type="number" fullWidth size="small" value={form.acceptanceDays} onChange={(e) => setForm({ ...form, acceptanceDays: parseInt(e.target.value) || 0 })} disabled={isReadOnly} />
+                      </Grid>
+                    </>
+                  )}
+                </>
+              )}
+            </Grid>
+          </Paper>
+
+          {/* ─── Description ────────────────────────────────────────── */}
+          <Paper sx={{ p: 2, mb: 3 }}>
+            <Typography variant="h6" gutterBottom>Description / Scope of Work</Typography>
+            <TextField label="Description" fullWidth multiline rows={4} size="small" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} disabled={isReadOnly} />
+          </Paper>
+
+          {/* ─── Sections & Items ────────────────────────────────────── */}
+          <Paper sx={{ p: 2, mb: 3 }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+              <Typography variant="h6">Sections & Items</Typography>
+              {!isReadOnly && !isViewMode && <Button variant="outlined" startIcon={<AddIcon />} onClick={addSection}>Add Section</Button>}
+            </Box>
+            {form.sections.map((section, sectionIndex) => (
+              <Paper key={section._id || sectionIndex} sx={{ p: 2, mb: 2, border: '1px solid #e0e0e0' }}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Typography variant="subtitle1"><strong>{section.name}</strong></Typography>
+                  {!isReadOnly && !isViewMode && <IconButton size="small" color="error" onClick={() => deleteSection(sectionIndex)}><DeleteIcon /></IconButton>}
                 </Box>
-                {!isReadOnly && !isViewMode && <IconButton size="small" color="error" onClick={() => deletePersonnel(idx)}><DeleteIcon /></IconButton>}
-              </Box>
-            </Paper>
-          ))}
-          {form.volumeII.keyPersonnel.length === 0 && <Typography variant="body2" color="textSecondary">No personnel added.</Typography>}
-        </Paper>
-
-        {/* ─── Management Information ──────────────────────────────── */}
-        <Paper sx={{ p: 2, mb: 3 }}>
-          <Typography variant="h6" gutterBottom>Management Information</Typography>
-          <Grid container spacing={2}>
-            <Grid item xs={12} md={6}><TextField label="Bidder Info" fullWidth size="small" value={form.volumeII.managementInformation.bidderInfo} onChange={(e) => setForm({ ...form, volumeII: { ...form.volumeII, managementInformation: { ...form.volumeII.managementInformation, bidderInfo: e.target.value } } })} disabled={isReadOnly} /></Grid>
-            <Grid item xs={12} md={6}><TextField label="SAM Registration" fullWidth size="small" value={form.volumeII.managementInformation.samRegistration} onChange={(e) => setForm({ ...form, volumeII: { ...form.volumeII, managementInformation: { ...form.volumeII.managementInformation, samRegistration: e.target.value } } })} disabled={isReadOnly} /></Grid>
-            <Grid item xs={12} md={6}><TextField label="Certifications" fullWidth size="small" value={form.volumeII.managementInformation.certifications} onChange={(e) => setForm({ ...form, volumeII: { ...form.volumeII, managementInformation: { ...form.volumeII.managementInformation, certifications: e.target.value } } })} disabled={isReadOnly} /></Grid>
-            <Grid item xs={12} md={6}><TextField label="Litigation Status" fullWidth size="small" value={form.volumeII.managementInformation.litigationStatus} onChange={(e) => setForm({ ...form, volumeII: { ...form.volumeII, managementInformation: { ...form.volumeII.managementInformation, litigationStatus: e.target.value } } })} disabled={isReadOnly} /></Grid>
-            <Grid item xs={12} md={6}><TextField label="Political Affiliation" fullWidth size="small" value={form.volumeII.managementInformation.politicalAffiliation} onChange={(e) => setForm({ ...form, volumeII: { ...form.volumeII, managementInformation: { ...form.volumeII.managementInformation, politicalAffiliation: e.target.value } } })} disabled={isReadOnly} /></Grid>
-            <Grid item xs={12} md={6}><TextField label="Equipment Schedule" fullWidth size="small" value={form.volumeII.managementInformation.equipmentSchedule} onChange={(e) => setForm({ ...form, volumeII: { ...form.volumeII, managementInformation: { ...form.volumeII.managementInformation, equipmentSchedule: e.target.value } } })} disabled={isReadOnly} /></Grid>
-            <Grid item xs={12}><TextField label="Company Profile" fullWidth multiline rows={3} size="small" value={form.volumeII.managementInformation.companyProfile} onChange={(e) => setForm({ ...form, volumeII: { ...form.volumeII, managementInformation: { ...form.volumeII.managementInformation, companyProfile: e.target.value } } })} disabled={isReadOnly} /></Grid>
-          </Grid>
-        </Paper>
-
-        {/* ─── Past Performance ────────────────────────────────────── */}
-        <Paper sx={{ p: 2, mb: 3 }}>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-            <Typography variant="h6">Past Performance</Typography>
-            {!isReadOnly && !isViewMode && <Button variant="outlined" startIcon={<WorkIcon />} onClick={addPerformance}>Add Performance</Button>}
-          </Box>
-          {form.volumeII.pastPerformance.map((perf, idx) => (
-            <Paper key={perf._id || idx} sx={{ p: 2, mb: 1, border: '1px solid #eee' }}>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                <Box>
-                  <Typography variant="subtitle2">{perf.projectName}</Typography>
-                  <Typography variant="caption" display="block">Client: {perf.client}</Typography>
-                  <Typography variant="caption" display="block">Value: {perf.value}</Typography>
-                  <Typography variant="caption" display="block">Year Completed: {perf.yearCompleted}</Typography>
-                  <Typography variant="caption" display="block">Description: {perf.description}</Typography>
-                  {perf.isReference && <Chip label="Reference" size="small" color="info" />}
+                {section.description && <Typography variant="body2">{section.description}</Typography>}
+                <Box sx={{ overflowX: 'auto' }}>
+                  <Table size="small">
+                    <TableHead>
+                      <TableRow>
+                        <TableCell>Description</TableCell>
+                        <TableCell>Qty</TableCell>
+                        <TableCell>Unit</TableCell>
+                        <TableCell>Unit Price</TableCell>
+                        <TableCell>Total</TableCell>
+                        <TableCell></TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {section.items.map((item, itemIndex) => (
+                        <TableRow key={itemIndex}>
+                          <TableCell><TextField size="small" fullWidth value={item.description} onChange={(e) => updateSectionItem(sectionIndex, itemIndex, 'description', e.target.value)} disabled={isReadOnly} /></TableCell>
+                          <TableCell><TextField size="small" type="number" value={item.quantity} onChange={(e) => updateSectionItem(sectionIndex, itemIndex, 'quantity', parseFloat(e.target.value) || 0)} disabled={isReadOnly} sx={{ width: 80 }} /></TableCell>
+                          <TableCell><TextField size="small" value={item.unit} onChange={(e) => updateSectionItem(sectionIndex, itemIndex, 'unit', e.target.value)} disabled={isReadOnly} sx={{ width: 100 }} /></TableCell>
+                          <TableCell><TextField size="small" type="number" value={item.unitPrice} onChange={(e) => updateSectionItem(sectionIndex, itemIndex, 'unitPrice', parseFloat(e.target.value) || 0)} disabled={isReadOnly} sx={{ width: 120 }} /></TableCell>
+                          <TableCell>{item.total?.toFixed(2)}</TableCell>
+                          <TableCell>{!isReadOnly && !isViewMode && <IconButton size="small" color="error" onClick={() => removeItemFromSection(sectionIndex, itemIndex)}><DeleteIcon fontSize="small" /></IconButton>}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
                 </Box>
-                {!isReadOnly && !isViewMode && <IconButton size="small" color="error" onClick={() => deletePerformance(idx)}><DeleteIcon /></IconButton>}
-              </Box>
+                {!isReadOnly && !isViewMode && <Button variant="outlined" size="small" startIcon={<AddIcon />} onClick={() => addItemToSection(sectionIndex)} sx={{ mt: 1 }}>Add Item</Button>}
+              </Paper>
+            ))}
+            {form.sections.length === 0 && <Typography variant="body2" color="textSecondary">No sections added yet.</Typography>}
+          </Paper>
+
+          {/* ─── Price Proposal ──────────────────────────────────────── */}
+          <Paper sx={{ p: 2, mb: 3 }}>
+            <Typography variant="h6" gutterBottom>Price Proposal</Typography>
+            <Grid container spacing={2}>
+              <Grid item xs={12} md={3}>
+                <TextField label="Subtotal" type="number" fullWidth size="small" value={subtotal} InputProps={{ readOnly: true }} />
+              </Grid>
+              <Grid item xs={12} md={3}>
+                <TextField label="Percentage Adjustment (%)" type="number" fullWidth size="small" value={form.priceProposal.percentageAdjustment} onChange={(e) => setForm({ ...form, priceProposal: { ...form.priceProposal, percentageAdjustment: parseFloat(e.target.value) || 0 } })} disabled={isReadOnly} />
+              </Grid>
+              <Grid item xs={12} md={3}>
+                <TextField label="Contingencies (%)" type="number" fullWidth size="small" value={form.priceProposal.contingencies} onChange={(e) => setForm({ ...form, priceProposal: { ...form.priceProposal, contingencies: parseFloat(e.target.value) || 0 } })} disabled={isReadOnly} />
+              </Grid>
+              <Grid item xs={12} md={3}>
+                <TextField label="VAT (%)" type="number" fullWidth size="small" value={form.priceProposal.vat} onChange={(e) => setForm({ ...form, priceProposal: { ...form.priceProposal, vat: parseFloat(e.target.value) || 0 } })} disabled={isReadOnly} />
+              </Grid>
+              <Grid item xs={12} md={6}>
+                <TextField label="Grand Total" type="number" fullWidth size="small" value={grandTotal} InputProps={{ readOnly: true }} />
+              </Grid>
+              <Grid item xs={12} md={6}>
+                <TextField select label="Currency" fullWidth size="small" value={form.priceProposal.currency} onChange={(e) => setForm({ ...form, priceProposal: { ...form.priceProposal, currency: e.target.value } })} disabled={isReadOnly}>
+                  <MenuItem value="ZMW">ZMW</MenuItem>
+                  <MenuItem value="USD">USD</MenuItem>
+                  <MenuItem value="EUR">EUR</MenuItem>
+                </TextField>
+              </Grid>
+            </Grid>
+          </Paper>
+
+          {/* ─── Volume I: SF1442 Price Proposal ────────────────────── */}
+          {form.isSF1442 && (
+            <Paper sx={{ p: 2, mb: 3 }}>
+              <Typography variant="h6" gutterBottom>Volume I: Price Proposal (SF 1442)</Typography>
+              <FormControlLabel control={<Checkbox checked={form.volumeI.sf1442Received} onChange={(e) => setForm({ ...form, volumeI: { ...form.volumeI, sf1442Received: e.target.checked } })} disabled={isReadOnly} />} label="SF 1442 Received?" />
+              <TextField label="Price Breakdown (Summary)" fullWidth multiline rows={3} size="small" value={form.volumeI.priceBreakdown} onChange={(e) => setForm({ ...form, volumeI: { ...form.volumeI, priceBreakdown: e.target.value } })} disabled={isReadOnly} sx={{ mt: 2 }} />
             </Paper>
-          ))}
-          {form.volumeII.pastPerformance.length === 0 && <Typography variant="body2" color="textSecondary">No past performance entries.</Typography>}
-        </Paper>
+          )}
 
-        {/* ─── Preliminary Safety Plan ────────────────────────────── */}
-        <Paper sx={{ p: 2, mb: 3 }}>
-          <Typography variant="h6" gutterBottom>Preliminary Safety Plan</Typography>
-          <TextField label="Safety Plan" fullWidth multiline rows={4} size="small" value={form.volumeII.preliminarySafetyPlan} onChange={(e) => setForm({ ...form, volumeII: { ...form.volumeII, preliminarySafetyPlan: e.target.value } })} disabled={isReadOnly} />
-        </Paper>
+          {/* ─── Volume II: Business/Technical ──────────────────────── */}
+          <Paper sx={{ p: 2, mb: 3 }}>
+            <Typography variant="h6" gutterBottom>Volume II: Business & Technical</Typography>
+            <Grid container spacing={2}>
+              <Grid item xs={12}>
+                <TextField label="Performance Schedule" fullWidth multiline rows={2} size="small" value={form.volumeII.performanceSchedule} onChange={(e) => setForm({ ...form, volumeII: { ...form.volumeII, performanceSchedule: e.target.value } })} disabled={isReadOnly} />
+              </Grid>
+            </Grid>
+          </Paper>
 
-        {/* ─── Notes ────────────────────────────────────────────────── */}
-        <Paper sx={{ p: 2, mb: 3 }}>
-          <Typography variant="h6" gutterBottom>Notes</Typography>
-          <TextField label="Notes" fullWidth multiline rows={3} size="small" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} disabled={isReadOnly} />
-        </Paper>
+          {/* ─── Key Personnel ────────────────────────────────────────── */}
+          <Paper sx={{ p: 2, mb: 3 }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+              <Typography variant="h6">Key Personnel</Typography>
+              {!isReadOnly && !isViewMode && <Button variant="outlined" startIcon={<PersonAddIcon />} onClick={addPersonnel}>Add Personnel</Button>}
+            </Box>
+            {form.volumeII.keyPersonnel.map((person, idx) => (
+              <Paper key={person._id || idx} sx={{ p: 2, mb: 1, border: '1px solid #eee' }}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <Box>
+                    <Typography variant="subtitle2">{person.name}</Typography>
+                    <Typography variant="caption" display="block">Role: {person.role}</Typography>
+                    <Typography variant="caption" display="block">Qualifications: {person.qualifications}</Typography>
+                    <Typography variant="caption" display="block">Experience: {person.experience}</Typography>
+                    <Typography variant="caption" display="block">Years with Firm: {person.yearsWithFirm}</Typography>
+                  </Box>
+                  {!isReadOnly && !isViewMode && <IconButton size="small" color="error" onClick={() => deletePersonnel(idx)}><DeleteIcon /></IconButton>}
+                </Box>
+              </Paper>
+            ))}
+            {form.volumeII.keyPersonnel.length === 0 && <Typography variant="body2" color="textSecondary">No personnel added.</Typography>}
+          </Paper>
 
-        {/* ─── Actor Info Block ───────────────────────────────────── */}
-        {id && (
-          <Box sx={{ mt: 2 }}>
-            <Typography variant="caption" display="block">Created by: {creator?.name} ({creator?.role}) at {new Date(createdAt).toLocaleString()}</Typography>
-            {form.approvedBy && <Typography variant="caption" display="block">Approved by: {form.approvedBy.name} ({form.approvedBy.role}) at {new Date(form.approvedAt).toLocaleString()}</Typography>}
-            {form.assignedStaff && form.assignedStaff.length > 0 && <Typography variant="caption" display="block">Assigned to: {form.assignedStaff.map(s => `${s.name} (${s.role})`).join(', ')} at {new Date(form.assignedAt).toLocaleString()}</Typography>}
-            {form.verifiedBy && <Typography variant="caption" display="block">Verified by: {form.verifiedBy.name} ({form.verifiedBy.role}) at {new Date(form.verifiedAt).toLocaleString()}</Typography>}
-          </Box>
-        )}
-      </form>
+          {/* ─── Management Information ──────────────────────────────── */}
+          <Paper sx={{ p: 2, mb: 3 }}>
+            <Typography variant="h6" gutterBottom>Management Information</Typography>
+            <Grid container spacing={2}>
+              <Grid item xs={12} md={6}><TextField label="Bidder Info" fullWidth size="small" value={form.volumeII.managementInformation.bidderInfo} onChange={(e) => setForm({ ...form, volumeII: { ...form.volumeII, managementInformation: { ...form.volumeII.managementInformation, bidderInfo: e.target.value } } })} disabled={isReadOnly} /></Grid>
+              <Grid item xs={12} md={6}><TextField label="SAM Registration" fullWidth size="small" value={form.volumeII.managementInformation.samRegistration} onChange={(e) => setForm({ ...form, volumeII: { ...form.volumeII, managementInformation: { ...form.volumeII.managementInformation, samRegistration: e.target.value } } })} disabled={isReadOnly} /></Grid>
+              <Grid item xs={12} md={6}><TextField label="Certifications" fullWidth size="small" value={form.volumeII.managementInformation.certifications} onChange={(e) => setForm({ ...form, volumeII: { ...form.volumeII, managementInformation: { ...form.volumeII.managementInformation, certifications: e.target.value } } })} disabled={isReadOnly} /></Grid>
+              <Grid item xs={12} md={6}><TextField label="Litigation Status" fullWidth size="small" value={form.volumeII.managementInformation.litigationStatus} onChange={(e) => setForm({ ...form, volumeII: { ...form.volumeII, managementInformation: { ...form.volumeII.managementInformation, litigationStatus: e.target.value } } })} disabled={isReadOnly} /></Grid>
+              <Grid item xs={12} md={6}><TextField label="Political Affiliation" fullWidth size="small" value={form.volumeII.managementInformation.politicalAffiliation} onChange={(e) => setForm({ ...form, volumeII: { ...form.volumeII, managementInformation: { ...form.volumeII.managementInformation, politicalAffiliation: e.target.value } } })} disabled={isReadOnly} /></Grid>
+              <Grid item xs={12} md={6}><TextField label="Equipment Schedule" fullWidth size="small" value={form.volumeII.managementInformation.equipmentSchedule} onChange={(e) => setForm({ ...form, volumeII: { ...form.volumeII, managementInformation: { ...form.volumeII.managementInformation, equipmentSchedule: e.target.value } } })} disabled={isReadOnly} /></Grid>
+              <Grid item xs={12}><TextField label="Company Profile" fullWidth multiline rows={3} size="small" value={form.volumeII.managementInformation.companyProfile} onChange={(e) => setForm({ ...form, volumeII: { ...form.volumeII, managementInformation: { ...form.volumeII.managementInformation, companyProfile: e.target.value } } })} disabled={isReadOnly} /></Grid>
+            </Grid>
+          </Paper>
 
-      {/* ─── Photo Preview Dialog ────────────────────────────────── */}
-      <Dialog open={photoPreviewOpen} onClose={() => setPhotoPreviewOpen(false)} maxWidth="md" fullWidth>
-        <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}><span>Tender Image</span><IconButton onClick={() => setPhotoPreviewOpen(false)}><ZoomInIcon /></IconButton></DialogTitle>
-        <DialogContent sx={{ textAlign: 'center' }}>{imagePreview && <img src={imagePreview} alt="Tender" style={{ maxWidth: '100%', maxHeight: '70vh', objectFit: 'contain' }} />}</DialogContent>
-        <DialogActions><Button onClick={() => setPhotoPreviewOpen(false)}>Close</Button></DialogActions>
-      </Dialog>
+          {/* ─── Past Performance ────────────────────────────────────── */}
+          <Paper sx={{ p: 2, mb: 3 }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+              <Typography variant="h6">Past Performance</Typography>
+              {!isReadOnly && !isViewMode && <Button variant="outlined" startIcon={<WorkIcon />} onClick={addPerformance}>Add Performance</Button>}
+            </Box>
+            {form.volumeII.pastPerformance.map((perf, idx) => (
+              <Paper key={perf._id || idx} sx={{ p: 2, mb: 1, border: '1px solid #eee' }}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <Box>
+                    <Typography variant="subtitle2">{perf.projectName}</Typography>
+                    <Typography variant="caption" display="block">Client: {perf.client}</Typography>
+                    <Typography variant="caption" display="block">Value: {perf.value}</Typography>
+                    <Typography variant="caption" display="block">Year Completed: {perf.yearCompleted}</Typography>
+                    <Typography variant="caption" display="block">Description: {perf.description}</Typography>
+                    {perf.isReference && <Chip label="Reference" size="small" color="info" />}
+                  </Box>
+                  {!isReadOnly && !isViewMode && <IconButton size="small" color="error" onClick={() => deletePerformance(idx)}><DeleteIcon /></IconButton>}
+                </Box>
+              </Paper>
+            ))}
+            {form.volumeII.pastPerformance.length === 0 && <Typography variant="body2" color="textSecondary">No past performance entries.</Typography>}
+          </Paper>
 
-      {/* ─── Personnel Dialog ────────────────────────────────────── */}
-      <Dialog open={personnelDialog} onClose={() => setPersonnelDialog(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>{editingPersonnel?._id ? 'Edit Personnel' : 'Add Personnel'}</DialogTitle>
-        <DialogContent>
-          <TextField label="Name *" fullWidth margin="dense" value={editingPersonnel?.name || ''} onChange={(e) => setEditingPersonnel({ ...editingPersonnel, name: e.target.value })} />
-          <TextField label="Role *" fullWidth margin="dense" value={editingPersonnel?.role || ''} onChange={(e) => setEditingPersonnel({ ...editingPersonnel, role: e.target.value })} />
-          <TextField label="Qualifications" fullWidth margin="dense" value={editingPersonnel?.qualifications || ''} onChange={(e) => setEditingPersonnel({ ...editingPersonnel, qualifications: e.target.value })} />
-          <TextField label="Experience" fullWidth margin="dense" value={editingPersonnel?.experience || ''} onChange={(e) => setEditingPersonnel({ ...editingPersonnel, experience: e.target.value })} />
-          <TextField label="Years with Firm" type="number" fullWidth margin="dense" value={editingPersonnel?.yearsWithFirm || 0} onChange={(e) => setEditingPersonnel({ ...editingPersonnel, yearsWithFirm: parseInt(e.target.value) || 0 })} />
-        </DialogContent>
-        <DialogActions><Button onClick={() => setPersonnelDialog(false)}>Cancel</Button><Button variant="contained" onClick={savePersonnel}>Save</Button></DialogActions>
-      </Dialog>
+          {/* ─── Preliminary Safety Plan ────────────────────────────── */}
+          <Paper sx={{ p: 2, mb: 3 }}>
+            <Typography variant="h6" gutterBottom>Preliminary Safety Plan</Typography>
+            <TextField label="Safety Plan" fullWidth multiline rows={4} size="small" value={form.volumeII.preliminarySafetyPlan} onChange={(e) => setForm({ ...form, volumeII: { ...form.volumeII, preliminarySafetyPlan: e.target.value } })} disabled={isReadOnly} />
+          </Paper>
 
-      {/* ─── Performance Dialog ────────────────────────────────────── */}
-      <Dialog open={performanceDialog} onClose={() => setPerformanceDialog(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>{editingPerformance?._id ? 'Edit Performance' : 'Add Performance'}</DialogTitle>
-        <DialogContent>
-          <TextField label="Project Name *" fullWidth margin="dense" value={editingPerformance?.projectName || ''} onChange={(e) => setEditingPerformance({ ...editingPerformance, projectName: e.target.value })} />
-          <TextField label="Client *" fullWidth margin="dense" value={editingPerformance?.client || ''} onChange={(e) => setEditingPerformance({ ...editingPerformance, client: e.target.value })} />
-          <TextField label="Value" type="number" fullWidth margin="dense" value={editingPerformance?.value || ''} onChange={(e) => setEditingPerformance({ ...editingPerformance, value: parseFloat(e.target.value) || 0 })} />
-          <TextField label="Year Completed" type="number" fullWidth margin="dense" value={editingPerformance?.yearCompleted || ''} onChange={(e) => setEditingPerformance({ ...editingPerformance, yearCompleted: parseInt(e.target.value) || 0 })} />
-          <TextField label="Description" fullWidth multiline rows={2} margin="dense" value={editingPerformance?.description || ''} onChange={(e) => setEditingPerformance({ ...editingPerformance, description: e.target.value })} />
-          <FormControlLabel control={<Checkbox checked={editingPerformance?.isReference || false} onChange={(e) => setEditingPerformance({ ...editingPerformance, isReference: e.target.checked })} />} label="Is this a reference?" />
-        </DialogContent>
-        <DialogActions><Button onClick={() => setPerformanceDialog(false)}>Cancel</Button><Button variant="contained" onClick={savePerformance}>Save</Button></DialogActions>
-      </Dialog>
+          {/* ─── Notes ────────────────────────────────────────────────── */}
+          <Paper sx={{ p: 2, mb: 3 }}>
+            <Typography variant="h6" gutterBottom>Notes</Typography>
+            <TextField label="Notes" fullWidth multiline rows={3} size="small" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} disabled={isReadOnly} />
+          </Paper>
 
-      {/* ─── Section Dialog ──────────────────────────────────────── */}
-      <Dialog open={sectionDialog} onClose={() => setSectionDialog(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>{editingSection?._id ? 'Edit Section' : 'Add Section'}</DialogTitle>
-        <DialogContent>
-          <TextField label="Section Name *" fullWidth margin="dense" value={editingSection?.name || ''} onChange={(e) => setEditingSection({ ...editingSection, name: e.target.value })} />
-          <TextField label="Description" fullWidth multiline rows={2} margin="dense" value={editingSection?.description || ''} onChange={(e) => setEditingSection({ ...editingSection, description: e.target.value })} />
-          <TextField label="Page Number" type="number" fullWidth margin="dense" value={editingSection?.pageNumber || ''} onChange={(e) => setEditingSection({ ...editingSection, pageNumber: parseInt(e.target.value) || 0 })} />
-        </DialogContent>
-        <DialogActions><Button onClick={() => setSectionDialog(false)}>Cancel</Button><Button variant="contained" onClick={saveSection}>Save</Button></DialogActions>
-      </Dialog>
+          {/* ─── Actor Info Block ───────────────────────────────────── */}
+          {id && (
+            <Box sx={{ mt: 2 }}>
+              <Typography variant="caption" display="block">Created by: {creator?.name} ({creator?.role}) at {new Date(createdAt).toLocaleString()}</Typography>
+              {form.approvedBy && <Typography variant="caption" display="block">Approved by: {form.approvedBy.name} ({form.approvedBy.role}) at {new Date(form.approvedAt).toLocaleString()}</Typography>}
+              {form.assignedStaff && form.assignedStaff.length > 0 && <Typography variant="caption" display="block">Assigned to: {form.assignedStaff.map(s => `${s.name} (${s.role})`).join(', ')} at {new Date(form.assignedAt).toLocaleString()}</Typography>}
+              {form.verifiedBy && <Typography variant="caption" display="block">Verified by: {form.verifiedBy.name} ({form.verifiedBy.role}) at {new Date(form.verifiedAt).toLocaleString()}</Typography>}
+            </Box>
+          )}
+        </form>
 
-      {/* ─── Document Edit Dialog ────────────────────────────────── */}
-      <Dialog open={docEditDialog} onClose={() => setDocEditDialog(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Edit Document</DialogTitle>
-        <DialogContent>
-          <TextField
-            label="Document Name"
-            fullWidth
-            margin="dense"
-            value={docForm.name}
-            onChange={(e) => setDocForm({ ...docForm, name: e.target.value })}
-          />
-          <TextField
-            label="Description"
-            fullWidth
-            multiline
-            rows={2}
-            margin="dense"
-            value={docForm.description}
-            onChange={(e) => setDocForm({ ...docForm, description: e.target.value })}
-          />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setDocEditDialog(false)}>Cancel</Button>
-          <Button variant="contained" onClick={handleSaveDoc}>Save</Button>
-        </DialogActions>
-      </Dialog>
-    </Paper>
+        {/* ─── Photo Preview Dialog ────────────────────────────────── */}
+        <Dialog open={photoPreviewOpen} onClose={() => setPhotoPreviewOpen(false)} maxWidth="md" fullWidth>
+          <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}><span>Tender Image</span><IconButton onClick={() => setPhotoPreviewOpen(false)}><ZoomInIcon /></IconButton></DialogTitle>
+          <DialogContent sx={{ textAlign: 'center' }}>{imagePreview && <img src={imagePreview} alt="Tender" style={{ maxWidth: '100%', maxHeight: '70vh', objectFit: 'contain' }} />}</DialogContent>
+          <DialogActions><Button onClick={() => setPhotoPreviewOpen(false)}>Close</Button></DialogActions>
+        </Dialog>
+
+        {/* ─── Personnel Dialog ────────────────────────────────────── */}
+        <Dialog open={personnelDialog} onClose={() => setPersonnelDialog(false)} maxWidth="sm" fullWidth>
+          <DialogTitle>{editingPersonnel?._id ? 'Edit Personnel' : 'Add Personnel'}</DialogTitle>
+          <DialogContent>
+            <TextField label="Name *" fullWidth margin="dense" value={editingPersonnel?.name || ''} onChange={(e) => setEditingPersonnel({ ...editingPersonnel, name: e.target.value })} />
+            <TextField label="Role *" fullWidth margin="dense" value={editingPersonnel?.role || ''} onChange={(e) => setEditingPersonnel({ ...editingPersonnel, role: e.target.value })} />
+            <TextField label="Qualifications" fullWidth margin="dense" value={editingPersonnel?.qualifications || ''} onChange={(e) => setEditingPersonnel({ ...editingPersonnel, qualifications: e.target.value })} />
+            <TextField label="Experience" fullWidth margin="dense" value={editingPersonnel?.experience || ''} onChange={(e) => setEditingPersonnel({ ...editingPersonnel, experience: e.target.value })} />
+            <TextField label="Years with Firm" type="number" fullWidth margin="dense" value={editingPersonnel?.yearsWithFirm || 0} onChange={(e) => setEditingPersonnel({ ...editingPersonnel, yearsWithFirm: parseInt(e.target.value) || 0 })} />
+          </DialogContent>
+          <DialogActions><Button onClick={() => setPersonnelDialog(false)}>Cancel</Button><Button variant="contained" onClick={savePersonnel}>Save</Button></DialogActions>
+        </Dialog>
+
+        {/* ─── Performance Dialog ────────────────────────────────────── */}
+        <Dialog open={performanceDialog} onClose={() => setPerformanceDialog(false)} maxWidth="sm" fullWidth>
+          <DialogTitle>{editingPerformance?._id ? 'Edit Performance' : 'Add Performance'}</DialogTitle>
+          <DialogContent>
+            <TextField label="Project Name *" fullWidth margin="dense" value={editingPerformance?.projectName || ''} onChange={(e) => setEditingPerformance({ ...editingPerformance, projectName: e.target.value })} />
+            <TextField label="Client *" fullWidth margin="dense" value={editingPerformance?.client || ''} onChange={(e) => setEditingPerformance({ ...editingPerformance, client: e.target.value })} />
+            <TextField label="Value" type="number" fullWidth margin="dense" value={editingPerformance?.value || ''} onChange={(e) => setEditingPerformance({ ...editingPerformance, value: parseFloat(e.target.value) || 0 })} />
+            <TextField label="Year Completed" type="number" fullWidth margin="dense" value={editingPerformance?.yearCompleted || ''} onChange={(e) => setEditingPerformance({ ...editingPerformance, yearCompleted: parseInt(e.target.value) || 0 })} />
+            <TextField label="Description" fullWidth multiline rows={2} margin="dense" value={editingPerformance?.description || ''} onChange={(e) => setEditingPerformance({ ...editingPerformance, description: e.target.value })} />
+            <FormControlLabel control={<Checkbox checked={editingPerformance?.isReference || false} onChange={(e) => setEditingPerformance({ ...editingPerformance, isReference: e.target.checked })} />} label="Is this a reference?" />
+          </DialogContent>
+          <DialogActions><Button onClick={() => setPerformanceDialog(false)}>Cancel</Button><Button variant="contained" onClick={savePerformance}>Save</Button></DialogActions>
+        </Dialog>
+
+        {/* ─── Section Dialog ──────────────────────────────────────── */}
+        <Dialog open={sectionDialog} onClose={() => setSectionDialog(false)} maxWidth="sm" fullWidth>
+          <DialogTitle>{editingSection?._id ? 'Edit Section' : 'Add Section'}</DialogTitle>
+          <DialogContent>
+            <TextField label="Section Name *" fullWidth margin="dense" value={editingSection?.name || ''} onChange={(e) => setEditingSection({ ...editingSection, name: e.target.value })} />
+            <TextField label="Description" fullWidth multiline rows={2} margin="dense" value={editingSection?.description || ''} onChange={(e) => setEditingSection({ ...editingSection, description: e.target.value })} />
+            <TextField label="Page Number" type="number" fullWidth margin="dense" value={editingSection?.pageNumber || ''} onChange={(e) => setEditingSection({ ...editingSection, pageNumber: parseInt(e.target.value) || 0 })} />
+          </DialogContent>
+          <DialogActions><Button onClick={() => setSectionDialog(false)}>Cancel</Button><Button variant="contained" onClick={saveSection}>Save</Button></DialogActions>
+        </Dialog>
+
+        {/* ─── Document Edit Dialog ────────────────────────────────── */}
+        <Dialog open={docEditDialog} onClose={() => setDocEditDialog(false)} maxWidth="sm" fullWidth>
+          <DialogTitle>Edit Document</DialogTitle>
+          <DialogContent>
+            <TextField
+              label="Document Name"
+              fullWidth
+              margin="dense"
+              value={docForm.name}
+              onChange={(e) => setDocForm({ ...docForm, name: e.target.value })}
+            />
+            <TextField
+              label="Description"
+              fullWidth
+              multiline
+              rows={2}
+              margin="dense"
+              value={docForm.description}
+              onChange={(e) => setDocForm({ ...docForm, description: e.target.value })}
+            />
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setDocEditDialog(false)}>Cancel</Button>
+            <Button variant="contained" onClick={handleSaveDoc}>Save</Button>
+          </DialogActions>
+        </Dialog>
+      </Paper>
+    </>
   );
 };
 
