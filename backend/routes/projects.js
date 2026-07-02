@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const mongoose = require('mongoose'); // ✅ required for ObjectId validation
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
@@ -20,6 +21,7 @@ try {
 
 const upload = multer({ dest: 'uploads/' });
 
+// ─── GET all projects ──────────────────────────────────────────
 router.get('/', auth, async (req, res) => {
   try {
     const projects = await Project.find()
@@ -27,24 +29,35 @@ router.get('/', auth, async (req, res) => {
       .populate('createdBy', 'name role')
       .populate('bidder', 'name role')
       .populate('assignedStaff', 'name role')
-      .populate('approvedBy', 'name role');   // ✅ added
+      .populate('approvedBy', 'name role');
     res.json(projects);
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
+// ─── GET single project by ID ─────────────────────────────────
 router.get('/:id', auth, async (req, res) => {
   try {
+    // ✅ Validate ObjectId format – prevents CastError and returns 400
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({ error: 'Invalid project ID format' });
+    }
     const project = await Project.findById(req.params.id)
       .populate('manager', 'name role')
       .populate('createdBy', 'name role')
       .populate('bidder', 'name role')
       .populate('assignedStaff', 'name role')
-      .populate('approvedBy', 'name role');   // ✅ added
+      .populate('approvedBy', 'name role');
     if (!project) return res.status(404).json({ error: 'Project not found' });
     res.json(project);
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) {
+    console.error('Error fetching project:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
 });
 
+// ─── CREATE project ────────────────────────────────────────────
 router.post('/', auth, authorize('admin', 'director', 'civil-engineer', 'foreman', 'accountant', 'qs', 'quantity-surveyor'), async (req, res) => {
   try {
     const project = new Project({ ...req.body, createdBy: req.user.id });
@@ -67,7 +80,6 @@ router.post('/', auth, authorize('admin', 'director', 'civil-engineer', 'foreman
         `/projects/${project._id}`
       );
     }
-    // Broadcast to all users
     await broadcastNotification(
       'project_created',
       'New Project Created',
@@ -75,12 +87,30 @@ router.post('/', auth, authorize('admin', 'director', 'civil-engineer', 'foreman
       `/projects/${project._id}`
     );
     res.status(201).json(populated);
-  } catch (err) { res.status(400).json({ error: err.message }); }
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
 });
 
+// ─── UPDATE project ────────────────────────────────────────────
 router.put('/:id', auth, authorize('admin', 'director', 'civil-engineer', 'foreman', 'accountant', 'qs', 'quantity-surveyor'), async (req, res) => {
   try {
-    
+    // ✅ Validate ObjectId
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({ error: 'Invalid project ID format' });
+    }
+
+    // ✅ First update the project, then use the result for notification
+    const updated = await Project.findByIdAndUpdate(req.params.id, req.body, { new: true })
+      .populate('manager', 'name role')
+      .populate('createdBy', 'name role')
+      .populate('bidder', 'name role')
+      .populate('assignedStaff', 'name role')
+      .populate('approvedBy', 'name role');
+
+    if (!updated) return res.status(404).json({ error: 'Project not found' });
+
+    // ✅ Now broadcast notification using the updated project
     const senderName = await getSenderName(req.user.id);
     await broadcastNotification(
       'project_updated',
@@ -88,32 +118,39 @@ router.put('/:id', auth, authorize('admin', 'director', 'civil-engineer', 'forem
       `${senderName} updated project: ${updated.name}`,
       `/projects/${updated._id}`
     );
-    const updated = await Project.findByIdAndUpdate(req.params.id, req.body, { new: true })
-      .populate('manager', 'name role')
-      .populate('createdBy', 'name role')
-      .populate('bidder', 'name role')
-      .populate('assignedStaff', 'name role')
-      .populate('approvedBy', 'name role');
-    if (!updated) return res.status(404).json({ error: 'Project not found' });
+
     res.json(updated);
-  } catch (err) { res.status(400).json({ error: err.message }); }
+  } catch (err) {
+    console.error('Update error:', err);
+    res.status(400).json({ error: err.message });
+  }
 });
 
+// ─── DELETE project ────────────────────────────────────────────
 router.delete('/:id', auth, authorize('admin', 'director', 'accountant'), async (req, res) => {
   try {
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({ error: 'Invalid project ID format' });
+    }
     const deleted = await Project.findByIdAndDelete(req.params.id);
     if (!deleted) return res.status(404).json({ error: 'Project not found' });
     res.json({ message: 'Deleted' });
-  } catch (err) { res.status(400).json({ error: err.message }); }
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
 });
 
+// ─── APPROVE project ───────────────────────────────────────────
 router.put('/:id/approve', auth, authorize('admin', 'director'), async (req, res) => {
   try {
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({ error: 'Invalid project ID format' });
+    }
     const project = await Project.findById(req.params.id);
     if (!project) return res.status(404).json({ error: 'Project not found' });
     project.status = 'active';
-    project.approvedBy = req.user.id;    // ✅ set approver
-    project.approvedAt = new Date();     // ✅ set approval date
+    project.approvedBy = req.user.id;
+    project.approvedAt = new Date();
     await project.save();
     const populated = await Project.findById(project._id)
       .populate('manager', 'name role')
@@ -131,11 +168,17 @@ router.put('/:id/approve', auth, authorize('admin', 'director'), async (req, res
       `/projects/${project._id}`
     );
     res.json(populated);
-  } catch (err) { res.status(400).json({ error: err.message }); }
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
 });
 
+// ─── REJECT project ────────────────────────────────────────────
 router.put('/:id/reject', auth, authorize('admin', 'director'), async (req, res) => {
   try {
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({ error: 'Invalid project ID format' });
+    }
     const project = await Project.findById(req.params.id);
     if (!project) return res.status(404).json({ error: 'Project not found' });
     project.status = 'rejected';
@@ -156,10 +199,12 @@ router.put('/:id/reject', auth, authorize('admin', 'director'), async (req, res)
       `/projects/${project._id}`
     );
     res.json(populated);
-  } catch (err) { res.status(400).json({ error: err.message }); }
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
 });
 
-// ─── UPLOAD routes (preview + import) ──────────────────────────────
+// ─── UPLOAD routes (preview + import) ──────────────────────────
 router.post('/upload/preview', auth, authorize('admin', 'director', 'accountant'), upload.single('file'), async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
