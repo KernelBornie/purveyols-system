@@ -162,4 +162,13 @@ TenderSchema.pre('save', function(next) {
   next();
 });
 
-module.exports = mongoose.model('Tender', TenderSchema);
+module.exports = mongoose.model('Tender', TenderSchema);// Add the following field inside the Tender schema
+documents: [{
+  originalName: { type: String, required: true },
+  storedName: { type: String, required: true },
+  mimeType: { type: String, required: true },
+  extension: { type: String },
+  size: { type: Number, required: true },
+  uploadDate: { type: Date, default: Date.now },
+  uploadedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
+}],
